@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 150 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+             (!('role' in data) || (data.role is string && (data.role == 'USER' || data.role == 'VENUE_OWNER' || data.role == 'ADMIN'))) &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 1000)) &&
+             (!('phoneNumber' in data) || data.phoneNumber == null || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
+             (!('walletBalance' in data) || data.walletBalance is number) &&
+             (!('referralCode' in data) || data.referralCode == null || (data.referralCode is string && data.referralCode.size() <= 50)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidBooking(data) {
+      return data.bookingId is string && data.bookingId.size() > 0 && data.bookingId.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.venueId is string && data.venueId.size() > 0 && data.venueId.size() <= 128 &&
+             data.venueTitle is string && data.venueTitle.size() > 0 && data.venueTitle.size() <= 200 &&
+             (!('slotTime' in data) || (data.slotTime is string && data.slotTime.size() <= 100)) &&
+             (!('bookingDate' in data) || (data.bookingDate is string && data.bookingDate.size() <= 50)) &&
+             data.totalPrice is number && data.totalPrice >= 0 &&
+             data.status is string && (data.status == 'CONFIRMED' || data.status == 'CANCELLED' || data.status == 'PENDING' || data.status == 'COMPLETED') &&
+             (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() <= 50)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidSavedVenue(data) {
+      return data.savedId is string && data.savedId.size() > 0 && data.savedId.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.venueId is string && data.venueId.size() > 0 && data.venueId.size() <= 128 &&
+             (!('venueTitle' in data) || (data.venueTitle is string && data.venueTitle.size() <= 200)) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return data.reviewId is string && data.reviewId.size() > 0 && data.reviewId.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 150 &&
+             data.venueId is string && data.venueId.size() > 0 && data.venueId.size() <= 128 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() >= 1 && data.comment.size() <= 1000 &&
+             data.createdAt is timestamp;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'fullName', 'email', 'createdAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'role', 'avatarUrl', 'phoneNumber', 'walletBalance', 'referralCode', 'updatedAt']);
+
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Bookings Collection ---
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(bookingId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().bookingId == bookingId &&
+                       incoming().keys().hasAll(['bookingId', 'userId', 'venueId', 'venueTitle', 'totalPrice', 'status', 'createdAt']) &&
+                       isValidBooking(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(bookingId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().bookingId == existing().bookingId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidBooking(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentMethod', 'updatedAt']);
+
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // --- Saved Venues Collection ---
+    match /saved_venues/{savedId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(savedId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().savedId == savedId &&
+                       incoming().keys().hasAll(['savedId', 'userId', 'venueId', 'createdAt']) &&
+                       isValidSavedVenue(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(savedId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().savedId == existing().savedId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidSavedVenue(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['venueTitle']);
+
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // --- Reviews Collection ---
+    match /reviews/{reviewId} {
+      allow get: if true;
+      allow list: if true;
+
+      allow create: if isSignedIn() &&
+                       isValidId(reviewId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().reviewId == reviewId &&
+                       incoming().keys().hasAll(['reviewId', 'userId', 'userName', 'venueId', 'rating', 'comment', 'createdAt']) &&
+                       isValidReview(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(reviewId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().reviewId == existing().reviewId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidReview(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'userName']);
+
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}
