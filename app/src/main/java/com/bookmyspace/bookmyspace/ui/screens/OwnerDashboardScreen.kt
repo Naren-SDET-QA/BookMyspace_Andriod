@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 fun OwnerDashboardScreen(
     onCreateVenue: () -> Unit,
     onNavigateToPaymentConfig: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -270,7 +271,11 @@ fun OwnerDashboardScreen(
                         }
                     }
                     2 -> {
-                        OwnerRevenueTab(bookings = ownerBookings, onNavigateToPaymentConfig = onNavigateToPaymentConfig)
+                        OwnerRevenueTab(
+                            bookings = ownerBookings,
+                            onNavigateToPaymentConfig = onNavigateToPaymentConfig,
+                            onNavigateToReports = onNavigateToReports
+                        )
                     }
                 }
             }
@@ -614,7 +619,8 @@ private fun OwnerVenueCard(venue: Venue) {
 @Composable
 private fun OwnerRevenueTab(
     bookings: List<Booking>,
-    onNavigateToPaymentConfig: () -> Unit = {}
+    onNavigateToPaymentConfig: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {}
 ) {
     val totalRevenue = bookings.filter { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.COMPLETED }.sumOf { it.totalAmount }
     val advanceReceived = bookings.filter { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.COMPLETED || it.status == BookingStatus.PENDING_OWNER_APPROVAL }.sumOf { if (it.isAdvancePayment) it.advanceAmountPaid else it.totalAmount }
@@ -623,11 +629,71 @@ private fun OwnerRevenueTab(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Daily & Weekly Business Report Quick Launcher Card
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+            modifier = Modifier.fillMaxWidth().testTag("owner_daily_weekly_reports_card")
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("📊", fontSize = 18.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Daily & Weekly Reports", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Total bookings, online share & UPI/card split", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                        }
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF2E7D32)
+                    ) {
+                        Text("UPDATED ✓", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Generate comprehensive daily/weekly revenue summaries, online booking percentages, and WhatsApp-ready formatted messages detailing exact UPI and Card generation.",
+                    fontSize = 11.5.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                    lineHeight = 16.sp
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = onNavigateToReports,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("open_daily_weekly_reports_btn")
+                ) {
+                    Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("View Daily & Weekly Reports Summary", fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+                }
+            }
+        }
+
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {

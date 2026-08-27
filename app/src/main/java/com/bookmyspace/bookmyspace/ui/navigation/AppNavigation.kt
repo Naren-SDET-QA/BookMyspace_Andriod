@@ -73,6 +73,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object AdminAppSections : Screen("admin/app_sections", "App Sections & Feature Toggles", Icons.Default.ToggleOn)
     object PlugAndPlayFeatures : Screen("admin/plug_and_play_features", "Plug & Play Features Hub", Icons.Default.Extension)
     object PaymentTransactions : Screen("payment_transactions", "Payment Transactions", Icons.Default.ReceiptLong)
+    object DailyWeeklyReports : Screen("reports/daily_weekly", "Daily & Weekly Reports", Icons.Default.Assessment)
     object PaymentHealthAndConfig : Screen("payment_config", "Payment & Self-Healing Controls", Icons.Default.Healing)
     object ExternalAppsAndMcp : Screen("external_apps_mcp", "Connected Apps & MCP", Icons.Default.Hub)
     object AdminLiveElementEditor : Screen("admin/element_editor", "Universal Element & Object Editor", Icons.Default.EditNote)
@@ -449,7 +450,16 @@ fun AppNavigation() {
                         navController.navigate(Screen.Bookings.route) {
                             popUpTo(Screen.Home.route)
                         }
+                    },
+                    onNavigateToReports = {
+                        navController.navigate(Screen.DailyWeeklyReports.route)
                     }
+                )
+            }
+
+            composable(Screen.DailyWeeklyReports.route) {
+                DailyWeeklyReportsScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
@@ -479,7 +489,8 @@ fun AppNavigation() {
             composable(Screen.OwnerDashboard.route) {
                 OwnerDashboardScreen(
                     onCreateVenue = { navController.navigate(Screen.CreateVenue.route) },
-                    onNavigateToPaymentConfig = { navController.navigate(Screen.PaymentHealthAndConfig.route) }
+                    onNavigateToPaymentConfig = { navController.navigate(Screen.PaymentHealthAndConfig.route) },
+                    onNavigateToReports = { navController.navigate(Screen.DailyWeeklyReports.route) }
                 )
             }
 
