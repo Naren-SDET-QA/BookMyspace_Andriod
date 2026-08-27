@@ -1,9 +1,107 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M38,32h32c3.31,0 6,2.69 6,6v32c0,3.31 -2.69,6 -6,6H38c-3.31,0 -6,-2.69 -6,-6V38c0,-3.31 2.69,-6 6,-6zm2,8v24h28V40H40zm4,4h20v4H44v-4zm0,8h20v4H44v-4zm-8,-16h40v-4c0,-2.21 -1.79,-4 -4,-4H40c-2.21,0 -4,1.79 -4,4v4z" />
+
+    <group
+        android:scaleX="0.6"
+        android:scaleY="0.6"
+        android:translateX="18"
+        android:translateY="18">
+
+        <!-- Outer Neon Accent Ring / Stadium Track -->
+        <path
+            android:pathData="M30,22 C48,16 72,16 90,22 C104,27 106,42 98,62 C88,88 64,102 60,104 C56,102 32,88 22,62 C14,42 16,27 30,22 Z"
+            android:strokeWidth="3.0"
+            android:strokeLineCap="round">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:startX="20"
+                    android:startY="20"
+                    android:endX="100"
+                    android:endY="100"
+                    android:type="linear">
+                    <item android:color="#FF10B981" android:offset="0.0"/>
+                    <item android:color="#FF06B6D4" android:offset="0.5"/>
+                    <item android:color="#FF6366F1" android:offset="1.0"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Modern Architectural High-Rise Building & Sport Arena Pillars (Left Wing) -->
+        <path
+            android:pathData="M36,78 L36,44 A4,4 0 0,1 40,40 L48,40 A4,4 0 0,1 52,44 L52,78 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="36"
+                    android:startY="40"
+                    android:endX="52"
+                    android:endY="78"
+                    android:type="linear">
+                    <item android:color="#FF10B981" android:offset="0.0"/>
+                    <item android:color="#FF059669" android:offset="1.0"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Central Grand Tower / Pin Apex (Middle Tower) -->
+        <path
+            android:pathData="M52,78 L52,32 A4,4 0 0,1 56,28 L64,28 A4,4 0 0,1 68,32 L68,78 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="52"
+                    android:startY="28"
+                    android:endX="68"
+                    android:endY="78"
+                    android:type="linear">
+                    <item android:color="#FF38BDF8" android:offset="0.0"/>
+                    <item android:color="#FF0284C7" android:offset="1.0"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Right Wing Hall / Arena -->
+        <path
+            android:pathData="M68,78 L68,48 A4,4 0 0,1 72,44 L80,44 A4,4 0 0,1 84,48 L84,78 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="68"
+                    android:startY="44"
+                    android:endX="84"
+                    android:endY="78"
+                    android:type="linear">
+                    <item android:color="#FF818CF8" android:offset="0.0"/>
+                    <item android:color="#FF4F46E5" android:offset="1.0"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Geometric Window Apertures -->
+        <path
+            android:pathData="M42,46 L46,46 A1,1 0 0,1 47,47 L47,51 A1,1 0 0,1 46,52 L42,52 A1,1 0 0,1 41,51 L41,47 A1,1 0 0,1 42,46 Z
+                              M42,56 L46,56 A1,1 0 0,1 47,57 L47,61 A1,1 0 0,1 46,62 L42,62 A1,1 0 0,1 41,61 L41,57 A1,1 0 0,1 42,56 Z
+                              M58,34 L62,34 A1,1 0 0,1 63,35 L63,39 A1,1 0 0,1 62,40 L58,40 A1,1 0 0,1 57,39 L57,35 A1,1 0 0,1 58,34 Z
+                              M58,44 L62,44 A1,1 0 0,1 63,45 L63,49 A1,1 0 0,1 62,50 L58,50 A1,1 0 0,1 57,49 L57,45 A1,1 0 0,1 58,44 Z
+                              M58,54 L62,54 A1,1 0 0,1 63,55 L63,59 A1,1 0 0,1 62,60 L58,60 A1,1 0 0,1 57,59 L57,55 A1,1 0 0,1 58,54 Z
+                              M74,50 L78,50 A1,1 0 0,1 79,51 L79,55 A1,1 0 0,1 78,56 L74,56 A1,1 0 0,1 73,55 L73,51 A1,1 0 0,1 74,50 Z
+                              M74,60 L78,60 A1,1 0 0,1 79,61 L79,65 A1,1 0 0,1 78,66 L74,66 A1,1 0 0,1 73,65 L73,61 A1,1 0 0,1 74,60 Z"
+            android:fillColor="#FFFFFFFF"/>
+
+        <!-- Sports Turf / Grass Field Base Arc -->
+        <path
+            android:pathData="M26,82 Q60,94 94,82 L94,88 Q60,100 26,88 Z"
+            android:fillColor="#FF10B981"/>
+
+        <!-- Golden Star / Verified Booking Beacon at Top -->
+        <path
+            android:pathData="M60,18 L62,23 L67,23.5 L63,27 L64,32 L60,29.5 L56,32 L57,27 L53,23.5 L58,23 Z"
+            android:fillColor="#FFFBBF24"/>
+
+        <!-- Location Dot Marker on Foundation -->
+        <path
+            android:pathData="M60,86 A4,4 0 1,1 60,94 A4,4 0 1,1 60,86 Z"
+            android:fillColor="#FFFFFFFF"/>
+    </group>
 </vector>

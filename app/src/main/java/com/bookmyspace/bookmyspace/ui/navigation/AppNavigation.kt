@@ -1,7 +1,11 @@
 package com.bookmyspace.bookmyspace.ui.navigation
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -16,6 +20,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.bookmyspace.bookmyspace.data.model.UserRole
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
+import com.bookmyspace.bookmyspace.ui.components.BMSFullPageLoadingScreen
 import com.bookmyspace.bookmyspace.ui.components.ContextAwareHelpFab
 import com.bookmyspace.bookmyspace.ui.screens.*
 import com.bookmyspace.bookmyspace.util.LocalizedStrings
@@ -39,6 +44,13 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object PaymentFlow : Screen("bookings/{id}/pay", "Payment") {
         fun createRoute(id: String) = "bookings/$id/pay"
     }
+    object BookingSuccess : Screen("bookings/{id}/success?txId={txId}&method={method}", "Booking Confirmed") {
+        fun createRoute(id: String, txId: String? = null, method: String? = null): String {
+            val txParam = if (txId != null) "&txId=$txId" else ""
+            val methodParam = if (method != null) "&method=$method" else ""
+            return "bookings/$id/success?$txParam$methodParam"
+        }
+    }
     object Events : Screen("events", "Events")
     object Courses : Screen("courses", "Courses")
     object Notifications : Screen("notifications", "Notifications")
@@ -59,8 +71,13 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object RegistrationFieldsConfig : Screen("admin/registration_fields_config", "User Registration Fields Configuration", Icons.Default.Tune)
     object UnifiedRegistration : Screen("unified_registration", "Unified User Registration", Icons.Default.PersonAdd)
     object AdminAppSections : Screen("admin/app_sections", "App Sections & Feature Toggles", Icons.Default.ToggleOn)
+    object PlugAndPlayFeatures : Screen("admin/plug_and_play_features", "Plug & Play Features Hub", Icons.Default.Extension)
     object PaymentTransactions : Screen("payment_transactions", "Payment Transactions", Icons.Default.ReceiptLong)
     object PaymentHealthAndConfig : Screen("payment_config", "Payment & Self-Healing Controls", Icons.Default.Healing)
+    object ExternalAppsAndMcp : Screen("external_apps_mcp", "Connected Apps & MCP", Icons.Default.Hub)
+    object AdminLiveElementEditor : Screen("admin/element_editor", "Universal Element & Object Editor", Icons.Default.EditNote)
+    object FirebaseMigration : Screen("admin/firebase_migration", "Firebase Database Migration", Icons.Default.CloudSync)
+    object AdminSettings : Screen("admin/settings", "Admin Platform Settings", Icons.Default.Settings)
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -78,30 +95,37 @@ fun AppNavigation() {
         Screen.Profile
     )
 
-    val showBottomBar = currentRoute in listOf(
-        Screen.Home.route,
-        Screen.Map.route,
-        "search",
-        Screen.Search.route,
-        Screen.Bookings.route,
-        Screen.Saved.route,
-        Screen.Profile.route
-    )
-
-    Scaffold(
-        floatingActionButton = {
-            val isDetailOrBookingRoute = currentRoute?.startsWith("venues/") == true ||
-                    currentRoute?.startsWith("bookings/") == true ||
-                    currentRoute?.contains("/book") == true ||
-                    currentRoute?.contains("/pay") == true
-
-            val bottomPadding = if (isDetailOrBookingRoute) 110.dp else if (showBottomBar) 88.dp else 16.dp
-
-            ContextAwareHelpFab(
-                currentRoute = currentRoute,
-                onNavigateToRoute = { route -> navController.navigate(route) },
-                modifier = Modifier.padding(bottom = bottomPadding)
+            val showBottomBar = currentRoute in listOf(
+                Screen.Home.route,
+                Screen.Map.route,
+                "search",
+                Screen.Search.route,
+                Screen.Bookings.route,
+                Screen.Saved.route,
+                Screen.Profile.route
             )
+
+            val featureConfigs by BookMySpaceRepository.featureConfigs.collectAsState()
+            val isAiCopilotEnabled = remember(featureConfigs) {
+                BookMySpaceRepository.isFeatureEnabled(com.bookmyspace.bookmyspace.data.model.AppFeatureKey.AI_SMART_COPILOT)
+            }
+
+            Scaffold(
+        floatingActionButton = {
+            if (isAiCopilotEnabled) {
+                val isDetailOrBookingRoute = currentRoute?.startsWith("venues/") == true ||
+                        currentRoute?.startsWith("bookings/") == true ||
+                        currentRoute?.contains("/book") == true ||
+                        currentRoute?.contains("/pay") == true
+
+                val bottomPadding = if (isDetailOrBookingRoute) 110.dp else if (showBottomBar) 88.dp else 16.dp
+
+                ContextAwareHelpFab(
+                    currentRoute = currentRoute,
+                    onNavigateToRoute = { route -> navController.navigate(route) },
+                    modifier = Modifier.padding(bottom = bottomPadding)
+                )
+            }
         },
         bottomBar = {
             if (showBottomBar) {
@@ -139,12 +163,13 @@ fun AppNavigation() {
             }
         }
     ) { innerPadding ->
-        SharedTransitionLayout {
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Home.route,
-                modifier = Modifier.padding(innerPadding)
-            ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            SharedTransitionLayout {
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Home.route,
+                    modifier = Modifier.padding(innerPadding)
+                ) {
                 composable(Screen.Home.route) {
                     HomeScreen(
                         onNavigateToVenue = { id -> navController.navigate(Screen.VenueDetails.createRoute(id)) },
@@ -213,6 +238,7 @@ fun AppNavigation() {
                         onNavigateToReferral = { navController.navigate(Screen.Referral.route) },
                         onNavigateToThemeCustomizer = { navController.navigate(Screen.ThemeCustomizer.route) },
                         onNavigateToAdminAppSections = { navController.navigate(Screen.AdminAppSections.route) },
+                        onNavigateToPlugAndPlayFeatures = { navController.navigate(Screen.PlugAndPlayFeatures.route) },
                         onNavigateToInstitutesClasses = { navController.navigate(Screen.InstitutesAndClasses.route) },
                         onNavigateToInstituteOwnerDashboard = { navController.navigate(Screen.InstituteOwnerDashboard.route) },
                         onNavigateToListingFieldsConfig = { navController.navigate(Screen.ListingFieldsConfig.route) },
@@ -220,7 +246,11 @@ fun AppNavigation() {
                         onNavigateToUnifiedRegistration = { navController.navigate(Screen.UnifiedRegistration.route) },
                         onNavigateToPaymentTransactions = { navController.navigate(Screen.PaymentTransactions.route) },
                         onNavigateToPaymentConfig = { navController.navigate(Screen.PaymentHealthAndConfig.route) },
-                        onNavigateToSaved = { navController.navigate(Screen.Saved.route) }
+                        onNavigateToExternalAppsAndMcp = { navController.navigate(Screen.ExternalAppsAndMcp.route) },
+                        onNavigateToSaved = { navController.navigate(Screen.Saved.route) },
+                        onNavigateToAdminElementEditor = { navController.navigate(Screen.AdminLiveElementEditor.route) },
+                        onNavigateToFirebaseMigration = { navController.navigate(Screen.FirebaseMigration.route) },
+                        onNavigateToAdminSettings = { navController.navigate(Screen.AdminSettings.route) }
                     )
                 }
 
@@ -270,6 +300,42 @@ fun AppNavigation() {
                         }
                     },
                     onNavigateToPaymentConfig = { navController.navigate(Screen.PaymentHealthAndConfig.route) }
+                )
+            }
+
+            composable(
+                route = Screen.BookingSuccess.route,
+                arguments = listOf(
+                    navArgument("id") { type = NavType.StringType },
+                    navArgument("txId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument("method") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("id") ?: ""
+                val txId = backStackEntry.arguments?.getString("txId")
+                val method = backStackEntry.arguments?.getString("method")
+                BookingSuccessScreen(
+                    bookingId = bookingId,
+                    transactionId = txId,
+                    paymentMethod = method,
+                    onNavigateToBookings = {
+                        navController.navigate(Screen.Bookings.route) {
+                            popUpTo(Screen.Home.route)
+                        }
+                    },
+                    onNavigateToHome = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    }
                 )
             }
 
@@ -339,6 +405,13 @@ fun AppNavigation() {
 
             composable(Screen.AdminAppSections.route) {
                 AdminAppSectionsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPlugAndPlay = { navController.navigate(Screen.PlugAndPlayFeatures.route) }
+                )
+            }
+
+            composable(Screen.PlugAndPlayFeatures.route) {
+                PlugAndPlayFeaturesHubScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -386,8 +459,17 @@ fun AppNavigation() {
                 )
             }
 
+            composable(Screen.ExternalAppsAndMcp.route) {
+                ExternalAppsAndMcpScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToRoute = { route -> navController.navigate(route) }
+                )
+            }
+
             composable(Screen.Support.route) {
-                SupportScreen()
+                SupportScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             composable(Screen.AdminAudit.route) {
@@ -446,7 +528,47 @@ fun AppNavigation() {
                     }
                 )
             }
+
+            composable(Screen.AdminLiveElementEditor.route) {
+                AdminLiveElementEditorScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.FirebaseMigration.route) {
+                FirebaseMigrationScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.AdminSettings.route) {
+                AdminSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToHealthReport = { navController.navigate(Screen.PaymentHealthAndConfig.route) },
+                    onNavigateToElementEditor = { navController.navigate(Screen.AdminLiveElementEditor.route) },
+                    onNavigateToMigration = { navController.navigate(Screen.FirebaseMigration.route) }
+                )
+            }
         }
     }
-}
+    }
+    }
+
+    // Universal Admin Live Element Editing HUD
+    com.bookmyspace.bookmyspace.ui.components.AdminGlobalFloatingToolbar(
+        onNavigateToMasterEditor = {
+            navController.navigate(Screen.AdminLiveElementEditor.route)
+        },
+        onNavigateToFirebaseMigration = {
+            navController.navigate(Screen.FirebaseMigration.route)
+        },
+        onNavigateToAdminSettings = {
+            navController.navigate(Screen.AdminSettings.route)
+        }
+    )
+
+    // Universal Element Inspector Modal
+    com.bookmyspace.bookmyspace.ui.components.AdminElementInspectorModal(
+        onDismissRequest = {}
+    )
 }

@@ -5,8 +5,10 @@ import com.bookmyspace.bookmyspace.data.model.LocationHierarchy
 enum class BookingStatus {
     CONFIRMED,
     PENDING,
+    PENDING_OWNER_APPROVAL,
     HELD,
     CANCELLED,
+    REJECTED,
     COMPLETED
 }
 
@@ -82,7 +84,17 @@ data class Booking(
     val bookingRef: String = "",
     val isHeld: Boolean = false,
     val holdExpiresAtMillis: Long = 0L,
-    val checkInTime: String? = null
+    val checkInTime: String? = null,
+    val isAdvancePayment: Boolean = false,
+    val advanceAmountPaid: Double = 0.0,
+    val remainingBalanceDue: Double = 0.0,
+    val paymentPlan: String = "FULL", // "FULL", "ADVANCE_SPLIT", "PAY_AT_VENUE"
+    val registrationDetails: Map<String, String> = emptyMap(),
+    val rejectionReason: String? = null,
+    val approvedAt: Long? = null,
+    val rejectedAt: Long? = null,
+    val refundId: String? = null,
+    val finalOrderId: String? = null
 )
 
 data class InstituteProfile(
@@ -123,6 +135,13 @@ data class FacultyMember(
     val photoUrl: String = "",
     val bio: String = "",
     val specialties: List<String> = emptyList(),
+    val certifications: List<String> = emptyList(),
+    val achievements: List<String> = emptyList(),
+    val studentsTrainedCount: Int = 850,
+    val rating: Double = 4.9,
+    val reviewsCount: Int = 42,
+    val education: String = "",
+    val teachingPhilosophy: String = "",
     val subjectOrSpecialization: String = ""
 )
 
@@ -140,14 +159,23 @@ data class InstituteClass(
     val facultyName: String = "",
     val instructorName: String = "",
     val facultyMemberId: String? = null,
+    val facultyPhotoUrl: String = "",
+    val facultyDesignation: String = "Senior Faculty",
+    val facultyQualification: String = "Certified Master Coach / Specialist",
+    val facultyExperienceYears: Int = 8,
     val description: String = "",
     val coverImageUrl: String = "",
     val imageUrls: List<String> = emptyList(),
     val batchType: String = "Regular",
+    val isNewBatch: Boolean = false,
+    val isUpcomingBatch: Boolean = false,
+    val batchStartDate: String = "Starting Soon",
+    val batchHighlightTag: String = "",
     val deliveryMode: ClassDeliveryMode = ClassDeliveryMode.OFFLINE,
     val daysOfWeek: List<String> = listOf("Mon", "Wed", "Fri"),
     val startTime: String = "06:00 PM",
     val endTime: String = "07:30 PM",
+    val classTimings: String = "06:00 PM - 07:30 PM",
     val durationText: String = "3 Months",
     val location: String = "",
     val city: String = "Hyderabad",
@@ -155,6 +183,7 @@ data class InstituteClass(
     val feeAmount: Double = 2500.0,
     val monthlyFee: Double = 2500.0,
     val courseFee: Double = 6500.0,
+    val discountPercent: Int = 0,
     val feeBillingCycle: String = "month",
     val availableSeats: Int = 12,
     val totalSeats: Int = 25,
@@ -165,7 +194,11 @@ data class InstituteClass(
     val contactPhone: String = "",
     val contactWhatsapp: String = "",
     val isPublished: Boolean = true,
-    val enrollmentOpen: Boolean = true
+    val enrollmentOpen: Boolean = true,
+    val isTodayOngoing: Boolean = false,
+    val todayLiveStatus: String = "TODAY BATCH",
+    val todayBatchSlot: String = "06:00 PM - 07:30 PM",
+    val todayTopic: String = "Interactive Theory & Practical Exercises"
 )
 
 data class NotificationItem(

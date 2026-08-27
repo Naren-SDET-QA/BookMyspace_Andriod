@@ -310,65 +310,65 @@ fun EyeCatchingVenueCardSkeleton(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .fillMaxWidth()
             .testTag("venue_card_skeleton")
     ) {
-        Column {
-            // Image Box Shimmer
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Compact Image Box Shimmer
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(190.dp)
+                    .height(145.dp)
                     .shimmerLoading()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    ShimmerBox(modifier = Modifier.width(80.dp).height(24.dp), shape = RoundedCornerShape(12.dp))
-                    ShimmerBox(modifier = Modifier.size(32.dp), shape = CircleShape)
+                    ShimmerBox(modifier = Modifier.width(70.dp).height(20.dp), shape = RoundedCornerShape(6.dp))
+                    ShimmerBox(modifier = Modifier.size(28.dp), shape = CircleShape)
                 }
             }
 
-            // Info Body
-            Column(modifier = Modifier.padding(16.dp)) {
+            // Compact Info Body
+            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ShimmerBox(modifier = Modifier.width(180.dp).height(18.dp), shape = RoundedCornerShape(4.dp))
-                    ShimmerBox(modifier = Modifier.width(50.dp).height(20.dp), shape = RoundedCornerShape(6.dp))
+                    ShimmerBox(modifier = Modifier.width(140.dp).height(16.dp), shape = RoundedCornerShape(4.dp))
+                    ShimmerBox(modifier = Modifier.width(65.dp).height(16.dp), shape = RoundedCornerShape(4.dp))
                 }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                ShimmerBox(modifier = Modifier.fillMaxWidth(0.5f).height(12.dp), shape = RoundedCornerShape(4.dp))
 
                 Spacer(modifier = Modifier.height(8.dp))
-                ShimmerBox(modifier = Modifier.fillMaxWidth(0.6f).height(13.dp), shape = RoundedCornerShape(4.dp))
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     repeat(3) {
-                        ShimmerBox(modifier = Modifier.width(64.dp).height(22.dp), shape = RoundedCornerShape(8.dp))
+                        ShimmerBox(modifier = Modifier.width(60.dp).height(18.dp), shape = RoundedCornerShape(6.dp))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        ShimmerBox(modifier = Modifier.width(60.dp).height(10.dp), shape = RoundedCornerShape(2.dp))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        ShimmerBox(modifier = Modifier.width(100.dp).height(18.dp), shape = RoundedCornerShape(4.dp))
-                    }
-                    ShimmerBox(modifier = Modifier.width(90.dp).height(38.dp), shape = RoundedCornerShape(12.dp))
+                    ShimmerBox(modifier = Modifier.weight(1f).height(38.dp), shape = RoundedCornerShape(10.dp))
+                    ShimmerBox(modifier = Modifier.size(38.dp), shape = RoundedCornerShape(10.dp))
+                    ShimmerBox(modifier = Modifier.size(38.dp), shape = RoundedCornerShape(10.dp))
                 }
             }
         }
@@ -410,9 +410,20 @@ fun EyeCatchingFullHomeSkeleton(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Prominent Animated BMS Logo Pulse Loader with Glowing Aura
+        BMSLogoPulseLoader(
+            logoSize = 72.dp,
+            titleText = "Loading Venues & Spaces...",
+            subtitleText = "Checking live turf, hall & room availability",
+            showProgressBar = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         // Hot Deals Shimmer
         EyeCatchingHotDealsSkeleton()
 
@@ -430,7 +441,7 @@ fun EyeCatchingFullHomeSkeleton(
         }
 
         // 4 Main Section Shimmer Cards
-        repeat(4) {
+        repeat(3) {
             EyeCatchingHeroCardSkeleton()
         }
 
@@ -602,6 +613,11 @@ fun EyeCatchingSearchScreenSkeleton(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Branded Inline Logo Loader
+        BMSInlineLogoLoader(
+            text = "Finding sports turfs, halls & rooms..."
+        )
+
         // Location selector header skeleton
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -660,6 +676,11 @@ fun EyeCatchingBookingsSkeleton(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Branded Inline Logo Loader
+        BMSInlineLogoLoader(
+            text = "Loading your confirmed bookings & passes..."
+        )
+
         // Segmented Tabs Skeleton
         Row(
             modifier = Modifier.fillMaxWidth(),

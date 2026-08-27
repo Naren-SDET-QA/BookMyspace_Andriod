@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bookmyspace.bookmyspace.data.model.LocationHierarchy
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -121,12 +122,16 @@ fun HotDealsCarouselWidget(
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { deals.size })
 
     // Auto-scroll effect
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5000)
-            if (!pagerState.isScrollInProgress) {
-                val nextPage = (pagerState.currentPage + 1) % deals.size
-                pagerState.animateScrollToPage(nextPage)
+    LaunchedEffect(deals.size) {
+        if (deals.size > 1) {
+            while (isActive) {
+                delay(5000L)
+                if (!pagerState.isScrollInProgress) {
+                    try {
+                        val nextPage = (pagerState.currentPage + 1) % deals.size
+                        pagerState.animateScrollToPage(nextPage)
+                    } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -708,10 +713,14 @@ fun LiveActivityPulseTicker(
 
     var currentIndex by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(4000)
-            currentIndex = (currentIndex + 1) % activities.size
+    LaunchedEffect(activities.size) {
+        if (activities.size > 1) {
+            while (isActive) {
+                delay(4000L)
+                try {
+                    currentIndex = (currentIndex + 1) % activities.size
+                } catch (_: Exception) {}
+            }
         }
     }
 

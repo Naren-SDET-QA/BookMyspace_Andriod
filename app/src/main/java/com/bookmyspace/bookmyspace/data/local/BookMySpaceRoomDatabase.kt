@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         VenueMarkerEntity::class,
         ReviewEntity::class,
         RecentSearchEntity::class,
-        PaymentTransactionEntity::class
+        PaymentTransactionEntity::class,
+        BatchAlertEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class BookMySpaceRoomDatabase : RoomDatabase() {
@@ -23,6 +24,7 @@ abstract class BookMySpaceRoomDatabase : RoomDatabase() {
     abstract fun reviewDao(): ReviewDao
     abstract fun recentSearchDao(): RecentSearchDao
     abstract fun paymentTransactionDao(): PaymentTransactionDao
+    abstract fun batchAlertDao(): BatchAlertDao
 
     companion object {
         @Volatile

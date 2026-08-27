@@ -234,7 +234,8 @@ fun PaymentScreen(
                                         val txId = when (selectedMethod) {
                                             ConfigurablePaymentMethod.PAY_AT_VENUE -> "desk_${UUID.randomUUID().toString().take(8)}"
                                             ConfigurablePaymentMethod.SPLIT_ADVANCE_TOKEN -> "adv_${UUID.randomUUID().toString().take(8)}"
-                                            else -> "pay_${UUID.randomUUID().toString().take(8)}"
+                                            ConfigurablePaymentMethod.RAZORPAY_CHECKOUT -> "pay_rzp_${UUID.randomUUID().toString().replace("-", "").take(14)}"
+                                            else -> "pay_rzp_${UUID.randomUUID().toString().take(10)}"
                                         }
 
                                         val paymentStatusStr = when (selectedMethod) {
@@ -243,11 +244,22 @@ fun PaymentScreen(
                                             else -> "PAID"
                                         }
 
+                                        val isAdvance = selectedMethod == ConfigurablePaymentMethod.SPLIT_ADVANCE_TOKEN
+                                        val plan = when (selectedMethod) {
+                                            ConfigurablePaymentMethod.PAY_AT_VENUE -> "PAY_AT_VENUE"
+                                            ConfigurablePaymentMethod.SPLIT_ADVANCE_TOKEN -> "ADVANCE_SPLIT"
+                                            else -> "FULL"
+                                        }
+
                                         if (currentBooking != null) {
                                             BookMySpaceRepository.confirmBookingPayment(
                                                 bookingId = currentBooking.id,
                                                 paymentId = txId,
-                                                paymentMethod = selectedMethod.title
+                                                paymentMethod = selectedMethod.title,
+                                                isAdvancePayment = isAdvance,
+                                                advanceAmountPaid = payableAmount,
+                                                remainingBalanceDue = remainingDueAtVenue,
+                                                paymentPlan = plan
                                             )
                                         }
 
@@ -318,168 +330,13 @@ fun PaymentScreen(
         modifier = modifier.testTag("payment_screen")
     ) { paddingValues ->
         if (paymentSuccessState) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        PaymentSuccessLottieAnimation(
-                            size = 120.dp,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = if (selectedMethod == ConfigurablePaymentMethod.PAY_AT_VENUE) "Reservation Confirmed! 🏢" else "Payment Confirmed! 🎉",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            color = Color(0xFF2E7D32),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = confirmedPaymentNote ?: "Your space reservation is confirmed in real-time.",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 16.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Surface(
-                            color = Color(0xFFE8F5E9),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.VerifiedUser,
-                                    contentDescription = null,
-                                    tint = Color(0xFF2E7D32),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Cryptographically Verified & Auto-Reconciled",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF2E7D32)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Space / Venue", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(
-                                        booking?.venueName ?: venue?.name ?: "Venue Space",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Date & Slot", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(
-                                        "${booking?.bookingDate.orEmpty()} (${booking?.slotLabel.orEmpty()})",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Amount Paid Online", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(
-                                        "₹${payableAmount.toInt()}",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                if (remainingDueAtVenue > 0) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("Balance Due on Arrival", fontSize = 12.sp, color = Color(0xFFFF9800))
-                                        Text(
-                                            "₹${remainingDueAtVenue.toInt()}",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFFF9800)
-                                        )
-                                    }
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Payment Method", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(selectedMethod.title, fontSize = 12.sp)
-                                }
-                                if (!verifiedTransactionId.isNullOrBlank()) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("Transaction Ref", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text(
-                                            verifiedTransactionId.orEmpty(),
-                                            fontSize = 11.sp,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = onPaymentSuccess,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .testTag("view_bookings_qr_pass_button")
-                        ) {
-                            Icon(Icons.Default.ConfirmationNumber, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("View My Bookings & QR Pass 🎟️", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
+            BookingSuccessScreen(
+                bookingId = booking?.id ?: bookingId,
+                transactionId = verifiedTransactionId,
+                paymentMethod = selectedMethod.title,
+                onNavigateToBookings = onPaymentSuccess,
+                onNavigateToHome = onBack
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -501,6 +358,29 @@ fun PaymentScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(booking?.venueName ?: venue?.name ?: "Space / Court", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Text("📅 Date: ${booking?.bookingDate ?: "Upcoming"} | ⏰ Slot: ${booking?.slotLabel ?: "Standard"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("👥 Registered Members:", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${booking?.guestCount ?: 1} Person(s) (${booking?.userName ?: "Guest"})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Surface(
+                                color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.padding(top = 6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Member Registration & KYC Verified ✓", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                                }
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             HorizontalDivider()
                             Spacer(modifier = Modifier.height(8.dp))

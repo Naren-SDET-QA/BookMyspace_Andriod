@@ -2,6 +2,7 @@ package com.bookmyspace.bookmyspace.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -59,6 +60,7 @@ fun ProfileScreen(
     onNavigateToReferral: () -> Unit = {},
     onNavigateToThemeCustomizer: () -> Unit = {},
     onNavigateToAdminAppSections: () -> Unit = {},
+    onNavigateToPlugAndPlayFeatures: () -> Unit = {},
     onNavigateToInstitutesClasses: () -> Unit = {},
     onNavigateToInstituteOwnerDashboard: () -> Unit = {},
     onNavigateToListingFieldsConfig: () -> Unit = {},
@@ -66,7 +68,11 @@ fun ProfileScreen(
     onNavigateToUnifiedRegistration: () -> Unit = {},
     onNavigateToPaymentTransactions: () -> Unit = {},
     onNavigateToPaymentConfig: () -> Unit = {},
-    onNavigateToSaved: () -> Unit = {}
+    onNavigateToExternalAppsAndMcp: () -> Unit = {},
+    onNavigateToSaved: () -> Unit = {},
+    onNavigateToAdminElementEditor: () -> Unit = {},
+    onNavigateToFirebaseMigration: () -> Unit = {},
+    onNavigateToAdminSettings: () -> Unit = {}
 ) {
     val user by BookMySpaceRepository.authUser.collectAsState()
     val themeMode by BookMySpaceRepository.themeMode.collectAsState()
@@ -175,6 +181,50 @@ fun ProfileScreen(
                 onClick = onNavigateToUnifiedRegistration
             ),
             ProfileActionItem(
+                id = "plug_and_play_features",
+                title = "Plug & Play Features Hub 🔌",
+                subtitle = "Turn features ON/OFF & configure parameters (Maps, KYC, Coupons, QR Check-In, AI Copilot, TTS)",
+                icon = Icons.Default.Extension,
+                iconTint = Color(0xFF2E7D32),
+                targetRoles = setOf(UserRole.ADMIN, UserRole.VENUE_OWNER, UserRole.USER),
+                isFeatureEnabled = true,
+                testTag = "profile_plug_and_play_features_menu_item",
+                onClick = onNavigateToPlugAndPlayFeatures
+            ),
+            ProfileActionItem(
+                id = "admin_element_editor",
+                title = "Universal Element & Object Editor ✏️",
+                subtitle = "Admin controls: Edit any text, editbox placeholder, CTA button, badge, banner or object live on screen",
+                icon = Icons.Default.EditNote,
+                iconTint = Color(0xFF673AB7),
+                targetRoles = setOf(UserRole.ADMIN),
+                isFeatureEnabled = true,
+                testTag = "profile_admin_element_editor_menu_item",
+                onClick = onNavigateToAdminElementEditor
+            ),
+            ProfileActionItem(
+                id = "admin_settings",
+                title = "Admin Platform Settings & Dynamic Config ⚙️",
+                subtitle = "Admin controls: API keys, feature flags, emergency maintenance mode & live cloud sync",
+                icon = Icons.Default.Settings,
+                iconTint = Color(0xFF1565C0),
+                targetRoles = setOf(UserRole.ADMIN),
+                isFeatureEnabled = true,
+                testTag = "profile_admin_settings_menu_item",
+                onClick = onNavigateToAdminSettings
+            ),
+            ProfileActionItem(
+                id = "admin_firebase_migration",
+                title = "Firebase Database Migration & Cloud Sync 🚀",
+                subtitle = "Admin controls: Migrate entire local database (all 12 collections) to Cloud Firestore, test health & sync",
+                icon = Icons.Default.CloudSync,
+                iconTint = Color(0xFFE65100),
+                targetRoles = setOf(UserRole.ADMIN),
+                isFeatureEnabled = true,
+                testTag = "profile_admin_firebase_migration_menu_item",
+                onClick = onNavigateToFirebaseMigration
+            ),
+            ProfileActionItem(
                 id = "app_sections_toggles",
                 title = "App Sections & Feature Toggles",
                 subtitle = "Admin controls: Enable/Disable major sections (Venues, Hotels, PG, Institutes, Courses, Events)",
@@ -214,6 +264,17 @@ fun ProfileScreen(
                 isFeatureEnabled = true,
                 testTag = "profile_payment_config_menu_item",
                 onClick = onNavigateToPaymentConfig
+            ),
+            ProfileActionItem(
+                id = "external_apps_and_mcp",
+                title = "Connected Apps, MCP & Developer APIs 🔗",
+                subtitle = "Model Context Protocol (MCP), REST API Keys, Webhooks, Calendar .ics sync & Deep Links",
+                icon = Icons.Default.Hub,
+                iconTint = Color(0xFF1E88E5),
+                targetRoles = setOf(UserRole.USER, UserRole.VENUE_OWNER, UserRole.ADMIN),
+                isFeatureEnabled = true,
+                testTag = "profile_external_apps_mcp_menu_item",
+                onClick = onNavigateToExternalAppsAndMcp
             ),
             ProfileActionItem(
                 id = "analytics",
@@ -417,6 +478,97 @@ fun ProfileScreen(
             }
         }
 
+        // Dedicated BMS Wallet & Credits Card (No text clipping or overlap)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToReferral() }
+                    .testTag("profile_wallet_summary_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF059669)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = "Wallet",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "BookMySpace Wallet",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0xFF059669).copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "ACTIVE",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFF059669),
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "₹${walletBalance.toInt()} Available Balance",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF059669)
+                            )
+                            Text(
+                                text = "100% usable on advance bookings & discounts",
+                                fontSize = 10.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            text = "Redeem",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         // Single Refer a Friend Entry
         item {
             Card(
@@ -429,12 +581,12 @@ fun ProfileScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Row(
-                    modifier = Modifier.padding(18.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(46.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
@@ -443,32 +595,14 @@ fun ProfileScreen(
                             imageVector = Icons.Default.CardGiftcard,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🎁 Refer & Earn ₹500", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = "₹${walletBalance.toInt()} Wallet",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        Text("🎁 Refer & Earn ₹500", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             "Your Code: $userReferralCode • Earned ₹${totalReferralCreditsEarned.toInt()} Credits",
@@ -476,9 +610,8 @@ fun ProfileScreen(
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            "Share with friends & get booking discounts!",
+                            "Share with friends & get instant wallet cash!",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )

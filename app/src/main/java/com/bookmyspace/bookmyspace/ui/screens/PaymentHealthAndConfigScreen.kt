@@ -40,6 +40,7 @@ import java.util.*
 
 enum class PaymentConfigTab(val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     SELF_HEALING_HEALTH("Self-Healing & Health", Icons.Default.Healing),
+    TAX_INVOICE_CUSTOMIZER("Tax Invoice & Billing", Icons.Default.ReceiptLong),
     PAYMENT_METHODS("Payment Methods", Icons.Default.Payments),
     GATEWAY_ROUTING("Gateway Routing", Icons.Default.AltRoute),
     OWNER_POLICIES("Owner Policies", Icons.Default.Storefront),
@@ -217,6 +218,12 @@ fun PaymentHealthAndConfigScreen(
                                 configRepo.setSelfHealingAutoReconcile(enabled)
                                 Toast.makeText(context, if (enabled) "Self-Healing Auto-Reconciler Activated" else "Self-Healing Paused", Toast.LENGTH_SHORT).show()
                             }
+                        )
+                    }
+                    PaymentConfigTab.TAX_INVOICE_CUSTOMIZER -> {
+                        TaxInvoiceCustomizerTab(
+                            venues = venues,
+                            selectedVenueId = selectedVenueForPolicy?.id
                         )
                     }
                     PaymentConfigTab.PAYMENT_METHODS -> {

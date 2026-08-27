@@ -3,6 +3,9 @@ package com.bookmyspace.bookmyspace.ui.components
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.CalendarContract
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -34,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.bookmyspace.bookmyspace.data.invoice.TaxInvoiceRepository
 import com.bookmyspace.bookmyspace.data.local.PaymentTransactionEntity
 import com.bookmyspace.bookmyspace.data.model.Booking
 import com.bookmyspace.bookmyspace.data.payment.RefundResult
@@ -59,6 +63,11 @@ fun BookingSummaryInvoiceModal(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
+    val invoiceRepo = remember { TaxInvoiceRepository.getInstance(context) }
+    val effectiveConfig = remember(transaction, booking) {
+        invoiceRepo.getEffectiveInvoiceConfig(transaction.venueId.ifBlank { booking?.venueId })
+    }
+
     var currentTransaction by remember(transaction) { mutableStateOf(transaction) }
     var showRefundDialog by remember { mutableStateOf(false) }
     var showCustomEmailDialog by remember { mutableStateOf(false) }
@@ -71,8 +80,8 @@ fun BookingSummaryInvoiceModal(
         currentTransaction.paymentStatus.equals("REFUNDED", ignoreCase = true)
     }
 
-    val invoiceNo = remember(currentTransaction.transactionId) {
-        PdfInvoiceGenerator.generateInvoiceNumber(currentTransaction)
+    val invoiceNo = remember(currentTransaction.transactionId, effectiveConfig) {
+        "${effectiveConfig.invoiceNumberPrefix}${currentTransaction.transactionId.takeLast(6).uppercase()}"
     }
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     val formattedDate = remember(currentTransaction.timestamp) {
@@ -80,10 +89,12 @@ fun BookingSummaryInvoiceModal(
     }
 
     val totalAmount = currentTransaction.amount
-    val baseAmount = totalAmount / 1.18
+    val taxMultiplier = 1.0 + (effectiveConfig.gstTaxRatePercent / 100.0)
+    val baseAmount = totalAmount / taxMultiplier
     val gstAmount = totalAmount - baseAmount
-    val cgst = gstAmount / 2
-    val sgst = gstAmount / 2
+    val cgst = if (effectiveConfig.isCgstSgstSplit) gstAmount / 2 else 0.0
+    val sgst = if (effectiveConfig.isCgstSgstSplit) gstAmount / 2 else 0.0
+    val igst = if (!effectiveConfig.isCgstSgstSplit) gstAmount else 0.0
     val amountInWords = remember(totalAmount) {
         PdfInvoiceGenerator.amountInWords(totalAmount)
     }
@@ -93,6 +104,14 @@ fun BookingSummaryInvoiceModal(
     val bookingDate = booking?.bookingDate?.ifBlank { booking.date } ?: formattedDate.substringBefore(",")
     val slotLabel = booking?.slotLabel ?: booking?.let { "${it.startTime} - ${it.endTime}" } ?: currentTransaction.notes.ifBlank { "Standard Reserved Slot" }
     val qrPassToken = booking?.qrCodeToken ?: "BMS-PASS-${currentTransaction.transactionId.takeLast(6).uppercase()}"
+
+    val accentColor = remember(effectiveConfig.accentColorHex) {
+        try {
+            Color(android.graphics.Color.parseColor(effectiveConfig.accentColorHex))
+        } catch (e: Exception) {
+            Color(0xFF4338CA)
+        }
+    }
 
     // Refund Confirmation Dialog
     if (showRefundDialog) {
@@ -432,178 +451,187 @@ fun BookingSummaryInvoiceModal(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Invoice Document Header Card
+                    // Interactive Next Actions Block (Key Post-Payment Quick Utilities)
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("invoice_interactive_next_actions_card"),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                            ),
+                            border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = "BOOKMYSPACE",
-                                            fontWeight = FontWeight.Black,
-                                            fontSize = 18.sp,
-                                            letterSpacing = 1.sp,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = "TAX INVOICE & BOOKING RECEIPT",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Surface(
-                                        color = if (isRefunded) Color(0xFFFFF3E0) else Color(0xFFE8F5E9),
-                                        shape = RoundedCornerShape(20.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                if (isRefunded) Icons.Default.CurrencyExchange else Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                tint = if (isRefunded) Color(0xFFE65100) else Color(0xFF2E7D32),
-                                                modifier = Modifier.size(13.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = if (isRefunded) "REFUNDED" else "PAID & VERIFIED",
-                                                color = if (isRefunded) Color(0xFFE65100) else Color(0xFF2E7D32),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column {
-                                        Text("Invoice No.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text(invoiceNo, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text("Date & Time of Issue", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text(formattedDate, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Refund Banner Status Card
-                    if (isRefunded) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
-                                border = BorderStroke(1.dp, Color(0xFFFFD54F))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(14.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        Icons.Default.CurrencyExchange,
-                                        contentDescription = null,
-                                        tint = Color(0xFFF57F17),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Bolt,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            "Full Refund Processed",
+                                            text = "Interactive Next Actions",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp,
-                                            color = Color(0xFFE65100)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    ) {
                                         Text(
-                                            "Amount of ₹${currentTransaction.amount.toInt()} has been refunded via Razorpay. ${currentTransaction.notes}",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF5D4037)
+                                            text = "Quick Utilities",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
                                     }
                                 }
-                            }
-                        }
-                    }
 
-                    // Merchant & Customer Details Two-Column Block
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                // Issued By (Merchant)
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "ISSUED BY",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("BookMySpace Tech India Pvt Ltd", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                    Text("GSTIN: 36AAACB1234F1Z5", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("Hitec City, Hyderabad - 500081", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("support@bookmyspace.app", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "Manage your reservation, get navigation routes, download official invoices, or sync with your schedule.",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 15.sp
+                                )
+
+                                // Action 1 & 2 Grid
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // 1. View Pass in My Bookings
+                                    Button(
+                                        onClick = {
+                                            onDismiss()
+                                            onNavigateToBooking?.invoke(bookingId)
+                                                ?: Toast.makeText(context, "Opening Pass: #$bookingId 🎟️", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(44.dp)
+                                            .testTag("action_view_pass_btn"),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.ConfirmationNumber, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("View Pass", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
+
+                                    // 2. Download E-Receipt / Tax Invoice
+                                    Button(
+                                        onClick = {
+                                            PdfInvoiceGenerator.exportInvoicePdf(context, currentTransaction, booking, openDirectly = true)
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(44.dp)
+                                            .testTag("action_download_receipt_btn"),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondary
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Download PDF", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
                                 }
 
-                                // Billed To (Customer)
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "BILLED TO",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = transaction.customerName.ifBlank { "Narendra Reddy" },
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = transaction.customerEmail.ifBlank { "narenqe2@gmail.com" },
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = transaction.customerPhone.ifBlank { "+91 98765 43210" },
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = "Place of Supply: Telangana (36)",
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                // Action 3 & 4 Grid
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // 3. Add to Google Calendar
+                                    OutlinedButton(
+                                        onClick = {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_INSERT).apply {
+                                                    data = CalendarContract.Events.CONTENT_URI
+                                                    putExtra(CalendarContract.Events.TITLE, "BookMySpace: $venueName")
+                                                    putExtra(CalendarContract.Events.EVENT_LOCATION, "$venueName, Hyderabad")
+                                                    putExtra(CalendarContract.Events.DESCRIPTION, "Reservation for $venueName on $bookingDate ($slotLabel). Check-in Pass Token: $qrPassToken. Payment ID: ${currentTransaction.transactionId}")
+                                                    putExtra(CalendarContract.Events.ALL_DAY, false)
+                                                }
+                                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                context.startActivity(intent)
+                                                Toast.makeText(context, "Opening Google Calendar 📅", Toast.LENGTH_SHORT).show()
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Added to Calendar: $venueName on $bookingDate 📅", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(44.dp)
+                                            .testTag("action_add_calendar_btn"),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                                        contentPadding = PaddingValues(horizontal = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Event, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Add to Calendar", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                    }
+
+                                    // 4. Get Directions via Maps
+                                    OutlinedButton(
+                                        onClick = {
+                                            try {
+                                                val address = "$venueName, Hyderabad"
+                                                val uri = Uri.parse("geo:0,0?q=${Uri.encode(address)}")
+                                                val mapIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                                    setPackage("com.google.android.apps.maps")
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                                context.startActivity(mapIntent)
+                                            } catch (e: Exception) {
+                                                try {
+                                                    val address = "$venueName, Hyderabad"
+                                                    val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=${Uri.encode(address)}"))
+                                                    webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    context.startActivity(webIntent)
+                                                } catch (ex: Exception) {
+                                                    Toast.makeText(context, "Opening directions to $venueName 🗺️", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(44.dp)
+                                            .testTag("action_get_directions_btn"),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                                        contentPadding = PaddingValues(horizontal = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Directions (Maps)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                    }
                                 }
                             }
                         }
@@ -773,12 +801,24 @@ fun BookingSummaryInvoiceModal(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = "ITEMIZED CHARGES & TAX BREAKDOWN",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "ITEMIZED CHARGES & TAX BREAKDOWN",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = accentColor
+                                    )
+                                    Text(
+                                        text = "SAC: ${effectiveConfig.sacCode}",
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 // Table Header
@@ -795,10 +835,17 @@ fun BookingSummaryInvoiceModal(
                                 }
 
                                 Spacer(modifier = Modifier.height(6.dp))
-                                TaxBreakdownRow("1. Space Reservation Fee", "1 Slot", "₹${String.format(Locale.US, "%.2f", baseAmount)}")
-                                TaxBreakdownRow("2. Platform Convenience Fee", "Standard", "₹0.00")
-                                TaxBreakdownRow("3. Central GST (CGST)", "9%", "₹${String.format(Locale.US, "%.2f", cgst)}")
-                                TaxBreakdownRow("4. State GST (SGST)", "9%", "₹${String.format(Locale.US, "%.2f", sgst)}")
+                                TaxBreakdownRow(effectiveConfig.sacDescription.ifBlank { "Space Reservation Fee" }, "1 Slot", "₹${String.format(Locale.US, "%.2f", baseAmount)}")
+                                TaxBreakdownRow("Platform Convenience Fee", "Standard", "₹0.00")
+                                if (effectiveConfig.isCgstSgstSplit) {
+                                    val halfRate = effectiveConfig.gstTaxRatePercent / 2.0
+                                    val rateLabel = if (halfRate % 1.0 == 0.0) "${halfRate.toInt()}%" else String.format(Locale.US, "%.1f%%", halfRate)
+                                    TaxBreakdownRow("Central GST (CGST)", rateLabel, "₹${String.format(Locale.US, "%.2f", cgst)}")
+                                    TaxBreakdownRow("State GST (SGST)", rateLabel, "₹${String.format(Locale.US, "%.2f", sgst)}")
+                                } else {
+                                    val rateLabel = if (effectiveConfig.gstTaxRatePercent % 1.0 == 0.0) "${effectiveConfig.gstTaxRatePercent.toInt()}%" else String.format(Locale.US, "%.1f%%", effectiveConfig.gstTaxRatePercent)
+                                    TaxBreakdownRow("Integrated GST (IGST)", rateLabel, "₹${String.format(Locale.US, "%.2f", igst)}")
+                                }
 
                                 Spacer(modifier = Modifier.height(10.dp))
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -810,7 +857,7 @@ fun BookingSummaryInvoiceModal(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text("TOTAL AMOUNT PAID", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         Text(amountInWords, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                                     }
@@ -818,8 +865,58 @@ fun BookingSummaryInvoiceModal(
                                         text = "₹${String.format(Locale.US, "%.2f", totalAmount)}",
                                         fontWeight = FontWeight.Black,
                                         fontSize = 19.sp,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = accentColor,
                                         modifier = Modifier.testTag("invoice_total_amount")
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Authorized Signatory & Digital Stamp Card
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "AUTHORIZED SIGNATORY",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = accentColor
+                                    )
+                                    Text(
+                                        text = effectiveConfig.authorizedSignatoryName,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "${effectiveConfig.authorizedSignatoryDesignation} • ${effectiveConfig.businessLegalName}",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                                ) {
+                                    Text(
+                                        text = if (effectiveConfig.showDigitalSignatureSeal) "DIGITALLY SIGNED & SEALED ✓" else "AUTHORIZED SIGNATURE",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = accentColor,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
                             }
@@ -1018,15 +1115,30 @@ fun BookingSummaryInvoiceModal(
 
                     // Terms and Legal Disclaimer
                     item {
-                        Text(
-                            text = "This is a computer-generated tax invoice issued by BookMySpace Technologies India Pvt. Ltd. Verified and settled via Razorpay Payment Gateway. No physical signature required.",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                            textAlign = TextAlign.Center,
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        )
+                                .padding(vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (effectiveConfig.termsAndConditions.isNotBlank()) {
+                                Text(
+                                    text = "Terms & Conditions: ${effectiveConfig.termsAndConditions}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            Text(
+                                text = effectiveConfig.footerNote.ifBlank {
+                                    "This is a computer-generated tax invoice issued by ${effectiveConfig.businessLegalName}. Verified and settled via Razorpay Payment Gateway."
+                                },
+                                fontSize = 9.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
 

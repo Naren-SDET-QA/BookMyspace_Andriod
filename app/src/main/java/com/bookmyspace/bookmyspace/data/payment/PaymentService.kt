@@ -83,10 +83,9 @@ class PaymentService private constructor() {
     fun initialize(context: Context, customKey: String? = null) {
         razorpayKeyId = resolveApiKey(customKey)
         try {
-            Checkout.preload(context.applicationContext)
             isInitialized = true
             Log.d(TAG, "Razorpay SDK initialized successfully with Key: ${razorpayKeyId.take(8)}...")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Error initializing Razorpay SDK: ${e.message}", e)
         }
     }

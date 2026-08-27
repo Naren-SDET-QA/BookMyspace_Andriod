@@ -774,27 +774,40 @@ fun UnifiedRegistrationScreen(
             item {
                 Button(
                     onClick = {
-                        // Validate mandatory fields based on active configuration
-                        if (fullName.isBlank()) {
-                            errorMessage = "Please enter your full name."
-                            return@Button
-                        }
-                        if (phone.isBlank()) {
-                            errorMessage = "Please enter your mobile number."
-                            return@Button
-                        }
-                        if (email.isBlank()) {
-                            errorMessage = "Please enter your email address."
-                            return@Button
-                        }
+                        // Password is always mandatory for account creation
                         if (password.isBlank()) {
                             errorMessage = "Please create a password for your account."
                             return@Button
                         }
-                        if (selectedModule == RegistrationTargetModule.VENUE_OWNER && organizationName.isBlank()) {
-                            errorMessage = "Please enter your business or academy entity name."
-                            return@Button
+
+                        // Validate all dynamically configured mandatory fields
+                        for (field in activeFields) {
+                            if (field.required) {
+                                val value = when (field.key) {
+                                    "full_name" -> fullName
+                                    "phone" -> phone
+                                    "email" -> email
+                                    "photo_url" -> photoUrl
+                                    "aadhaar_number" -> aadhaarNumber
+                                    "govt_id_number" -> govtIdNumber
+                                    "address_line_1" -> addressLine1
+                                    "address_line_2" -> addressLine2
+                                    "pincode" -> pincode
+                                    "dob" -> dob
+                                    "gender" -> gender
+                                    "emergency_contact" -> emergencyContact
+                                    "organization_name" -> organizationName
+                                    "gstin" -> gstin
+                                    "location_hierarchy" -> if (selectedLocation != null) "selected" else ""
+                                    else -> customFieldResponses[field.key] ?: ""
+                                }
+                                if (value.isBlank()) {
+                                    errorMessage = "Please fill in mandatory field: ${field.label}"
+                                    return@Button
+                                }
+                            }
                         }
+
                         if (!acceptTerms) {
                             errorMessage = "You must agree to the terms and KYC policy to register."
                             return@Button

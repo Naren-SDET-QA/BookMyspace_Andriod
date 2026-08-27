@@ -3,6 +3,7 @@ package com.bookmyspace.bookmyspace.ui.screens
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,7 +28,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import com.bookmyspace.bookmyspace.data.model.NotificationItem
+import com.bookmyspace.bookmyspace.data.notification.BookingReminderNotificationManager
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.VenueCard
 import com.bookmyspace.bookmyspace.ui.components.VenueOptimizerDashboard
@@ -296,8 +301,10 @@ fun NotificationsScreen(
     onNavigateToBookings: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val notifications by BookMySpaceRepository.notifications.collectAsState()
     val fcmToken by BookMySpaceRepository.fcmToken.collectAsState()
+    var isFcmReminderEnabled by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -334,10 +341,11 @@ fun NotificationsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("fcm_reminder_status_card"),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                    )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -346,56 +354,111 @@ fun NotificationsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("⏰", fontSize = 22.sp)
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("⏰", fontSize = 18.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Text("FCM 1-Hour Pre-Slot Push Alerts", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Automated triggers active for all bookings", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                                    Text("FCM 1-Hour Push Reminders", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text("Automated pre-slot triggers active", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                                 }
                             }
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("ACTIVE ⚡", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                            }
+                            Switch(
+                                checked = isFcmReminderEnabled,
+                                onCheckedChange = {
+                                    isFcmReminderEnabled = it
+                                    Toast.makeText(context, if (it) "1-Hour Pre-Booking Reminders Enabled ⏰" else "1-Hour Reminders Paused", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.testTag("fcm_reminder_toggle")
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "FCM push reminders are scheduled 1 hour before every booked slot start time. Present your QR code pass at venue check-in.",
+                            text = "Automated high-priority push notifications trigger exactly 1 hour before booked slots start, delivering turn-by-turn venue access and instant QR entry passes.",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                            lineHeight = 16.sp
                         )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "FCM Token: ${fcmToken.take(16)}...",
+                                    fontSize = 10.5.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                TextButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(fcmToken))
+                                        Toast.makeText(context, "FCM Device Token Copied! 📋", Toast.LENGTH_SHORT).show()
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Text("Copy Token", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "Token: ${fcmToken.take(18)}...",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            )
                             Button(
                                 onClick = {
-                                    // In-app test notification reminder
-                                    val notif = NotificationItem(
-                                        id = "test_${System.currentTimeMillis()}",
-                                        title = "⚡ 1-Hour Booking Alert",
-                                        message = "Your upcoming slot starts in 1 hour. Get ready with your QR pass!",
-                                        timestamp = "Just now",
-                                        type = "booking"
+                                    // Trigger Heads-Up Push Notification
+                                    BookingReminderNotificationManager.show1HourReminderNotification(
+                                        context = context,
+                                        bookingId = "BK_DEMO_LIVE",
+                                        venueName = "Smash Arena International",
+                                        slotTime = "06:00 PM - 07:00 PM",
+                                        bookingDate = "Today",
+                                        qrCodeToken = "BMS-PASS-DEMO-88"
                                     )
-                                    // Add to repository
-                                    // Displayed instantly in the list
+                                    Toast.makeText(context, "Heads-Up Push Notification Sent! 🔔", Toast.LENGTH_SHORT).show()
                                 },
                                 shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("trigger_test_fcm_reminder_btn")
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("trigger_test_fcm_reminder_btn")
                             ) {
-                                Text("Test 1-Hr Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("⚡ Test 1-Hr Push", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    // Simulate Cloud FCM Payload
+                                    BookingReminderNotificationManager.simulateFcmPushPayload(
+                                        context = context
+                                    )
+                                    Toast.makeText(context, "FCM Cloud Payload Received & Broadcasted! ☁️", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("simulate_fcm_cloud_btn")
+                            ) {
+                                Text("☁️ Simulate FCM", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

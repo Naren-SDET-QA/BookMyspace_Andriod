@@ -30,6 +30,7 @@ enum class ConfigurablePaymentMethod(
     val category: String,
     val isOnline: Boolean = true
 ) {
+    RAZORPAY_CHECKOUT("razorpay_checkout", "Razorpay Standard Checkout", "UPI, Cards, NetBanking & Wallets in 1-Click", "⚡", "Gateway"),
     UPI_GPAY("upi_gpay", "Google Pay UPI", "Fast 1-tap biometric UPI", "⚡", "UPI"),
     UPI_PHONEPE("upi_phonepe", "PhonePe UPI", "Instant zero fee UPI", "🟣", "UPI"),
     UPI_PAYTM("upi_paytm", "Paytm UPI / Wallet", "Paytm UPI & fast checkout", "🔵", "UPI"),

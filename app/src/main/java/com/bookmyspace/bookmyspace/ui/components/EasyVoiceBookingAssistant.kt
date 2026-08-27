@@ -29,11 +29,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.bookmyspace.bookmyspace.data.model.Venue
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.util.LocalizedStrings
 import com.bookmyspace.bookmyspace.util.PgRentCalculator
 import com.bookmyspace.bookmyspace.util.SpeechHelper
+import com.bookmyspace.bookmyspace.util.VoiceCommandFilterParser
+import com.bookmyspace.bookmyspace.util.VoiceRecognitionHelper
+import com.bookmyspace.bookmyspace.util.VoiceRecognitionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -157,12 +163,63 @@ fun EasyVoiceBookingDialog(
         list
     }
 
-    var isListening by remember { mutableStateOf(false) }
+    val voiceHelper = remember { VoiceRecognitionHelper(context) }
+    val voiceState by voiceHelper.state.collectAsState()
+    val rmsLevel by voiceHelper.rmsAudioLevel.collectAsState()
+
+    var hasMicPermission by remember {
+        mutableStateOf(VoiceRecognitionHelper.isPermissionGranted(context))
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasMicPermission = isGranted
+        if (isGranted) {
+            voiceHelper.startListening()
+        }
+    }
+
     var spokenText by remember { mutableStateOf("") }
     var selectedCategoryType by remember { mutableStateOf<String?>(null) } // "PG", "VENUE", "HOTEL", "TURF"
     var selectedBudgetTier by remember { mutableStateOf<String?>(null) } // "BUDGET", "MID", "PREMIUM"
     var bookedVenueResult by remember { mutableStateOf<Venue?>(null) }
     var bookingConfirmed by remember { mutableStateOf(false) }
+
+    val isListening = voiceState is VoiceRecognitionState.Listening || voiceState is VoiceRecognitionState.Initializing || voiceState is VoiceRecognitionState.ReadyToSpeak
+
+    LaunchedEffect(voiceState) {
+        when (val state = voiceState) {
+            is VoiceRecognitionState.Listening -> {
+                if (state.partialText.isNotBlank()) {
+                    spokenText = state.partialText
+                }
+            }
+            is VoiceRecognitionState.Success -> {
+                spokenText = state.recognizedText
+                val parsed = VoiceCommandFilterParser.parseVoiceCommand(state.recognizedText)
+                if (parsed.propertyType != null) {
+                    selectedCategoryType = parsed.propertyType
+                }
+                if (parsed.maxPrice != null) {
+                    selectedBudgetTier = if (parsed.maxPrice <= 25000f) "BUDGET" else if (parsed.maxPrice <= 100000f) "MID" else "PREMIUM"
+                }
+                speechHelper.speak("Understood! Showing spaces matching your voice search. Tap any space to lock your booking.")
+            }
+            is VoiceRecognitionState.PermissionRequired -> {
+                hasMicPermission = false
+                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+            else -> {}
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceHelper.destroy()
+            speechHelper.stop()
+        }
+    }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -319,17 +376,14 @@ fun EasyVoiceBookingDialog(
                         .clip(CircleShape)
                         .background(if (isListening) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary)
                         .clickable {
-                            isListening = !isListening
                             if (isListening) {
-                                spokenText = "Listening for your query..."
-                                speechHelper.speak("Listening now. Tell me what space you are looking for.")
-                                scope.launch {
-                                    delay(2500)
-                                    spokenText = "Need Gents PG room in Madhapur under 8000"
-                                    isListening = false
-                                    selectedCategoryType = "PG"
-                                    selectedBudgetTier = "BUDGET"
-                                    speechHelper.speak("Found 3 Gents P G rooms matching your budget. Tap any card to lock your room instantly.")
+                                voiceHelper.stopListening()
+                            } else {
+                                if (hasMicPermission) {
+                                    spokenText = "Listening for your query..."
+                                    voiceHelper.startListening()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                 }
                             }
                         },

@@ -13,6 +13,8 @@ import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.bookmyspace.bookmyspace.data.invoice.EffectiveTaxInvoiceDetails
+import com.bookmyspace.bookmyspace.data.invoice.TaxInvoiceRepository
 import com.bookmyspace.bookmyspace.data.local.PaymentTransactionEntity
 import com.bookmyspace.bookmyspace.data.model.Booking
 import java.io.File
@@ -23,24 +25,28 @@ import java.util.Locale
 
 object PdfInvoiceGenerator {
 
-    fun generateInvoiceNumber(transaction: PaymentTransactionEntity): String {
+    fun generateInvoiceNumber(transaction: PaymentTransactionEntity, prefix: String = "INV-"): String {
         val dateFormat = SimpleDateFormat("yyyy", Locale.getDefault())
         val year = dateFormat.format(Date(transaction.timestamp))
         val rawSuffix = transaction.transactionId.replace("pay_", "").replace("bms_", "").takeLast(6).uppercase()
-        return "INV-$year-BMS-${if (rawSuffix.isNotBlank()) rawSuffix else "901"}"
+        val cleanPrefix = if (prefix.endsWith("-")) prefix else "$prefix-"
+        return "$cleanPrefix$year-BMS-${if (rawSuffix.isNotBlank()) rawSuffix else "901"}"
     }
 
     /**
      * Generates a high-fidelity PDF invoice file using Android's native PdfDocument.
-     * The document adheres to standard A4 dimensions (595x842 pt) and incorporates
-     * BookMySpace corporate branding, Razorpay payment verification, GST breakdown,
-     * and a scannable check-in matrix.
+     * Incorporates Admin & Owner customized tax invoice settings (branding, GSTIN, SAC, Signatures).
      */
     fun createInvoicePdfFile(
         context: Context,
         transaction: PaymentTransactionEntity,
-        booking: Booking? = null
+        booking: Booking? = null,
+        customConfig: EffectiveTaxInvoiceDetails? = null
     ): File {
+        val invoiceRepo = TaxInvoiceRepository.getInstance(context)
+        val targetVenueId = transaction.venueId.ifBlank { booking?.venueId }
+        val effectiveConfig = customConfig ?: invoiceRepo.getEffectiveInvoiceConfig(targetVenueId)
+
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // Standard A4 page size in points
         val page = pdfDocument.startPage(pageInfo)
@@ -49,7 +55,7 @@ object PdfInvoiceGenerator {
         // Date and Invoice Number Formatting
         val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         val formattedDate = dateFormat.format(Date(transaction.timestamp))
-        val invoiceNo = generateInvoiceNumber(transaction)
+        val invoiceNo = generateInvoiceNumber(transaction, effectiveConfig.invoiceNumberPrefix)
         val venueName = transaction.venueName.ifBlank { booking?.venueName ?: "BookMySpace Partner Space" }
         val bookingId = transaction.bookingId.ifBlank { booking?.id ?: "BMS-RES-9821" }
         val bookingDate = booking?.bookingDate?.ifBlank { booking.date } ?: formattedDate.substringBefore(",")
@@ -57,11 +63,19 @@ object PdfInvoiceGenerator {
         val qrPassToken = booking?.qrCodeToken ?: "BMS-PASS-${transaction.transactionId.takeLast(6).uppercase()}"
 
         val totalAmount = transaction.amount
-        val baseAmount = totalAmount / 1.18
+        val taxRateFactor = 1.0 + (effectiveConfig.gstTaxRatePercent / 100.0)
+        val baseAmount = totalAmount / taxRateFactor
         val gstAmount = totalAmount - baseAmount
-        val cgst = gstAmount / 2
-        val sgst = gstAmount / 2
+        val cgst = if (effectiveConfig.isCgstSgstSplit) gstAmount / 2 else 0.0
+        val sgst = if (effectiveConfig.isCgstSgstSplit) gstAmount / 2 else 0.0
+        val igst = if (!effectiveConfig.isCgstSgstSplit) gstAmount else 0.0
         val amountInWordsText = amountInWords(totalAmount)
+
+        val brandColor = try {
+            Color.parseColor(effectiveConfig.accentColorHex)
+        } catch (e: Exception) {
+            Color.rgb(67, 56, 202)
+        }
 
         // Paints
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -71,21 +85,21 @@ object PdfInvoiceGenerator {
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         // 1. Top Decorative Brand Bar
-        fillPaint.color = Color.rgb(67, 56, 202) // Indigo 700
+        fillPaint.color = brandColor
         canvas.drawRect(0f, 0f, 595f, 10f, fillPaint)
 
         // 2. Header Area
         // Brand Title
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 20f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("BOOKMYSPACE", 36f, 44f, textPaint)
+        canvas.drawText(effectiveConfig.tradeBrandName.uppercase(), 36f, 44f, textPaint)
 
         // Subtitle
         textPaint.color = Color.rgb(100, 116, 139)
         textPaint.textSize = 9f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("OFFICIAL TAX INVOICE & RESERVATION RECEIPT", 36f, 58f, textPaint)
+        canvas.drawText(effectiveConfig.invoiceTitle, 36f, 58f, textPaint)
 
         // Dynamic Status Badge (Top-Right)
         val isRefunded = transaction.paymentStatus.equals("REFUNDED", ignoreCase = true)
@@ -150,7 +164,7 @@ object PdfInvoiceGenerator {
         textPaint.textSize = 8f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         canvas.drawText("PAYMENT GATEWAY", 410f, 96f, textPaint)
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 10f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText("Razorpay Verified", 410f, 111f, textPaint)
@@ -166,28 +180,28 @@ object PdfInvoiceGenerator {
         canvas.drawRoundRect(rightBox, 8f, 8f, strokePaint)
 
         // Merchant Details
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 9f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("ISSUED BY (MERCHANT)", 48f, 147f, textPaint)
+        canvas.drawText("ISSUED BY (${if (effectiveConfig.isVenueCustomized) "VENUE MERCHANT" else "PLATFORM"})", 48f, 147f, textPaint)
 
         textPaint.color = Color.rgb(15, 23, 42)
         textPaint.textSize = 9.5f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("BookMySpace Tech India Pvt Ltd", 48f, 163f, textPaint)
+        canvas.drawText(effectiveConfig.businessLegalName.take(30), 48f, 163f, textPaint)
 
         textPaint.color = Color.rgb(71, 85, 105)
         textPaint.textSize = 8.5f
         textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-        canvas.drawText("GSTIN: 36AAACB1234F1Z5", 48f, 177f, textPaint)
+        canvas.drawText("GSTIN: ${effectiveConfig.gstin}", 48f, 177f, textPaint)
 
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("Cyber Towers, Hitec City, Hyderabad - 500081", 48f, 191f, textPaint)
-        canvas.drawText("support@bookmyspace.app | +91 1800-419-SPACE", 48f, 205f, textPaint)
-        canvas.drawText("CIN: U72900TG2026PTC184920", 48f, 219f, textPaint)
+        canvas.drawText(effectiveConfig.registeredAddress.take(38), 48f, 191f, textPaint)
+        canvas.drawText("${effectiveConfig.supportEmail} | ${effectiveConfig.supportPhone}", 48f, 205f, textPaint)
+        canvas.drawText("PAN: ${effectiveConfig.panNumber} | CIN: ${effectiveConfig.cinNumber.take(18)}", 48f, 219f, textPaint)
 
         // Customer Details
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 9f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText("BILLED TO (CUSTOMER)", 316f, 147f, textPaint)
@@ -202,8 +216,8 @@ object PdfInvoiceGenerator {
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         canvas.drawText("Email: ${transaction.customerEmail.ifBlank { "narenqe2@gmail.com" }}", 316f, 177f, textPaint)
         canvas.drawText("Phone: ${transaction.customerPhone.ifBlank { "+91 98765 43210" }}", 316f, 191f, textPaint)
-        canvas.drawText("Place of Supply: Telangana (State Code: 36)", 316f, 205f, textPaint)
-        canvas.drawText("Reverse Charge: Not Applicable", 316f, 219f, textPaint)
+        canvas.drawText("Place of Supply: State Code ${effectiveConfig.stateCode}", 316f, 205f, textPaint)
+        canvas.drawText("Reverse Charge: Not Applicable (Forward)", 316f, 219f, textPaint)
 
         // 5. Booking & Space Information Card
         val bookingBox = RectF(36f, 236f, 559f, 310f)
@@ -212,7 +226,7 @@ object PdfInvoiceGenerator {
         canvas.drawRoundRect(bookingBox, 8f, 8f, fillPaint)
         canvas.drawRoundRect(bookingBox, 8f, 8f, strokePaint)
 
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 9f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText("RESERVED SPACE & BOOKING DETAILS", 48f, 253f, textPaint)
@@ -237,7 +251,7 @@ object PdfInvoiceGenerator {
         textPaint.textSize = 8.5f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         canvas.drawText("Entry Check-in Pass:", 360f, 271f, textPaint)
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
         canvas.drawText(qrPassToken, 360f, 287f, textPaint)
 
@@ -248,7 +262,7 @@ object PdfInvoiceGenerator {
         canvas.drawRoundRect(razorpayBox, 8f, 8f, fillPaint)
         canvas.drawRoundRect(razorpayBox, 8f, 8f, strokePaint)
 
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 9f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText("RAZORPAY PAYMENT GATEWAY VERIFICATION", 48f, 337f, textPaint)
@@ -268,19 +282,21 @@ object PdfInvoiceGenerator {
         canvas.drawText("${transaction.paymentMethod} (Instant Captured & Settled)", 170f, 387f, textPaint)
 
         // Cryptographic integrity badge inside razorpay box
-        textPaint.color = Color.rgb(21, 128, 61)
-        textPaint.textSize = 8f
-        textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("✔ HMAC-SHA256 Cryptographically Verified", 360f, 355f, textPaint)
-        textPaint.color = Color.rgb(100, 116, 139)
-        textPaint.textSize = 7.5f
-        textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-        canvas.drawText("Sig: ${transaction.razorpaySignature?.take(22) ?: "verified_sha256"}...", 360f, 371f, textPaint)
+        if (effectiveConfig.showHmacVerificationBadge) {
+            textPaint.color = Color.rgb(21, 128, 61)
+            textPaint.textSize = 8f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("✔ HMAC-SHA256 Cryptographically Verified", 360f, 355f, textPaint)
+            textPaint.color = Color.rgb(100, 116, 139)
+            textPaint.textSize = 7.5f
+            textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+            canvas.drawText("Sig: ${transaction.razorpaySignature?.take(22) ?: "verified_sha256"}...", 360f, 371f, textPaint)
+        }
 
         // 7. Itemized Table & Tax Breakdown
         var tableTop = 408f
         // Table Header
-        fillPaint.color = Color.rgb(67, 56, 202)
+        fillPaint.color = brandColor
         canvas.drawRect(36f, tableTop, 559f, tableTop + 24f, fillPaint)
 
         textPaint.color = Color.WHITE
@@ -313,14 +329,21 @@ object PdfInvoiceGenerator {
         }
 
         var rowY = tableTop + 24f
-        drawTableRow("1", "Space Rental & Workstation Booking", "997212", "1 Reservation", String.format(Locale.US, "₹%.2f", baseAmount), rowY, false)
+        drawTableRow("1", effectiveConfig.sacDescription.take(35), effectiveConfig.sacCode, "1 Reservation", String.format(Locale.US, "₹%.2f", baseAmount), rowY, false)
         rowY += 22f
         drawTableRow("2", "Platform Facilitation & Support Fee", "998314", "Standard", "₹0.00", rowY, true)
         rowY += 22f
-        drawTableRow("3", "Central Goods & Services Tax (CGST)", "997212", "9.0%", String.format(Locale.US, "₹%.2f", cgst), rowY, false)
-        rowY += 22f
-        drawTableRow("4", "State Goods & Services Tax (SGST)", "997212", "9.0%", String.format(Locale.US, "₹%.2f", sgst), rowY, true)
-        rowY += 22f
+
+        if (effectiveConfig.isCgstSgstSplit) {
+            val halfRate = effectiveConfig.gstTaxRatePercent / 2.0
+            drawTableRow("3", "Central Goods & Services Tax (CGST)", effectiveConfig.sacCode, "${String.format(Locale.US, "%.1f", halfRate)}%", String.format(Locale.US, "₹%.2f", cgst), rowY, false)
+            rowY += 22f
+            drawTableRow("4", "State Goods & Services Tax (SGST)", effectiveConfig.sacCode, "${String.format(Locale.US, "%.1f", halfRate)}%", String.format(Locale.US, "₹%.2f", sgst), rowY, true)
+            rowY += 22f
+        } else {
+            drawTableRow("3", "Integrated Goods & Services Tax (IGST)", effectiveConfig.sacCode, "${String.format(Locale.US, "%.1f", effectiveConfig.gstTaxRatePercent)}%", String.format(Locale.US, "₹%.2f", igst), rowY, false)
+            rowY += 22f
+        }
 
         // Grand Total Box
         val totalBox = RectF(36f, rowY + 6f, 559f, rowY + 54f)
@@ -339,12 +362,12 @@ object PdfInvoiceGenerator {
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         canvas.drawText("Amount in Words: $amountInWordsText", 48f, rowY + 44f, textPaint)
 
-        textPaint.color = Color.rgb(67, 56, 202)
+        textPaint.color = brandColor
         textPaint.textSize = 15f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText(String.format(Locale.US, "₹%.2f", totalAmount), 460f, rowY + 34f, textPaint)
 
-        // 8. QR Code Matrix & Physical Check-in Section
+        // 8. QR Code Matrix & Physical Check-in Section or Signatory Box
         val qrSectionTop = rowY + 66f
         val qrBox = RectF(36f, qrSectionTop, 559f, qrSectionTop + 86f)
         fillPaint.color = Color.rgb(255, 255, 255)
@@ -352,63 +375,91 @@ object PdfInvoiceGenerator {
         canvas.drawRoundRect(qrBox, 8f, 8f, fillPaint)
         canvas.drawRoundRect(qrBox, 8f, 8f, strokePaint)
 
-        // Draw Stylized QR Code Matrix on Canvas
-        val qrLeft = 50f
-        val qrTop = qrSectionTop + 10f
-        val qrSize = 64f
-        fillPaint.color = Color.rgb(255, 255, 255)
-        canvas.drawRect(qrLeft, qrTop, qrLeft + qrSize, qrTop + qrSize, fillPaint)
-        strokePaint.color = Color.rgb(203, 213, 225)
-        canvas.drawRect(qrLeft, qrTop, qrLeft + qrSize, qrTop + qrSize, strokePaint)
+        if (effectiveConfig.showQrCheckinPass) {
+            // Draw Stylized QR Code Matrix on Canvas
+            val qrLeft = 50f
+            val qrTop = qrSectionTop + 10f
+            val qrSize = 64f
+            fillPaint.color = Color.rgb(255, 255, 255)
+            canvas.drawRect(qrLeft, qrTop, qrLeft + qrSize, qrTop + qrSize, fillPaint)
+            strokePaint.color = Color.rgb(203, 213, 225)
+            canvas.drawRect(qrLeft, qrTop, qrLeft + qrSize, qrTop + qrSize, strokePaint)
 
-        fillPaint.color = Color.BLACK
-        val sq = qrSize / 7f
+            fillPaint.color = Color.BLACK
+            val sq = qrSize / 7f
 
-        // Top-left target
-        canvas.drawRect(qrLeft, qrTop, qrLeft + sq * 2.5f, qrTop + sq * 2.5f, fillPaint)
-        fillPaint.color = Color.WHITE
-        canvas.drawRect(qrLeft + sq * 0.5f, qrTop + sq * 0.5f, qrLeft + sq * 2f, qrTop + sq * 2f, fillPaint)
-        fillPaint.color = Color.BLACK
-        canvas.drawRect(qrLeft + sq * 0.85f, qrTop + sq * 0.85f, qrLeft + sq * 1.65f, qrTop + sq * 1.65f, fillPaint)
+            // Top-left target
+            canvas.drawRect(qrLeft, qrTop, qrLeft + sq * 2.5f, qrTop + sq * 2.5f, fillPaint)
+            fillPaint.color = Color.WHITE
+            canvas.drawRect(qrLeft + sq * 0.5f, qrTop + sq * 0.5f, qrLeft + sq * 2f, qrTop + sq * 2f, fillPaint)
+            fillPaint.color = Color.BLACK
+            canvas.drawRect(qrLeft + sq * 0.85f, qrTop + sq * 0.85f, qrLeft + sq * 1.65f, qrTop + sq * 1.65f, fillPaint)
 
-        // Top-right target
-        canvas.drawRect(qrLeft + qrSize - sq * 2.5f, qrTop, qrLeft + qrSize, qrTop + sq * 2.5f, fillPaint)
-        fillPaint.color = Color.WHITE
-        canvas.drawRect(qrLeft + qrSize - sq * 2f, qrTop + sq * 0.5f, qrLeft + qrSize - sq * 0.5f, qrTop + sq * 2f, fillPaint)
-        fillPaint.color = Color.BLACK
-        canvas.drawRect(qrLeft + qrSize - sq * 1.65f, qrTop + sq * 0.85f, qrLeft + qrSize - sq * 0.85f, qrTop + sq * 1.65f, fillPaint)
+            // Top-right target
+            canvas.drawRect(qrLeft + qrSize - sq * 2.5f, qrTop, qrLeft + qrSize, qrTop + sq * 2.5f, fillPaint)
+            fillPaint.color = Color.WHITE
+            canvas.drawRect(qrLeft + qrSize - sq * 2f, qrTop + sq * 0.5f, qrLeft + qrSize - sq * 0.5f, qrTop + sq * 2f, fillPaint)
+            fillPaint.color = Color.BLACK
+            canvas.drawRect(qrLeft + qrSize - sq * 1.65f, qrTop + sq * 0.85f, qrLeft + sq * 1.65f, qrTop + sq * 1.65f, fillPaint)
 
-        // Bottom-left target
-        canvas.drawRect(qrLeft, qrTop + qrSize - sq * 2.5f, qrLeft + sq * 2.5f, qrTop + qrSize, fillPaint)
-        fillPaint.color = Color.WHITE
-        canvas.drawRect(qrLeft + sq * 0.5f, qrTop + qrSize - sq * 2f, qrLeft + sq * 2f, qrTop + qrSize - sq * 0.5f, fillPaint)
-        fillPaint.color = Color.BLACK
-        canvas.drawRect(qrLeft + sq * 0.85f, qrTop + qrSize - sq * 1.65f, qrLeft + sq * 1.65f, qrTop + qrSize - sq * 0.85f, fillPaint)
+            // Bottom-left target
+            canvas.drawRect(qrLeft, qrTop + qrSize - sq * 2.5f, qrLeft + sq * 2.5f, qrTop + qrSize, fillPaint)
+            fillPaint.color = Color.WHITE
+            canvas.drawRect(qrLeft + sq * 0.5f, qrTop + qrSize - sq * 2f, qrLeft + sq * 2f, qrTop + qrSize - sq * 0.5f, fillPaint)
+            fillPaint.color = Color.BLACK
+            canvas.drawRect(qrLeft + sq * 0.85f, qrTop + qrSize - sq * 1.65f, qrLeft + sq * 1.65f, qrTop + sq * 1.65f, fillPaint)
 
-        // Random matrix dots
-        canvas.drawRect(qrLeft + sq * 3f, qrTop + sq * 3f, qrLeft + sq * 4f, qrTop + sq * 4f, fillPaint)
-        canvas.drawRect(qrLeft + sq * 4.5f, qrTop + sq * 2f, qrLeft + sq * 5.5f, qrTop + sq * 3f, fillPaint)
-        canvas.drawRect(qrLeft + sq * 2f, qrTop + sq * 4.5f, qrLeft + sq * 3f, qrTop + sq * 5.5f, fillPaint)
-        canvas.drawRect(qrLeft + sq * 4.5f, qrTop + sq * 4.5f, qrLeft + sq * 5.5f, qrTop + sq * 5.5f, fillPaint)
+            // Random matrix dots
+            canvas.drawRect(qrLeft + sq * 3f, qrTop + sq * 3f, qrLeft + sq * 4f, qrTop + sq * 4f, fillPaint)
+            canvas.drawRect(qrLeft + sq * 4.5f, qrTop + sq * 2f, qrLeft + sq * 5.5f, qrTop + sq * 3f, fillPaint)
+            canvas.drawRect(qrLeft + sq * 2f, qrTop + sq * 4.5f, qrLeft + sq * 3f, qrTop + sq * 5.5f, fillPaint)
+            canvas.drawRect(qrLeft + sq * 4.5f, qrTop + sq * 4.5f, qrLeft + sq * 5.5f, qrTop + sq * 5.5f, fillPaint)
 
-        // QR Info text
-        textPaint.color = Color.rgb(15, 23, 42)
-        textPaint.textSize = 10f
-        textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("DIGITAL ENTRY PASS & DESK CHECK-IN", 130f, qrSectionTop + 26f, textPaint)
+            // QR Info text
+            textPaint.color = Color.rgb(15, 23, 42)
+            textPaint.textSize = 10f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("DIGITAL ENTRY PASS & DESK CHECK-IN", 130f, qrSectionTop + 26f, textPaint)
 
-        textPaint.color = Color.rgb(100, 116, 139)
-        textPaint.textSize = 8f
-        textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("Present this QR code or token at venue reception for express access clearance.", 130f, qrSectionTop + 42f, textPaint)
+            textPaint.color = Color.rgb(100, 116, 139)
+            textPaint.textSize = 8f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            canvas.drawText("Present this QR code or token at venue reception for express access clearance.", 130f, qrSectionTop + 42f, textPaint)
 
-        textPaint.color = Color.rgb(67, 56, 202)
-        textPaint.textSize = 9.5f
-        textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-        canvas.drawText("PASS TOKEN: $qrPassToken", 130f, qrSectionTop + 60f, textPaint)
+            textPaint.color = brandColor
+            textPaint.textSize = 9.5f
+            textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            canvas.drawText("PASS TOKEN: $qrPassToken", 130f, qrSectionTop + 60f, textPaint)
+        }
+
+        // Signatory & Seal (Right side of QR box)
+        if (effectiveConfig.showDigitalSignatureSeal) {
+            val sealLeft = 430f
+            val sealTop = qrSectionTop + 12f
+            fillPaint.color = brandColor.let { Color.argb(30, Color.red(it), Color.green(it), Color.blue(it)) }
+            canvas.drawRoundRect(RectF(sealLeft, sealTop, sealLeft + 115f, sealTop + 62f), 6f, 6f, fillPaint)
+            strokePaint.color = brandColor
+            strokePaint.strokeWidth = 1f
+            canvas.drawRoundRect(RectF(sealLeft, sealTop, sealLeft + 115f, sealTop + 62f), 6f, 6f, strokePaint)
+
+            textPaint.color = brandColor
+            textPaint.textSize = 7f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("DIGITALLY SIGNED", sealLeft + 16f, sealTop + 16f, textPaint)
+
+            textPaint.color = Color.rgb(15, 23, 42)
+            textPaint.textSize = 8.5f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText(effectiveConfig.authorizedSignatoryName.take(18), sealLeft + 8f, sealTop + 34f, textPaint)
+
+            textPaint.color = Color.rgb(100, 116, 139)
+            textPaint.textSize = 7f
+            textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            canvas.drawText(effectiveConfig.authorizedSignatoryDesignation.take(20), sealLeft + 8f, sealTop + 48f, textPaint)
+        }
 
         // 9. Legal Terms & Footer
-        val footerTop = 750f
+        val footerTop = 740f
         fillPaint.color = Color.rgb(226, 232, 240)
         canvas.drawRect(36f, footerTop, 559f, footerTop + 1f, fillPaint)
 
@@ -416,13 +467,17 @@ object PdfInvoiceGenerator {
         textPaint.textSize = 7.5f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         canvas.drawText("TERMS & CONDITIONS:", 36f, footerTop + 14f, textPaint)
-        canvas.drawText("1. This is a computer-generated tax invoice issued under the Goods and Services Tax Rules, 2017.", 36f, footerTop + 26f, textPaint)
-        canvas.drawText("2. Cryptographic signature and settlement verified directly via Razorpay API with TLS 1.3 encryption.", 36f, footerTop + 38f, textPaint)
-        canvas.drawText("3. Cancellation and rescheduling are governed by BookMySpace Terms of Service. In case of queries, write to support@bookmyspace.app.", 36f, footerTop + 50f, textPaint)
+
+        val termsLines = effectiveConfig.termsAndConditions.split("\n").take(3)
+        var termY = footerTop + 26f
+        termsLines.forEach { line ->
+            canvas.drawText(line.take(110), 36f, termY, textPaint)
+            termY += 12f
+        }
 
         textPaint.color = Color.rgb(148, 163, 184)
         textPaint.textSize = 7f
-        canvas.drawText("BookMySpace Technologies India Pvt. Ltd. | Page 1 of 1 | Generated on ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}", 110f, 825f, textPaint)
+        canvas.drawText("${effectiveConfig.footerNote.take(70)} | Page 1 of 1 | ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}", 50f, 825f, textPaint)
 
         // Finish Page
         pdfDocument.finishPage(page)
@@ -449,11 +504,15 @@ object PdfInvoiceGenerator {
         context: Context,
         transaction: PaymentTransactionEntity,
         booking: Booking? = null,
-        openDirectly: Boolean = false
+        openDirectly: Boolean = false,
+        customConfig: EffectiveTaxInvoiceDetails? = null
     ): File? {
         return try {
-            val pdfFile = createInvoicePdfFile(context, transaction, booking)
-            val invoiceNo = generateInvoiceNumber(transaction)
+            val pdfFile = createInvoicePdfFile(context, transaction, booking, customConfig)
+            val invoiceRepo = TaxInvoiceRepository.getInstance(context)
+            val targetVenueId = transaction.venueId.ifBlank { booking?.venueId }
+            val effectiveConfig = customConfig ?: invoiceRepo.getEffectiveInvoiceConfig(targetVenueId)
+            val invoiceNo = generateInvoiceNumber(transaction, effectiveConfig.invoiceNumberPrefix)
             val uri: Uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
@@ -473,7 +532,7 @@ object PdfInvoiceGenerator {
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "application/pdf"
                     putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_SUBJECT, "BookMySpace Tax Invoice $invoiceNo - ${transaction.venueName}")
+                    putExtra(Intent.EXTRA_SUBJECT, "${effectiveConfig.tradeBrandName} Tax Invoice $invoiceNo - ${transaction.venueName}")
                     putExtra(
                         Intent.EXTRA_TEXT,
                         "Please find attached the official Tax Invoice & Booking Summary ($invoiceNo) for your reservation at ${transaction.venueName}.\n\nTotal Paid: ₹${String.format(Locale.US, "%.2f", transaction.amount)}"
@@ -497,36 +556,44 @@ object PdfInvoiceGenerator {
 
     fun generateFormattedInvoiceText(
         transaction: PaymentTransactionEntity,
-        booking: Booking? = null
+        booking: Booking? = null,
+        customConfig: EffectiveTaxInvoiceDetails? = null
     ): String {
         val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         val formattedDate = dateFormat.format(Date(transaction.timestamp))
-        val invoiceNo = generateInvoiceNumber(transaction)
+        val prefix = customConfig?.invoiceNumberPrefix ?: "INV-"
+        val invoiceNo = generateInvoiceNumber(transaction, prefix)
         val venueName = transaction.venueName.ifBlank { booking?.venueName ?: "Premium Venue Space" }
         val bookingId = transaction.bookingId.ifBlank { booking?.id ?: "N/A" }
         val slotInfo = booking?.slotLabel ?: booking?.let { "${it.startTime} - ${it.endTime}" } ?: transaction.notes.ifBlank { "Standard Reserved Slot" }
         val bookingDate = booking?.bookingDate?.ifBlank { booking.date } ?: formattedDate.substringBefore(",")
 
         val totalAmount = transaction.amount
-        val baseAmount = totalAmount / 1.18
+        val taxRate = customConfig?.gstTaxRatePercent ?: 18.0
+        val baseAmount = totalAmount / (1.0 + taxRate / 100.0)
         val gstAmount = totalAmount - baseAmount
         val cgst = gstAmount / 2
         val sgst = gstAmount / 2
 
+        val legalName = customConfig?.businessLegalName ?: "BookMySpace Technologies India Pvt. Ltd."
+        val gstin = customConfig?.gstin ?: "36AAACB1234F1Z5"
+        val address = customConfig?.registeredAddress ?: "Cyber Towers, Hitec City, Hyderabad - 500081"
+        val support = "${customConfig?.supportEmail ?: "support@bookmyspace.app"} | ${customConfig?.supportPhone ?: "+91 1800-419-SPACE"}"
+
         return """
             ================================================================
-                       BOOKMYSPACE TAX INVOICE & BOOKING SUMMARY
+                       ${customConfig?.invoiceTitle ?: "BOOKMYSPACE TAX INVOICE & BOOKING SUMMARY"}
             ================================================================
             Invoice Number:    $invoiceNo
             Date of Issue:     $formattedDate
             Payment Status:    ${transaction.paymentStatus.uppercase()} (Verified)
             
             ----------------------------------------------------------------
-            ISSUED BY (MERCHANT):
-            BookMySpace Technologies India Pvt. Ltd.
-            GSTIN: 36AAACB1234F1Z5
-            Registered Address: Cyber Towers, Hitec City, Hyderabad - 500081
-            Customer Support:   support@bookmyspace.app | +91 1800-419-SPACE
+            ISSUED BY:
+            $legalName
+            GSTIN: $gstin
+            Registered Address: $address
+            Customer Support:   $support
             
             ----------------------------------------------------------------
             BILLED TO (CUSTOMER):
@@ -554,15 +621,15 @@ object PdfInvoiceGenerator {
             ITEMIZED FINANCIAL BREAKDOWN:
             1. Base Space Rental Fee:           ₹${String.format(Locale.US, "%.2f", baseAmount)}
             2. Platform Convenience Fee:        ₹0.00
-            3. CGST (9%):                       ₹${String.format(Locale.US, "%.2f", cgst)}
-            4. SGST (9%):                       ₹${String.format(Locale.US, "%.2f", sgst)}
+            3. CGST:                            ₹${String.format(Locale.US, "%.2f", cgst)}
+            4. SGST:                            ₹${String.format(Locale.US, "%.2f", sgst)}
             ----------------------------------------------------------------
             GRAND TOTAL PAID:                   ₹${String.format(Locale.US, "%.2f", totalAmount)}
             Amount in Words:                    ${amountInWords(totalAmount)}
             ================================================================
             Note: This is a system-generated official e-tax invoice with 
-            Razorpay cryptographic integrity validation. No physical signature required.
-            Thank you for choosing BookMySpace!
+            Razorpay cryptographic integrity validation.
+            ${customConfig?.footerNote ?: "Thank you for choosing BookMySpace!"}
         """.trimIndent()
     }
 
@@ -620,6 +687,7 @@ object PdfInvoiceGenerator {
         val tempEntity = PaymentTransactionEntity(
             transactionId = booking.paymentId.ifBlank { "pay_bms_${booking.id.takeLast(6)}" },
             bookingId = booking.id,
+            venueId = booking.venueId,
             venueName = booking.venueName,
             amount = booking.totalAmount,
             paymentStatus = if (booking.paymentStatus.equals("COMPLETED", true) || booking.paymentStatus.equals("PAID", true)) "SUCCESS" else booking.paymentStatus,

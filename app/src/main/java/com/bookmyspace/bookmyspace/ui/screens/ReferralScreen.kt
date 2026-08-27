@@ -125,18 +125,27 @@ fun ReferralScreen(
                                     color = Color.White.copy(alpha = 0.2f),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text("🎁 REFERRAL PROGRAM", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                                    }
+                                    Text(
+                                        "🎁 REFERRAL REWARDS",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
                                 }
 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Wallet: ₹${walletBalance.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Wallet: ₹${walletBalance.toInt()}", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
                                 }
                             }
 

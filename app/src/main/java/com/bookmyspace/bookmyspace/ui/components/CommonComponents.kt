@@ -10,6 +10,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.ExpandLess
@@ -25,24 +26,33 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,48 +103,10 @@ fun BookMySpaceBrandSymbol(
     modifier: Modifier = Modifier,
     isDarkBackground: Boolean = false
 ) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF4F46E5),
+    BMSLogoIconBadge(
+        size = 38.dp,
         modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize(0.68f)) {
-                val w = size.width
-                val h = size.height
-                
-                // Draw Location pin with inner dot/person
-                val pinPath = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(w * 0.5f, h * 0.05f)
-                    cubicTo(w * 0.85f, h * 0.05f, w * 0.95f, h * 0.35f, w * 0.95f, h * 0.50f)
-                    cubicTo(w * 0.95f, h * 0.72f, w * 0.68f, h * 0.88f, w * 0.50f, h * 0.98f)
-                    cubicTo(w * 0.32f, h * 0.88f, w * 0.05f, h * 0.72f, w * 0.05f, h * 0.50f)
-                    cubicTo(w * 0.05f, h * 0.35f, w * 0.15f, h * 0.05f, w * 0.50f, h * 0.05f)
-                    close()
-                }
-                
-                drawPath(
-                    path = pinPath,
-                    color = Color.White,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                        width = w * 0.14f,
-                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                        join = androidx.compose.ui.graphics.StrokeJoin.Round
-                    )
-                )
-                
-                // Center inner circle / dot
-                drawCircle(
-                    color = Color.White,
-                    radius = w * 0.16f,
-                    center = androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.44f)
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable
@@ -144,36 +116,12 @@ fun BookMySpaceLogo(
     isDarkBackground: Boolean = false,
     symbolSize: androidx.compose.ui.unit.Dp = 38.dp
 ) {
-    val primaryTextColor = if (isDarkBackground) Color.White else Color(0xFF0F172A)
-    val subtextColor = if (isDarkBackground) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
-
-    Row(
-        modifier = modifier.testTag("bookmyspace_logo"),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BookMySpaceBrandSymbol(
-            modifier = Modifier.size(symbolSize),
-            isDarkBackground = isDarkBackground
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Column {
-            Text(
-                text = "BOOKMYSPACE",
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp,
-                color = primaryTextColor
-            )
-            if (showSubtext) {
-                Text(
-                    text = "India's Venue Booking Platform",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = subtextColor
-                )
-            }
-        }
-    }
+    BMSBrandLogo(
+        size = symbolSize,
+        showText = true,
+        subtitle = if (showSubtext) "Turfs • Halls • PGs • Studios" else null,
+        modifier = modifier.testTag("bookmyspace_logo")
+    )
 }
 
 @Composable
@@ -431,96 +379,97 @@ fun VenueCard(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
-    var isGalleryExpanded by remember { mutableStateOf(false) }
-    var selectedThumbnailIndex by remember { mutableIntStateOf(0) }
+    val cardContext = LocalContext.current
+    val coverUrl = remember(venue) { VenueImageResolver.resolveCoverImage(venue) }
 
-    val galleryImages = remember(venue) {
-        VenueImageResolver.resolveGalleryImages(venue)
+    val displayPrice = remember(venue) {
+        if (venue.pgDetails != null || venue.category?.slug == "pg_hostel") {
+            val breakdown = PgRentCalculator.calculate(venue)
+            "₹%,d".format(breakdown.monthlyBaseRent.toInt()) to "/mo"
+        } else {
+            "₹%,d".format(venue.pricingBaseAmount.toInt()) to if (venue.category?.slug in listOf("sports", "sports_turf", "dance_academy", "music_class")) "/hr" else " starts"
+        }
     }
-
-    val animatedImageHeight by animateDpAsState(
-        targetValue = if (isGalleryExpanded) 250.dp else 190.dp,
-        animationSpec = tween(durationMillis = 300),
-        label = "venue_card_image_height"
-    )
-
-    val cardModifier = modifier
-        .fillMaxWidth()
-        .testTag("venue_card_${venue.id}")
 
     val displayAmenities = remember(venue) {
-        getVenueDisplayAmenitiesList(venue)
-    }
-
-    val displayTimeSlots = remember(venue) {
-        getVenueDisplayTimeSlotsList(venue)
+        val list = mutableListOf<String>()
+        if (venue.pgDetails != null || venue.category?.slug == "pg_hostel") {
+            list.add(venue.pgDetails?.pgType ?: "Co-living")
+            if (venue.pgDetails?.mealPlan?.isNotBlank() == true) list.add("Meals Included")
+        } else {
+            if (venue.capacity > 0) list.add("${venue.capacity} Guests")
+            if (venue.parkingCapacity > 0) list.add("${venue.parkingCapacity}+ Parking")
+        }
+        venue.facilities.take(2).forEach { list.add(it.facility) }
+        list.take(3)
     }
 
     Card(
-        modifier = cardModifier,
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("venue_card_${venue.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            val imageModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                with(sharedTransitionScope) {
-                    Modifier
-                        .fillMaxWidth()
-                        .height(animatedImageHeight)
-                        .sharedElement(
-                            rememberSharedContentState(key = "venue-image-${venue.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope
-                        )
-                }
-            } else {
-                Modifier
-                    .fillMaxWidth()
-                    .height(animatedImageHeight)
-            }
-
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // 1. Compact Fixed-Height Media Banner with Compact Overlays
             Box(
-                modifier = imageModifier
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(145.dp)
             ) {
-                // Coil Image Carousel with smooth page swiping & gallery expansion
-                VenueImageCarousel(
-                    venue = venue,
-                    height = animatedImageHeight,
-                    showCaptions = true,
-                    showFullscreenButton = isGalleryExpanded,
-                    showNavButtons = isGalleryExpanded,
-                    targetPage = selectedThumbnailIndex,
-                    onImageClick = {
-                        isGalleryExpanded = !isGalleryExpanded
-                    }
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = venue.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
 
-                // Category & Verified Badge Overlay (Top Left)
+                // Top Gradient Scrim for Contrast
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.55f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.65f)
+                                )
+                            )
+                        )
+                )
+
+                // Category & Verified Badge Overlay (Top Start)
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val categoryName = venue.category?.name ?: "Venue"
+                    val categoryName = venue.category?.name ?: "Space"
                     Surface(
-                        color = MidnightNavy.copy(alpha = 0.82f),
-                        shape = RoundedCornerShape(8.dp)
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
+                        shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             text = categoryName,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                         )
                     }
 
                     if (venue.isVerified) {
                         Surface(
                             color = Color(0xFF2E7D32).copy(alpha = 0.90f),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(6.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
@@ -531,7 +480,7 @@ fun VenueCard(
                                     imageVector = Icons.Default.Verified,
                                     contentDescription = "Verified Venue",
                                     tint = Color.White,
-                                    modifier = Modifier.size(11.dp)
+                                    modifier = Modifier.size(10.dp)
                                 )
                                 Text(
                                     text = "VERIFIED",
@@ -544,54 +493,73 @@ fun VenueCard(
                     }
                 }
 
-                // Favorite Icon (Top Right)
+                // Favorite Icon (Top End)
                 IconButton(
                     onClick = onFavoriteToggle,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(6.dp)
+                        .size(32.dp)
                         .background(Color.Black.copy(alpha = 0.45f), CircleShape)
                 ) {
                     Icon(
                         imageVector = if (venue.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = "Save Venue",
-                        tint = if (venue.isSaved) MaterialTheme.colorScheme.tertiary else Color.White
+                        tint = if (venue.isSaved) MaterialTheme.colorScheme.tertiary else Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
-                // Rating Badge (Bottom Left)
-                Box(
+                // Rating Badge (Bottom Start)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.72f),
+                    shape = RoundedCornerShape(6.dp),
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(10.dp)
-                ) {
-                    RatingBadge(rating = venue.avgRating, count = venue.ratingCount)
-                }
-
-                // Image Count / Expand Gallery Toggle Badge (Bottom Right)
-                Surface(
-                    color = if (isGalleryExpanded) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.65f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(10.dp)
-                        .clickable { isGalleryExpanded = !isGalleryExpanded }
-                        .testTag("expand_venue_gallery_button_${venue.id}")
+                        .padding(8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isGalleryExpanded) Icons.Default.ExpandLess else Icons.Default.PhotoCamera,
-                            contentDescription = "Expand Photo Gallery",
-                            tint = Color.White,
-                            modifier = Modifier.size(11.dp)
+                        Text("⭐", fontSize = 10.sp)
+                        Text(
+                            text = "${venue.avgRating}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                         Text(
-                            text = if (isGalleryExpanded) "Collapse Gallery" else "${galleryImages.size.coerceAtLeast(1)} Photos",
+                            text = "(${venue.ratingCount})",
                             fontSize = 9.5.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+
+                // Distance Badge (Bottom End)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.72f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NearMe,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Text(
+                            text = "${venue.distanceKm} km",
+                            fontSize = 10.5.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White
                         )
@@ -599,412 +567,147 @@ fun VenueCard(
                 }
             }
 
-            // Expanded Photo Gallery Thumbnail Strip
-            AnimatedVisibility(
-                visible = isGalleryExpanded,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-                        .padding(vertical = 8.dp, horizontal = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "PHOTO GALLERY (${galleryImages.size} PHOTOS)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Tap thumbnail to switch",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        itemsIndexed(galleryImages) { idx, imgUrl ->
-                            val isSelected = idx == selectedThumbnailIndex
-                            Surface(
-                                modifier = Modifier
-                                    .size(width = 68.dp, height = 48.dp)
-                                    .clickable { selectedThumbnailIndex = idx },
-                                shape = RoundedCornerShape(8.dp),
-                                border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-                                shadowElevation = if (isSelected) 3.dp else 0.dp
-                            ) {
-                                AsyncImage(
-                                    model = imgUrl,
-                                    contentDescription = "Gallery Thumbnail $idx",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
+            // 2. Compact Body Details
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onClick() }
-                    .padding(14.dp)
+                    .padding(12.dp)
             ) {
-                val cardContext = LocalContext.current
+                // Row 1: Name and Price
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val titleModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                        with(sharedTransitionScope) {
-                            Modifier
-                                .sharedElement(
-                                    rememberSharedContentState(key = "venue-title-${venue.id}"),
-                                    animatedVisibilityScope = animatedVisibilityScope
-                                )
-                                .weight(1f)
-                        }
-                    } else {
-                        Modifier.weight(1f)
-                    }
-
                     Text(
                         text = venue.name,
-                        fontSize = 18.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = titleModifier
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    VoiceReadoutButton(venue = venue)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = displayPrice.first,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = displayPrice.second,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                    }
                 }
+
                 Spacer(modifier = Modifier.height(3.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                // Row 2: Location
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(13.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
-                        text = "${venue.fullAddress} • ${venue.distanceKm} km away",
-                        fontSize = 12.sp,
+                        text = venue.fullAddress,
+                        fontSize = 11.5.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                if (venue.pgDetails != null || venue.category?.slug == "pg_hostel") {
-                    Text(
-                        text = "${venue.pgDetails?.pgType ?: "Co-living PG"} • ${venue.pgDetails?.mealPlan ?: "Meals Included"} • Gate: ${venue.pgDetails?.gateLockTime ?: "10:30 PM"}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                } else {
-                    Text(
-                        text = "Capacity: ${venue.minGuests}–${venue.maxGuests} guests • ${venue.parkingCapacity}+ parking",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
 
-                // -------------------------------------------------------------
-                // User Reviews Summary Banner
-                // -------------------------------------------------------------
-                val latestReview = remember(venue.id) {
-                    BookMySpaceRepository.reviews.value.firstOrNull { it.venueId == venue.id }
-                }
+                Spacer(modifier = Modifier.height(6.dp))
 
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("venue_card_review_summary_${venue.id}")
+                // Row 3: 2-3 Key Details Chips
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                    displayAmenities.forEach { amenity ->
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                         ) {
-                            Text("⭐", fontSize = 12.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "${venue.avgRating}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                text = amenity,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                maxLines = 1
                             )
-                            Text(
-                                text = " (${venue.ratingCount} reviews)",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                            )
-                            if (latestReview != null) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "• \"${latestReview.comment}\"",
-                                    fontSize = 11.sp,
-                                    fontStyle = FontStyle.Italic,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.9f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
                         }
-                        Text(
-                            text = "Reviews ›",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
                     }
                 }
 
-                // -------------------------------------------------------------
-                // 1. Amenities Section
-                // -------------------------------------------------------------
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "AMENITIES & FACILITIES",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    for (amenity in displayAmenities) {
-                        AmenityChip(amenity = amenity)
-                    }
-                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // -------------------------------------------------------------
-                // 2. Available Time Slots Section
-                // -------------------------------------------------------------
-                Spacer(modifier = Modifier.height(10.dp))
+                // Row 4: Compact Action Strip (Book, Call, Directions)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    Button(
+                        onClick = onClick,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp)
+                            .testTag("venue_card_cta_${venue.id}"),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF2E7D32))
-                        )
                         Text(
-                            text = "AVAILABLE TIME SLOTS",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = if (venue.pgDetails != null || venue.category?.slug == "pg_hostel") "View Rooms" else "⚡ Book Slot",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = "${displayTimeSlots.count { slot -> slot.isAvailable }} Slots Open Today",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF2E7D32)
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    for (slot in displayTimeSlots) {
-                        TimeSlotChip(slot = slot, onClick = onClick)
-                    }
-                }
 
-                // -------------------------------------------------------------
-                // 3. Quick Actions Contact Strip
-                // -------------------------------------------------------------
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AssistChip(
+                    OutlinedIconButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${venue.contactPhone}"))
                             cardContext.startActivity(intent)
                         },
-                        label = { Text("Call", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                        leadingIcon = { Icon(Icons.Default.Call, contentDescription = "Call ${venue.name} manager at ${venue.contactPhone}", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary) },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Call venue manager for ${venue.name}"
-                        }
-                    )
+                        modifier = Modifier.size(38.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Call,
+                            contentDescription = "Call ${venue.name}",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-                    AssistChip(
+                    FilledTonalIconButton(
                         onClick = {
                             launchGoogleMapsDirections(cardContext, venue.latitude, venue.longitude, venue.name)
                         },
-                        label = { Text("Directions", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                        leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Get directions to ${venue.name} in Google Maps", modifier = Modifier.size(14.dp), tint = Color(0xFFD84315)) },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Get directions to ${venue.name}"
-                        }
-                    )
-
-                    AssistChip(
-                        onClick = {
-                            val url = "https://api.whatsapp.com/send?phone=91${venue.contactPhone.replace("-", "")}&text=Hi%20Manager%2C%20I%20want%20to%20inquire%20about%20${Uri.encode(venue.name)}"
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            cardContext.startActivity(intent)
-                        },
-                        label = { Text("WhatsApp", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                        leadingIcon = { Icon(Icons.Default.Chat, contentDescription = "Chat with ${venue.name} manager on WhatsApp", modifier = Modifier.size(14.dp), tint = Color(0xFF00897B)) },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Chat with ${venue.name} manager on WhatsApp"
-                        }
-                    )
-                }
-
-                // -------------------------------------------------------------
-                // 4. Detailed Pricing & Primary CTA
-                // -------------------------------------------------------------
-                Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (venue.pgDetails != null || venue.category?.slug == "pg_hostel") {
-                    val breakdown = PgRentCalculator.calculate(venue)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.size(38.dp),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Monthly Rent from",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = "₹%,d".format(breakdown.monthlyBaseRent.toInt()),
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = "/mo",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Text(
-                                text = "Move-in: ₹%,d • Deposit ₹%,d".format(breakdown.totalMoveInCost.toInt(), breakdown.securityDeposit.toInt()),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-                        Button(
-                            onClick = onClick,
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "View PG Rooms",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Starting Slot Price",
-                                fontSize = 10.5.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = "₹%,d".format(venue.pricingBaseAmount.toInt()),
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = " + 18% GST",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (venue.packages.isNotEmpty()) {
-                                val minPkg = venue.packages.minByOrNull { it.priceAmount }
-                                if (minPkg != null && minPkg.vegPlatePrice > 0) {
-                                    Text(
-                                        text = "Veg Plate: ₹%,d • Non-Veg: ₹%,d".format(minPkg.vegPlatePrice.toInt(), minPkg.nonVegPlatePrice.toInt()),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                }
-                            }
-                        }
-                        Button(
-                            onClick = onClick,
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "⚡ Book & Pay",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Icon(
+                            Icons.Default.Navigation,
+                            contentDescription = "Directions to ${venue.name}",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFFD84315)
+                        )
                     }
                 }
             }
@@ -1407,37 +1110,90 @@ fun ContextAwareHelpFab(
     onNavigateToRoute: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showHelpDialog by remember { mutableStateOf(false) }
+    var isChatbotOpen by remember { mutableStateOf(false) }
+    var isChatbotMinimized by remember { mutableStateOf(false) }
+    
+    // Drag offsets for the floating helper
+    var fabOffsetX by remember { mutableStateOf(0f) }
+    var fabOffsetY by remember { mutableStateOf(0f) }
 
-    FloatingActionButton(
-        onClick = { showHelpDialog = true },
-        modifier = modifier.testTag("help_fab"),
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    ) {
-        Text("❓", fontSize = 20.sp)
+    if (isChatbotMinimized) {
+        // Minimized Draggable Floating ChatBot Bubble
+        DraggableFloatingChatBot(
+            currentRoute = currentRoute,
+            onNavigateToRoute = onNavigateToRoute,
+            initialState = ChatBotDisplayState.MINIMIZED,
+            onClose = {
+                isChatbotMinimized = false
+                isChatbotOpen = false
+            },
+            modifier = modifier
+        )
+    } else {
+        // Draggable FAB that can be positioned anywhere on screen
+        Surface(
+            onClick = { isChatbotOpen = true },
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shadowElevation = 6.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+            modifier = modifier
+                .offset { IntOffset(fabOffsetX.roundToInt(), fabOffsetY.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        fabOffsetX += dragAmount.x
+                        fabOffsetY += dragAmount.y
+                    }
+                }
+                .testTag("help_fab")
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.DragIndicator,
+                    contentDescription = "Drag to reposition",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    Icons.Default.SmartToy,
+                    contentDescription = "Help Chatbot",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "AI Help",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2E7D32))
+                )
+            }
+        }
     }
 
-    if (showHelpDialog) {
-        AlertDialog(
-            onDismissRequest = { showHelpDialog = false },
-            title = { Text("Need Assistance?") },
-            text = {
-                Text(
-                    when {
-                        currentRoute?.startsWith("venues/") == true -> "Select an available time slot and proceed to booking. You can also view directions or contact the venue directly."
-                        currentRoute?.contains("/book") == true -> "Pick your preferred date and slot to reserve your court/venue."
-                        currentRoute?.contains("/pay") == true -> "Complete your instant UPI or card payment to confirm your booking pass."
-                        currentRoute == "map" -> "Tap on any map marker to preview the venue and get instant turn-by-turn directions."
-                        else -> "BookMySpace helps you discover and instantly book sports turfs, function halls, coaching institutes, and PGs across India."
-                    }
-                )
+    if (isChatbotOpen) {
+        HelpChatbotBottomSheet(
+            currentRoute = currentRoute,
+            onDismiss = {
+                isChatbotOpen = false
             },
-            confirmButton = {
-                Button(onClick = { showHelpDialog = false }) {
-                    Text("Got it")
-                }
-            }
+            onMinimize = {
+                isChatbotOpen = false
+                isChatbotMinimized = true
+            },
+            onNavigateToRoute = onNavigateToRoute
         )
     }
 }
@@ -1504,5 +1260,58 @@ fun VenueListSkeleton(count: Int = 3, modifier: Modifier = Modifier) {
 @Composable
 fun VenueMapSkeleton(modifier: Modifier = Modifier) {
     EyeCatchingVenueMapSkeleton(modifier = modifier)
+}
+
+/**
+ * High-performance 3D Glassmorphic Surface with hardware-accelerated depth,
+ * specular highlight border, and subtle frosted reflection gradient.
+ */
+@Composable
+fun GlassmorphicCard(
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(20.dp),
+    backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+    borderColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+    elevation: androidx.compose.ui.unit.Dp = 4.dp,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val cardModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick)
+    } else {
+        modifier
+    }
+
+    Surface(
+        shape = shape,
+        color = backgroundColor,
+        shadowElevation = elevation,
+        tonalElevation = 2.dp,
+        border = BorderStroke(
+            1.2.dp,
+            androidx.compose.ui.graphics.Brush.linearGradient(
+                colors = listOf(
+                    borderColor.copy(alpha = 0.6f),
+                    Color.White.copy(alpha = 0.15f),
+                    borderColor.copy(alpha = 0.2f)
+                )
+            )
+        ),
+        modifier = cardModifier
+    ) {
+        Box(
+            modifier = Modifier.background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.08f),
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.03f)
+                    )
+                )
+            )
+        ) {
+            Column(content = content)
+        }
+    }
 }
 

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.bookmyspace.bookmyspace.data.model.Venue
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.RealMapViewComponent
+import com.bookmyspace.bookmyspace.ui.components.VoiceSearchFilterBottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +36,7 @@ fun VenueMapScreen(
     var selectedCategorySlug by remember { mutableStateOf<String?>(null) }
     var selectedVenueId by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var showVoiceSearchSheet by remember { mutableStateOf(false) }
 
     val filteredVenues = remember(venues, selectedCategorySlug, searchQuery) {
         venues.filter { venue ->
@@ -131,6 +133,18 @@ fun VenueMapScreen(
                                 Icon(Icons.Default.Close, contentDescription = "Clear search", modifier = Modifier.size(16.dp))
                             }
                         }
+
+                        IconButton(
+                            onClick = { showVoiceSearchSheet = true },
+                            modifier = Modifier.testTag("map_voice_search_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Voice Search",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
 
@@ -161,6 +175,23 @@ fun VenueMapScreen(
                     }
                 }
             }
+        }
+
+        if (showVoiceSearchSheet) {
+            VoiceSearchFilterBottomSheet(
+                onDismiss = { showVoiceSearchSheet = false },
+                onApplyVoiceFilter = { result ->
+                    if (result.isClearCommand) {
+                        searchQuery = ""
+                        selectedCategorySlug = null
+                    } else {
+                        searchQuery = result.cleanedSearchQuery
+                        if (result.categorySlug != null) {
+                            selectedCategorySlug = result.categorySlug
+                        }
+                    }
+                }
+            )
         }
     }
 }

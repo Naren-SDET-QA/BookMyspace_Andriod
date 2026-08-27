@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardActions
@@ -46,10 +47,16 @@ import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.BookMySpaceLogo
 import com.bookmyspace.bookmyspace.ui.components.VenueFilterBottomSheet
 import com.bookmyspace.bookmyspace.ui.components.EasyVoiceBookingDialog
+import com.bookmyspace.bookmyspace.ui.components.VoiceSearchFilterBottomSheet
+import com.bookmyspace.bookmyspace.util.VoiceFilterResult
 import com.bookmyspace.bookmyspace.ui.components.RealMapViewComponent
 import com.bookmyspace.bookmyspace.ui.components.VenueCard
 import com.bookmyspace.bookmyspace.ui.components.VenueListSkeleton
 import com.bookmyspace.bookmyspace.ui.components.VenueMapSkeleton
+import com.bookmyspace.bookmyspace.data.network.NetworkRetryManager
+import com.bookmyspace.bookmyspace.data.network.NetworkSyncState
+import com.bookmyspace.bookmyspace.ui.components.NetworkErrorRetryCard
+import com.bookmyspace.bookmyspace.ui.components.NetworkSyncStatusBanner
 import kotlinx.coroutines.launch
 
 data class AmenityFilterOption(
@@ -86,6 +93,7 @@ fun SearchScreen(
     val venues by BookMySpaceRepository.venues.collectAsState()
     val isSimpleMode by BookMySpaceRepository.isSimpleMode.collectAsState()
     val appSections by BookMySpaceRepository.appSections.collectAsState()
+    val syncState by NetworkRetryManager.syncState.collectAsState()
     val recentSearches by BookMySpaceRepository.recentSearches.collectAsState()
     val recentlyViewedVenueIds by BookMySpaceRepository.recentlyViewedVenueIds.collectAsState()
     val recentlyViewedVenues = remember(recentlyViewedVenueIds, venues) {
@@ -147,6 +155,8 @@ fun SearchScreen(
 
     var showFilterSheet by remember { mutableStateOf(false) }
     var showEasyVoiceBookingDialog by remember { mutableStateOf(false) }
+    var showVoiceSearchBottomSheet by remember { mutableStateOf(false) }
+    var activeVoiceFilterResult by remember { mutableStateOf<VoiceFilterResult?>(null) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -206,11 +216,14 @@ fun SearchScreen(
                     "VENUE" -> v.pgDetails == null && v.hotelDetails == null
                     "PG" -> v.pgDetails != null || v.category?.slug == "pg_hostel"
                     "HOTEL" -> v.hotelDetails != null || v.category?.slug == "hotel_stay"
+                    "OTHER" -> v.category?.slug?.contains("other") == true || v.category?.slug?.contains("meeting") == true || v.category?.slug?.contains("turf") == true || (v.pgDetails == null && v.hotelDetails == null)
                     else -> true
                 }
 
                 // Category Matching
-                val matchesCategory = selectedCategorySlug == null || v.category?.slug == selectedCategorySlug
+                val matchesCategory = selectedCategorySlug == null || 
+                    v.category?.slug == selectedCategorySlug ||
+                    (selectedCategorySlug == "other" && (v.category?.slug?.contains("other") == true || v.category?.slug?.contains("meeting") == true || v.category?.slug?.contains("room") == true))
 
                 // Price Range Filter
                 val matchesPrice = v.pricingBaseAmount >= minPrice && v.pricingBaseAmount <= maxPrice
@@ -903,6 +916,17 @@ fun SearchScreen(
                 BookMySpaceLogo()
             }
 
+            // Network Sync Status Banner
+            NetworkSyncStatusBanner(
+                syncState = syncState,
+                onRetry = {
+                    scope.launch {
+                        NetworkRetryManager.triggerRetry()
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
+            )
+
             // Search Input Bar & Filter Drawer Trigger Button
             Row(
                 modifier = Modifier
@@ -937,14 +961,14 @@ fun SearchScreen(
                 )
 
                 IconButton(
-                    onClick = { showEasyVoiceBookingDialog = true },
+                    onClick = { showVoiceSearchBottomSheet = true },
                     modifier = Modifier
                         .testTag("easy_voice_search_button")
                         .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mic,
-                        contentDescription = "Voice Booking",
+                        contentDescription = "Voice Search & Filter",
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
@@ -1121,6 +1145,145 @@ fun SearchScreen(
                 )
             }
 
+            if (showVoiceSearchBottomSheet) {
+                VoiceSearchFilterBottomSheet(
+                    onDismiss = { showVoiceSearchBottomSheet = false },
+                    onApplyVoiceFilter = { result ->
+                        if (result.isClearCommand) {
+                            searchQuery = ""
+                            selectedPropertyType = "ALL"
+                            selectedCategorySlug = null
+                            minPrice = 0f
+                            maxPrice = 500000f
+                            minRatingThreshold = 0f
+                            minCapacity = 0
+                            maxCapacity = 3000
+                            selectedAmenities = emptySet()
+                            selectedSort = VenueSortBy.RELEVANCE
+                            selectedPgType = null
+                            selectedSharingType = null
+                            selectedStarRating = null
+                            activeVoiceFilterResult = null
+                        } else {
+                            activeVoiceFilterResult = result
+                            searchQuery = result.cleanedSearchQuery
+                            if (result.propertyType != null) {
+                                selectedPropertyType = result.propertyType
+                            }
+                            if (result.categorySlug != null) {
+                                selectedCategorySlug = result.categorySlug
+                            }
+                            if (result.pgType != null) {
+                                selectedPgType = result.pgType
+                            }
+                            if (result.sharingType != null) {
+                                selectedSharingType = result.sharingType
+                            }
+                            if (result.minPrice != null) {
+                                minPrice = result.minPrice
+                            }
+                            if (result.maxPrice != null) {
+                                maxPrice = result.maxPrice
+                            }
+                            if (result.minRating != null) {
+                                minRatingThreshold = result.minRating
+                            }
+                            if (result.minCapacity != null) {
+                                minCapacity = result.minCapacity
+                            }
+                            if (result.maxCapacity != null) {
+                                maxCapacity = result.maxCapacity
+                            }
+                            if (result.amenities.isNotEmpty()) {
+                                selectedAmenities = result.amenities
+                            }
+                            if (result.sortBy != null) {
+                                selectedSort = result.sortBy
+                            }
+                            if (result.cleanedSearchQuery.isNotBlank()) {
+                                BookMySpaceRepository.saveSearchQuery(
+                                    result.cleanedSearchQuery,
+                                    result.categorySlug ?: "Voice Search"
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+
+            // Active Voice Filter Result Banner
+            if (activeVoiceFilterResult != null) {
+                val voiceRes = activeVoiceFilterResult!!
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 3.dp)
+                        .testTag("active_voice_filter_banner"),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "🎙️ Spoken: \"${voiceRes.rawSpokenText}\"",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "Applied filters dynamically from your voice command",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                activeVoiceFilterResult = null
+                                searchQuery = ""
+                                selectedPropertyType = "ALL"
+                                selectedCategorySlug = null
+                                minPrice = 0f
+                                maxPrice = 500000f
+                                minRatingThreshold = 0f
+                                minCapacity = 0
+                                maxCapacity = 3000
+                                selectedAmenities = emptySet()
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear Voice Filter",
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             if (!isSimpleMode) {
                 // Section Context Indicator Banner if a specific section/type is selected
                 if (selectedPropertyType != "ALL" || selectedCategorySlug != null) {
@@ -1242,6 +1405,21 @@ fun SearchScreen(
                                 label = { Text("🏨 Hotels") }
                             )
                         }
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedPropertyType == "OTHER" || selectedCategorySlug == "other",
+                            onClick = {
+                                if (selectedPropertyType == "OTHER") {
+                                    selectedPropertyType = "ALL"
+                                    selectedCategorySlug = null
+                                } else {
+                                    selectedPropertyType = "OTHER"
+                                    selectedCategorySlug = "other"
+                                }
+                            },
+                            label = { Text("🎪 Other Spaces") }
+                        )
                     }
 
                     // Section-Specific Contextual Filter Chips
@@ -1484,7 +1662,27 @@ fun SearchScreen(
 
             // Map or List View Mode Display with Skeleton Animations
             if (venues.isEmpty()) {
-                if (isMapView) {
+                if (syncState is NetworkSyncState.Error) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        NetworkErrorRetryCard(
+                            syncState = syncState as NetworkSyncState.Error,
+                            onRetry = {
+                                scope.launch {
+                                    NetworkRetryManager.triggerRetry()
+                                }
+                            },
+                            onUseOfflineMode = {
+                                resetAllFilters()
+                                NetworkRetryManager.setSyncState(NetworkSyncState.Idle)
+                            }
+                        )
+                    }
+                } else if (isMapView) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1529,10 +1727,21 @@ fun SearchScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("No spaces match your filter criteria", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Try adjusting price range, capacity, or selected amenities", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Try adjusting price range, capacity, or selected category filters", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { resetAllFilters() }) {
-                            Text("Reset All Filters")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { resetAllFilters() }) {
+                                Text("Reset All Filters")
+                            }
+                            if (selectedCategorySlug != null) {
+                                OutlinedButton(onClick = {
+                                    com.bookmyspace.bookmyspace.data.health.CategoryHealthEngine.selfHealCategory(selectedCategorySlug!!)
+                                }) {
+                                    Icon(Icons.Default.Healing, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Self-Heal Category")
+                                }
+                            }
                         }
                     }
                 }

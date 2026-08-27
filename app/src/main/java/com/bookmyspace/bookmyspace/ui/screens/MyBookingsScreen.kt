@@ -42,16 +42,21 @@ fun MyBookingsScreen(
     onPayBooking: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bookings by BookMySpaceRepository.bookings.collectAsState()
+    val allBookings by BookMySpaceRepository.bookings.collectAsState()
+    val authUser by BookMySpaceRepository.authUser.collectAsState()
+    val currentRole by com.bookmyspace.bookmyspace.data.auth.UserRoleProvider.role.collectAsState()
+    val bookings = remember(allBookings, authUser, currentRole) {
+        BookMySpaceRepository.getBookingsForRole(currentRole, authUser?.id)
+    }
     val paymentTransactions by BookMySpaceRepository.paymentTransactions.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Upcoming, 1: Completed, 2: Cancelled, 3: Transactions
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Upcoming, 1: Completed, 2: Cancelled & Rejected, 3: Transactions
     val context = LocalContext.current
 
     val filteredBookings = remember(bookings, selectedTab) {
         when (selectedTab) {
-            0 -> bookings.filter { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.HELD }
+            0 -> bookings.filter { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.PENDING_OWNER_APPROVAL || it.status == BookingStatus.HELD }
             1 -> bookings.filter { it.status == BookingStatus.COMPLETED }
-            2 -> bookings.filter { it.status == BookingStatus.CANCELLED }
+            2 -> bookings.filter { it.status == BookingStatus.CANCELLED || it.status == BookingStatus.REJECTED }
             else -> emptyList()
         }
     }
@@ -90,7 +95,7 @@ fun MyBookingsScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Upcoming (${bookings.count { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.HELD }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    text = { Text("Active (${bookings.count { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.PENDING_OWNER_APPROVAL || it.status == BookingStatus.HELD }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 )
                 Tab(
                     selected = selectedTab == 1,
@@ -100,7 +105,7 @@ fun MyBookingsScreen(
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    text = { Text("Cancelled (${bookings.count { it.status == BookingStatus.CANCELLED }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    text = { Text("Declined/Cancelled (${bookings.count { it.status == BookingStatus.CANCELLED || it.status == BookingStatus.REJECTED }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 )
                 Tab(
                     selected = selectedTab == 3,
@@ -370,24 +375,102 @@ private fun BookingCardItem(
                     color = when (booking.status) {
                         BookingStatus.CONFIRMED -> Color(0xFFE8F5E9)
                         BookingStatus.COMPLETED -> Color(0xFFE3F2FD)
+                        BookingStatus.PENDING_OWNER_APPROVAL -> Color(0xFFFFF8E1)
                         BookingStatus.PENDING, BookingStatus.HELD -> Color(0xFFFFF3E0)
-                        BookingStatus.CANCELLED -> Color(0xFFFFEBEE)
+                        BookingStatus.CANCELLED, BookingStatus.REJECTED -> Color(0xFFFFEBEE)
                     },
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = booking.status.name,
+                        text = when (booking.status) {
+                            BookingStatus.CONFIRMED -> "CONFIRMED"
+                            BookingStatus.COMPLETED -> "COMPLETED"
+                            BookingStatus.PENDING_OWNER_APPROVAL -> "AWAITING APPROVAL"
+                            BookingStatus.PENDING -> "PENDING"
+                            BookingStatus.HELD -> "HOLD"
+                            BookingStatus.CANCELLED -> "CANCELLED"
+                            BookingStatus.REJECTED -> "DECLINED"
+                        },
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = when (booking.status) {
                             BookingStatus.CONFIRMED -> Color(0xFF2E7D32)
                             BookingStatus.COMPLETED -> Color(0xFF1565C0)
+                            BookingStatus.PENDING_OWNER_APPROVAL -> Color(0xFFF57F17)
                             BookingStatus.PENDING, BookingStatus.HELD -> Color(0xFFE65100)
-                            BookingStatus.CANCELLED -> Color(0xFFC62828)
+                            BookingStatus.CANCELLED, BookingStatus.REJECTED -> Color(0xFFC62828)
                         },
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
+            }
+
+            if (booking.status == BookingStatus.PENDING_OWNER_APPROVAL) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFFFF8E1),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Color(0xFFF57F17), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "Token paid • Awaiting owner review & slot confirmation",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF5D4037)
+                        )
+                    }
+                }
+            } else if (booking.status == BookingStatus.REJECTED) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Cancel, contentDescription = null, tint = Color(0xFFC62828), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Owner Declined Request",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB71C1C)
+                            )
+                        }
+                        if (!booking.rejectionReason.isNullOrBlank()) {
+                            Text(
+                                "Reason: ${booking.rejectionReason}",
+                                fontSize = 11.sp,
+                                color = Color(0xFFB71C1C),
+                                modifier = Modifier.padding(start = 22.dp)
+                            )
+                        }
+                        if (!booking.refundId.isNullOrBlank()) {
+                            Text(
+                                "Token Refund: ₹${booking.advanceAmountPaid.toInt().coerceAtLeast(booking.totalAmount.toInt())} processed (${booking.refundId})",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier.padding(start = 22.dp, top = 2.dp)
+                            )
+                        }
+                    }
+                }
+            } else if (booking.status == BookingStatus.CONFIRMED && !booking.finalOrderId.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Order #${booking.finalOrderId}",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -400,8 +483,13 @@ private fun BookingCardItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Total Paid / Due", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("₹${booking.totalAmount.ifZero(booking.totalPrice).toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                    if (booking.isAdvancePayment || booking.advanceAmountPaid > 0) {
+                        Text("Advance Paid (Bal: ₹${booking.remainingBalanceDue.toInt()} due)", fontSize = 10.sp, color = Color(0xFFE65100), fontWeight = FontWeight.Bold)
+                        Text("₹${booking.advanceAmountPaid.toInt()} / ₹${booking.totalAmount.ifZero(booking.totalPrice).toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        Text("Total Paid / Due", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹${booking.totalAmount.ifZero(booking.totalPrice).toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

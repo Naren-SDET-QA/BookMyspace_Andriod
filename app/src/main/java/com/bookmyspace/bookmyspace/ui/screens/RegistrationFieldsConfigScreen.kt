@@ -1,5 +1,8 @@
 package com.bookmyspace.bookmyspace.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,12 +23,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bookmyspace.bookmyspace.data.model.*
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +45,7 @@ fun RegistrationFieldsConfigScreen(
     var selectedCategoryFilter by remember { mutableStateOf<RegistrationFieldCategory?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showAddEditDialog by remember { mutableStateOf(false) }
+    var showJsonConfigDialog by remember { mutableStateOf(false) }
     var editingField by remember { mutableStateOf<UserRegistrationFieldDefinition?>(null) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf<UserRegistrationFieldDefinition?>(null) }
@@ -63,14 +70,20 @@ fun RegistrationFieldsConfigScreen(
         }.sortedBy { it.displayOrder }
     }
 
+    // Quick lookup for requested highlight fields: Identity Proof, DOB, Company Name
+    val aadhaarField = remember(allFields) { allFields.firstOrNull { it.key == "aadhaar_number" } }
+    val dobField = remember(allFields) { allFields.firstOrNull { it.key == "dob" } }
+    val orgField = remember(allFields) { allFields.firstOrNull { it.key == "organization_name" } }
+    val locField = remember(allFields) { allFields.firstOrNull { it.key == "location_hierarchy" } }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("User Registration Fields", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("Configurable fields for All Modules & KYC", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Registration Schema & KYC", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("JSON-Configurable Field Rules", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 navigationIcon = {
@@ -79,6 +92,16 @@ fun RegistrationFieldsConfigScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showJsonConfigDialog = true },
+                        modifier = Modifier.testTag("open_json_config_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DataObject,
+                            contentDescription = "JSON Schema Configuration",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(
                         onClick = onNavigateToUnifiedRegistration,
                         modifier = Modifier.testTag("preview_unified_registration_button")
@@ -101,7 +124,7 @@ fun RegistrationFieldsConfigScreen(
                     showAddEditDialog = true
                 },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add Custom Field") },
+                text = { Text("Add Field") },
                 modifier = Modifier.testTag("add_registration_field_fab")
             )
         }
@@ -144,12 +167,156 @@ fun RegistrationFieldsConfigScreen(
                 }
             }
 
+            // Quick JSON Config & Dynamic KYC Rules Hub Banner
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .testTag("json_config_hub_banner"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schema,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Dynamic JSON Configuration System",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp
+                            )
+                        }
+
+                        FilledTonalButton(
+                            onClick = { showJsonConfigDialog = true },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier
+                                .height(30.dp)
+                                .testTag("open_json_modal_btn")
+                        ) {
+                            Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Edit JSON", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Toggle mandatory fields instantly without hardcoding. Changes take effect across user registration, checkout KYC, and host onboarding in real time.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 15.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "QUICK MANDATORY TOGGLES",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 4 Quick Switches for High-Priority Fields
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // 1. Identity Proof / Aadhaar
+                        aadhaarField?.let { field ->
+                            QuickToggleChip(
+                                label = "Identity Proof",
+                                isRequired = field.required,
+                                testTag = "quick_toggle_aadhaar",
+                                onToggle = { req ->
+                                    BookMySpaceRepository.toggleRegistrationFieldRequired(field.id, req)
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (req) "Identity Proof set to MANDATORY in JSON schema" else "Identity Proof set to OPTIONAL in JSON schema"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        // 2. Date of Birth
+                        dobField?.let { field ->
+                            QuickToggleChip(
+                                label = "Date of Birth",
+                                isRequired = field.required,
+                                testTag = "quick_toggle_dob",
+                                onToggle = { req ->
+                                    BookMySpaceRepository.toggleRegistrationFieldRequired(field.id, req)
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (req) "Date of Birth set to MANDATORY in JSON schema" else "Date of Birth set to OPTIONAL in JSON schema"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        // 3. Company / Entity Name
+                        orgField?.let { field ->
+                            QuickToggleChip(
+                                label = "Company Name",
+                                isRequired = field.required,
+                                testTag = "quick_toggle_company_name",
+                                onToggle = { req ->
+                                    BookMySpaceRepository.toggleRegistrationFieldRequired(field.id, req)
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (req) "Company Name set to MANDATORY in JSON schema" else "Company Name set to OPTIONAL in JSON schema"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        // 4. Location Hierarchy
+                        locField?.let { field ->
+                            QuickToggleChip(
+                                label = "Location Hierarchy",
+                                isRequired = field.required,
+                                testTag = "quick_toggle_location",
+                                onToggle = { req ->
+                                    BookMySpaceRepository.toggleRegistrationFieldRequired(field.id, req)
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (req) "Location Hierarchy set to MANDATORY" else "Location Hierarchy set to OPTIONAL"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Category Filter Chips & Search Bar
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search fields (e.g. photo, aadhaar, address, phone)...") },
+                    placeholder = { Text("Search fields (e.g. photo, aadhaar, dob, company, phone)...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = if (searchQuery.isNotEmpty()) {
                         {
@@ -171,7 +338,7 @@ fun RegistrationFieldsConfigScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterChip(
@@ -201,23 +368,23 @@ fun RegistrationFieldsConfigScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Configured Fields: ${filteredFields.size} (${filteredFields.count { it.isEnabled }} active)",
-                        fontSize = 12.sp,
+                        text = "Fields: ${filteredFields.size} (${allFields.count { it.required && it.isEnabled }} mandatory, ${allFields.count { it.isEnabled }} active)",
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium
                     )
                     FilledTonalButton(
                         onClick = onNavigateToUnifiedRegistration,
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
                     ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Test Registration Form", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Live Form Preview", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -240,7 +407,7 @@ fun RegistrationFieldsConfigScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("No matching registration fields", fontWeight = FontWeight.Bold)
                         Text(
-                            "Tap '+ Add Custom Field' to configure a new field for this module.",
+                            "Tap '+ Add Field' or use JSON Configuration to add or edit schema fields.",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -253,7 +420,7 @@ fun RegistrationFieldsConfigScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    itemsIndexed(filteredFields, key = { _, field -> field.id }) { index, field ->
+                    itemsIndexed(filteredFields, key = { _, field -> field.id }) { _, field ->
                         RegistrationFieldCard(
                             field = field,
                             onToggleEnabled = { enabled ->
@@ -276,6 +443,37 @@ fun RegistrationFieldsConfigScreen(
         }
     }
 
+    // JSON Configuration Dialog
+    if (showJsonConfigDialog) {
+        JsonConfigurationDialog(
+            currentFields = allFields,
+            onDismiss = { showJsonConfigDialog = false },
+            onApplyJson = { jsonStr ->
+                val result = BookMySpaceRepository.importRegistrationConfigJson(jsonStr)
+                result.fold(
+                    onSuccess = { count ->
+                        showJsonConfigDialog = false
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Successfully applied JSON configuration ($count fields updated)!")
+                        }
+                    },
+                    onFailure = { ex ->
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Failed to apply JSON: ${ex.message}")
+                        }
+                    }
+                )
+            },
+            onApplyPreset = { preset ->
+                BookMySpaceRepository.applyRegistrationConfigPreset(preset)
+                showJsonConfigDialog = false
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Applied preset '${preset.title}' successfully!")
+                }
+            }
+        )
+    }
+
     // Add / Edit Dialog
     if (showAddEditDialog) {
         AddEditRegistrationFieldDialog(
@@ -284,6 +482,9 @@ fun RegistrationFieldsConfigScreen(
             onSave = { field ->
                 BookMySpaceRepository.saveRegistrationField(field)
                 showAddEditDialog = false
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Field '${field.label}' saved to registration schema!")
+                }
             }
         )
     }
@@ -302,6 +503,9 @@ fun RegistrationFieldsConfigScreen(
                     onClick = {
                         BookMySpaceRepository.resetRegistrationFieldsToDefault()
                         showResetDialog = false
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Reset registration schema to default successfully.")
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -330,6 +534,9 @@ fun RegistrationFieldsConfigScreen(
                     onClick = {
                         BookMySpaceRepository.deleteRegistrationField(fieldToDelete.id)
                         showDeleteConfirmDialog = null
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Deleted field '${fieldToDelete.label}'")
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -342,6 +549,49 @@ fun RegistrationFieldsConfigScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun QuickToggleChip(
+    label: String,
+    isRequired: Boolean,
+    testTag: String,
+    onToggle: (Boolean) -> Unit
+) {
+    Surface(
+        color = if (isRequired) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier
+            .clickable { onToggle(!isRequired) }
+            .testTag(testTag)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (isRequired) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (isRequired) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isRequired) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = if (isRequired) "MANDATORY" else "OPTIONAL",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isRequired) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                )
+            }
+        }
     }
 }
 
@@ -419,7 +669,7 @@ fun RegistrationFieldCard(
                             if (field.required) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "*Required",
+                                    text = "*Mandatory",
                                     color = MaterialTheme.colorScheme.error,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
@@ -521,7 +771,9 @@ fun RegistrationFieldCard(
                         selected = field.required,
                         onClick = { onToggleRequired(!field.required) },
                         label = { Text(if (field.required) "Required" else "Optional", fontSize = 10.sp) },
-                        modifier = Modifier.height(28.dp)
+                        modifier = Modifier
+                            .height(28.dp)
+                            .testTag("toggle_required_${field.key}")
                     )
 
                     IconButton(
@@ -545,6 +797,209 @@ fun RegistrationFieldCard(
     }
 }
 
+/**
+ * Full JSON Schema Configuration Editor & Preset Manager Modal Dialog.
+ */
+@Composable
+fun JsonConfigurationDialog(
+    currentFields: List<UserRegistrationFieldDefinition>,
+    onDismiss: () -> Unit,
+    onApplyJson: (String) -> Unit,
+    onApplyPreset: (RegistrationConfigPreset) -> Unit
+) {
+    val context = LocalContext.current
+    var jsonText by remember {
+        mutableStateOf(RegistrationConfigJsonEngine.exportToJson(currentFields, prettyPrint = true))
+    }
+    var validationError by remember { mutableStateOf<String?>(null) }
+    var selectedPreset by remember { mutableStateOf<RegistrationConfigPreset?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .testTag("json_config_dialog"),
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DataObject, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("JSON Schema Configuration", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Dynamic Plug-and-Play Registration Rules", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    "Select a pre-built preset or edit the raw JSON schema below to configure required fields dynamically:",
+                    fontSize = 11.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Presets Horizontal Scroller
+                Text("QUICK PRESETS (1-TAP APPLY)", fontSize = 9.5.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    RegistrationConfigPreset.entries.forEach { preset ->
+                        val isSelected = selectedPreset == preset
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                selectedPreset = preset
+                                val presetFields = RegistrationConfigJsonEngine.getPresetFields(currentFields, preset)
+                                jsonText = RegistrationConfigJsonEngine.exportToJson(presetFields, presetName = preset.title, prettyPrint = true)
+                                validationError = null
+                            },
+                            label = {
+                                Column {
+                                    Text(preset.title, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text(preset.badge, fontSize = 8.5.sp, color = MaterialTheme.colorScheme.primary)
+                                }
+                            },
+                            modifier = Modifier.testTag("preset_chip_${preset.code}")
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // JSON Tools Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("SCHEMA DEFINITION", fontSize = 9.5.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(
+                            onClick = {
+                                val (isValid, formattedOrError) = RegistrationConfigJsonEngine.validateAndFormatJson(jsonText)
+                                if (isValid) {
+                                    jsonText = formattedOrError
+                                    validationError = null
+                                } else {
+                                    validationError = formattedOrError
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp).testTag("format_json_button")
+                        ) {
+                            Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("Format", fontSize = 10.5.sp)
+                        }
+
+                        TextButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("BookMySpace Registration Schema", jsonText)
+                                clipboard.setPrimaryClip(clip)
+                            },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp).testTag("copy_json_config_button")
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("Copy", fontSize = 10.5.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Monospaced JSON Text Editor Field
+                OutlinedTextField(
+                    value = jsonText,
+                    onValueChange = {
+                        jsonText = it
+                        validationError = null
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .testTag("json_editor_input"),
+                    textStyle = LocalTextStyle.current.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    ),
+                    placeholder = { Text("Paste or edit JSON schema here...") },
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                if (validationError != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = validationError ?: "",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Tip: Set '\"required\": true' to make Identity Proof, Date of Birth, or Company Name mandatory.",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val (isValid, formattedOrError) = RegistrationConfigJsonEngine.validateAndFormatJson(jsonText)
+                    if (isValid) {
+                        onApplyJson(formattedOrError)
+                    } else {
+                        validationError = formattedOrError
+                    }
+                },
+                modifier = Modifier.testTag("apply_json_config_button")
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Apply Configuration")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditRegistrationFieldDialog(
@@ -552,10 +1007,11 @@ fun AddEditRegistrationFieldDialog(
     onDismiss: () -> Unit,
     onSave: (UserRegistrationFieldDefinition) -> Unit
 ) {
+    val isEditing = initialField != null
     var label by remember { mutableStateOf(initialField?.label ?: "") }
     var key by remember { mutableStateOf(initialField?.key ?: "") }
     var fieldType by remember { mutableStateOf(initialField?.fieldType ?: RegistrationFieldType.TEXT) }
-    var category by remember { mutableStateOf(initialField?.category ?: RegistrationFieldCategory.CUSTOM) }
+    var category by remember { mutableStateOf(initialField?.category ?: RegistrationFieldCategory.PERSONAL) }
     var targetModule by remember { mutableStateOf(initialField?.targetModule ?: RegistrationTargetModule.ALL) }
     var required by remember { mutableStateOf(initialField?.required ?: false) }
     var isEnabled by remember { mutableStateOf(initialField?.isEnabled ?: true) }
@@ -564,13 +1020,15 @@ fun AddEditRegistrationFieldDialog(
     var optionsText by remember { mutableStateOf(initialField?.options?.joinToString(", ") ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val isEditing = initialField != null
+    var expandedType by remember { mutableStateOf(false) }
+    var expandedCat by remember { mutableStateOf(false) }
+    var expandedModule by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (isEditing) "Edit Registration Field" else "Add New Registration Field",
+                if (isEditing) "Edit Registration Field" else "Add New Registration Field",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -580,15 +1038,10 @@ fun AddEditRegistrationFieldDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 if (errorMessage != null) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(errorMessage ?: "", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
 
                 // Field Label
@@ -597,29 +1050,27 @@ fun AddEditRegistrationFieldDialog(
                     onValueChange = {
                         label = it
                         if (!isEditing && key.isBlank()) {
-                            key = it.lowercase().replace(" ", "_").replace(Regex("[^a-z0-9_]"), "")
+                            key = it.lowercase().replace(" ", "_").filter { ch -> ch.isLetterOrDigit() || ch == '_' }
                         }
                     },
                     label = { Text("Display Label *") },
-                    placeholder = { Text("e.g. Aadhaar Card Photo, Blood Group, Father's Name") },
+                    placeholder = { Text("e.g. Identity Proof / Aadhaar Number") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Field Key
+                // Internal Key
                 OutlinedTextField(
                     value = key,
                     onValueChange = { key = it.lowercase().replace(" ", "_") },
-                    label = { Text("Internal Field Key *") },
-                    placeholder = { Text("e.g. aadhaar_photo, blood_group") },
-                    enabled = initialField?.isSystemStandard != true,
+                    label = { Text("Internal Key * (e.g. aadhaar_number)") },
+                    placeholder = { Text("e.g. identity_proof_doc") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = initialField?.isSystemStandard != true
                 )
 
                 // Field Type Selector
-                Text("Field Type:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                var expandedType by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = expandedType,
                     onExpandedChange = { expandedType = it }
@@ -649,20 +1100,17 @@ fun AddEditRegistrationFieldDialog(
                     }
                 }
 
-                // Options (for Dropdown or Radio)
                 if (fieldType.hasOptions) {
                     OutlinedTextField(
                         value = optionsText,
                         onValueChange = { optionsText = it },
-                        label = { Text("Options (comma separated)") },
-                        placeholder = { Text("Option 1, Option 2, Option 3") },
+                        label = { Text("Options (comma-separated)") },
+                        placeholder = { Text("Option A, Option B, Option C") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
                 // Category Selector
-                Text("Category Group:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                var expandedCat by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = expandedCat,
                     onExpandedChange = { expandedCat = it }
@@ -693,8 +1141,6 @@ fun AddEditRegistrationFieldDialog(
                 }
 
                 // Target Module Selector
-                Text("Target Module / Role:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                var expandedModule by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = expandedModule,
                     onExpandedChange = { expandedModule = it }

@@ -18,7 +18,8 @@ import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 enum class ThemeMode {
     SYSTEM_DEFAULT,
     LIGHT,
-    DARK
+    DARK,
+    HIGH_CONTRAST_GLASS
 }
 
 enum class ThemePreset(
@@ -125,6 +126,30 @@ enum class ThemePreset(
         secondary = Color(0xFFFFB703),
         previewColors = listOf(Color(0xFFFF6B4A), Color(0xFFFF8E72), Color(0xFFFFB703))
     ),
+    GLASS_3D_CYBER(
+        id = "glass_3d_cyber",
+        displayName = "3D Glassmorphic Neon",
+        description = "Futuristic crystalline glass styling with glowing cyan & prism borders",
+        primary = Color(0xFF00E5FF),
+        secondary = Color(0xFF7C4DFF),
+        previewColors = listOf(Color(0xFF00E5FF), Color(0xFF7C4DFF), Color(0xFFFF4081))
+    ),
+    GLASS_3D_FROSTED(
+        id = "glass_3d_frosted",
+        displayName = "Frosted 3D Pearl Glass",
+        description = "Modern translucent pearl glass with subtle depth rim lighting",
+        primary = Color(0xFF0D9488),
+        secondary = Color(0xFF6366F1),
+        previewColors = listOf(Color(0xFF0D9488), Color(0xFF38BDF8), Color(0xFF6366F1))
+    ),
+    GLASS_3D_AMETHYST(
+        id = "glass_3d_amethyst",
+        displayName = "3D Glass Amethyst & Prism",
+        description = "Deep translucent crystal surfaces with violet reflection highlights",
+        primary = Color(0xFF9333EA),
+        secondary = Color(0xFFEC4899),
+        previewColors = listOf(Color(0xFF9333EA), Color(0xFFC084FC), Color(0xFFEC4899))
+    ),
     CUSTOM(
         id = "custom",
         displayName = "Custom Custom Color Seed",
@@ -161,7 +186,7 @@ fun BookMySpaceTheme(
     val isDark = when (themeMode) {
         ThemeMode.SYSTEM_DEFAULT -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
+        ThemeMode.DARK, ThemeMode.HIGH_CONTRAST_GLASS -> true
     }
 
     val primaryColor = if (selectedPreset == ThemePreset.CUSTOM) {
@@ -171,52 +196,104 @@ fun BookMySpaceTheme(
     }
     val secondaryColor = selectedPreset.secondary
 
-    val colorScheme = if (isDark) {
-        darkColorScheme(
-            primary = primaryColor,
-            onPrimary = Color.White,
-            primaryContainer = primaryColor.copy(alpha = 0.3f),
-            onPrimaryContainer = Color(0xFFE2E8F0),
-            secondary = secondaryColor,
-            onSecondary = Color.Black,
-            secondaryContainer = secondaryColor.copy(alpha = 0.25f),
-            onSecondaryContainer = Color(0xFFF1F5F9),
-            tertiary = CoralAttention,
-            onTertiary = Color.White,
-            background = DeepNavy,
-            onBackground = OffWhite,
-            surface = NavyBlueCard,
-            onSurface = OffWhite,
-            surfaceVariant = Color(0xFF1E293B),
-            onSurfaceVariant = Color(0xFF94A3B8),
-            outline = Color(0xFF475569),
-            outlineVariant = Color(0xFF334155),
-            error = Color(0xFFEF4444),
-            onError = Color.White
-        )
-    } else {
-        lightColorScheme(
-            primary = primaryColor,
-            onPrimary = Color.White,
-            primaryContainer = primaryColor.copy(alpha = 0.12f),
-            onPrimaryContainer = primaryColor,
-            secondary = secondaryColor,
-            onSecondary = Color.White,
-            secondaryContainer = secondaryColor.copy(alpha = 0.12f),
-            onSecondaryContainer = secondaryColor,
-            tertiary = CoralAttention,
-            onTertiary = Color.White,
-            background = OffWhite,
-            onBackground = Color(0xFF0F172A),
-            surface = Color.White,
-            onSurface = Color(0xFF0F172A),
-            surfaceVariant = Color(0xFFF1F5F9),
-            onSurfaceVariant = Color(0xFF64748B),
-            outline = Color(0xFFCBD5E1),
-            outlineVariant = Color(0xFFE2E8F0),
-            error = Color(0xFFDC2626),
-            onError = Color.White
-        )
+    val colorScheme = when (themeMode) {
+        ThemeMode.HIGH_CONTRAST_GLASS -> {
+            darkColorScheme(
+                primary = primaryColor,
+                onPrimary = Color.Black,
+                primaryContainer = primaryColor.copy(alpha = 0.35f),
+                onPrimaryContainer = Color(0xFFE0F7FA),
+                secondary = Color(0xFFF59E0B),
+                onSecondary = Color.Black,
+                secondaryContainer = Color(0xFFF59E0B).copy(alpha = 0.3f),
+                onSecondaryContainer = Color(0xFFFFFBEB),
+                tertiary = Color(0xFFFF4081),
+                onTertiary = Color.White,
+                background = Color(0xFF030712), // Deepest obsidian canvas
+                onBackground = Color(0xFFF8FAFC), // High contrast crisp white
+                surface = Color(0xFF0B1329), // Translucent high-contrast glass card base
+                onSurface = Color(0xFFF8FAFC),
+                surfaceVariant = Color(0xFF1E293B),
+                onSurfaceVariant = Color(0xFFCBD5E1),
+                outline = Color(0xFF38BDF8), // Crisp glowing cyan border
+                outlineVariant = Color(0xFF475569),
+                error = Color(0xFFFF5252),
+                onError = Color.Black
+            )
+        }
+        ThemeMode.DARK -> {
+            darkColorScheme(
+                primary = primaryColor,
+                onPrimary = Color.White,
+                primaryContainer = primaryColor.copy(alpha = 0.3f),
+                onPrimaryContainer = Color(0xFFE2E8F0),
+                secondary = secondaryColor,
+                onSecondary = Color.Black,
+                secondaryContainer = secondaryColor.copy(alpha = 0.25f),
+                onSecondaryContainer = Color(0xFFF1F5F9),
+                tertiary = CoralAttention,
+                onTertiary = Color.White,
+                background = DeepNavy,
+                onBackground = OffWhite,
+                surface = NavyBlueCard,
+                onSurface = OffWhite,
+                surfaceVariant = Color(0xFF1E293B),
+                onSurfaceVariant = Color(0xFF94A3B8),
+                outline = Color(0xFF475569),
+                outlineVariant = Color(0xFF334155),
+                error = Color(0xFFEF4444),
+                onError = Color.White
+            )
+        }
+        ThemeMode.LIGHT, ThemeMode.SYSTEM_DEFAULT -> {
+            if (isDark) {
+                darkColorScheme(
+                    primary = primaryColor,
+                    onPrimary = Color.White,
+                    primaryContainer = primaryColor.copy(alpha = 0.3f),
+                    onPrimaryContainer = Color(0xFFE2E8F0),
+                    secondary = secondaryColor,
+                    onSecondary = Color.Black,
+                    secondaryContainer = secondaryColor.copy(alpha = 0.25f),
+                    onSecondaryContainer = Color(0xFFF1F5F9),
+                    tertiary = CoralAttention,
+                    onTertiary = Color.White,
+                    background = DeepNavy,
+                    onBackground = OffWhite,
+                    surface = NavyBlueCard,
+                    onSurface = OffWhite,
+                    surfaceVariant = Color(0xFF1E293B),
+                    onSurfaceVariant = Color(0xFF94A3B8),
+                    outline = Color(0xFF475569),
+                    outlineVariant = Color(0xFF334155),
+                    error = Color(0xFFEF4444),
+                    onError = Color.White
+                )
+            } else {
+                lightColorScheme(
+                    primary = primaryColor,
+                    onPrimary = Color.White,
+                    primaryContainer = primaryColor.copy(alpha = 0.12f),
+                    onPrimaryContainer = primaryColor,
+                    secondary = secondaryColor,
+                    onSecondary = Color.White,
+                    secondaryContainer = secondaryColor.copy(alpha = 0.12f),
+                    onSecondaryContainer = secondaryColor,
+                    tertiary = CoralAttention,
+                    onTertiary = Color.White,
+                    background = OffWhite,
+                    onBackground = Color(0xFF0F172A),
+                    surface = Color.White,
+                    onSurface = Color(0xFF0F172A),
+                    surfaceVariant = Color(0xFFF1F5F9),
+                    onSurfaceVariant = Color(0xFF64748B),
+                    outline = Color(0xFFCBD5E1),
+                    outlineVariant = Color(0xFFE2E8F0),
+                    error = Color(0xFFDC2626),
+                    onError = Color.White
+                )
+            }
+        }
     }
 
     val view = LocalView.current

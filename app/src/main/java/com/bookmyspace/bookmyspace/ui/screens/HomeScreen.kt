@@ -8,10 +8,12 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,12 +61,23 @@ import com.bookmyspace.bookmyspace.ui.components.HotDealsCarouselWidget
 import com.bookmyspace.bookmyspace.ui.components.SmartSpaceRadarWidget
 import com.bookmyspace.bookmyspace.ui.components.DailyLuckyRewardWidget
 import com.bookmyspace.bookmyspace.ui.components.LiveActivityPulseTicker
+import com.bookmyspace.bookmyspace.ui.components.SmoothAutoMovingCategoryStrip
+import com.bookmyspace.bookmyspace.ui.components.AvailableSectionsSlowMarqueeStrip
+import com.bookmyspace.bookmyspace.ui.components.AddCustomCategoryDialog
+import com.bookmyspace.bookmyspace.ui.components.PulsePopCategoryPill
 import com.bookmyspace.bookmyspace.ui.components.SmartWeatherSpaceInsightsWidget
 import com.bookmyspace.bookmyspace.ui.components.EyeCatchingFullHomeSkeleton
 import com.bookmyspace.bookmyspace.ui.components.EyeCatchingVenueCardSkeleton
 import com.bookmyspace.bookmyspace.ui.components.EyeCatchingCategoryChipsSkeleton
 import com.bookmyspace.bookmyspace.ui.components.shimmerLoading
 import com.bookmyspace.bookmyspace.ui.components.pulsingGlow
+import com.bookmyspace.bookmyspace.ui.components.CompactAdaptiveSearchHeader
+import com.bookmyspace.bookmyspace.ui.components.GuestAndRoomPickerDialog
+import com.bookmyspace.bookmyspace.ui.components.SimpleQuickDateDialog
+import com.bookmyspace.bookmyspace.data.network.NetworkRetryManager
+import com.bookmyspace.bookmyspace.data.network.NetworkSyncState
+import com.bookmyspace.bookmyspace.ui.components.NetworkErrorRetryCard
+import com.bookmyspace.bookmyspace.ui.components.NetworkSyncStatusBanner
 import com.bookmyspace.bookmyspace.util.LocalizedStrings
 import com.bookmyspace.bookmyspace.util.PerformanceTracer
 import com.bookmyspace.bookmyspace.util.TraceCategory
@@ -75,6 +90,14 @@ data class QuickFilterChip(
     val label: String,
     val emoji: String
 )
+
+enum class HomeScreenSortOption(val displayName: String, val icon: String) {
+    DISTANCE("Distance: Nearest", "📍"),
+    RECOMMENDED("Recommended", "✨"),
+    PRICE_LOW("Price: Low to High", "💰"),
+    PRICE_HIGH("Price: High to Low", "💎"),
+    RATING("Rating: Highest", "⭐")
+}
 
 /**
  * 4 Primary Main Sections of BookMySpace Customer Experience
@@ -102,7 +125,8 @@ enum class MainHomeSection(
             MainSectionCategoryOption("banquet_hall", "Party Hall / Banquet", "🍸", "Birthdays & Dinners"),
             MainSectionCategoryOption("community_hall", "Community Hall", "🤝", "Family & Society Meets"),
             MainSectionCategoryOption("govt_hall", "Government Hall", "🏢", "Official & Public Town Halls"),
-            MainSectionCategoryOption("party_lawn", "Open Lawn Ground", "🌳", "Outdoor Weddings & Lawns")
+            MainSectionCategoryOption("party_lawn", "Open Lawn Ground", "🌳", "Outdoor Weddings & Lawns"),
+            MainSectionCategoryOption("other_hall", "Other Event Spaces", "🎪", "Exhibitions, Open Lawns, Theatres & Custom Grounds")
         )
     ),
     LODGE_ROOMS(
@@ -118,7 +142,8 @@ enum class MainHomeSection(
             MainSectionCategoryOption("lodge", "Lodge", "🛏️", "Budget & Short-stay Lodges"),
             MainSectionCategoryOption("guest_house", "Guest House", "🏡", "Quiet & Homely Guest Rooms"),
             MainSectionCategoryOption("hourly_room", "Hourly / Day Room", "⏱️", "Short Stay & Day Use"),
-            MainSectionCategoryOption("resort", "Resort / Homestay", "🌴", "Getaways & Nature Stays")
+            MainSectionCategoryOption("resort", "Resort / Homestay", "🌴", "Getaways & Nature Stays"),
+            MainSectionCategoryOption("other_stay", "Other Accommodations", "🏕️", "Farmhouses, Cottages, Tents & Custom Stays")
         )
     ),
     PG_HOSTELS(
@@ -134,7 +159,8 @@ enum class MainHomeSection(
             MainSectionCategoryOption("ladies_pg", "Ladies PG", "👩", "Women's Safe Secure Stays"),
             MainSectionCategoryOption("student_hostel", "Student Hostel", "🎒", "College & Academy Hostels"),
             MainSectionCategoryOption("co_living", "Co-living Spaces", "🤝", "Modern Shared Living"),
-            MainSectionCategoryOption("single_room", "Single Sharing Room", "🔑", "Private & Shared Rooms")
+            MainSectionCategoryOption("single_room", "Single Sharing Room", "🔑", "Private & Shared Rooms"),
+            MainSectionCategoryOption("other_pg", "Other Hostels & PGs", "🏡", "Executive PGs, Studio Stays & Custom Living")
         )
     ),
     INSTITUTES_CLASSES(
@@ -150,7 +176,8 @@ enum class MainHomeSection(
             MainSectionCategoryOption("computer_it", "Computer & IT Classes", "💻", "Coding, AI & Digital Skills"),
             MainSectionCategoryOption("dance_academy", "Dance Academy", "💃", "Classical, Western & Zumba"),
             MainSectionCategoryOption("music_class", "Music & Singing", "🎵", "Guitar, Keyboard & Vocals"),
-            MainSectionCategoryOption("sports_academy", "Sports Academy & Turfs", "🏸", "Badminton, Cricket & Fitness")
+            MainSectionCategoryOption("sports_academy", "Sports Academy & Turfs", "🏸", "Badminton, Cricket & Fitness"),
+            MainSectionCategoryOption("other_class", "Other Classes & Studios", "🎨", "Art, Yoga, Martial Arts, Cooking & Workshops")
         )
     )
 }
@@ -162,7 +189,7 @@ data class MainSectionCategoryOption(
     val description: String = ""
 )
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToVenue: (String) -> Unit,
@@ -197,6 +224,7 @@ fun HomeScreen(
     val userLocationHierarchy by BookMySpaceRepository.userLocationHierarchy.collectAsState()
     val userLocationRadius by BookMySpaceRepository.userLocationRadius.collectAsState()
     val appSections by BookMySpaceRepository.appSections.collectAsState()
+    val syncState by NetworkRetryManager.syncState.collectAsState()
 
     // Display ONLY the enabled 4 main section cards (governed by Admin feature toggles)
     val availableSections = remember(appSections) {
@@ -205,9 +233,42 @@ fun HomeScreen(
         }
     }
 
-    // Main section navigation state (null = First Screen with 4 main sections)
+    // Main section navigation state (null = All Spaces)
     var selectedMainSection by remember { mutableStateOf<MainHomeSection?>(initialSelectedSection) }
     var selectedCategorySlug by remember { mutableStateOf("all") }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    var searchQuery by remember { mutableStateOf("") }
+    var checkInDate by remember { mutableStateOf("Today") }
+    var checkOutDate by remember { mutableStateOf<String?>("Tomorrow") }
+    var guestCount by remember { mutableIntStateOf(2) }
+    var roomCount by remember { mutableIntStateOf(1) }
+    var childrenCount by remember { mutableIntStateOf(0) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+    var datePickerTarget by remember { mutableStateOf("checkIn") }
+    var showGuestPickerDialog by remember { mutableStateOf(false) }
+    var selectedSortOption by remember { mutableStateOf(HomeScreenSortOption.DISTANCE) }
+    var showSortDropdown by remember { mutableStateOf(false) }
+
+    val categoryType = remember(selectedMainSection) {
+        when (selectedMainSection) {
+            MainHomeSection.LODGE_ROOMS -> "HOTEL"
+            MainHomeSection.FUNCTION_HALLS -> "VENUE"
+            MainHomeSection.PG_HOSTELS -> "PG"
+            MainHomeSection.INSTITUTES_CLASSES -> "CLASS"
+            null -> "ALL"
+        }
+    }
+
+    val guestInfoText = remember(categoryType, guestCount, childrenCount, roomCount) {
+        when (categoryType) {
+            "HOTEL" -> "$guestCount Guests, $roomCount Room"
+            "VENUE" -> "$guestCount Guests"
+            "PG" -> if (guestCount == 1) "Single Share" else "$guestCount-Sharing"
+            "CLASS" -> "$guestCount Attendees"
+            else -> "$guestCount Guests"
+        }
+    }
 
     var isSimulatingLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -215,6 +276,37 @@ fun HomeScreen(
     var showLocationDialog by remember { mutableStateOf(false) }
     var showEasyVoiceBookingDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showAddCustomCategoryDialog by remember { mutableStateOf(false) }
+    var customCategoryTargetSection by remember { mutableStateOf<String?>("general") }
+
+    // Subcategory Horizontal Strip Scroll & Snap State
+    val subcategoryRowState = rememberLazyListState()
+    val subcategorySnapFlingBehavior = rememberSnapFlingBehavior(lazyListState = subcategoryRowState)
+
+    // Smoothly snap active category into focus when selection changes
+    LaunchedEffect(selectedCategorySlug, selectedMainSection) {
+        try {
+            if (selectedCategorySlug == "all") {
+                subcategoryRowState.animateScrollToItem(0)
+            } else if (selectedMainSection != null) {
+                val baseCats = selectedMainSection!!.categoryOptions.filter { cat ->
+                    cat.id == "all" || BookMySpaceRepository.isCategoryEnabled(cat.id)
+                }
+                val baseIdx = baseCats.indexOfFirst { it.id == selectedCategorySlug }
+                if (baseIdx >= 0) {
+                    subcategoryRowState.animateScrollToItem(1 + baseIdx)
+                } else {
+                    val customCats = BookMySpaceRepository.getCustomCategoriesForSection(selectedMainSection?.id ?: "")
+                    val customIdx = customCats.indexOfFirst { it.slug == selectedCategorySlug }
+                    if (customIdx >= 0) {
+                        subcategoryRowState.animateScrollToItem(1 + baseCats.size + customIdx)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // safely ignore
+        }
+    }
 
     // Amenity and Advanced Filters State
     var selectedAmenityFilters by remember { mutableStateOf(setOf<String>()) }
@@ -244,14 +336,13 @@ fun HomeScreen(
         venues,
         selectedMainSection,
         selectedCategorySlug,
+        searchQuery,
         selectedAmenityFilters,
         filterMinPrice,
         filterMaxPrice,
         filterMinRating,
         userLocationHierarchy
     ) {
-        if (selectedMainSection == null) return@remember emptyList<Venue>()
-
         PerformanceTracer.traceSection("FilterHomeScreenVenues", TraceCategory.DATA_FETCH) {
             val list = venues.map { v ->
                 val vLat = v.locationHierarchy?.latitude ?: v.latitude
@@ -266,8 +357,16 @@ fun HomeScreen(
                 val name = v.name.lowercase()
                 val desc = v.description.lowercase()
                 val fac = v.facilities.joinToString(" ") { it.facility.lowercase() }
+                val query = searchQuery.trim().lowercase()
 
-                // 1. Matches Main Section
+                // 0. Matches Search Query
+                val matchesQuery = if (query.isBlank()) true else {
+                    name.contains(query) || desc.contains(query) || fac.contains(query) ||
+                            v.city.lowercase().contains(query) || v.addressLine1.lowercase().contains(query)
+                }
+                if (!matchesQuery) return@filter false
+
+                // 1. Matches Main Section (if selected)
                 val matchesMainSection = when (selectedMainSection) {
                     MainHomeSection.FUNCTION_HALLS -> {
                         slug.contains("function") || slug.contains("banquet") || slug.contains("marriage") ||
@@ -304,28 +403,32 @@ fun HomeScreen(
                     true
                 } else {
                     when (selectedCategorySlug) {
-                        "marriage_hall" -> slug.contains("marriage") || name.contains("marriage") || name.contains("kalyana") || desc.contains("marriage")
-                        "convention_center" -> slug.contains("convention") || name.contains("convention") || desc.contains("convention")
-                        "banquet_hall" -> slug.contains("banquet") || name.contains("banquet") || name.contains("party") || desc.contains("banquet")
-                        "community_hall" -> slug.contains("community") || name.contains("community") || desc.contains("community")
-                        "govt_hall" -> slug.contains("govt") || name.contains("government") || name.contains("town hall") || desc.contains("government")
-                        "party_lawn" -> slug.contains("lawn") || name.contains("lawn") || desc.contains("lawn") || desc.contains("ground")
-                        "hotel" -> slug.contains("hotel") || name.contains("hotel")
-                        "lodge" -> slug.contains("lodge") || name.contains("lodge")
-                        "guest_house" -> slug.contains("guest") || name.contains("guest house") || desc.contains("guest house")
-                        "hourly_room" -> slug.contains("room") || name.contains("room") || desc.contains("hourly") || desc.contains("day stay")
-                        "resort" -> slug.contains("resort") || name.contains("resort") || desc.contains("resort")
-                        "gents_pg" -> name.contains("gent") || name.contains("men") || desc.contains("gents") || slug.contains("pg")
-                        "ladies_pg" -> name.contains("lad") || name.contains("women") || desc.contains("ladies") || desc.contains("women")
-                        "student_hostel" -> name.contains("hostel") || desc.contains("student") || slug.contains("hostel")
-                        "co_living" -> slug.contains("co_living") || desc.contains("co-living") || name.contains("living")
-                        "single_room" -> desc.contains("single") || desc.contains("sharing") || slug.contains("pg")
-                        "coaching" -> name.contains("coaching") || name.contains("tuition") || desc.contains("coaching") || desc.contains("tuition")
-                        "computer_it" -> name.contains("computer") || name.contains("code") || name.contains("stem") || desc.contains("python") || desc.contains("coding")
-                        "dance_academy" -> name.contains("dance") || desc.contains("dance") || slug.contains("dance")
-                        "music_class" -> name.contains("music") || desc.contains("music") || name.contains("symphony") || slug.contains("music")
-                        "sports_academy" -> name.contains("sports") || name.contains("academy") || name.contains("badminton") || name.contains("turf")
-                        else -> slug.contains(selectedCategorySlug) || name.contains(selectedCategorySlug)
+                        "marriage_hall" -> slug.contains("marriage") || slug == "marriage_hall" || name.contains("marriage") || name.contains("kalyana") || desc.contains("marriage")
+                        "convention_center" -> slug.contains("convention") || slug == "convention_center" || name.contains("convention") || desc.contains("convention")
+                        "banquet_hall" -> slug.contains("banquet") || slug == "banquet_hall" || name.contains("banquet") || name.contains("party") || desc.contains("banquet")
+                        "community_hall" -> slug.contains("community") || slug == "community_hall" || name.contains("community") || desc.contains("community")
+                        "govt_hall" -> slug.contains("govt") || slug == "govt_hall" || name.contains("government") || name.contains("town hall") || desc.contains("government")
+                        "party_lawn" -> slug.contains("lawn") || slug == "party_lawn" || name.contains("lawn") || desc.contains("lawn") || desc.contains("ground")
+                        "hotel", "hotel_stay" -> slug.contains("hotel") || slug == "hotel_stay" || name.contains("hotel") || v.hotelDetails != null
+                        "lodge" -> slug.contains("lodge") || slug == "lodge" || name.contains("lodge")
+                        "guest_house" -> slug.contains("guest") || slug == "guest_house" || name.contains("guest house") || desc.contains("guest house")
+                        "hourly_room" -> slug.contains("room") || slug == "hourly_room" || name.contains("room") || desc.contains("hourly") || desc.contains("day stay")
+                        "resort" -> slug.contains("resort") || slug == "resort" || name.contains("resort") || desc.contains("resort")
+                        "gents_pg" -> slug.contains("gents") || slug == "gents_pg" || name.contains("gent") || name.contains("men") || desc.contains("gents")
+                        "ladies_pg" -> slug.contains("ladies") || slug == "ladies_pg" || name.contains("lad") || name.contains("women") || desc.contains("ladies") || desc.contains("women")
+                        "student_hostel" -> slug.contains("student") || slug == "student_hostel" || name.contains("hostel") || desc.contains("student")
+                        "co_living" -> slug.contains("co_living") || slug == "co_living" || desc.contains("co-living") || name.contains("living")
+                        "single_room" -> slug.contains("single") || slug == "single_room" || desc.contains("single") || desc.contains("sharing")
+                        "coaching" -> slug.contains("coaching") || slug == "coaching" || name.contains("coaching") || name.contains("tuition") || desc.contains("coaching") || desc.contains("tuition")
+                        "computer_it" -> slug.contains("computer") || slug == "computer_it" || name.contains("computer") || name.contains("code") || name.contains("stem") || desc.contains("python") || desc.contains("coding")
+                        "dance_academy" -> slug.contains("dance") || slug == "dance_academy" || name.contains("dance") || desc.contains("dance")
+                        "music_class" -> slug.contains("music") || slug == "music_class" || name.contains("music") || desc.contains("music") || name.contains("symphony")
+                        "sports_academy" -> slug.contains("sports") || slug == "sports_academy" || name.contains("sports") || name.contains("academy") || name.contains("badminton") || name.contains("turf")
+                        "other_hall" -> slug.contains("other_hall") || slug.contains("other") || name.contains("amphitheatre") || name.contains("expo") || name.contains("ground") || desc.contains("open-air") || desc.contains("exhibition") || (!slug.contains("marriage") && !slug.contains("convention") && !slug.contains("banquet"))
+                        "other_stay" -> slug.contains("other_stay") || slug.contains("other") || name.contains("glamping") || name.contains("farmhouse") || name.contains("cottage") || desc.contains("glamping") || desc.contains("farmhouse") || desc.contains("chalet")
+                        "other_pg" -> slug.contains("other_pg") || slug.contains("other") || name.contains("nomad") || name.contains("cohousing") || name.contains("loft") || desc.contains("cohousing") || desc.contains("loft")
+                        "other_class" -> slug.contains("other_class") || slug.contains("other") || name.contains("pottery") || name.contains("yoga") || name.contains("art") || desc.contains("pottery") || desc.contains("mindfulness")
+                        else -> slug.contains(selectedCategorySlug) || name.contains(selectedCategorySlug) || desc.contains(selectedCategorySlug)
                     }
                 }
 
@@ -359,23 +462,89 @@ fun HomeScreen(
                 matchesCategory && matchesAmenities && matchesPrice && matchesRating
             }
 
-            list.sortedWith(
-                compareBy<Venue> { v ->
-                    val isExactArea = userLocationHierarchy.areaId != null && v.locationHierarchy?.areaId == userLocationHierarchy.areaId
-                    val isSameCity = v.locationHierarchy?.cityTownId == userLocationHierarchy.cityTownId || v.city.equals(userLocationHierarchy.cityTownName, ignoreCase = true)
-                    val isSameDistrict = v.locationHierarchy?.districtId == userLocationHierarchy.districtId
-                    val isSameState = v.locationHierarchy?.stateId == userLocationHierarchy.stateId
-
-                    when {
-                        isExactArea -> 0
-                        isSameCity -> 1
-                        isSameDistrict -> 2
-                        isSameState -> 3
-                        else -> 4
-                    }
-                }.thenBy { it.distanceKm }
-            )
+            list
         }
+    }
+
+    // Sorted Venues based on user selected sorting
+    val sortedVenues = remember(filteredVenues, selectedSortOption, userLocationHierarchy) {
+        when (selectedSortOption) {
+            HomeScreenSortOption.DISTANCE -> {
+                filteredVenues.sortedWith(
+                    compareBy<Venue> { v ->
+                        val isExactArea = userLocationHierarchy.areaId != null && v.locationHierarchy?.areaId == userLocationHierarchy.areaId
+                        val isSameCity = v.locationHierarchy?.cityTownId == userLocationHierarchy.cityTownId || v.city.equals(userLocationHierarchy.cityTownName, ignoreCase = true)
+                        val isSameDistrict = v.locationHierarchy?.districtId == userLocationHierarchy.districtId
+                        val isSameState = v.locationHierarchy?.stateId == userLocationHierarchy.stateId
+
+                        when {
+                            isExactArea -> 0
+                            isSameCity -> 1
+                            isSameDistrict -> 2
+                            isSameState -> 3
+                            else -> 4
+                        }
+                    }.thenBy { it.distanceKm }
+                )
+            }
+            HomeScreenSortOption.RECOMMENDED -> {
+                filteredVenues.sortedWith(
+                    compareByDescending<Venue> { it.avgRating * (it.ratingCount + 1) }.thenBy { it.distanceKm }
+                )
+            }
+            HomeScreenSortOption.PRICE_LOW -> filteredVenues.sortedBy { it.pricingBaseAmount }
+            HomeScreenSortOption.PRICE_HIGH -> filteredVenues.sortedByDescending { it.pricingBaseAmount }
+            HomeScreenSortOption.RATING -> filteredVenues.sortedByDescending { it.avgRating }
+        }
+    }
+
+    // Seamless Recommendations to Eliminate Dead Space
+    val remainingOtherStays = remember(sortedVenues, venues, selectedMainSection) {
+        val currentIds = sortedVenues.map { it.id }.toSet()
+        venues.filter { v ->
+            !currentIds.contains(v.id) && (
+                selectedMainSection == null ||
+                when (selectedMainSection) {
+                    MainHomeSection.LODGE_ROOMS -> v.hotelDetails != null || v.category?.slug in listOf("hotel", "hotel_stay", "lodge", "guest_house", "hourly_room", "resort", "other_stay")
+                    MainHomeSection.FUNCTION_HALLS -> v.capacity >= 100 || v.category?.slug in listOf("marriage_hall", "convention_center", "banquet_hall", "party_lawn", "community_hall")
+                    MainHomeSection.PG_HOSTELS -> v.pgDetails != null || v.category?.slug in listOf("gents_pg", "ladies_pg", "student_hostel", "co_living", "single_room")
+                    MainHomeSection.INSTITUTES_CLASSES -> v.category?.slug in listOf("coaching", "computer_it", "dance_academy", "music_class", "sports_academy")
+                    else -> true
+                }
+            )
+        }.take(4)
+    }
+
+    if (showDatePickerDialog) {
+        SimpleQuickDateDialog(
+            title = if (datePickerTarget == "checkIn") "Select Start / Check-in Date" else "Select Check-out Date",
+            currentDate = if (datePickerTarget == "checkIn") checkInDate else (checkOutDate ?: "Add Date"),
+            onDismiss = { showDatePickerDialog = false },
+            onDateSelected = { picked ->
+                if (datePickerTarget == "checkIn") {
+                    checkInDate = picked
+                } else {
+                    checkOutDate = picked
+                }
+                showDatePickerDialog = false
+            }
+        )
+    }
+
+    if (showGuestPickerDialog) {
+        GuestAndRoomPickerDialog(
+            adults = guestCount,
+            children = childrenCount,
+            rooms = roomCount,
+            categoryType = categoryType,
+            onDismiss = { showGuestPickerDialog = false },
+            onApply = { a, c, r ->
+                guestCount = a
+                childrenCount = c
+                roomCount = r
+                showGuestPickerDialog = false
+            }
+        )
     }
 
     if (showLocationDialog) {
@@ -400,6 +569,26 @@ fun HomeScreen(
     if (showLanguageDialog) {
         LanguageSelectorDialog(
             onDismiss = { showLanguageDialog = false }
+        )
+    }
+
+    if (showAddCustomCategoryDialog) {
+        AddCustomCategoryDialog(
+            initialSectionId = customCategoryTargetSection,
+            onDismiss = { showAddCustomCategoryDialog = false },
+            onCategoryCreated = { newCategory ->
+                if (selectedMainSection != null) {
+                    selectedCategorySlug = newCategory.slug
+                } else {
+                    val matchingSection = availableSections.find { it.id == newCategory.parentSection }
+                    if (matchingSection != null) {
+                        selectedMainSection = matchingSection
+                        selectedCategorySlug = newCategory.slug
+                    } else {
+                        selectedCategorySlug = newCategory.slug
+                    }
+                }
+            }
         )
     }
 
@@ -432,12 +621,42 @@ fun HomeScreen(
     ResponsiveLayout(
         modifier = Modifier.testTag("home_responsive_container")
     ) { responsiveInfo ->
-        LazyColumn(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    isRefreshing = true
+                    try {
+                        // 1. Reset horizontal category state
+                        selectedCategorySlug = "all"
+                        selectedAmenityFilters = emptySet()
+                        filterMinPrice = 0f
+                        filterMaxPrice = 500000f
+                        filterMinRating = 0f
+                        searchQuery = ""
+                        try {
+                            subcategoryRowState.scrollToItem(0)
+                        } catch (_: Exception) {}
+
+                        // 2. Fetch fresh data & availability from repository & cloud Firestore
+                        BookMySpaceRepository.refreshAllData()
+                        delay(650L)
+                    } catch (_: Exception) {
+                    } finally {
+                        isRefreshing = false
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
-                .testTag("home_screen"),
-            contentPadding = PaddingValues(bottom = 32.dp)
+                .testTag("home_pull_to_refresh")
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("home_screen"),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
             // =====================================================================
             // TOP APP BAR (Shared across First Screen & Section Views)
             // =====================================================================
@@ -582,362 +801,231 @@ fun HomeScreen(
                             }
                         }
                     }
+
+                    // Network Sync Status Banner (Active sync, error, or retry alert)
+                    NetworkSyncStatusBanner(
+                        syncState = syncState,
+                        onRetry = {
+                            coroutineScope.launch {
+                                NetworkRetryManager.triggerRetry()
+                            }
+                        },
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
 
             // =====================================================================
-            // 🌟 FIRST SCREEN: EXACTLY 4 MAIN SECTIONS ONLY (RESPONSIVE GRID)
+            // 🌟 FIRST SCREEN: 4 MAIN SECTIONS + ENGAGING WIDGETS
             // =====================================================================
             if (selectedMainSection == null) {
-                if (isSimulatingLoading) {
-                    item {
-                        EyeCatchingFullHomeSkeleton(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                        )
-                    }
-                } else {
-                    // 1. Live Activity Pulse Ticker (Social Proof Marquee)
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
+                // 1. Location Bar
+                item {
+                    LocationHierarchyHeaderBar(
+                        currentLocation = userLocationHierarchy,
+                        selectedRadius = userLocationRadius,
+                        onClick = { showLocationDialog = true },
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 2. Voice Booking Banner
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    EasyVoiceBookingBanner(
+                        onClick = { showEasyVoiceBookingDialog = true },
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 3. Live Activity Pulse Ticker
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LiveActivityPulseTicker(
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 4. Hot Deals Carousel Widget
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HotDealsCarouselWidget(
+                        onSelectDeal = { deal ->
+                            val matchingSection = availableSections.find { it.id == deal.targetSection }
+                            if (matchingSection != null) {
+                                selectedMainSection = matchingSection
+                                selectedCategorySlug = "all"
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 5. Smart Space Radar
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SmartSpaceRadarWidget(
+                        location = userLocationHierarchy,
+                        availableSpacesCount = venues.size,
+                        onQuickSearchCategory = { catSlug ->
+                            val matchingSection = availableSections.find { s ->
+                                s.categoryOptions.any { it.id == catSlug }
+                            }
+                            if (matchingSection != null) {
+                                selectedMainSection = matchingSection
+                                selectedCategorySlug = catSlug
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 6. Section Header & Slow Continuous Right-to-Left Sections Marquee
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Column(modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            LiveActivityPulseTicker()
+                            Column {
+                                Text(
+                                    text = "Available Sections & Categories",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    letterSpacing = (-0.3).sp
+                                )
+                                Text(
+                                    text = "Explore verified spaces or easily add any custom category",
+                                    fontSize = 12.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // 2. 🔥 Spotlight Hot Deals & Flash Offers Carousel
-                    item {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                        ) {
-                            HotDealsCarouselWidget(
-                                onSelectDeal = { deal ->
-                                    val target = when (deal.targetSection) {
-                                        "function_halls" -> MainHomeSection.FUNCTION_HALLS
-                                        "lodge_rooms" -> MainHomeSection.LODGE_ROOMS
-                                        "pg_hostels" -> MainHomeSection.PG_HOSTELS
-                                        "institutes_classes" -> MainHomeSection.INSTITUTES_CLASSES
-                                        else -> null
-                                    }
-                                    if (target != null) {
-                                        selectedMainSection = target
+                    // Slow smooth right-to-left scrolling available sections marquee
+                    AvailableSectionsSlowMarqueeStrip(
+                        onSelectSection = { sectionId ->
+                            if (sectionId == "institutes_classes" || sectionId == "institutes") {
+                                onNavigateToInstitutes()
+                            } else {
+                                val matchingSection = availableSections.find { it.id == sectionId }
+                                if (matchingSection != null) {
+                                    if (matchingSection == MainHomeSection.INSTITUTES_CLASSES) {
+                                        onNavigateToInstitutes()
+                                    } else {
+                                        selectedMainSection = matchingSection
                                         selectedCategorySlug = "all"
                                     }
                                 }
-                            )
+                            }
+                        },
+                        onAddOtherCategory = {
+                            customCategoryTargetSection = "general"
+                            showAddCustomCategoryDialog = true
                         }
-                    }
+                    )
+                }
 
-                    // 3. 🎯 Smart Space Radar & 1-Tap Quick Category Launcher
+                // 7. 4 Main Section Big Hero Cards
+                if (isSimulatingLoading) {
                     item {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                        ) {
-                            SmartSpaceRadarWidget(
-                                location = userLocationHierarchy,
-                                availableSpacesCount = venues.size,
-                                onQuickSearchCategory = { catSlug ->
-                                    val target = when {
-                                        catSlug.contains("marriage") || catSlug.contains("lawn") -> MainHomeSection.FUNCTION_HALLS
-                                        catSlug.contains("hotel") || catSlug.contains("room") -> MainHomeSection.LODGE_ROOMS
-                                        catSlug.contains("pg") || catSlug.contains("hostel") -> MainHomeSection.PG_HOSTELS
-                                        catSlug.contains("dance") || catSlug.contains("academy") -> MainHomeSection.INSTITUTES_CLASSES
-                                        else -> MainHomeSection.FUNCTION_HALLS
-                                    }
-                                    selectedMainSection = target
-                                    selectedCategorySlug = catSlug
-                                }
-                            )
-                        }
+                        EyeCatchingCategoryChipsSkeleton(
+                            modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                        )
                     }
-
-                    // 4. 🎁 Daily Lucky Reward / Discount Scratch Card
-                    item {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                        ) {
-                            DailyLuckyRewardWidget()
-                        }
-                    }
-
-                    // 5. 🌦️ Context-Aware Weather & Space Booking Insights
-                    item {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                        ) {
-                            SmartWeatherSpaceInsightsWidget(location = userLocationHierarchy)
-                        }
-                    }
-
-                    // 6. Section Header
-                    item {
-                        Spacer(modifier = Modifier.height(18.dp))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                        ) {
-                            Text(
-                                text = "Explore Spaces & Venues",
-                                fontSize = if (responsiveInfo.isTabletOrWide) 28.sp else 23.sp,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                letterSpacing = (-0.5).sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Select what you are looking for in ${userLocationHierarchy.shortLabel}:",
-                                fontSize = if (responsiveInfo.isTabletOrWide) 15.sp else 13.5.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 20.sp
-                            )
-                            Spacer(modifier = Modifier.height(14.dp))
-                        }
-                    }
-
+                } else {
                     responsiveGridItems(
                         items = availableSections,
                         columns = responsiveInfo.categoryGridColumns,
                         key = { it.id },
                         horizontalSpacing = responsiveInfo.gridSpacing,
-                        verticalSpacing = responsiveInfo.gridSpacing,
+                        verticalSpacing = 12.dp,
                         contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
                     ) { section, _ ->
                         MainSectionBigHeroCard(
                             section = section,
                             onClick = {
-                                selectedMainSection = section
-                                selectedCategorySlug = "all"
+                                if (section == MainHomeSection.INSTITUTES_CLASSES) {
+                                    onNavigateToInstitutes()
+                                } else {
+                                    selectedMainSection = section
+                                    selectedCategorySlug = "all"
+                                }
                             },
                             isTabletOrWide = responsiveInfo.isTabletOrWide,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
+                }
 
-                    // Subtle Location info footer at the bottom of first screen
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Surface(
-                            onClick = { showLocationDialog = true },
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = responsiveInfo.horizontalPadding)
-                                .testTag("home_first_screen_location_chip")
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("📍", fontSize = 18.sp)
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "Current City: ${userLocationHierarchy.shortLabel}",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = "Tap to change search area (${userLocationRadius.displayName})",
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                // 8. Auto-Moving Category Strip (Silky smooth right-to-left ticker)
+                item {
+                    Spacer(modifier = Modifier.height(18.dp))
+                    SmoothAutoMovingCategoryStrip(
+                        onSelectCategory = { targetSection, categorySlug ->
+                            if (targetSection == "institutes_classes" || targetSection == "institutes") {
+                                onNavigateToInstitutes()
+                            } else {
+                                val matchingSection = availableSections.find { it.id == targetSection }
+                                if (matchingSection != null) {
+                                    if (matchingSection == MainHomeSection.INSTITUTES_CLASSES) {
+                                        onNavigateToInstitutes()
+                                    } else {
+                                        selectedMainSection = matchingSection
+                                        selectedCategorySlug = categorySlug
                                     }
+                                } else {
+                                    selectedMainSection = availableSections.firstOrNull()
+                                    selectedCategorySlug = categorySlug
                                 }
-                                Icon(
-                                    imageVector = Icons.Default.EditLocation,
-                                    contentDescription = "Change Location",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
                             }
+                        },
+                        onAddOtherCategory = {
+                            customCategoryTargetSection = "general"
+                            showAddCustomCategoryDialog = true
                         }
-                    }
+                    )
+                }
+
+                // 9. Daily Lucky Reward Widget
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    DailyLuckyRewardWidget(
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 10. Smart Weather Insights Widget
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    SmartWeatherSpaceInsightsWidget(
+                        location = userLocationHierarchy,
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
                 }
             } else {
-            // =====================================================================
-            // 🚀 SECTION DRILL-DOWN: Category Index -> Location -> AI Search -> Results
-            // =====================================================================
-            val activeSection = selectedMainSection!!
-
-            // Section Header Bar with Back button
-            item {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                selectedMainSection = null
-                                selectedCategorySlug = "all"
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            modifier = Modifier
-                                .defaultMinSize(minHeight = 48.dp)
-                                .testTag("btn_back_to_main_sections")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("All Spaces", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(activeSection.emoji, fontSize = 16.sp)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = activeSection.title,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = "${activeSection.emoji} ${activeSection.title}",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = activeSection.subtitle,
-                        fontSize = 12.5.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Location Header Bar
-                    LocationHierarchyHeaderBar(
-                        currentLocation = userLocationHierarchy,
-                        selectedRadius = userLocationRadius,
-                        onClick = { showLocationDialog = true }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-
-            // 1. Relevant Index / Sub-Categories (Horizontal row of cards)
-            item {
-                Column(modifier = Modifier.padding(top = 4.dp)) {
-                    Text(
-                        text = "Choose Category",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 20.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.testTag("section_category_options_row")
-                    ) {
-                        items(activeSection.categoryOptions, key = { it.id }) { cat ->
-                            val isSelected = selectedCategorySlug == cat.id
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { selectedCategorySlug = cat.id },
-                                label = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(vertical = 6.dp)
-                                    ) {
-                                        Text(cat.emoji, fontSize = 16.sp)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = cat.label,
-                                            fontSize = 13.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                        )
-                                    }
-                                },
-                                leadingIcon = if (isSelected) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                } else null,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .minimumInteractiveComponentSize()
-                                    .testTag("section_category_chip_${cat.id}")
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 2. AI Search & Voice Booking & 1-Tap Booking Inside Section
-            item {
-                Spacer(modifier = Modifier.height(14.dp))
-                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    // Search Bar Box
+                // =====================================================================
+                // 🌟 SECTION VIEW: HIGH-CONVERTING DISCOVERY & BOOKING UI
+                // =====================================================================
+                // 1. Section Title & Quick Navigation Header
+                item {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigateToSearch(if (selectedCategorySlug == "all") null else selectedCategorySlug) }
-                            .testTag("home_search_bar_box"),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                        shadowElevation = 0.5.dp
+                            .padding(horizontal = responsiveInfo.horizontalPadding, vertical = 6.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -945,133 +1033,266 @@ fun HomeScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "Search ${activeSection.title} in ${userLocationHierarchy.shortLabel}...",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 13.5.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
+                                IconButton(
+                                    onClick = {
+                                        selectedMainSection = null
+                                        selectedCategorySlug = "all"
+                                        searchQuery = ""
+                                    },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .testTag("section_back_button")
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Default.Tune,
-                                        contentDescription = "Filter",
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back to all sections",
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(selectedMainSection?.emoji ?: "🏨", fontSize = 18.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = selectedMainSection?.title ?: "Hotels & Stays",
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 17.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    Text(
+                                        text = selectedMainSection?.subtitle ?: "Verified stays with instant slot confirmation",
+                                        fontSize = 11.5.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
+
+                            FilledTonalButton(
+                                onClick = {
+                                    selectedMainSection = null
+                                    selectedCategorySlug = "all"
+                                    searchQuery = ""
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 36.dp)
+                            ) {
+                                Text("All Categories", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 🎙️ Bol-ke-Book Voice-Search Banner
-                    EasyVoiceBookingBanner(
-                        onClick = { showEasyVoiceBookingDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // ⚡ Quick Book Preferences Card (1-Tap Mode)
-                    QuickBookCard(
-                        onNavigateToVenue = onNavigateToVenue,
-                        onAiHelpClick = { showEasyVoiceBookingDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
-            }
 
-            // 3. Amenity Filter Chips Row & Filter Action
-            item {
-                Spacer(modifier = Modifier.height(14.dp))
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
+                // 2. Compact Adaptive Search Header (Automatically adapts to Hotels / Function Halls / PGs / Classes)
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val sectionCategoryType = when (selectedMainSection?.id) {
+                        "hotels" -> "HOTEL"
+                        "venues" -> "VENUE"
+                        "pg" -> "PG"
+                        "institutes" -> "CLASS"
+                        else -> "HOTEL"
+                    }
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = responsiveInfo.horizontalPadding)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Filters & Amenities",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
+                        CompactAdaptiveSearchHeader(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            categoryType = sectionCategoryType,
+                            locationText = userLocationHierarchy.shortLabel,
+                            onLocationClick = { showLocationDialog = true },
+                            checkInDate = checkInDate,
+                            checkOutDate = checkOutDate,
+                            onPickCheckInDate = {
+                                datePickerTarget = "checkIn"
+                                showDatePickerDialog = true
+                            },
+                            onPickCheckOutDate = {
+                                datePickerTarget = "checkOut"
+                                showDatePickerDialog = true
+                            },
+                            guestInfoText = guestInfoText,
+                            onPickGuestInfo = { showGuestPickerDialog = true },
+                            onSearchClick = { /* Instant search query is reactive */ },
+                            onVoiceClick = { showEasyVoiceBookingDialog = true }
+                        )
+                    }
+                }
+
+                // 3. Category Strip (Horizontal selector pills for instant switching with scroll-snap and tactile pulse/pop)
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        state = subcategoryRowState,
+                        flingBehavior = subcategorySnapFlingBehavior,
+                        contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("section_subcategories_row")
+                    ) {
+                        // "All" pill for this section
+                        item {
+                            PulsePopCategoryPill(
+                                selected = selectedCategorySlug == "all",
+                                onClick = { selectedCategorySlug = "all" },
+                                emoji = "✨",
+                                label = "All ${selectedMainSection?.title ?: "Spaces"}",
+                                testTag = "category_pill_all"
                             )
-                            if (selectedAmenityFilters.isNotEmpty()) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = "${selectedAmenityFilters.size}",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (selectedAmenityFilters.isNotEmpty() || filterMinRating > 0f) {
-                                TextButton(
-                                    onClick = {
-                                        selectedAmenityFilters = emptySet()
-                                        filterMinRating = 0f
-                                        filterMinPrice = 0f
-                                        filterMaxPrice = 500000f
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 8.dp)
-                                ) {
-                                    Text("Reset", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
+                        // Sub-categories for this section (filtered by independent modular ON/OFF status)
+                        if (selectedMainSection != null && selectedMainSection!!.categoryOptions.isNotEmpty()) {
+                            val activeCategoryOptions = selectedMainSection!!.categoryOptions.filter { cat ->
+                                cat.id == "all" || BookMySpaceRepository.isCategoryEnabled(cat.id)
                             }
-
-                            FilledTonalIconButton(
-                                onClick = { showVenueFilterSheet = true },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .testTag("home_open_filter_bottom_sheet_btn")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterList,
-                                    contentDescription = "Open Filters",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
+                            items(activeCategoryOptions, key = { it.id }) { cat ->
+                                val isSelected = selectedCategorySlug == cat.id
+                                PulsePopCategoryPill(
+                                    selected = isSelected,
+                                    onClick = { selectedCategorySlug = cat.id },
+                                    emoji = cat.emoji,
+                                    label = cat.label,
+                                    testTag = "category_pill_${cat.id}"
                                 )
                             }
                         }
+
+                        // Dynamically added custom categories for this section
+                        val customCategories = BookMySpaceRepository.getCustomCategoriesForSection(selectedMainSection?.id ?: "")
+                        items(customCategories, key = { "custom_${it.id}" }) { customCat ->
+                            val isSelected = selectedCategorySlug == customCat.slug
+                            PulsePopCategoryPill(
+                                selected = isSelected,
+                                onClick = { selectedCategorySlug = customCat.slug },
+                                emoji = customCat.customEmoji ?: customCat.icon,
+                                label = customCat.name,
+                                badge = "NEW",
+                                testTag = "category_pill_custom_${customCat.id}"
+                            )
+                        }
+
+                        // "+ Other Category / Add Category" chip for adding custom category easily
+                        item {
+                            PulsePopCategoryPill(
+                                selected = false,
+                                onClick = {
+                                    customCategoryTargetSection = selectedMainSection?.id ?: "general"
+                                    showAddCustomCategoryDialog = true
+                                },
+                                iconVector = Icons.Default.Add,
+                                label = "+ Other Category",
+                                isSpecialAddPill = true,
+                                testTag = "section_add_other_category_chip"
+                            )
+                        }
+
+                        // Other main sections for quick 1-tap switching
+                        items(availableSections.filter { it.id != selectedMainSection?.id }, key = { "other_${it.id}" }) { otherSec ->
+                            PulsePopCategoryPill(
+                                selected = false,
+                                onClick = {
+                                    selectedMainSection = otherSec
+                                    selectedCategorySlug = "all"
+                                },
+                                emoji = otherSec.emoji,
+                                label = otherSec.title,
+                                testTag = "category_pill_switch_${otherSec.id}"
+                            )
+                        }
                     }
+                }
 
+                // 4. Quick Filter Bar (Active Filters Count, Price Cap, Rating 4.0+, Popular Amenities)
+                item {
                     Spacer(modifier = Modifier.height(8.dp))
-
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.testTag("home_amenity_filter_chips_row")
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("section_quick_filter_bar")
                     ) {
-                        items(homeAmenityFilterOptions, key = { it.id }) { option ->
+                        // Filters Sheet Trigger Chip with Badge
+                        item {
+                            val activeFilterCount = selectedAmenityFilters.size + (if (filterMinRating > 0f) 1 else 0) + (if (filterMaxPrice < 500000f) 1 else 0)
+                            FilterChip(
+                                selected = activeFilterCount > 0,
+                                onClick = { showVenueFilterSheet = true },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Tune,
+                                            contentDescription = "Filters",
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = if (activeFilterCount > 0) "Filters ($activeFilterCount)" else "Filters",
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 36.dp)
+                            )
+                        }
+
+                        // Price Filter Chip (e.g. ≤ ₹50,000)
+                        item {
+                            val isPriceFiltered = filterMaxPrice < 500000f
+                            FilterChip(
+                                selected = isPriceFiltered,
+                                onClick = {
+                                    filterMaxPrice = if (isPriceFiltered) 500000f else 50000f
+                                },
+                                label = {
+                                    Text(
+                                        text = if (isPriceFiltered) "≤ ₹${filterMaxPrice.toInt()}" else "💰 ≤ ₹50,000",
+                                        fontSize = 12.5.sp
+                                    )
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 36.dp)
+                            )
+                        }
+
+                        // 4.0+ Rating Chip
+                        item {
+                            val isRating4 = filterMinRating >= 4.0f
+                            FilterChip(
+                                selected = isRating4,
+                                onClick = {
+                                    filterMinRating = if (isRating4) 0f else 4.0f
+                                },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("⭐", fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("4.0+", fontSize = 12.5.sp)
+                                    }
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 36.dp)
+                            )
+                        }
+
+                        // Popular Amenities Chips (Wi-Fi, AC, Parking, Swimming Pool, Power Backup)
+                        items(homeAmenityFilterOptions.take(4), key = { it.id }) { option ->
                             val isSelected = selectedAmenityFilters.contains(option.id)
                             FilterChip(
                                 selected = isSelected,
@@ -1084,227 +1305,452 @@ fun HomeScreen(
                                 },
                                 label = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(option.iconEmoji, fontSize = 13.sp)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(option.label, fontSize = 12.sp)
+                                        Text(option.iconEmoji, fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(option.label, fontSize = 12.5.sp)
                                     }
                                 },
-                                leadingIcon = if (isSelected) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                } else null,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier
-                                    .defaultMinSize(minHeight = 44.dp)
-                                    .minimumInteractiveComponentSize()
-                                    .testTag("amenity_filter_chip_${option.id}")
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 36.dp)
                             )
                         }
                     }
                 }
-            }
 
-            // 4. Institutes / Classes Module Special Section
-            if (activeSection == MainHomeSection.INSTITUTES_CLASSES && institutes.isNotEmpty()) {
+                // 5. Interactive Sort Bar & Results Count
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = responsiveInfo.horizontalPadding),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Featured Institutes & Academies",
-                            fontSize = 15.sp,
+                            text = "${selectedMainSection?.title ?: "Spaces"} (${sortedVenues.size})",
+                            fontSize = 14.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
-                        TextButton(
-                            onClick = onNavigateToInstitutes,
-                            contentPadding = PaddingValues(horizontal = 6.dp)
-                        ) {
-                            Text("View All (${institutes.size}) →", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
 
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(institutes, key = { it.id }) { inst ->
+                        Box {
                             Surface(
-                                onClick = onNavigateToInstitutes,
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                                shadowElevation = 1.dp,
-                                modifier = Modifier.width(240.dp)
+                                onClick = { showSortDropdown = true },
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                                modifier = Modifier.testTag("home_sort_dropdown_btn")
                             ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    AsyncImage(
-                                        model = inst.logoUrl.ifBlank { inst.imageUrls.firstOrNull() },
-                                        contentDescription = inst.name,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(110.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(selectedSortOption.icon, fontSize = 12.sp)
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = inst.name,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.5.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        text = selectedSortOption.displayName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Text(
-                                        text = inst.address + ", " + inst.city,
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Sort options",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${inst.facultyMembers.size} Certified Faculty",
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        Text(
-                                            text = "Explore →",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = showSortDropdown,
+                                onDismissRequest = { showSortDropdown = false }
+                            ) {
+                                HomeScreenSortOption.values().forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(option.icon, fontSize = 14.sp)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = option.displayName,
+                                                    fontWeight = if (selectedSortOption == option) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedSortOption = option
+                                            showSortDropdown = false
+                                        }
+                                    )
                                 }
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-            }
 
-            // 5. Results List: Venues / Spaces Matching Current Section & Filters
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Available Spaces (${filteredVenues.size})",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = "Sorted by Distance",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            if (isSimulatingLoading) {
-                items(3) {
-                    EyeCatchingVenueCardSkeleton(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = responsiveInfo.horizontalPadding, vertical = 6.dp)
-                    )
-                }
-            } else if (filteredVenues.isEmpty()) {
-                item {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("🔍", fontSize = 32.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "No spaces found with current filters",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Try resetting filters or expanding search radius from ${userLocationRadius.displayName}.",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = {
+                // Venue Results in Selected Section
+                if (isSimulatingLoading) {
+                    items(3) {
+                        EyeCatchingVenueCardSkeleton(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = responsiveInfo.horizontalPadding, vertical = 6.dp)
+                        )
+                    }
+                } else if (sortedVenues.isEmpty()) {
+                    item {
+                        if (syncState is NetworkSyncState.Error) {
+                            NetworkErrorRetryCard(
+                                syncState = syncState as NetworkSyncState.Error,
+                                onRetry = {
+                                    coroutineScope.launch {
+                                        NetworkRetryManager.triggerRetry()
+                                    }
+                                },
+                                onUseOfflineMode = {
+                                    searchQuery = ""
                                     selectedCategorySlug = "all"
                                     selectedAmenityFilters = emptySet()
                                     filterMinRating = 0f
                                     filterMinPrice = 0f
                                     filterMaxPrice = 500000f
+                                    NetworkRetryManager.setSyncState(NetworkSyncState.Idle)
                                 },
-                                shape = RoundedCornerShape(12.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = responsiveInfo.horizontalPadding, vertical = 16.dp)
+                            )
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = responsiveInfo.horizontalPadding, vertical = 16.dp)
                             ) {
-                                Text("Show All in ${activeSection.title}")
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("🔍", fontSize = 32.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "No spaces found matching your search",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Try clearing search filters or changing the sub-category.",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = {
+                                                searchQuery = ""
+                                                selectedCategorySlug = "all"
+                                                selectedAmenityFilters = emptySet()
+                                                filterMinRating = 0f
+                                                filterMinPrice = 0f
+                                                filterMaxPrice = 500000f
+                                            },
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text("Reset Filters")
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    BookMySpaceRepository.refreshAllData()
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Refresh Data")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                responsiveGridItems(
-                    items = filteredVenues,
-                    columns = responsiveInfo.resultsGridColumns,
-                    key = { it.id },
-                    horizontalSpacing = responsiveInfo.gridSpacing,
-                    verticalSpacing = 12.dp,
-                    contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
-                ) { venue, _ ->
-                    SectionVenueResultCard(
-                        venue = venue,
-                        onClick = { onNavigateToVenue(venue.id) },
-                        onCallClick = {
-                            val phone = venue.contactPhone.ifBlank { "+919876543210" }
-                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-                            try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
-                        },
-                        onWhatsAppClick = {
-                            val phone = venue.contactPhone.filter { it.isDigit() }.ifBlank { "919876543210" }
-                            val url = "https://wa.me/$phone?text=Hi, I am interested in booking ${venue.name} on BookMySpace."
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                } else {
+                    // Primary results list
+                    responsiveGridItems(
+                        items = sortedVenues,
+                        columns = responsiveInfo.resultsGridColumns,
+                        key = { it.id },
+                        horizontalSpacing = responsiveInfo.gridSpacing,
+                        verticalSpacing = 16.dp,
+                        contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
+                    ) { venue, _ ->
+                        SectionVenueResultCard(
+                            venue = venue,
+                            onClick = { onNavigateToVenue(venue.id) },
+                            onCallClick = {
+                                val phone = venue.contactPhone.ifBlank { "+919876543210" }
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                                try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
+                            },
+                            onWhatsAppClick = {
+                                val phone = venue.contactPhone.filter { it.isDigit() }.ifBlank { "919876543210" }
+                                val url = "https://wa.me/$phone?text=Hi, I want to book ${venue.name} on BookMySpace. Please confirm room availability."
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // 6. Seamless Recommendations to Eliminate Dead Space
+                    if (remainingOtherStays.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = responsiveInfo.horizontalPadding),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🔥", fontSize = 18.sp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "More Recommended ${selectedMainSection?.title ?: "Spaces"}",
+                                            fontSize = 14.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Top-rated verified properties in nearby areas with instant booking",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        responsiveGridItems(
+                            items = remainingOtherStays,
+                            columns = responsiveInfo.resultsGridColumns,
+                            key = { "rec_${it.id}" },
+                            horizontalSpacing = responsiveInfo.gridSpacing,
+                            verticalSpacing = 16.dp,
+                            contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
+                        ) { venue, _ ->
+                            SectionVenueResultCard(
+                                venue = venue,
+                                onClick = { onNavigateToVenue(venue.id) },
+                                onCallClick = {
+                                    val phone = venue.contactPhone.ifBlank { "+919876543210" }
+                                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                                    try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
+                                },
+                                onWhatsAppClick = {
+                                    val phone = venue.contactPhone.filter { it.isDigit() }.ifBlank { "919876543210" }
+                                    val url = "https://wa.me/$phone?text=Hi, I want to book ${venue.name} on BookMySpace. Please confirm room availability."
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    // 7. World-Class Trust & Booking Guarantee Banner (OYO & Booking.com standard)
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                Brush.linearGradient(
+                                    listOf(
+                                        Color(0xFF2E7D32).copy(alpha = 0.5f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                    )
+                                )
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = responsiveInfo.horizontalPadding)
+                        ) {
+                            Column(modifier = Modifier.padding(18.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFF2E7D32).copy(alpha = 0.15f),
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.VerifiedUser,
+                                                contentDescription = null,
+                                                tint = Color(0xFF2E7D32),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Book with 100% Peace of Mind",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Official BookMySpace Assured Guarantee",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("🛡️", fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "100% Verified",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.5.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "Real photos & audit",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("💵", fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Pay at Check-in",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.5.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "Zero advance pressure",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("⚡", fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Instant Pass",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.5.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "Zero paperwork wait",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("📞", fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "24/7 Helpline",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.5.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "Telugu / Hindi / Eng",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // Direct Help Hotline button for uneducated or first-time callers
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("💬", fontSize = 16.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Need help choosing or booking?",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    FilledTonalButton(
+                                        onClick = {
+                                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:18001234567"))
+                                            try { context.startActivity(intent) } catch (e: Exception) { e.printStackTrace() }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Call Support", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(30.dp))
+                    }
                 }
             }
         }
@@ -1433,7 +1879,8 @@ fun MainSectionBigHeroCard(
 }
 
 /**
- * Result Card for the Section Detail list with direct Book, Call, and WhatsApp actions.
+ * World-Class Result Card for Section Detail list following OYO, Booking.com & Airbnb UI/UX.
+ * Provides high-contrast, zero-clutter, accessible 1-tap booking, instant Call & WhatsApp actions.
  */
 @Composable
 fun SectionVenueResultCard(
@@ -1443,174 +1890,260 @@ fun SectionVenueResultCard(
     onWhatsAppClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coverUrl = remember(venue) { VenueImageResolver.resolveCoverImage(venue) }
+    var currentImageIndex by remember(venue.id) { mutableIntStateOf(0) }
+    val images = remember(venue) {
+        if (venue.images.isNotEmpty()) venue.images.map { it.url }
+        else listOf(VenueImageResolver.resolveCoverImage(venue))
+    }
+    val currentImageUrl = images.getOrElse(currentImageIndex) { images.firstOrNull() ?: "" }
+
+    val originalPrice = remember(venue.pricingBaseAmount) {
+        (venue.pricingBaseAmount * 1.8).toInt()
+    }
+    val discountPercent = remember(venue.pricingBaseAmount, originalPrice) {
+        if (originalPrice > 0) {
+            (((originalPrice - venue.pricingBaseAmount) / originalPrice) * 100).toInt().coerceAtLeast(35)
+        } else 40
+    }
 
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = BorderStroke(
+            1.dp,
+            Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    Color.White.copy(alpha = 0.15f)
+                )
+            )
+        ),
         modifier = modifier
             .fillMaxWidth()
             .testTag("section_venue_card_${venue.id}")
     ) {
         Column {
-            // Cover Image Banner with Overlays
+            // 1. High-Quality Photo Gallery with Overlays
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp)
+                    .height(180.dp)
             ) {
                 AsyncImage(
-                    model = coverUrl,
+                    model = currentImageUrl,
                     contentDescription = venue.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Gradient
+                // Scrim Gradient
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Black.copy(alpha = 0.35f),
+                                    Color.Black.copy(alpha = 0.45f),
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.65f)
+                                    Color.Black.copy(alpha = 0.75f)
                                 )
                             )
                         )
                 )
 
-                // Category pill on top left
-                venue.category?.let { cat ->
+                // Top Left: Category & Discount Badge
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    venue.category?.let { cat ->
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = cat.name,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.5.dp)
+                            )
+                        }
+                    }
+
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .align(Alignment.TopStart)
+                        color = Color(0xFFE53935),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text = cat.name,
+                            text = "🔥 $discountPercent% OFF",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp)
                         )
                     }
                 }
 
-                // Rating badge on bottom left
+                // Top Right: Photo Counter & Quick Switcher
+                if (images.size > 1) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(10.dp)
+                            .clickable {
+                                currentImageIndex = (currentImageIndex + 1) % images.size
+                            }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoCamera,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${currentImageIndex + 1}/${images.size}",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // Bottom Left: Rating Badge (Gold Star + Excellent)
                 Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
+                    color = Color.Black.copy(alpha = 0.75f),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
-                        .padding(8.dp)
                         .align(Alignment.BottomStart)
+                        .padding(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFB300),
-                            modifier = Modifier.size(13.dp)
+                            tint = Color(0xFFFFC107),
+                            modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = String.format(java.util.Locale.US, "%.1f", venue.avgRating),
                             color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "(${venue.ratingCount}) • ${if (venue.avgRating >= 4.5) "Excellent" else "Very Good"}",
+                            color = Color(0xFFE0E0E0),
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
-                // Distance Badge on bottom right
+                // Bottom Right: Distance
                 Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
+                    color = Color.Black.copy(alpha = 0.75f),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
-                        .padding(8.dp)
                         .align(Alignment.BottomEnd)
+                        .padding(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.NearMe,
                             contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(11.dp)
+                            tint = Color(0xFF64B5F6),
+                            modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "${String.format(java.util.Locale.US, "%.1f", venue.distanceKm)} km away",
                             color = Color.White,
-                            fontSize = 10.5.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
 
-            // Body Details
+            // 2. Body Details (Dense, Clean, Clear hierarchy)
             Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = venue.name,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
+                // Title + Star class
+                Text(
+                    text = venue.name,
+                    fontSize = 16.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                // Location Subtitle
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "${venue.addressLine1}, ${venue.city}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Room / Stay details highlight
+                venue.hotelDetails?.let { hd ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
                             Text(
-                                text = venue.city.ifBlank { venue.addressLine1 },
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = "🛏️ ${hd.propertyType} • ${hd.roomTypes.firstOrNull() ?: "Deluxe Room"}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "₹${venue.pricingBaseAmount.toInt()}",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "starts from",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
 
-                // Key Facilities pills
+                // Key Facilities pills with universal icons
                 if (venue.facilities.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -1620,63 +2153,122 @@ fun SectionVenueResultCard(
                         venue.facilities.take(3).forEach { fac ->
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                             ) {
                                 Text(
-                                    text = "• ${fac.facility}",
+                                    text = "✓ ${fac.facility}",
                                     fontSize = 10.5.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
+                                    maxLines = 1
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                // Booking.com style Trust & Cancellation Chip
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF2E7D32).copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = "🟢 FREE Cancellation • Pay at Hotel",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Action Buttons: Details, Call, WhatsApp
+                // Price Section + 1-Tap Action Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onClick,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(42.dp)
-                            .testTag("book_space_btn_${venue.id}")
-                    ) {
-                        Text("⚡ Book & Pay", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-
-                    OutlinedIconButton(
-                        onClick = onCallClick,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .size(42.dp)
-                            .testTag("call_space_btn_${venue.id}")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Call Venue",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "₹$originalPrice",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                style = androidx.compose.ui.text.TextStyle(
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "₹${venue.pricingBaseAmount.toInt()}",
+                                fontSize = 21.sp,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Text(
+                            text = "+ ₹0 booking fee / night",
+                            fontSize = 10.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    FilledTonalIconButton(
-                        onClick = onWhatsAppClick,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .size(42.dp)
-                            .testTag("whatsapp_space_btn_${venue.id}")
+                    // Action buttons (Instant Book, Direct Call, Direct WhatsApp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("💬", fontSize = 16.sp)
+                        OutlinedIconButton(
+                            onClick = onCallClick,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.5f)),
+                            modifier = Modifier
+                                .size(44.dp)
+                                .testTag("call_space_btn_${venue.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Call Hotel",
+                                tint = Color(0xFF2E7D32),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        FilledTonalIconButton(
+                            onClick = onWhatsAppClick,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xFF25D366).copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier
+                                .size(44.dp)
+                                .testTag("whatsapp_space_btn_${venue.id}")
+                        ) {
+                            Text("💬", fontSize = 18.sp)
+                        }
+
+                        Button(
+                            onClick = onClick,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                            modifier = Modifier
+                                .height(44.dp)
+                                .testTag("book_space_btn_${venue.id}")
+                        ) {
+                            Text("⚡ BOOK NOW", fontWeight = FontWeight.Black, fontSize = 12.5.sp)
+                        }
                     }
                 }
             }

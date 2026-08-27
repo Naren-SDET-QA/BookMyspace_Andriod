@@ -119,7 +119,7 @@ class PaymentSelfHealingEngine private constructor(private val context: Context)
             while (isActive) {
                 try {
                     val settings = configRepo.adminSettings.value
-                    val interval = (settings.healthCheckIntervalSeconds.coerceAtLeast(5)) * 1000L
+                    val interval = (settings.healthCheckIntervalSeconds.coerceAtLeast(30)) * 1000L
                     delay(interval)
 
                     if (settings.simulatedNetworkDegradation) {
@@ -128,10 +128,6 @@ class PaymentSelfHealingEngine private constructor(private val context: Context)
                     } else {
                         _gatewayHealth.value = GatewayHealthStatus.OPTIMAL
                         _currentLatencyMs.value = 45L + (Math.random() * 30).toLong()
-                    }
-
-                    if (settings.isSelfHealingAutoReconcileEnabled) {
-                        reconcileStuckTransactionsSilently()
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Background monitor tick: ${e.message}")

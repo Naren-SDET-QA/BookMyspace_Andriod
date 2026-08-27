@@ -80,10 +80,9 @@ class PaymentProcessingService private constructor() {
      */
     fun preload(context: Context) {
         try {
-            Checkout.preload(context.applicationContext)
-            Log.d(TAG, "Razorpay checkout preloaded successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error preloading Razorpay: ${e.message}", e)
+            Log.d(TAG, "Razorpay checkout initialized for on-demand launch")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error configuring Razorpay: ${e.message}", e)
         }
     }
 

@@ -40,6 +40,7 @@ import com.bookmyspace.bookmyspace.ui.components.PeakHoursLineChartComponent
 import com.bookmyspace.bookmyspace.ui.components.RatingBadge
 import com.bookmyspace.bookmyspace.ui.components.VoiceReadoutButton
 import com.bookmyspace.bookmyspace.ui.components.VenueImageCarousel
+import com.bookmyspace.bookmyspace.ui.components.VenueRichMediaViewer
 import com.bookmyspace.bookmyspace.ui.components.DynamicListingFieldsDisplay
 import com.bookmyspace.bookmyspace.data.model.ListingTargetCategory
 import com.bookmyspace.bookmyspace.util.PgRentCalculator
@@ -612,12 +613,10 @@ fun VenueDetailsScreen(
                 }
 
                 Box(modifier = heroImageModifier) {
-                    VenueImageCarousel(
+                    VenueRichMediaViewer(
                         venue = venue,
-                        height = 260.dp,
-                        showCaptions = true,
-                        showFullscreenButton = true,
-                        showNavButtons = true
+                        modifier = Modifier.fillMaxWidth(),
+                        onBookSlot = { onBookSlot(venue.id) }
                     )
                 }
             }
