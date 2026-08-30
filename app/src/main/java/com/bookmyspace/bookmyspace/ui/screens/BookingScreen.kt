@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -308,6 +310,7 @@ fun BookingScreen(
 
     // Registration confirmation gate state
     var isRegistrationConfirmed by remember { mutableStateOf(false) }
+    var showRegistrationBottomSheet by remember { mutableStateOf(false) }
     var registrationValidationErrors by remember { mutableStateOf<List<String>>(emptyList()) }
     var isEditingRegistrationAfterConfirm by remember { mutableStateOf(false) }
 
@@ -536,17 +539,11 @@ fun BookingScreen(
                     if (!isRegistrationConfirmed) {
                         Button(
                             onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 val errors = validateRegistrationForm()
                                 registrationValidationErrors = errors
-                                if (errors.isEmpty()) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    isRegistrationConfirmed = true
-                                    isEditingRegistrationAfterConfirm = false
-                                    Toast.makeText(context, "✓ Registration verified for $memberCount member(s)! Payment section unlocked.", Toast.LENGTH_LONG).show()
-                                } else {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    Toast.makeText(context, "Please fill required registration fields below to unlock payment.", Toast.LENGTH_SHORT).show()
-                                }
+                                // Open the registration form modal sheet cleanly
+                                showRegistrationBottomSheet = true
                             },
                             modifier = Modifier
                                 .height(48.dp)
@@ -1092,7 +1089,10 @@ fun BookingScreen(
                                             }
                                         }
                                         TextButton(
-                                            onClick = { isEditingRegistrationAfterConfirm = true },
+                                            onClick = {
+                                                isEditingRegistrationAfterConfirm = true
+                                                showRegistrationBottomSheet = true
+                                            },
                                             modifier = Modifier.testTag("edit_registration_button")
                                         ) {
                                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
@@ -1128,6 +1128,29 @@ fun BookingScreen(
                                 }
                             }
                         } else {
+                            // Quick button to open full registration modal sheet
+                            Button(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    registrationValidationErrors = validateRegistrationForm()
+                                    showRegistrationBottomSheet = true
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("open_registration_sheet_button"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Icon(Icons.Default.AssignmentInd, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open Registration Form Modal 📝", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             // MEMBER COUNT SELECTOR CARD
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
@@ -1956,6 +1979,477 @@ fun BookingScreen(
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        // =========================================================================
+        // FULL REGISTRATION FORM MODAL BOTTOM SHEET
+        // =========================================================================
+        if (showRegistrationBottomSheet) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showRegistrationBottomSheet = false
+                },
+                sheetState = sheetState,
+                dragHandle = { BottomSheetDefaults.DragHandle() },
+                containerColor = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.testTag("booking_registration_bottom_sheet")
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.92f)
+                        .padding(horizontal = 20.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.AssignmentInd, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("Member & Guest Registration", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                Text("Fill required attendee details to unlock payment", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        IconButton(onClick = { showRegistrationBottomSheet = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Fast Profile Autofill Card
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("Fast Profile Autofill", fontWeight = FontWeight.Bold, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                    Text("Populate with verified account data", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
+                                }
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    primaryContactName = userProfile?.fullName ?: user?.fullName ?: "Priya Sharma"
+                                    primaryContactPhone = userProfile?.phone ?: user?.phone ?: "+91 98765 43210"
+                                    primaryContactEmail = userProfile?.email ?: user?.email ?: "priya@example.com"
+                                    govtIdNumber = userProfile?.aadhaarNumber ?: userProfile?.govtIdNumber ?: "9876 5432 1098"
+                                    emergencyContact = userProfile?.emergencyContact ?: "+91 91234 56789"
+                                    regIsKycVerified = true
+                                    registrationValidationErrors = emptyList()
+                                    Toast.makeText(context, "✓ Autofilled from verified profile!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.testTag("sheet_autofill_profile_btn"),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text("⚡ Autofill", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Step 1: Member Count Stepper
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("1. Number of Members / Players *", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                                    Text("Total attendees arriving for this slot", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp))
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            if (memberCount > 1) {
+                                                memberCount -= 1
+                                                adultsCount = memberCount
+                                            }
+                                        },
+                                        enabled = memberCount > 1,
+                                        modifier = Modifier.size(32.dp).testTag("sheet_decrease_member_count_btn")
+                                    ) {
+                                        Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+                                    }
+                                    Text(
+                                        text = memberCount.toString(),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 8.dp).testTag("sheet_member_count_display")
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            if (memberCount < 30) {
+                                                memberCount += 1
+                                                adultsCount = memberCount
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp).testTag("sheet_increase_member_count_btn")
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(1 to "1 (Solo)", 2 to "2 (Duo)", 4 to "4 (Team)", 6 to "6 (Group)", 10 to "10+ (Squad)").forEach { (count, label) ->
+                                    val isSelected = memberCount == count
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            memberCount = count
+                                            adultsCount = count
+                                        },
+                                        label = { Text(label, fontSize = 10.5.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Step 2: Primary Contact Details
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text("2. Primary Registered Contact *", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                            Text("Booking confirmation, invoice & gate QR will be generated for this person", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            OutlinedTextField(
+                                value = primaryContactName,
+                                onValueChange = {
+                                    primaryContactName = it
+                                    registrationFieldResponses["full_name"] = it
+                                },
+                                label = { Text("Full Name *") },
+                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                                modifier = Modifier.fillMaxWidth().testTag("sheet_primary_member_name_input"),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = primaryContactPhone,
+                                onValueChange = {
+                                    primaryContactPhone = it
+                                    registrationFieldResponses["phone"] = it
+                                },
+                                label = { Text("Phone / WhatsApp Number *") },
+                                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                modifier = Modifier.fillMaxWidth().testTag("sheet_primary_member_phone_input"),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = primaryContactEmail,
+                                onValueChange = {
+                                    primaryContactEmail = it
+                                    registrationFieldResponses["email"] = it
+                                },
+                                label = { Text("Email Address *") },
+                                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                modifier = Modifier.fillMaxWidth().testTag("sheet_primary_member_email_input"),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                var idMenuExpanded by remember { mutableStateOf(false) }
+                                val idTypes = listOf("Aadhaar Card", "PAN Card", "Driving License", "Passport", "Member ID")
+                                ExposedDropdownMenuBox(
+                                    expanded = idMenuExpanded,
+                                    onExpandedChange = { idMenuExpanded = !idMenuExpanded },
+                                    modifier = Modifier.weight(1.1f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = govtIdType,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("ID Type") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = idMenuExpanded) },
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                        singleLine = true
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = idMenuExpanded,
+                                        onDismissRequest = { idMenuExpanded = false }
+                                    ) {
+                                        idTypes.forEach { type ->
+                                            DropdownMenuItem(
+                                                text = { Text(type) },
+                                                onClick = {
+                                                    govtIdType = type
+                                                    idMenuExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = govtIdNumber,
+                                    onValueChange = {
+                                        govtIdNumber = it
+                                        registrationFieldResponses["aadhaar_number"] = it
+                                        registrationFieldResponses["govt_id_number"] = it
+                                    },
+                                    label = { Text("ID Number *") },
+                                    placeholder = { Text("XXXX-XXXX-9021") },
+                                    modifier = Modifier.weight(1.3f).testTag("sheet_govt_id_number_input"),
+                                    singleLine = true
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = emergencyContact,
+                                onValueChange = {
+                                    emergencyContact = it
+                                    registrationFieldResponses["emergency_contact"] = it
+                                },
+                                label = { Text("Emergency Contact Number") },
+                                placeholder = { Text("+91 91234 56789") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                modifier = Modifier.fillMaxWidth().testTag("sheet_emergency_contact_input"),
+                                singleLine = true
+                            )
+                        }
+                    }
+
+                    // Step 3: Additional Co-Members
+                    if (memberCount > 1) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("3. Additional Co-Members (${memberCount - 1})", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                                        Text("Names of additional guests", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            val sampleNames = listOf("Rahul Varma", "Sneha Reddy", "Arjun Kapoor", "Kavita Rao", "Amit Sharma", "Zoya Khan")
+                                            additionalMemberNames = (0 until (memberCount - 1)).map { idx ->
+                                                sampleNames.getOrElse(idx) { "Guest ${idx + 2}" }
+                                            }
+                                        }
+                                    ) {
+                                        Text("Quick-Fill", fontSize = 11.5.sp)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                additionalMemberNames.forEachIndexed { index, nameVal ->
+                                    OutlinedTextField(
+                                        value = nameVal,
+                                        onValueChange = { newVal ->
+                                            val updatedList = additionalMemberNames.toMutableList()
+                                            if (index < updatedList.size) {
+                                                updatedList[index] = newVal
+                                                additionalMemberNames = updatedList
+                                            }
+                                        },
+                                        label = { Text("Member ${index + 2} Full Name") },
+                                        placeholder = { Text("e.g. Rahul Varma") },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .testTag("sheet_additional_member_${index + 2}_input"),
+                                        singleLine = true
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Step 4: Dynamic Category Registration Fields
+                    if (isCategoryUnifiedRegEnabled && applicableRegFields.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text("4. Category Specific Registration Fields", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                                Text("Venue administration KYC requirements", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                applicableRegFields.forEach { field ->
+                                    if (field.key != "full_name" && field.key != "phone" && field.key != "email" && field.key != "aadhaar_number" && field.key != "govt_id_number" && field.key != "emergency_contact") {
+                                        val currentValue = registrationFieldResponses[field.key] ?: field.defaultValue
+                                        BookingDynamicRegistrationFieldItem(
+                                            field = field,
+                                            value = currentValue,
+                                            onValueChange = { newVal ->
+                                                registrationFieldResponses[field.key] = newVal
+                                            }
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Terms & KYC Agreement Checkbox
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { regIsKycVerified = !regIsKycVerified }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Checkbox(
+                            checked = regIsKycVerified,
+                            onCheckedChange = { regIsKycVerified = it },
+                            modifier = Modifier.size(28.dp).testTag("sheet_booking_reg_kyc_checkbox")
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "I verify that all $memberCount member details are accurate and adhere to venue safety rules.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Error notice
+                    if (registrationValidationErrors.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Please fill all required fields:", fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                                registrationValidationErrors.forEach { err ->
+                                    Text("• $err", fontSize = 11.sp, color = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Confirm & Save buttons
+                    Button(
+                        onClick = {
+                            val errors = validateRegistrationForm()
+                            registrationValidationErrors = errors
+                            if (errors.isEmpty()) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                isRegistrationConfirmed = true
+                                isEditingRegistrationAfterConfirm = false
+                                showRegistrationBottomSheet = false
+                                Toast.makeText(context, "✓ Registration verified for $memberCount member(s)! Payment section unlocked.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("modal_confirm_and_pay_btn"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (areRequiredRegistrationFieldsFilled) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Confirm Registration & Unlock Payment 💳",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = { showRegistrationBottomSheet = false },
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Close / Save for Later", fontSize = 13.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         }
     }

@@ -79,6 +79,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object AdminLiveElementEditor : Screen("admin/element_editor", "Universal Element & Object Editor", Icons.Default.EditNote)
     object FirebaseMigration : Screen("admin/firebase_migration", "Firebase Database Migration", Icons.Default.CloudSync)
     object AdminSettings : Screen("admin/settings", "Admin Platform Settings", Icons.Default.Settings)
+    object PlaceDiscovery : Screen("place_discovery", "India Place Discovery", Icons.Default.TravelExplore)
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -184,6 +185,7 @@ fun AppNavigation() {
                         onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                         onNavigateToMap = { navController.navigate(Screen.Map.route) },
                         onNavigateToSaved = { navController.navigate(Screen.Saved.route) },
+                        onNavigateToPlaceDiscovery = { navController.navigate(Screen.PlaceDiscovery.route) },
                         sharedTransitionScope = this@SharedTransitionLayout,
                         animatedVisibilityScope = this
                     )
@@ -207,6 +209,7 @@ fun AppNavigation() {
                     SearchScreen(
                         initialCategorySlug = categorySlug,
                         onNavigateToVenue = { id -> navController.navigate(Screen.VenueDetails.createRoute(id)) },
+                        onNavigateToPlaceDiscovery = { navController.navigate(Screen.PlaceDiscovery.route) },
                         sharedTransitionScope = this@SharedTransitionLayout,
                         animatedVisibilityScope = this
                     )
@@ -251,7 +254,8 @@ fun AppNavigation() {
                         onNavigateToSaved = { navController.navigate(Screen.Saved.route) },
                         onNavigateToAdminElementEditor = { navController.navigate(Screen.AdminLiveElementEditor.route) },
                         onNavigateToFirebaseMigration = { navController.navigate(Screen.FirebaseMigration.route) },
-                        onNavigateToAdminSettings = { navController.navigate(Screen.AdminSettings.route) }
+                        onNavigateToAdminSettings = { navController.navigate(Screen.AdminSettings.route) },
+                        onNavigateToPlaceDiscovery = { navController.navigate(Screen.PlaceDiscovery.route) }
                     )
                 }
 
@@ -440,7 +444,10 @@ fun AppNavigation() {
             }
 
             composable(Screen.Analytics.route) {
-                AnalyticsScreen(onBack = { navController.popBackStack() })
+                AnalyticsScreen(
+                    onBack = { navController.popBackStack() },
+                    onNavigateToReports = { navController.navigate(Screen.DailyWeeklyReports.route) }
+                )
             }
 
             composable(Screen.PaymentTransactions.route) {
@@ -557,7 +564,20 @@ fun AppNavigation() {
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToHealthReport = { navController.navigate(Screen.PaymentHealthAndConfig.route) },
                     onNavigateToElementEditor = { navController.navigate(Screen.AdminLiveElementEditor.route) },
-                    onNavigateToMigration = { navController.navigate(Screen.FirebaseMigration.route) }
+                    onNavigateToMigration = { navController.navigate(Screen.FirebaseMigration.route) },
+                    onNavigateToReports = { navController.navigate(Screen.DailyWeeklyReports.route) }
+                )
+            }
+
+            composable(Screen.PlaceDiscovery.route) {
+                LocationAndVenueDiscoveryScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToVenueDetails = { venueId ->
+                        navController.navigate(Screen.VenueDetails.createRoute(venueId))
+                    },
+                    onNavigateToClaimVenue = { place ->
+                        navController.navigate(Screen.CreateVenue.route)
+                    }
                 )
             }
         }

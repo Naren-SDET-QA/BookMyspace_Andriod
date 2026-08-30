@@ -50,6 +50,7 @@ import java.util.*
 fun PaymentTransactionsScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToBooking: (String) -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -233,6 +234,16 @@ fun PaymentTransactionsScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = onNavigateToReports,
+                        modifier = Modifier.testTag("payment_tx_reports_button")
+                    ) {
+                        Icon(
+                            Icons.Default.Assessment,
+                            contentDescription = "Daily & Weekly Reports",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(
                         onClick = { showWebhookValidatorDialog = true },
                         modifier = Modifier.testTag("payment_tx_webhook_validator_button")

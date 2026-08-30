@@ -203,6 +203,7 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToMap: () -> Unit = {},
     onNavigateToSaved: (() -> Unit)? = null,
+    onNavigateToPlaceDiscovery: () -> Unit = {},
     initialSelectedSection: MainHomeSection? = null,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
@@ -555,7 +556,8 @@ fun HomeScreen(
                 BookMySpaceRepository.setUserLocationHierarchy(loc, radius)
                 showLocationDialog = false
             },
-            onDismiss = { showLocationDialog = false }
+            onDismiss = { showLocationDialog = false },
+            onOpenPlaceDiscovery = onNavigateToPlaceDiscovery
         )
     }
 

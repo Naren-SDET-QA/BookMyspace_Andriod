@@ -72,7 +72,8 @@ fun ProfileScreen(
     onNavigateToSaved: () -> Unit = {},
     onNavigateToAdminElementEditor: () -> Unit = {},
     onNavigateToFirebaseMigration: () -> Unit = {},
-    onNavigateToAdminSettings: () -> Unit = {}
+    onNavigateToAdminSettings: () -> Unit = {},
+    onNavigateToPlaceDiscovery: () -> Unit = {}
 ) {
     val user by BookMySpaceRepository.authUser.collectAsState()
     val themeMode by BookMySpaceRepository.themeMode.collectAsState()
@@ -107,6 +108,17 @@ fun ProfileScreen(
     val currentRole by UserRoleProvider.role.collectAsState()
     val dynamicMenuItems = remember(user, currentRole, isInstitutesEnabled, isVenuesOrHotelsEnabled) {
         val allItems = listOf(
+            ProfileActionItem(
+                id = "place_discovery",
+                title = "India Location & Automatic Place Discovery",
+                subtitle = "Hierarchical discovery (Country → State → District → Mandal → Town) & PIN code search",
+                icon = Icons.Default.TravelExplore,
+                iconTint = Color(0xFF00897B),
+                targetRoles = setOf(UserRole.USER, UserRole.VENUE_OWNER, UserRole.ADMIN),
+                isFeatureEnabled = true,
+                testTag = "profile_place_discovery_menu_item",
+                onClick = onNavigateToPlaceDiscovery
+            ),
             ProfileActionItem(
                 id = "saved_favorites",
                 title = "My Favorites & Saved Spaces",

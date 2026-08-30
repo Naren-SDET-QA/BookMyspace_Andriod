@@ -139,7 +139,8 @@ fun LocationHierarchySelectorDialog(
     currentLocation: LocationHierarchy,
     currentRadius: LocationSearchRadius,
     onLocationSelected: (LocationHierarchy, LocationSearchRadius) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenPlaceDiscovery: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isGpsDetecting by remember { mutableStateOf(false) }
@@ -234,6 +235,27 @@ fun LocationHierarchySelectorDialog(
                         Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Use My Current GPS Location", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (onOpenPlaceDiscovery != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            onDismiss()
+                            onOpenPlaceDiscovery()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_open_place_discovery_engine"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.TravelExplore, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Open India Hierarchy & PIN Code Discovery", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 

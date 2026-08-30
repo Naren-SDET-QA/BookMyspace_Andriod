@@ -385,6 +385,24 @@ enum class AppFeatureKey(
         iconName = "hub",
         defaultEnabled = true,
         defaultParameters = mapOf("enableMcpServer" to "true", "enableRestApiV1" to "true", "enableCalendarIcsFeed" to "true")
+    ),
+
+    // --- India Hierarchical & Auto Place Discovery Engine ---
+    INDIA_PLACE_DISCOVERY(
+        id = "feat_india_place_discovery",
+        displayName = "India Location Hierarchy & Auto Place Discovery",
+        category = FeatureCategory.DISCOVERY_NAVIGATION,
+        summary = "Modular Country->State->District->Mandal->Town cascade, 6-digit PIN code resolver, OpenStreetMap/India Post auto discovery, and self-healing local cache fallback.",
+        emoji = "🇮🇳",
+        iconName = "travel_explore",
+        defaultEnabled = true,
+        defaultParameters = mapOf(
+            "defaultRadiusKm" to "10",
+            "enableOsmOverpass" to "true",
+            "enablePinCodeResolver" to "true",
+            "enableSelfHealing" to "true",
+            "cacheTtlHours" to "24"
+        )
     );
 
     companion object {

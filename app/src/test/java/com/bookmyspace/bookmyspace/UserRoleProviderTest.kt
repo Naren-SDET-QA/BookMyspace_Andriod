@@ -7,7 +7,7 @@ import com.bookmyspace.bookmyspace.ui.screens.ProfileActionItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Tune
@@ -98,7 +98,7 @@ class UserRoleProviderTest {
                 id = "support",
                 title = "Help & Support",
                 subtitle = null,
-                icon = Icons.Default.HelpOutline,
+                icon = Icons.Default.Info,
                 targetRoles = setOf(UserRole.USER, UserRole.VENUE_OWNER, UserRole.ADMIN),
                 isFeatureEnabled = true,
                 onClick = {}

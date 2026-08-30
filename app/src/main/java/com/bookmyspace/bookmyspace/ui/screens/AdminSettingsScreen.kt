@@ -39,7 +39,8 @@ fun AdminSettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToHealthReport: () -> Unit,
     onNavigateToElementEditor: () -> Unit,
-    onNavigateToMigration: () -> Unit
+    onNavigateToMigration: () -> Unit,
+    onNavigateToReports: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -156,6 +157,16 @@ fun AdminSettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    OutlinedButton(
+                        onClick = onNavigateToReports,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Daily Reports", fontSize = 12.sp)
+                    }
+
                     OutlinedButton(
                         onClick = onNavigateToElementEditor,
                         modifier = Modifier.weight(1f),

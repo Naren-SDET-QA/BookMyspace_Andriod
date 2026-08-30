@@ -87,6 +87,7 @@ val defaultAmenityOptions = listOf(
 fun SearchScreen(
     initialCategorySlug: String? = null,
     onNavigateToVenue: (String) -> Unit,
+    onNavigateToPlaceDiscovery: () -> Unit = {},
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
@@ -1804,7 +1805,8 @@ fun SearchScreen(
                     BookMySpaceRepository.setUserLocationHierarchy(loc, rad)
                     showLocationDialog = false
                 },
-                onDismiss = { showLocationDialog = false }
+                onDismiss = { showLocationDialog = false },
+                onOpenPlaceDiscovery = onNavigateToPlaceDiscovery
             )
         }
     }

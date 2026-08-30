@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -525,7 +526,10 @@ fun NotificationsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(onBack: () -> Unit) {
+fun AnalyticsScreen(
+    onBack: () -> Unit,
+    onNavigateToReports: () -> Unit = {}
+) {
     val bookings by BookMySpaceRepository.bookings.collectAsState()
     val firebaseEvents by BookMySpaceRepository.firebaseEvents.collectAsState()
 
@@ -544,6 +548,15 @@ fun AnalyticsScreen(onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToReports) {
+                        Icon(
+                            Icons.Default.Assessment,
+                            contentDescription = "Daily & Weekly Revenue Reports",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )

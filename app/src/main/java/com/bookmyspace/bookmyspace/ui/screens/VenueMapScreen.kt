@@ -18,9 +18,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bookmyspace.bookmyspace.data.model.PlaceDiscoveryModel
 import com.bookmyspace.bookmyspace.data.model.Venue
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
-import com.bookmyspace.bookmyspace.ui.components.RealMapViewComponent
+import com.bookmyspace.bookmyspace.ui.components.DiscoveredPlacesGoogleMapView
 import com.bookmyspace.bookmyspace.ui.components.VoiceSearchFilterBottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,12 +87,43 @@ fun VenueMapScreen(
             if (venues.isEmpty()) {
                 com.bookmyspace.bookmyspace.ui.components.EyeCatchingVenueMapSkeleton(modifier = Modifier.fillMaxSize())
             } else {
-                // Interactive Real Map View
-                RealMapViewComponent(
-                    venues = filteredVenues,
-                    selectedVenueId = selectedVenueId,
-                    onVenueSelect = { venue -> selectedVenueId = venue.id },
-                    onNavigateToVenue = onNavigateToVenue,
+                val discoveryPlaces = remember(filteredVenues) {
+                    filteredVenues.map { venue ->
+                        PlaceDiscoveryModel(
+                            id = venue.id,
+                            name = venue.name,
+                            category = venue.category?.name ?: "Venue",
+                            categorySlug = venue.category?.slug ?: "all",
+                            address = venue.addressLine1.ifBlank { venue.city },
+                            state = venue.state,
+                            district = venue.city,
+                            mandal = venue.city,
+                            town = venue.city,
+                            pincode = venue.locationHierarchy?.postalCode ?: "",
+                            latitude = venue.latitude,
+                            longitude = venue.longitude,
+                            phone = venue.contactPhone,
+                            rating = venue.avgRating,
+                            reviewCount = venue.ratingCount,
+                            photoUrl = venue.coverImageUrl,
+                            isRegisteredInBookMySpace = true,
+                            bookMySpaceVenueId = venue.id,
+                            claimStatus = "REGISTERED",
+                            pricingEstimate = "₹${venue.pricingBaseAmount.toInt()}/day"
+                        )
+                    }
+                }
+
+                // Official Google Maps SDK Map View
+                DiscoveredPlacesGoogleMapView(
+                    places = discoveryPlaces,
+                    centerLatitude = userLocation.latitude,
+                    centerLongitude = userLocation.longitude,
+                    radiusKm = 15.0,
+                    locationTitle = userLocation.shortLabel,
+                    selectedPlaceId = selectedVenueId,
+                    onPlaceSelected = { place -> selectedVenueId = place.id },
+                    onNavigateToVenueDetails = onNavigateToVenue,
                     modifier = Modifier.fillMaxSize()
                 )
             }
