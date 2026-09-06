@@ -14,12 +14,16 @@ class VenueCategory {
     required this.slug,
     required this.name,
     this.icon,
+    this.isActive = true,
+    this.parentSection = 'general',
   });
 
   final String id;
   final String slug;
   final String name;
   final String? icon;
+  final bool isActive;
+  final String? parentSection;
 
   factory VenueCategory.fromJson(Map<String, dynamic> json) {
     return VenueCategory(
@@ -27,6 +31,8 @@ class VenueCategory {
       slug: json['slug'] as String? ?? '',
       name: json['name'] as String? ?? '',
       icon: json['icon'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      parentSection: json['parent_section'] as String? ?? 'general',
     );
   }
 
@@ -35,7 +41,27 @@ class VenueCategory {
     'slug': slug,
     'name': name,
     if (icon != null) 'icon': icon,
+    'is_active': isActive,
+    if (parentSection != null) 'parent_section': parentSection,
   };
+
+  VenueCategory copyWith({
+    String? id,
+    String? slug,
+    String? name,
+    String? icon,
+    bool? isActive,
+    String? parentSection,
+  }) {
+    return VenueCategory(
+      id: id ?? this.id,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      isActive: isActive ?? this.isActive,
+      parentSection: parentSection ?? this.parentSection,
+    );
+  }
 }
 
 /// Image model associated with a venue.

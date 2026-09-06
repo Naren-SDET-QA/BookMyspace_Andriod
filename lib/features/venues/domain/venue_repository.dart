@@ -2,8 +2,23 @@ import 'venue.dart';
 
 /// Contract for venue repository.
 abstract class VenueRepository {
-  /// Fetches all active venue categories.
-  Future<List<VenueCategory>> categories();
+  /// Fetches venue categories. Pass [activeOnly] to filter active ones.
+  Future<List<VenueCategory>> categories({bool activeOnly = false});
+
+  /// Adds a new category.
+  Future<VenueCategory> addCategory({
+    required String name,
+    required String slug,
+    String? icon,
+    String? parentSection,
+    bool isActive = true,
+  });
+
+  /// Updates an existing category.
+  Future<VenueCategory> updateCategory(VenueCategory category);
+
+  /// Sets category active status.
+  Future<void> setCategoryActive(String categoryId, bool isActive);
 
   /// Fetches popular venues.
   Future<List<Venue>> popularVenues({int limit = 10});

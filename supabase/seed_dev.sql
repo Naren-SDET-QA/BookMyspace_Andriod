@@ -22,7 +22,8 @@ insert into public.venue_categories (slug, name, icon) values
   ('function_hall', 'Function Hall', 'event_seat'),
   ('hotel_stay', 'Hotel / Stay', 'hotel'),
   ('pg_coliving', 'PG / Co-Living', 'apartment'),
-  ('meeting_room', 'Meeting Room', 'meeting_room')
+  ('meeting_room', 'Meeting Room', 'meeting_room'),
+  ('photography_studio', 'Photography Studio', '📸')
 on conflict (slug) do nothing;
 
 -- ------------------------------------------------------------
