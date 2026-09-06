@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>BookMySpace</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>BookMySpace</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	
+	<!-- App Store Export Compliance -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!-- Hardware & Feature Permissions (Apple App Store Compliance) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BookMySpace uses your location to discover and display nearby sports venues, PGs, hostels, coworking spaces, and banquet halls.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>BookMySpace uses your location to provide accurate route navigation and live distance updates to your booked venues.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>BookMySpace uses your location to provide venue arrival notifications and nearby recommendations.</string>
+	
+	<key>NSCameraUsageDescription</key>
+	<string>BookMySpace requires camera access to capture and upload venue photos, verify QR booking passes, and update your profile picture.</string>
+	
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BookMySpace requires access to your photo library to select and upload venue images, booking documents, and profile avatars.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>BookMySpace needs permission to save digital booking passes, tax invoices, and payment receipts to your Photos.</string>
+	
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BookMySpace requires microphone access to enable voice search and hands-free AI voice booking assistance.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BookMySpace uses speech recognition to convert spoken queries into venue searches, category filters, and dates.</string>
+	
+	<key>NSUserTrackingUsageDescription</key>
+	<string>BookMySpace uses this identifier to provide personalized venue suggestions, optimize search rankings, and track booking referral rewards.</string>
+
+	<!-- Background Modes for Push Notifications & Background Refresh -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+
+	<!-- Custom URL Schemes & Universal Deep Links -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.bookmyspace.bookmyspace</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>bookmyspace</string>
+				<string>com.bookmyspace.bookmyspace</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- App Transport Security (ATS) -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

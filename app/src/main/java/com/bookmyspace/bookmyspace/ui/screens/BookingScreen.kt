@@ -481,7 +481,9 @@ fun BookingScreen(
             Surface(
                 shadowElevation = 12.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
             ) {
                 Row(
                     modifier = Modifier

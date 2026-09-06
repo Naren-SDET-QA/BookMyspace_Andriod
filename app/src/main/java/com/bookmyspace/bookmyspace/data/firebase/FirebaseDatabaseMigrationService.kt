@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Migration Status Data Classes
@@ -102,11 +105,53 @@ object FirebaseDatabaseMigrationService {
             } else {
                 FirebaseFirestore.getInstance()
             }
-            refreshHealthReport()
+            // Fast zero-IO startup: initialize stats from memory without blocking network calls
+            initLocalStats()
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing Firestore Migration Service: ${e.message}", e)
             addLog("⚠️ Firestore Init Warning: ${e.message}")
         }
+    }
+
+    private fun initLocalStats() {
+        val collections = listOf(
+            Triple("venues", "Venues & Accommodations (Turf, Hotel, PG)", "🏟️"),
+            Triple("institutes", "Coaching Institutes & Academies", "🎓"),
+            Triple("courses", "Courses & Curriculums", "📚"),
+            Triple("institute_classes", "Batches & Class Timings", "⏰"),
+            Triple("events", "Events, Tournaments & Conferences", "🏆"),
+            Triple("bookings", "Bookings & Slot Passes", "🎟️"),
+            Triple("reviews", "Customer Ratings & Reviews", "⭐"),
+            Triple("payment_transactions", "Payment Ledger & Transactions", "💳"),
+            Triple("dynamic_elements", "Live UI Dynamic Elements & Texts", "✏️"),
+            Triple("app_sections", "App Sections & Domain Toggles", "📂"),
+            Triple("feature_configs", "Feature Module Flags & Limits", "⚙️"),
+            Triple("configurable_fields", "Custom Registration Fields", "📝")
+        )
+        val stats = collections.map { (colName, displayName, icon) ->
+            CollectionMigrationStats(
+                collectionName = colName,
+                displayName = displayName,
+                icon = icon,
+                localCount = getLocalCount(colName),
+                cloudCount = 0,
+                isSynced = false,
+                lastSyncStatus = "Local Ready",
+                lastSyncTimeMillis = System.currentTimeMillis()
+            )
+        }
+        _collectionStatsList.value = stats
+        val currentUser = try { FirebaseAuth.getInstance().currentUser } catch (_: Exception) { null }
+        _healthReport.value = CloudDatabaseHealthReport(
+            isConnected = firestoreDb != null,
+            projectId = "bookmyspace-app",
+            latencyMs = 0L,
+            totalCloudDocuments = 0,
+            collectionStats = stats,
+            isAuthActive = currentUser != null || BookMySpaceRepository.authUser.value != null,
+            currentUserEmail = currentUser?.email ?: BookMySpaceRepository.authUser.value?.email,
+            logs = listOf("Service ready. Diagnostics scan available on demand.")
+        )
     }
 
     private fun addLog(message: String) {
@@ -123,7 +168,7 @@ object FirebaseDatabaseMigrationService {
     }
 
     /**
-     * Run a comprehensive Cloud Health & Database Status Diagnostic
+     * Run a comprehensive Cloud Health & Database Status Diagnostic asynchronously with cooperative timeouts.
      */
     fun refreshHealthReport() {
         scope.launch {
@@ -137,7 +182,6 @@ object FirebaseDatabaseMigrationService {
             }
 
             val startTime = System.currentTimeMillis()
-            val stats = mutableListOf<CollectionMigrationStats>()
             val logs = mutableListOf<String>()
 
             val collectionsToInspect = listOf(
@@ -155,24 +199,30 @@ object FirebaseDatabaseMigrationService {
                 Triple("configurable_fields", "Custom Registration Fields", "📝")
             )
 
-            var totalCloudDocs = 0
+            // Inspect collections concurrently on IO pool with cooperative timeouts to prevent startup hangs
+            val deferredStats = collectionsToInspect.map { (colName, displayName, icon) ->
+                async(Dispatchers.IO) {
+                    val localCount = getLocalCount(colName)
+                    var cloudCount = 0
+                    var syncStatus = "Ready"
 
-            for ((colName, displayName, icon) in collectionsToInspect) {
-                val localCount = getLocalCount(colName)
-                var cloudCount = 0
-                var syncStatus = "Ready"
+                    try {
+                        val snapshot = withTimeoutOrNull(2500L) {
+                            db.collection(colName).limit(100).get().await()
+                        }
+                        if (snapshot != null) {
+                            cloudCount = snapshot.size()
+                            syncStatus = if (cloudCount > 0) "Synced ($cloudCount items in cloud)" else "Empty in Cloud"
+                        } else {
+                            syncStatus = "Timeout (Cached)"
+                        }
+                    } catch (e: Exception) {
+                        syncStatus = "Error: ${e.message?.take(30)}"
+                        synchronized(logs) {
+                            logs.add("Could not query collection $colName: ${e.message}")
+                        }
+                    }
 
-                try {
-                    val snapshot = db.collection(colName).limit(100).get().await()
-                    cloudCount = snapshot.size()
-                    totalCloudDocs += cloudCount
-                    syncStatus = if (cloudCount > 0) "Synced ($cloudCount items in cloud)" else "Empty in Cloud"
-                } catch (e: Exception) {
-                    syncStatus = "Error: ${e.message?.take(30)}"
-                    logs.add("Could not query collection $colName: ${e.message}")
-                }
-
-                stats.add(
                     CollectionMigrationStats(
                         collectionName = colName,
                         displayName = displayName,
@@ -183,9 +233,11 @@ object FirebaseDatabaseMigrationService {
                         lastSyncStatus = syncStatus,
                         lastSyncTimeMillis = System.currentTimeMillis()
                     )
-                )
+                }
             }
 
+            val stats = deferredStats.awaitAll()
+            val totalCloudDocs = stats.sumOf { it.cloudCount }
             val latency = System.currentTimeMillis() - startTime
             val currentUser = try { FirebaseAuth.getInstance().currentUser } catch (_: Exception) { null }
 

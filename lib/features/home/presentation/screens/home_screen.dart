@@ -7,6 +7,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
@@ -14,6 +15,7 @@ import '../../../auth/presentation/auth_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
+import '../../search/presentation/widgets/voice_search_bottom_sheet.dart';
 
 /// The 4 primary sections of BookMySpace
 enum MainHomeSection {
@@ -412,28 +414,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               itemBuilder: (context, index) {
                                 final cat = _selectedSection!.categoryOptions[index];
                                 final isSelected = _selectedCategorySlug == cat.id;
-                                return FilterChip(
+                                return AnimatedCategoryChip(
                                   selected: isSelected,
-                                  onSelected: (_) {
+                                  label: cat.label,
+                                  emoji: cat.emoji,
+                                  onTap: () {
                                     setState(() {
                                       _selectedCategorySlug = cat.id;
                                     });
                                   },
-                                  avatar: Text(cat.emoji, style: const TextStyle(fontSize: 14)),
-                                  label: Text(
-                                    cat.label,
-                                    style: TextStyle(
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                      color: isSelected
-                                          ? theme.colorScheme.onPrimary
-                                          : theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  selectedColor: theme.colorScheme.primary,
-                                  checkmarkColor: theme.colorScheme.onPrimary,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
                                 );
                               },
                             ),
@@ -574,23 +563,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 itemBuilder: (context, index) {
                                   final amenity = _homeAmenities[index];
                                   final isSelected = _selectedAmenities.contains(amenity.id);
-                                  return FilterChip(
+                                  return AnimatedCategoryChip(
                                     selected: isSelected,
-                                    onSelected: (selected) {
+                                    label: amenity.label,
+                                    emoji: amenity.emoji,
+                                    height: 34,
+                                    selectedColor: theme.colorScheme.primaryContainer,
+                                    selectedTextColor: theme.colorScheme.onPrimaryContainer,
+                                    onTap: () {
                                       setState(() {
-                                        if (selected) {
-                                          _selectedAmenities.add(amenity.id);
-                                        } else {
+                                        if (isSelected) {
                                           _selectedAmenities.remove(amenity.id);
+                                        } else {
+                                          _selectedAmenities.add(amenity.id);
                                         }
                                       });
                                     },
-                                    avatar: Text(amenity.emoji, style: const TextStyle(fontSize: 12)),
-                                    label: Text(amenity.label, style: const TextStyle(fontSize: 12)),
-                                    selectedColor: theme.colorScheme.primaryContainer,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
                                   );
                                 },
                               ),
@@ -775,57 +763,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showVoiceBookingDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Text('🎙️ Bol-ke-Book', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Speak in English, Telugu, or Hindi to find and book spaces instantly.',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: AppTheme.brand.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+    VoiceSearchBottomSheet.show(
+      context,
+      onFilterApplied: (voiceResult) {
+        final newQuery = voiceResult.toVenueSearchQuery();
+        ref.read(searchQueryProvider.notifier).state = newQuery;
+        context.push(AppRoutes.search);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Text('🎙️ '),
+                Expanded(
+                  child: Text(
+                    voiceResult.spokenFeedback.isNotEmpty
+                        ? voiceResult.spokenFeedback
+                        : 'Voice search filter applied!',
+                  ),
                 ),
-                child: const Icon(Icons.mic, size: 36, color: AppTheme.brand),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Try saying: "Find marriage halls in Hyderabad with parking for 500 guests"',
-                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
-              ),
-            ],
+              ],
+            ),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Processing voice request...')),
-                );
-              },
-              child: const Text('Start Listening'),
-            ),
-          ],
         );
+      },
+      onFallbackToText: () {
+        context.push(AppRoutes.search);
       },
     );
   }
@@ -935,6 +899,18 @@ class _TopHeaderBar extends StatelessWidget {
                     ),
                   ),
                 ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: () => context.push(AppRoutes.map),
+                tooltip: 'Live Map Discovery',
+                icon: const Icon(Icons.map_rounded, size: 20),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: () => context.push(AppRoutes.qrScanner),
+                tooltip: 'QR Check-In',
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+              ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 onPressed: onNotificationsTap,

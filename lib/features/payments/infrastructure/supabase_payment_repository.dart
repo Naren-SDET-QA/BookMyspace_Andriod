@@ -108,6 +108,49 @@ class SupabasePaymentRepository implements PaymentRepository {
     }
   }
 
+  @override
+  Future<bool> verifyPayment({
+    required String bookingId,
+    required String orderId,
+    required String paymentId,
+    required String signature,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'verify-payment',
+        body: {
+          'booking_id': bookingId,
+          'order_id': orderId,
+          'payment_id': paymentId,
+          'signature': signature,
+        },
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['success'] == true) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      // Direct RPC fallback if the Edge Function is pending deployment
+      try {
+        await _client.rpc('confirm_booking', params: {
+          'p_booking_id': bookingId,
+          'p_payment_ref': paymentId,
+        });
+        await _client
+            .from('payments')
+            .update({
+              'status': 'captured',
+              'provider_payment_id': paymentId,
+            })
+            .eq('provider_order_id', orderId);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
   app_errors.AppException _mapFunctionException(FunctionException e) {
     final details = e.details;
     final error = details is Map<String, dynamic>

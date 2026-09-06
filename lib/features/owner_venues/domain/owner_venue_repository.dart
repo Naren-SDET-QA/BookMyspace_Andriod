@@ -16,6 +16,12 @@ abstract interface class OwnerVenueRepository {
     required double longitude,
     required int capacity,
     required double pricingBaseAmount,
+    String? address,
+    String? pincode,
+    List<VenueImage>? images,
+    List<String>? facilities,
+    String? videoUrl,
+    String? tour3dUrl,
   });
 
   /// Update an existing venue.
@@ -31,6 +37,12 @@ abstract interface class OwnerVenueRepository {
     int? capacity,
     double? pricingBaseAmount,
     bool? isActive,
+    String? address,
+    String? pincode,
+    List<VenueImage>? images,
+    List<String>? facilities,
+    String? videoUrl,
+    String? tour3dUrl,
   });
 
   /// Soft-delete a venue.

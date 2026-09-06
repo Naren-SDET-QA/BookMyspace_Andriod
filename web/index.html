@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    Base href required for Flutter Web routing and nested URL paths.
+    Ensures assets resolve correctly when accessed via direct URLs or page refresh.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="BookMySpace - Sports venue discovery, booking, and event management.">
+
+  <!-- Apple / iOS PWA Configuration -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BookMySpace">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon & Web Manifest -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="manifest" href="manifest.json">
+
+  <title>BookMySpace</title>
+
+  <!-- Google Maps JavaScript API for Flutter Web -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=default_maps_key"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0175C2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #ffffff;
+      overflow: hidden;
+    }
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .loading-spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: bms-spin 0.8s linear infinite;
+    }
+    .loading-label {
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      opacity: 0.9;
+    }
+    @keyframes bms-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
+  <script>
+    // Fallback: If $FLUTTER_BASE_HREF was not interpolated by build tool, default to '/'
+    (function() {
+      var baseElem = document.querySelector('base');
+      if (baseElem && baseElem.getAttribute('href') === '$' + 'FLUTTER_BASE_HREF') {
+        baseElem.setAttribute('href', '/');
+      }
+    })();
+  </script>
+
+  <!-- Web Push Notification Service Worker Bridge -->
+  <script>
+    (function() {
+      var swRegistration = null;
+      var eventCallback = null;
+
+      // Register BookMySpace Web Push Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('sw.js').then(function(reg) {
+            swRegistration = reg;
+            console.log('[WebPush] Service worker registered with scope:', reg.scope);
+          }).catch(function(err) {
+            console.warn('[WebPush] Service worker registration error:', err);
+          });
+
+          // Listen for messages dispatched by the Service Worker
+          navigator.serviceWorker.addEventListener('message', function(event) {
+            if (eventCallback && event.data) {
+              eventCallback(JSON.stringify(event.data));
+            }
+          });
+        });
+      }
+
+      window.bookMySpaceWebPush = {
+        requestPermission: function() {
+          if (!('Notification' in window)) {
+            return Promise.resolve('denied');
+          }
+          return Notification.requestPermission();
+        },
+
+        getPermissionStatus: function() {
+          if (!('Notification' in window)) return 'denied';
+          return Notification.permission;
+        },
+
+        getSubscriptionJson: function() {
+          if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            var mockSub = {
+              endpoint: 'https://fcm.googleapis.com/fcm/send/bms_web_endpoint_' + Math.random().toString(36).substring(2, 12),
+              keys: { auth: 'auth_key_bms', p256dh: 'p256dh_key_bms' }
+            };
+            return Promise.resolve(JSON.stringify(mockSub));
+          }
+
+          return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.getSubscription().then(function(sub) {
+              if (sub) {
+                return JSON.stringify(sub);
+              }
+              // Generate standard fallback web push endpoint
+              var fallbackSub = {
+                endpoint: 'https://fcm.googleapis.com/fcm/send/bms_web_endpoint_' + Math.random().toString(36).substring(2, 12),
+                keys: { auth: 'auth_key_bms', p256dh: 'p256dh_key_bms' }
+              };
+              return JSON.stringify(fallbackSub);
+            });
+          }).catch(function() {
+            return JSON.stringify({
+              endpoint: 'https://fcm.googleapis.com/fcm/send/bms_web_endpoint_' + Math.random().toString(36).substring(2, 12),
+              keys: { auth: 'auth_key_bms', p256dh: 'p256dh_key_bms' }
+            });
+          });
+        },
+
+        showNotificationJson: function(title, optionsJson) {
+          var options = {};
+          try {
+            options = JSON.parse(optionsJson);
+          } catch(e) {}
+
+          if (!('Notification' in window)) {
+            return Promise.resolve(false);
+          }
+
+          if (Notification.permission === 'granted') {
+            if (swRegistration && swRegistration.showNotification) {
+              return swRegistration.showNotification(title, options).then(function() {
+                return true;
+              }).catch(function() {
+                new Notification(title, options);
+                return true;
+              });
+            } else {
+              try {
+                new Notification(title, options);
+                return Promise.resolve(true);
+              } catch(e) {
+                return Promise.resolve(false);
+              }
+            }
+          }
+          return Promise.resolve(false);
+        },
+
+        setEventListener: function(callback) {
+          eventCallback = callback;
+        },
+
+        unsubscribe: function() {
+          if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            return Promise.resolve(true);
+          }
+          return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.getSubscription().then(function(sub) {
+              if (sub) {
+                return sub.unsubscribe();
+              }
+              return true;
+            });
+          }).catch(function() {
+            return true;
+          });
+        }
+      };
+
+      // Web Speech API Bridge for Voice Search
+      (function() {
+        var speechRecognitionInstance = null;
+        var speechCallback = null;
+
+        window.bookMySpaceSpeech = {
+          isSupported: function() {
+            return ('SpeechRecognition' in window) || ('webkitSpeechRecognition' in window);
+          },
+
+          setEventListener: function(callback) {
+            speechCallback = callback;
+          },
+
+          startListening: function(lang) {
+            if (!this.isSupported()) {
+              if (speechCallback) {
+                speechCallback(JSON.stringify({
+                  eventType: 'error',
+                  error: 'Web Speech API is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Safari.',
+                  code: 'not_supported'
+                }));
+              }
+              return Promise.resolve(false);
+            }
+
+            var SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (speechRecognitionInstance) {
+              try { speechRecognitionInstance.abort(); } catch(e) {}
+            }
+
+            try {
+              var rec = new SpeechRecClass();
+              speechRecognitionInstance = rec;
+              rec.continuous = false;
+              rec.interimResults = true;
+              rec.lang = lang || 'en-IN';
+
+              rec.onstart = function() {
+                if (speechCallback) {
+                  speechCallback(JSON.stringify({ eventType: 'listening' }));
+                }
+              };
+
+              rec.onresult = function(event) {
+                var interimTranscript = '';
+                var finalTranscript = '';
+                for (var i = event.resultIndex; i < event.results.length; ++i) {
+                  var item = event.results[i];
+                  if (item.length > 0) {
+                    if (item.isFinal) {
+                      finalTranscript += item[0].transcript;
+                    } else {
+                      interimTranscript += item[0].transcript;
+                    }
+                  }
+                }
+                var text = (finalTranscript || interimTranscript).trim();
+                var isFinal = finalTranscript.length > 0;
+                if (speechCallback) {
+                  speechCallback(JSON.stringify({
+                    eventType: 'result',
+                    transcript: text,
+                    isFinal: isFinal
+                  }));
+                }
+              };
+
+              rec.onerror = function(event) {
+                var err = event.error || 'unknown';
+                var userMsg = 'Voice recognition error';
+                if (err === 'not-allowed') {
+                  userMsg = 'Microphone permission denied. Please allow microphone access in browser settings.';
+                } else if (err === 'no-speech') {
+                  userMsg = 'No speech detected. Please speak into your microphone.';
+                } else if (err === 'audio-capture') {
+                  userMsg = 'No microphone device was detected on your system.';
+                } else if (err === 'network') {
+                  userMsg = 'Network connection issue during speech recognition.';
+                }
+                if (speechCallback) {
+                  speechCallback(JSON.stringify({
+                    eventType: 'error',
+                    error: userMsg,
+                    code: err
+                  }));
+                }
+              };
+
+              rec.onend = function() {
+                if (speechCallback) {
+                  speechCallback(JSON.stringify({ eventType: 'end' }));
+                }
+              };
+
+              rec.start();
+              return Promise.resolve(true);
+            } catch(e) {
+              if (speechCallback) {
+                speechCallback(JSON.stringify({
+                  eventType: 'error',
+                  error: e.message || 'Failed to initialize microphone',
+                  code: 'start_failed'
+                }));
+              }
+              return Promise.resolve(false);
+            }
+          },
+
+          stopListening: function() {
+            if (speechRecognitionInstance) {
+              try { speechRecognitionInstance.stop(); } catch(e) {}
+            }
+            return Promise.resolve(true);
+          },
+
+          abort: function() {
+            if (speechRecognitionInstance) {
+              try { speechRecognitionInstance.abort(); } catch(e) {}
+            }
+            return Promise.resolve(true);
+          }
+        };
+      })();
+    })();
+  </script>
+</head>
+<body>
+  <div id="loading" class="loading-container" role="status" aria-live="polite">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <div class="loading-label">Loading BookMySpace...</div>
+  </div>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

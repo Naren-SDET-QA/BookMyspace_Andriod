@@ -6,7 +6,9 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -97,39 +99,40 @@ fun AppNavigation() {
         Screen.Profile
     )
 
-            val showBottomBar = currentRoute in listOf(
-                Screen.Home.route,
-                Screen.Map.route,
-                "search",
-                Screen.Search.route,
-                Screen.Bookings.route,
-                Screen.Saved.route,
-                Screen.Profile.route
-            )
+    val showBottomBar = currentRoute in listOf(
+        Screen.Home.route,
+        Screen.Map.route,
+        "search",
+        Screen.Search.route,
+        Screen.Bookings.route,
+        Screen.Saved.route,
+        Screen.Profile.route
+    )
 
-            val featureConfigs by BookMySpaceRepository.featureConfigs.collectAsState()
-            val isAiCopilotEnabled = remember(featureConfigs) {
-                BookMySpaceRepository.isFeatureEnabled(com.bookmyspace.bookmyspace.data.model.AppFeatureKey.AI_SMART_COPILOT)
-            }
+    val featureConfigs by BookMySpaceRepository.featureConfigs.collectAsState()
+    val isAiCopilotEnabled = remember(featureConfigs) {
+        BookMySpaceRepository.isFeatureEnabled(com.bookmyspace.bookmyspace.data.model.AppFeatureKey.AI_SMART_COPILOT)
+    }
 
-            Scaffold(
-        floatingActionButton = {
-            if (isAiCopilotEnabled) {
-                val isDetailOrBookingRoute = currentRoute?.startsWith("venues/") == true ||
-                        currentRoute?.startsWith("bookings/") == true ||
-                        currentRoute?.contains("/book") == true ||
-                        currentRoute?.contains("/pay") == true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            floatingActionButton = {
+                if (isAiCopilotEnabled) {
+                    val isDetailOrBookingRoute = currentRoute?.startsWith("venues/") == true ||
+                            currentRoute?.startsWith("bookings/") == true ||
+                            currentRoute?.contains("/book") == true ||
+                            currentRoute?.contains("/pay") == true
 
-                val bottomPadding = if (isDetailOrBookingRoute) 110.dp else if (showBottomBar) 88.dp else 16.dp
+                    val bottomPadding = if (isDetailOrBookingRoute) 80.dp else 0.dp
 
-                ContextAwareHelpFab(
-                    currentRoute = currentRoute,
-                    onNavigateToRoute = { route -> navController.navigate(route) },
-                    modifier = Modifier.padding(bottom = bottomPadding)
-                )
-            }
-        },
-        bottomBar = {
+                    ContextAwareHelpFab(
+                        currentRoute = currentRoute,
+                        onNavigateToRoute = { route -> navController.navigate(route) },
+                        modifier = Modifier.padding(bottom = bottomPadding)
+                    )
+                }
+            },
+            bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
                     bottomBarScreens.forEach { screen ->
@@ -586,7 +589,12 @@ fun AppNavigation() {
     }
 
     // Universal Admin Live Element Editing HUD
+    val adminBottomPadding = if (showBottomBar) 90.dp else 24.dp
     com.bookmyspace.bookmyspace.ui.components.AdminGlobalFloatingToolbar(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .navigationBarsPadding()
+            .padding(bottom = adminBottomPadding, start = 16.dp),
         onNavigateToMasterEditor = {
             navController.navigate(Screen.AdminLiveElementEditor.route)
         },
@@ -602,4 +610,5 @@ fun AppNavigation() {
     com.bookmyspace.bookmyspace.ui.components.AdminElementInspectorModal(
         onDismissRequest = {}
     )
+    }
 }

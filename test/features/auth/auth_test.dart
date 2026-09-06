@@ -78,5 +78,28 @@ void main() {
       expect(repo.currentUser, isNull);
       repo.dispose();
     });
+
+    test('maintains cross-user state isolation during transitions', () async {
+      final repo = MockAuthRepository();
+      // Anonymous -> User A
+      final userA = await repo.verifyEmailOtp('userA@test.com', '111111');
+      expect(repo.currentUser?.id, userA.id);
+      expect(repo.currentUser?.email, 'userA@test.com');
+
+      // User A -> Logout
+      await repo.signOut();
+      expect(repo.currentUser, isNull);
+
+      // User A -> Logout -> User B
+      final userB = await repo.verifyEmailOtp('userB@test.com', '222222');
+      expect(repo.currentUser?.id, userB.id);
+      expect(repo.currentUser?.email, 'userB@test.com');
+      expect(repo.currentUser?.email, isNot(equals('userA@test.com')));
+
+      // Final cleanup
+      await repo.signOut();
+      expect(repo.currentUser, isNull);
+      repo.dispose();
+    });
   });
 }

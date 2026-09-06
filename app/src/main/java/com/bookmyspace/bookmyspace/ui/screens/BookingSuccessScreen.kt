@@ -135,7 +135,9 @@ fun BookingSuccessScreen(
             Surface(
                 shadowElevation = 16.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
             ) {
                 Column(
                     modifier = Modifier

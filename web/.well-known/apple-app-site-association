@@ -1,0 +1,39 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "<TEAM_ID>.com.bookmyspace.bookmyspace",
+        "paths": [
+          "/login",
+          "/venues/*",
+          "/bookings",
+          "/bookings/*",
+          "/owner"
+        ],
+        "components": [
+          {
+            "/": "/venues/*",
+            "comment": "Matches venue discovery and venue detail pages (/venues/:id, /venues/:id/book)"
+          },
+          {
+            "/": "/bookings",
+            "comment": "Matches user bookings list page"
+          },
+          {
+            "/": "/bookings/*",
+            "comment": "Matches booking payment flow (/bookings/:id/pay)"
+          },
+          {
+            "/": "/login",
+            "comment": "Matches authentication redirects"
+          },
+          {
+            "/": "/owner",
+            "comment": "Matches owner dashboard portal"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -7,6 +7,7 @@ import com.bookmyspace.bookmyspace.data.email.InvoiceEmailService
 import com.bookmyspace.bookmyspace.data.firebase.FirebaseDatabaseMigrationService
 import com.bookmyspace.bookmyspace.data.health.AppHealthManager
 import com.bookmyspace.bookmyspace.data.integration.ExternalAppAndMcpService
+import com.bookmyspace.bookmyspace.data.local.BookMySpaceRoomDatabase
 import com.bookmyspace.bookmyspace.data.notification.BookingReminderNotificationManager
 import com.bookmyspace.bookmyspace.data.payment.PaymentService
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
@@ -44,7 +45,10 @@ class BookMySpaceApplication : Application() {
         logStartup("🚀 BookMySpaceApplication.onCreate() started")
         setupGlobalCrashHandler()
 
-        // 1. Fast main-thread setup: Initialize in-memory core repository with zero blocking I/O
+        // 1. Initialize FirebaseApp FIRST synchronously before any repositories or services access Firebase
+        initializeFirebaseSafely()
+
+        // 2. Fast main-thread setup: Initialize in-memory core repository with zero blocking I/O
         try {
             BookMySpaceRepository.initialize(this)
             logStartup("📦 BookMySpaceRepository initialized")
@@ -56,10 +60,9 @@ class BookMySpaceApplication : Application() {
         startupDurationMs = System.currentTimeMillis() - startTime
         logStartup("⚡ Main startup completed in ${startupDurationMs}ms. Offloading secondary services to background IO...")
 
-        // 2. Offload heavy network, Firebase, Room DB listeners, and MCP initializations to background thread
+        // 3. Offload secondary services to background IO
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
-                initializeFirebaseSafely()
                 initializeCoreServicesAsync()
                 logStartup("✅ All background services initialized smoothly")
             } catch (e: Exception) {
@@ -98,18 +101,22 @@ class BookMySpaceApplication : Application() {
         try {
             val existingApps = FirebaseApp.getApps(this)
             if (existingApps.isEmpty()) {
-                logStartup("🔥 Initializing FirebaseApp default instance...")
-                val app = FirebaseApp.initializeApp(this)
-                if (app != null) {
-                    logStartup("🔥 FirebaseApp initialized: ${app.name} [Project: ${app.options.projectId}]")
-                } else {
-                    // Fallback to manual Firebase options if google-services.json not loaded
-                    val fallbackOptions = FirebaseOptions.Builder()
-                        .setApplicationId("1:186189980547:android:bookmyspace")
-                        .setProjectId("bookmyspace-app")
-                        .setApiKey("AIzaSyBMS_FALLBACK_KEY_SECURE")
-                        .build()
-                    val fallbackApp = FirebaseApp.initializeApp(this, fallbackOptions, "[DEFAULT]")
+                val fallbackOptions = FirebaseOptions.Builder()
+                    .setApplicationId("1:186189980547:android:bookmyspace")
+                    .setProjectId("bookmyspace-app")
+                    .setApiKey("AIzaSyBMS_FALLBACK_KEY_SECURE")
+                    .build()
+                
+                try {
+                    val app = FirebaseApp.initializeApp(this)
+                    if (app != null) {
+                        logStartup("🔥 FirebaseApp initialized: ${app.name}")
+                    } else {
+                        val fallbackApp = FirebaseApp.initializeApp(this, fallbackOptions)
+                        logStartup("🔥 Fallback FirebaseApp initialized: ${fallbackApp.name}")
+                    }
+                } catch (e: Exception) {
+                    val fallbackApp = FirebaseApp.initializeApp(this, fallbackOptions)
                     logStartup("🔥 Fallback FirebaseApp initialized: ${fallbackApp.name}")
                 }
             }
@@ -118,8 +125,16 @@ class BookMySpaceApplication : Application() {
         }
     }
 
-    private fun initializeCoreServicesAsync() {
-        // Health & Self-Healing Manager
+    private suspend fun initializeCoreServicesAsync() {
+        // 1. Prewarm Room Database on background IO thread (prevents UI hangs on first query)
+        try {
+            BookMySpaceRoomDatabase.prewarm(this)
+            logStartup("🗄️ Room Database prewarmed on background thread")
+        } catch (e: Exception) {
+            Log.w(TAG, "Room prewarm warning: ${e.message}")
+        }
+
+        // 2. Health & Self-Healing Manager
         try {
             AppHealthManager.initialize(this)
         } catch (e: Exception) {

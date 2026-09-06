@@ -28,6 +28,12 @@ final createVenueProvider = FutureProvider.autoDispose
       double longitude,
       int capacity,
       double pricingBaseAmount,
+      String? address,
+      String? pincode,
+      List<VenueImage>? images,
+      List<String>? facilities,
+      String? videoUrl,
+      String? tour3dUrl,
     })>((ref, params) async {
   final repo = ref.watch(ownerVenueRepositoryProvider);
   final venue = await repo.createVenue(
@@ -40,7 +46,67 @@ final createVenueProvider = FutureProvider.autoDispose
     longitude: params.longitude,
     capacity: params.capacity,
     pricingBaseAmount: params.pricingBaseAmount,
+    address: params.address,
+    pincode: params.pincode,
+    images: params.images,
+    facilities: params.facilities,
+    videoUrl: params.videoUrl,
+    tour3dUrl: params.tour3dUrl,
   );
   ref.invalidate(myVenuesProvider);
   return venue;
 });
+
+/// Update an existing venue and invalidate the list.
+final updateVenueProvider = FutureProvider.autoDispose
+    .family<Venue, ({
+      String venueId,
+      String? name,
+      String? categoryId,
+      String? description,
+      String? city,
+      String? state,
+      double? latitude,
+      double? longitude,
+      int? capacity,
+      double? pricingBaseAmount,
+      bool? isActive,
+      String? address,
+      String? pincode,
+      List<VenueImage>? images,
+      List<String>? facilities,
+      String? videoUrl,
+      String? tour3dUrl,
+    })>((ref, params) async {
+  final repo = ref.watch(ownerVenueRepositoryProvider);
+  final venue = await repo.updateVenue(
+    venueId: params.venueId,
+    name: params.name,
+    categoryId: params.categoryId,
+    description: params.description,
+    city: params.city,
+    state: params.state,
+    latitude: params.latitude,
+    longitude: params.longitude,
+    capacity: params.capacity,
+    pricingBaseAmount: params.pricingBaseAmount,
+    isActive: params.isActive,
+    address: params.address,
+    pincode: params.pincode,
+    images: params.images,
+    facilities: params.facilities,
+    videoUrl: params.videoUrl,
+    tour3dUrl: params.tour3dUrl,
+  );
+  ref.invalidate(myVenuesProvider);
+  return venue;
+});
+
+/// Delete a venue and invalidate the list.
+final deleteVenueProvider = FutureProvider.autoDispose
+    .family<void, String>((ref, venueId) async {
+  final repo = ref.watch(ownerVenueRepositoryProvider);
+  await repo.deleteVenue(venueId);
+  ref.invalidate(myVenuesProvider);
+});
+

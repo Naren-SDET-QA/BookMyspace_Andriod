@@ -23,9 +23,11 @@ import '../../features/owner_venues/presentation/screens/create_venue_screen.dar
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
 import '../../features/payments/presentation/screens/payment_screen.dart';
+import '../../features/qr_checkin/presentation/screens/qr_check_in_scanner_screen.dart';
 import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/map/presentation/screens/venue_map_screen.dart';
 import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/venues/domain/venue.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
@@ -37,6 +39,7 @@ abstract class AppRoutes {
   static const shell = '/home';
   static const home = '/home';
   static const search = '/search';
+  static const map = '/map';
   static const bookings = '/bookings';
   static const saved = '/saved';
   static const profile = '/profile';
@@ -59,6 +62,7 @@ abstract class AppRoutes {
   static const ownerVenueCreate = '/owner/venues/create';
   static const privacyPolicy = '/privacy';
   static const termsOfService = '/terms';
+  static const qrScanner = '/qr-scanner';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -101,6 +105,23 @@ GoRouter createAppRouter({
         path: AppRoutes.settings,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.map,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra;
+          final initialVenueId = extra is Map<String, dynamic>
+              ? extra['venueId'] as String?
+              : null;
+          final initialCategory = extra is Map<String, dynamic>
+              ? extra['category'] as String?
+              : null;
+          return VenueMapScreen(
+            initialVenueId: initialVenueId,
+            initialCategory: initialCategory,
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.venueDetails,
@@ -185,7 +206,10 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.ownerVenueCreate,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const CreateVenueScreen(),
+        builder: (context, state) {
+          final extraVenue = state.extra as Venue?;
+          return CreateVenueScreen(existingVenue: extraVenue);
+        },
       ),
       GoRoute(
         path: AppRoutes.privacyPolicy,
@@ -209,6 +233,11 @@ GoRouter createAppRouter({
           }
           return PaymentScreen(booking: booking);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.qrScanner,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const QrCheckInScannerScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

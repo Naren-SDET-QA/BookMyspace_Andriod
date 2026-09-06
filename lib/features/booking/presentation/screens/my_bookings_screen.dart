@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../payments/presentation/payment_providers.dart';
+import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
+import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
@@ -101,7 +105,16 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     final bookings = ref.watch(myBookingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.myBookings)),
+      appBar: AppBar(
+        title: Text(l10n.myBookings),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            tooltip: 'QR Check-In Scanner',
+            onPressed: () => context.push(AppRoutes.qrScanner),
+          ),
+        ],
+      ),
       body: bookings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(message: e.toString(), onRetry: _refresh),
@@ -145,112 +158,132 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
   void _showEntryPass(Booking booking) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final isCheckedIn = booking.status == BookingStatus.completed;
+
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.qr_code_2_rounded, color: AppTheme.brand),
+            const Icon(Icons.qr_code_2_rounded, color: AppTheme.brand, size: 28),
             const SizedBox(width: 8),
-            Text(
-              'Digital Entry Pass',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant,
+            Expanded(
+              child: Text(
+                'Digital Entry Pass 🎫',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
                 ),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.qr_code_scanner_rounded,
-                            size: 64,
-                            color: Colors.black87,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            booking.bookingRef.isNotEmpty
-                                ? booking.bookingRef
-                                : 'BMS-PASS',
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    booking.venueName.isNotEmpty
-                        ? booking.venueName
-                        : 'Venue Booking',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${DateFormat.yMMMd().format(booking.bookDate)} • ${booking.displayStart} – ${booking.displayEnd}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (booking.slotLabel.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      booking.slotLabel,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.brand,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Show this QR pass at the venue entrance gate for instant check-in verification.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // High Contrast 2D QR Code Pass
+              QrCodePassWidget(
+                booking: booking,
+                size: 190,
+              ),
+              const SizedBox(height: 14),
+
+              Text(
+                booking.venueName.isNotEmpty
+                    ? booking.venueName
+                    : 'Venue Booking',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '📅 ${DateFormat.yMMMd().format(booking.bookDate)} • ⏰ ${booking.displayStart} – ${booking.displayEnd}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (booking.slotLabel.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  booking.slotLabel,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.brand,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                'Ref: #${booking.bookingRef.isNotEmpty ? booking.bookingRef : booking.id}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Status badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCheckedIn
+                      ? const Color(0xFFE8F5E9)
+                      : theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isCheckedIn ? '✓ CHECKED IN & VERIFIED' : 'READY TO SCAN AT DESK',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isCheckedIn
+                        ? const Color(0xFF2E7D32)
+                        : theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Text(
+                'Show this QR pass at the venue entrance counter for instant check-in verification.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
         actions: [
+          if (!isCheckedIn)
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogCtx);
+                final res = await ref
+                    .read(qrCheckInNotifierProvider.notifier)
+                    .checkInWithCode(booking.id);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(res.message),
+                    backgroundColor: res.success
+                        ? const Color(0xFF2E7D32)
+                        : theme.colorScheme.error,
+                  ),
+                );
+              },
+              child: const Text('Simulate Check-In'),
+            ),
           FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: Text(l10n.done),
           ),
         ],

@@ -7,9 +7,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -40,6 +43,7 @@ import com.bookmyspace.bookmyspace.data.location.IndiaLocationMasterData
 import com.bookmyspace.bookmyspace.data.model.*
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.DiscoveredPlacesGoogleMapView
+import com.bookmyspace.bookmyspace.ui.components.PulsePopCategoryPill
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -112,6 +116,22 @@ fun LocationAndVenueDiscoveryScreen(
     var placeSearchQuery by remember { mutableStateOf("") }
     var activeViewLayout by remember { mutableStateOf("MAP") } // "MAP", "LIST", "SPLIT"
     var selectedMapPlaceId by remember { mutableStateOf<String?>(null) }
+
+    // Category pills row scroll state and physics-based snap behavior
+    val categoryRowState = rememberLazyListState()
+    val categorySnapFlingBehavior = rememberSnapFlingBehavior(lazyListState = categoryRowState)
+
+    // Smoothly scroll active category chip into view when selected
+    LaunchedEffect(selectedCategorySlug) {
+        try {
+            val catIndex = DiscoveryCategory.entries.indexOfFirst { it.slug == selectedCategorySlug }
+            if (catIndex >= 0) {
+                categoryRowState.animateScrollToItem(catIndex)
+            }
+        } catch (_: Exception) {
+            // safely ignore
+        }
+    }
 
     // Claim venue bottom sheet
     var placeToClaim by remember { mutableStateOf<PlaceDiscoveryModel?>(null) }
@@ -764,18 +784,20 @@ fun LocationAndVenueDiscoveryScreen(
             // Category Filter Pills
             item {
                 LazyRow(
+                    state = categoryRowState,
+                    flingBehavior = categorySnapFlingBehavior,
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(vertical = 6.dp)
                 ) {
-                    items(DiscoveryCategory.entries) { cat ->
+                    items(DiscoveryCategory.entries, key = { it.slug }) { cat ->
                         val isSelected = selectedCategorySlug == cat.slug
-                        FilterChip(
+                        PulsePopCategoryPill(
                             selected = isSelected,
                             onClick = { selectedCategorySlug = cat.slug },
-                            label = {
-                                Text("${cat.iconEmoji} ${cat.displayName}", fontSize = 12.sp)
-                            }
+                            emoji = cat.iconEmoji,
+                            label = cat.displayName,
+                            testTag = "discovery_category_pill_${cat.slug}"
                         )
                     }
                 }

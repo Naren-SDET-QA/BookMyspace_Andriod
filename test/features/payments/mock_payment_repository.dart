@@ -75,6 +75,16 @@ class MockPaymentRepository implements PaymentRepository {
   Future<List<Payment>> myPayments() async {
     return List.of(defaultPayments);
   }
+
+  @override
+  Future<bool> verifyPayment({
+    required String bookingId,
+    required String orderId,
+    required String paymentId,
+    required String signature,
+  }) async {
+    return true;
+  }
 }
 
 /// A checkout service that records the opened order and returns a fixed

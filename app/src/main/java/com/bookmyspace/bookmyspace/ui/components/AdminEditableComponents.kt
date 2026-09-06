@@ -325,13 +325,11 @@ fun AdminGlobalFloatingToolbar(
     if (!isAdmin) return
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 80.dp, end = 16.dp, start = 16.dp),
-        contentAlignment = Alignment.BottomEnd
+        modifier = modifier,
+        contentAlignment = Alignment.BottomStart
     ) {
         Column(
-            horizontalAlignment = Alignment.End,
+            horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Expanded Admin Action Menu

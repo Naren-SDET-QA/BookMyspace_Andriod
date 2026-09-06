@@ -68,68 +68,94 @@ object BookMySpaceRepository {
     fun initialize(context: Context) {
         try {
             appContext = context.applicationContext
-            paymentTxRepository = PaymentTransactionRepository.getInstance(context)
-            CoroutineScope(Dispatchers.IO).launch {
-                paymentTxRepository?.allTransactions?.collect { txs ->
-                    if (txs.isEmpty()) {
-                        val initialTxs = listOf(
-                            PaymentTransactionEntity(
-                                transactionId = "pay_bms_live_101",
-                                bookingId = "bk_demo_101",
-                                venueId = "v_smash_arena",
-                                venueName = "Smash Arena International Badminton Complex",
-                                amount = 650.0,
-                                currency = "INR",
-                                paymentStatus = "SUCCESS",
-                                paymentMethod = "Razorpay UPI (Google Pay)",
-                                razorpayOrderId = "order_bms_101",
-                                razorpaySignature = "sig_valid_bms_101",
-                                customerName = "Narendra Reddy",
-                                customerEmail = "narenqe2@gmail.com",
-                                customerPhone = "+91 98765 43210",
-                                timestamp = System.currentTimeMillis() - 86400000L,
-                                notes = "Advance Slot Booking Payment"
-                            ),
-                            PaymentTransactionEntity(
-                                transactionId = "pay_bms_live_102",
-                                bookingId = "bk_demo_102",
-                                venueId = "v_grand_palace",
-                                venueName = "The Royal Imperial Palace & Convention",
-                                amount = 220000.0,
-                                currency = "INR",
-                                paymentStatus = "PENDING",
-                                paymentMethod = "Razorpay Net Banking",
-                                razorpayOrderId = "order_bms_102",
-                                customerName = "Narendra Reddy",
-                                customerEmail = "narenqe2@gmail.com",
-                                customerPhone = "+91 98765 43210",
-                                timestamp = System.currentTimeMillis() - 172800000L,
-                                notes = "Convention Hall Reservation"
-                            )
-                        )
-                        initialTxs.forEach { paymentTxRepository?.recordTransaction(it) }
-                    } else {
-                        _paymentTransactions.value = txs
-                    }
-                }
-            }
 
-            val resId = context.resources.getIdentifier("firestore_database_id", "string", context.packageName)
-            val dbId = if (resId != 0) context.getString(resId) else "(default)"
-            if (dbId.isNotEmpty() && dbId != "(default)") {
-                Log.d(TAG, "Initializing Firestore with custom database ID: $dbId")
-                firestoreDb = FirebaseFirestore.getInstance(dbId)
-            } else {
-                firestoreDb = FirebaseFirestore.getInstance()
-            }
-            listenToLiveFirestoreData()
-            
-            // Register global retry handler
+            // Register global retry handler immediately
             NetworkRetryManager.registerGlobalRetryAction {
                 refreshAllData()
             }
+
+            // 1. Asynchronously initialize Room Database & Payment Transaction Repository off the main thread
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    paymentTxRepository = PaymentTransactionRepository.getInstance(context)
+                    paymentTxRepository?.allTransactions?.collect { txs ->
+                        if (txs.isEmpty()) {
+                            val initialTxs = listOf(
+                                PaymentTransactionEntity(
+                                    transactionId = "pay_bms_live_101",
+                                    bookingId = "bk_demo_101",
+                                    venueId = "v_smash_arena",
+                                    venueName = "Smash Arena International Badminton Complex",
+                                    amount = 650.0,
+                                    currency = "INR",
+                                    paymentStatus = "SUCCESS",
+                                    paymentMethod = "Razorpay UPI (Google Pay)",
+                                    razorpayOrderId = "order_bms_101",
+                                    razorpaySignature = "sig_valid_bms_101",
+                                    customerName = "Narendra Reddy",
+                                    customerEmail = "narenqe2@gmail.com",
+                                    customerPhone = "+91 98765 43210",
+                                    timestamp = System.currentTimeMillis() - 86400000L,
+                                    notes = "Advance Slot Booking Payment"
+                                ),
+                                PaymentTransactionEntity(
+                                    transactionId = "pay_bms_live_102",
+                                    bookingId = "bk_demo_102",
+                                    venueId = "v_grand_palace",
+                                    venueName = "The Royal Imperial Palace & Convention",
+                                    amount = 220000.0,
+                                    currency = "INR",
+                                    paymentStatus = "PENDING",
+                                    paymentMethod = "Razorpay Net Banking",
+                                    razorpayOrderId = "order_bms_102",
+                                    customerName = "Narendra Reddy",
+                                    customerEmail = "narenqe2@gmail.com",
+                                    customerPhone = "+91 98765 43210",
+                                    timestamp = System.currentTimeMillis() - 172800000L,
+                                    notes = "Convention Hall Reservation"
+                                )
+                            )
+                            initialTxs.forEach { paymentTxRepository?.recordTransaction(it) }
+                        } else {
+                            _paymentTransactions.value = txs
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Payment transactions Room initialization warning: ${e.message}")
+                }
+            }
+
+            // 2. Asynchronously initialize Cloud Firestore instance & attach live listeners without delaying UI boot
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+                        val fallbackOptions = com.google.firebase.FirebaseOptions.Builder()
+                            .setApplicationId("1:186189980547:android:bookmyspace")
+                            .setProjectId("bookmyspace-app")
+                            .setApiKey("AIzaSyBMS_FALLBACK_KEY_SECURE")
+                            .build()
+                        try {
+                            com.google.firebase.FirebaseApp.initializeApp(context)
+                        } catch (_: Exception) {
+                            com.google.firebase.FirebaseApp.initializeApp(context, fallbackOptions)
+                        }
+                    }
+
+                    val resId = context.resources.getIdentifier("firestore_database_id", "string", context.packageName)
+                    val dbId = if (resId != 0) context.getString(resId) else "(default)"
+                    firestoreDb = if (dbId.isNotEmpty() && dbId != "(default)") {
+                        Log.d(TAG, "Initializing Firestore with custom database ID: $dbId")
+                        FirebaseFirestore.getInstance(dbId)
+                    } else {
+                        FirebaseFirestore.getInstance()
+                    }
+                    listenToLiveFirestoreData()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore initialization notice: ${e.message}")
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Firestore: ${e.message}", e)
+            Log.e(TAG, "Repository initialization error: ${e.message}", e)
             NetworkRetryManager.setSyncState(
                 NetworkSyncState.Error(
                     errorMessage = "Running in Local Offline Mode (${e.message ?: "Cloud not initialized"})",
@@ -2001,13 +2027,40 @@ object BookMySpaceRepository {
         val db = firestoreDb
         val authUid = getAuthUid()
         if (db != null && authUid != null) {
+            val bookingDate = booking.bookingDate.ifBlank { booking.date }
+            val slotTime = "${booking.startTime} - ${booking.endTime}"
+            val sanitizedDate = bookingDate.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
+            val sanitizedSlot = slotTime.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
+            val lockId = "${booking.venueId}_${sanitizedDate}_${sanitizedSlot}"
+
+            // 1. Create slot lock to prevent double booking at Firestore level
+            val slotLockDoc = mapOf(
+                "lockId" to lockId,
+                "venueId" to booking.venueId,
+                "bookingDate" to bookingDate,
+                "slotTime" to slotTime,
+                "userId" to authUid,
+                "bookingId" to booking.id,
+                "status" to if (booking.status == BookingStatus.CONFIRMED) "CONFIRMED" else "HELD",
+                "createdAt" to FieldValue.serverTimestamp()
+            )
+            db.collection("venue_slot_locks").document(lockId).set(slotLockDoc)
+                .addOnSuccessListener {
+                    Log.d(TAG, "Slot lock registered successfully: $lockId")
+                }
+                .addOnFailureListener { e ->
+                    Log.w(TAG, "Slot lock notice (potential concurrent hold or offline): ${e.message}")
+                }
+
+            // 2. Create the booking document
             val bookingDoc = mapOf(
                 "bookingId" to booking.id,
                 "userId" to authUid,
                 "venueId" to booking.venueId,
                 "venueTitle" to (_venues.value.find { it.id == booking.venueId }?.name ?: "Venue"),
-                "slotTime" to "${booking.startTime} - ${booking.endTime}",
-                "bookingDate" to booking.date,
+                "slotTime" to slotTime,
+                "bookingDate" to bookingDate,
+                "slotLockId" to lockId,
                 "totalPrice" to booking.totalPrice,
                 "status" to booking.status.name,
                 "paymentMethod" to booking.paymentMethod,
@@ -2428,6 +2481,22 @@ object BookMySpaceRepository {
                                     "refundedAt" to FieldValue.serverTimestamp()
                                 )
                             )
+                        // Also update / release the slot lock so other users can book if slot is cancelled
+                        val cancelledBooking = _bookings.value.find { it.id == bookingId }
+                        if (cancelledBooking != null) {
+                            val bookingDate = cancelledBooking.bookingDate.ifBlank { cancelledBooking.date }
+                            val slotTime = "${cancelledBooking.startTime} - ${cancelledBooking.endTime}"
+                            val sanitizedDate = bookingDate.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
+                            val sanitizedSlot = slotTime.replace("[^a-zA-Z0-9_-]".toRegex(), "_")
+                            val lockId = "${cancelledBooking.venueId}_${sanitizedDate}_${sanitizedSlot}"
+                            db.collection("venue_slot_locks").document(lockId)
+                                .update(
+                                    mapOf(
+                                        "status" to "RELEASED",
+                                        "updatedAt" to FieldValue.serverTimestamp()
+                                    )
+                                )
+                        }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed updating Firestore booking status: ${e.message}")
                     }

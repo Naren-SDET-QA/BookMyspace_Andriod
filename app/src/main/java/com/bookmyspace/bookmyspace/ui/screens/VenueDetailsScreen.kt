@@ -483,26 +483,27 @@ fun VenueDetailsScreen(
 
             Surface(
                 tonalElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(0.9f).padding(end = 4.dp)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         val isPg = venue.pgDetails != null || venue.category?.slug == "pg_hostel"
                         val selectedOpt = venue.pgDetails?.sharingOptions?.getOrNull(selectedSharingIndex)
                         val rentText = if (selectedOpt != null) "₹%,d/mo".format(selectedOpt.monthlyRent.toInt()) else if (isPg) "₹%,d/mo".format(venue.pricingBaseAmount.toInt()) else "₹%,d".format(venue.pricingBaseAmount.toInt())
                         
-                        Text(text = if (isPg) "Monthly Rent" else "Starting from", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = rentText, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                        Text(text = if (isPg) "Monthly Rent" else "Starting from", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = rentText, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (showCall) {
@@ -512,7 +513,7 @@ fun VenueDetailsScreen(
                                     context.startActivity(intent)
                                 },
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(38.dp)
                                     .background(Color(0xFF2E7D32), RoundedCornerShape(10.dp))
                                     .testTag("call_owner_button")
                             ) {
@@ -520,7 +521,7 @@ fun VenueDetailsScreen(
                             }
                         }
 
-                        if (showWhatsapp) {
+                        if (showWhatsapp && !showCall) {
                             IconButton(
                                 onClick = {
                                     val url = "https://api.whatsapp.com/send?phone=91${venue.contactPhone.replace("-", "")}&text=Hi%2C%20I%20am%20interested%20in%20${Uri.encode(venue.name)}"
@@ -528,7 +529,7 @@ fun VenueDetailsScreen(
                                     context.startActivity(intent)
                                 },
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(38.dp)
                                     .background(Color(0xFF00897B), RoundedCornerShape(10.dp))
                                     .testTag("whatsapp_owner_button")
                             ) {
@@ -536,53 +537,28 @@ fun VenueDetailsScreen(
                             }
                         }
 
-                        if (showChat) {
-                            IconButton(
-                                onClick = { showInAppEnquiryDialog = true },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
-                                    .testTag("chat_owner_button")
-                            ) {
-                                Icon(Icons.Default.QuestionAnswer, contentDescription = "Chat", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            }
-                        }
-
-                        if (showBmsSupport) {
-                            OutlinedButton(
-                                onClick = { showInAppEnquiryDialog = true },
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .testTag("contact_bookmyspace_button"),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("Contact BMS", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
                         OutlinedButton(
                             onClick = { showQuickBookDialog = true },
                             modifier = Modifier
-                                .height(36.dp)
+                                .height(40.dp)
                                 .testTag("check_availability_button"),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Check Availability", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("Availability", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
                             onClick = { onBookSlot(venue.id) },
                             modifier = Modifier
-                                .height(36.dp)
+                                .height(40.dp)
                                 .testTag("book_slot_button"),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
-                                text = if (venue.pgDetails != null) "⚡ Book & Pay Deposit" else "⚡ Book & Pay",
-                                fontSize = 11.sp,
+                                text = if (venue.pgDetails != null) "⚡ Book Deposit" else "⚡ Book & Pay",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }

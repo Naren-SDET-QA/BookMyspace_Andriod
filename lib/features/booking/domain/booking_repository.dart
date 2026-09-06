@@ -41,4 +41,7 @@ abstract interface class BookingRepository {
 
   /// Cancels a booking still in `pending` status.
   Future<void> cancelBooking(String bookingId);
+
+  /// Validates and marks a booking as checked-in / completed using QR code or booking reference.
+  Future<Booking> checkInBooking(String qrOrRef);
 }

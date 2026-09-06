@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Health Status severity levels
@@ -201,11 +202,12 @@ object AppHealthManager {
     private suspend fun checkFirestoreConnection(): Pair<Boolean, Long> {
         return try {
             val startTime = System.currentTimeMillis()
-            val db = FirebaseFirestore.getInstance()
-            // Quick ping to health collection with timeout
-            db.collection("health_check").document("ping").get().await()
+            val result = withTimeoutOrNull(2000L) {
+                val db = FirebaseFirestore.getInstance()
+                db.collection("health_check").document("ping").get().await()
+            }
             val latency = System.currentTimeMillis() - startTime
-            Pair(true, latency)
+            Pair(result != null, latency)
         } catch (e: Exception) {
             Log.w(TAG, "Firestore ping exception: ${e.message}")
             Pair(false, 0L)
@@ -214,7 +216,9 @@ object AppHealthManager {
 
     private suspend fun checkFcmAvailability(): Boolean {
         return try {
-            val token = FirebaseMessaging.getInstance().token.await()
+            val token = withTimeoutOrNull(2000L) {
+                FirebaseMessaging.getInstance().token.await()
+            }
             !token.isNullOrBlank()
         } catch (e: Exception) {
             Log.w(TAG, "FCM check exception: ${e.message}")

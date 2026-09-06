@@ -7,6 +7,7 @@ import 'core/localization/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_providers.dart';
+import 'features/notifications/presentation/notification_providers.dart';
 
 /// Root widget that wires together providers, theming, localization and routing.
 class BookMySpaceApp extends ConsumerWidget {
@@ -17,6 +18,9 @@ class BookMySpaceApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize system-level push notification service (APNs for iOS, Web Push for Web)
+    ref.watch(pushNotificationServiceProvider);
+
     final authAsync = ref.watch(authStateProvider);
     final currentUser = authAsync.value;
     final authReady = !authAsync.isLoading;

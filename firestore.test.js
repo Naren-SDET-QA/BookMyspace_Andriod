@@ -44,6 +44,7 @@ test("Unauthenticated user: cannot read user profiles or bookings", async () => 
   const unauthDb = testEnv.unauthenticatedContext().firestore();
   await assertFails(unauthDb.collection("users").doc(ALICE_UID).get());
   await assertFails(unauthDb.collection("bookings").doc("bk_1").get());
+  await assertFails(unauthDb.collection("venue_slot_locks").doc("lock_1").get());
 });
 
 test("Authenticated user: cannot read another user's profile or booking", async () => {
@@ -87,6 +88,56 @@ test("Authenticated user: can create and read their own profile", async () => {
   );
 
   await assertSucceeds(aliceDb.collection("users").doc(ALICE_UID).get());
+});
+
+// --- SERVER-SIDE DOUBLE-BOOKING PREVENTION TESTS ---
+
+test("Double-booking prevention: First user can hold slot, second user attempting same slot is rejected", async () => {
+  const lockId = "vn_turf_1_2026-09-01_18-00_19-00";
+  const aliceDb = testEnv.authenticatedContext(ALICE_UID).firestore();
+  const bobDb = testEnv.authenticatedContext(BOB_UID).firestore();
+
+  // Alice reserves/holds the slot
+  await assertSucceeds(
+    aliceDb.collection("venue_slot_locks").doc(lockId).set({
+      lockId: lockId,
+      venueId: "vn_turf_1",
+      bookingDate: "2026-09-01",
+      slotTime: "18:00 - 19:00",
+      userId: ALICE_UID,
+      status: "HELD",
+      createdAt: new Date(),
+    })
+  );
+
+  // Bob attempts to hold the EXACT SAME slot -> Must FAIL at Firestore level
+  await assertFails(
+    bobDb.collection("venue_slot_locks").doc(lockId).set({
+      lockId: lockId,
+      venueId: "vn_turf_1",
+      bookingDate: "2026-09-01",
+      slotTime: "18:00 - 19:00",
+      userId: BOB_UID,
+      status: "HELD",
+      createdAt: new Date(),
+    })
+  );
+
+  // Bob cannot overwrite or hijack Alice's slot lock
+  await assertFails(
+    bobDb.collection("venue_slot_locks").doc(lockId).update({
+      userId: BOB_UID,
+      status: "CONFIRMED",
+    })
+  );
+
+  // Alice can confirm her slot lock
+  await assertSucceeds(
+    aliceDb.collection("venue_slot_locks").doc(lockId).update({
+      status: "CONFIRMED",
+      bookingId: "bk_alice_confirmed_1",
+    })
+  );
 });
 
 // --- BOOKINGS & QUERIES ---

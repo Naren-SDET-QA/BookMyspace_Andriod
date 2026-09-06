@@ -2,14 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
+import '../widgets/voice_search_bottom_sheet.dart';
 
 /// Search screen: text query + category chips + sort/filter sheet.
 class SearchScreen extends ConsumerStatefulWidget {
@@ -24,6 +29,7 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   late final TextEditingController _controller;
+  final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounce;
 
   @override
@@ -42,6 +48,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -59,6 +66,42 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void _clearFilters() {
     ref.read(searchQueryProvider.notifier).state = const VenueSearchQuery();
     _controller.clear();
+  }
+
+  void _openVoiceSearch() {
+    VoiceSearchBottomSheet.show(
+      context,
+      onFilterApplied: (voiceResult) {
+        final newQuery = voiceResult.toVenueSearchQuery();
+        ref.read(searchQueryProvider.notifier).state = newQuery;
+        if (voiceResult.isClearCommand) {
+          _controller.clear();
+        } else if (voiceResult.cleanedSearchQuery.isNotEmpty) {
+          _controller.text = voiceResult.cleanedSearchQuery;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Text('🎙️ '),
+                Expanded(
+                  child: Text(
+                    voiceResult.spokenFeedback.isNotEmpty
+                        ? voiceResult.spokenFeedback
+                        : 'Voice search filter applied!',
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      onFallbackToText: () {
+        _searchFocusNode.requestFocus();
+      },
+    );
   }
 
   Future<void> _openFilters() async {
@@ -83,7 +126,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final categories = ref.watch(venueCategoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.search)),
+      appBar: AppBar(
+        title: Text(l10n.search),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map_rounded),
+            tooltip: 'Live Map Discovery',
+            onPressed: () => context.push(
+              AppRoutes.map,
+              extra: {'category': query.categorySlug},
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -93,17 +148,28 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    focusNode: _searchFocusNode,
                     onChanged: _onQueryChanged,
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: l10n.searchHint,
                       prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: query.hasFilters
-                          ? IconButton(
-                              icon: const Icon(Icons.close_rounded),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (query.hasFilters || _controller.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
                               onPressed: _clearFilters,
-                            )
-                          : null,
+                              tooltip: 'Clear search',
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.mic_rounded, color: AppTheme.brand),
+                            onPressed: _openVoiceSearch,
+                            tooltip: 'Voice Search',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -127,10 +193,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(l10n.allCategories),
+                  child: AnimatedCategoryChip(
+                    label: l10n.allCategories,
                     selected: query.categorySlug == null,
-                    onSelected: (_) {
+                    onTap: () {
                       ref.read(searchQueryProvider.notifier).state = query
                           .copyWith(categorySlug: () => null);
                     },
@@ -139,10 +205,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ...?categories.value?.map((c) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(c.name),
+                    child: AnimatedCategoryChip(
+                      label: c.name,
                       selected: query.categorySlug == c.slug,
-                      onSelected: (_) {
+                      onTap: () {
                         ref.read(searchQueryProvider.notifier).state = query
                             .copyWith(categorySlug: () => c.slug);
                       },
@@ -303,16 +369,16 @@ class _FilterSheetState extends State<_FilterSheet> {
             Wrap(
               spacing: 8,
               children: [
-                ChoiceChip(
-                  label: Text(l10n.allCategories),
+                AnimatedCategoryChip(
+                  label: l10n.allCategories,
                   selected: _categorySlug == null,
-                  onSelected: (_) => setState(() => _categorySlug = null),
+                  onTap: () => setState(() => _categorySlug = null),
                 ),
                 ...widget.categories.map(
-                  (c) => ChoiceChip(
-                    label: Text(c.name),
+                  (c) => AnimatedCategoryChip(
+                    label: c.name,
                     selected: _categorySlug == c.slug,
-                    onSelected: (_) => setState(() => _categorySlug = c.slug),
+                    onTap: () => setState(() => _categorySlug = c.slug),
                   ),
                 ),
               ],

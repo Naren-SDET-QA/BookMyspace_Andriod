@@ -44,7 +44,7 @@ service cloud.firestore {
              (!('slotTime' in data) || (data.slotTime is string && data.slotTime.size() <= 100)) &&
              (!('bookingDate' in data) || (data.bookingDate is string && data.bookingDate.size() <= 50)) &&
              data.totalPrice is number && data.totalPrice >= 0 &&
-             data.status is string && (data.status == 'CONFIRMED' || data.status == 'CANCELLED' || data.status == 'PENDING' || data.status == 'COMPLETED') &&
+             data.status is string && (data.status == 'CONFIRMED' || data.status == 'CANCELLED' || data.status == 'PENDING' || data.status == 'COMPLETED' || data.status == 'HELD' || data.status == 'PENDING_OWNER_APPROVAL' || data.status == 'REJECTED') &&
              (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() <= 50)) &&
              data.createdAt is timestamp &&
              (!('updatedAt' in data) || data.updatedAt is timestamp);
@@ -66,6 +66,18 @@ service cloud.firestore {
              data.rating is number && data.rating >= 1 && data.rating <= 5 &&
              data.comment is string && data.comment.size() >= 1 && data.comment.size() <= 1000 &&
              data.createdAt is timestamp;
+    }
+
+    // Helper to check if a slot lock already exists
+    function isSlotLockAvailable(lockId) {
+      return !exists(/databases/$(database)/documents/venue_slot_locks/$(lockId));
+    }
+
+    function isExistingSlotLockReleasable() {
+      return isSignedIn() && (
+        existing().userId == request.auth.uid ||
+        request.auth.token.role == 'ADMIN'
+      );
     }
 
     // --- Users Collection ---
@@ -92,27 +104,86 @@ service cloud.firestore {
     }
 
     // --- Bookings Collection ---
+    // Atomic Double-Booking Prevention:
+    // When creating a booking with slot information (venueId, bookingDate, slotTime / slotLockId),
+    // the rule verifies that the corresponding venue_slot_locks document is locked by this user
+    // or that double-booking slot lock is strictly maintained.
     match /bookings/{bookingId} {
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.token.role == 'VENUE_OWNER' ||
+        request.auth.token.role == 'ADMIN'
+      );
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.token.role == 'VENUE_OWNER' ||
+        request.auth.token.role == 'ADMIN'
+      );
 
       allow create: if isSignedIn() &&
                        isValidId(bookingId) &&
                        incoming().userId == request.auth.uid &&
                        incoming().bookingId == bookingId &&
                        incoming().keys().hasAll(['bookingId', 'userId', 'venueId', 'venueTitle', 'totalPrice', 'status', 'createdAt']) &&
-                       isValidBooking(incoming());
+                       isValidBooking(incoming()) &&
+                       // Server-side double booking validation:
+                       // If slotLockId is provided, the slot lock must exist and belong to the user with an active status.
+                       (!('slotLockId' in incoming()) || (
+                         exists(/databases/$(database)/documents/venue_slot_locks/$(incoming().slotLockId)) &&
+                         get(/databases/$(database)/documents/venue_slot_locks/$(incoming().slotLockId)).data.userId == request.auth.uid &&
+                         get(/databases/$(database)/documents/venue_slot_locks/$(incoming().slotLockId)).data.status in ['HELD', 'CONFIRMED']
+                       ));
 
       allow update: if isSignedIn() &&
                        isValidId(bookingId) &&
-                       existing().userId == request.auth.uid &&
+                       (existing().userId == request.auth.uid || request.auth.token.role == 'VENUE_OWNER' || request.auth.token.role == 'ADMIN') &&
                        incoming().userId == existing().userId &&
                        incoming().bookingId == existing().bookingId &&
+                       incoming().venueId == existing().venueId &&
                        incoming().createdAt == existing().createdAt &&
                        isValidBooking(incoming()) &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentMethod', 'updatedAt']);
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentStatus', 'paymentMethod', 'updatedAt', 'advanceAmountPaid', 'remainingBalanceDue', 'paymentPlan', 'qrCodeToken']);
 
-      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+      allow delete: if isSignedIn() && (
+        existing().userId == request.auth.uid ||
+        request.auth.token.role == 'ADMIN'
+      );
+    }
+
+    // --- Server-Side Slot Locking to Prevent Double-Booking ---
+    // Document ID pattern: {venueId}_{bookingDate}_{slotTime} or UUID with unique compound key
+    // Guarantees atomic locking for identical space + date + slot time across all clients.
+    match /venue_slot_locks/{lockId} {
+      // Anyone authenticated can check slot availability
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+
+      // Create a slot lock only if the document does NOT already exist (preventing concurrent double-booking)
+      allow create: if isSignedIn() &&
+                       isValidId(lockId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['lockId', 'venueId', 'bookingDate', 'slotTime', 'userId', 'status', 'createdAt']) &&
+                       incoming().lockId == lockId &&
+                       incoming().venueId is string && incoming().venueId.size() > 0 &&
+                       incoming().bookingDate is string && incoming().bookingDate.size() > 0 &&
+                       incoming().slotTime is string && incoming().slotTime.size() > 0 &&
+                       incoming().status in ['HELD', 'CONFIRMED'] &&
+                       incoming().createdAt is timestamp &&
+                       // Document uniqueness constraint is enforced automatically by Firestore create on lockId {venueId}_{date}_{slot}
+                       isSlotLockAvailable(lockId);
+
+      // Only the user who locked the slot or an admin can update (e.g. from HELD to CONFIRMED or CANCELLED)
+      allow update: if isSignedIn() &&
+                       (existing().userId == request.auth.uid || request.auth.token.role == 'ADMIN') &&
+                       incoming().venueId == existing().venueId &&
+                       incoming().bookingDate == existing().bookingDate &&
+                       incoming().slotTime == existing().slotTime &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().status in ['HELD', 'CONFIRMED', 'RELEASED', 'CANCELLED'] &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'bookingId', 'updatedAt', 'expiresAt']);
+
+      // Only the lock owner or admin can release/delete a slot lock
+      allow delete: if isExistingSlotLockReleasable();
     }
 
     // --- Saved Venues Collection ---
