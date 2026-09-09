@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
 import com.bookmyspace.bookmyspace.data.auth.UserRoleProvider
 import com.bookmyspace.bookmyspace.data.model.Booking
 import com.bookmyspace.bookmyspace.data.model.BookingStatus
@@ -585,8 +586,13 @@ private fun OwnerVenueCard(venue: Venue) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val context = LocalContext.current
                 AsyncImage(
-                    model = venue.coverImageUrl,
+                    model = CoilImageLoaderConfig.buildThumbnailRequest(
+                        context = context,
+                        data = venue.coverImageUrl,
+                        sizePx = 200
+                    ),
                     contentDescription = venue.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

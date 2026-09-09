@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "node ./web/server.js",
     "test": "firebase emulators:exec --only firestore \"node --test firestore.test.js\""
   },
   "devDependencies": {

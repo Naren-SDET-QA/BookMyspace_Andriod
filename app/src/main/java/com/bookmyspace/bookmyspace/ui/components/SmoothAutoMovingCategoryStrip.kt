@@ -226,7 +226,7 @@ fun SmoothAutoMovingCategoryStrip(
     LaunchedEffect(activeTickerCategories.size) {
         if (activeTickerCategories.size > 1) {
             while (isActive) {
-                delay(3000L)
+                delay(3500L)
                 if (!listState.isScrollInProgress) {
                     try {
                         val totalItems = activeTickerCategories.size + 1

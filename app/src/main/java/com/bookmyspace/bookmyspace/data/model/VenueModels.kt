@@ -12,6 +12,7 @@ data class VenueCategory(
 ) {
     val icon: String
         get() = customEmoji ?: when (slug.lowercase()) {
+            "photography_studio", "photo_studio", "studio" -> "📸"
             "sports", "sports_turf", "sports-fitness" -> "🏸"
             "wedding_banquet", "function_hall", "banquet-halls", "venues", "marriage_hall", "kalyana_mandapam", "mini_hall", "banquet_hall", "convention_center", "community_hall", "govt_hall", "party_lawn", "other_hall" -> "🏛️"
             "pg_hostel", "pg-co-living", "pg", "gents_pg", "ladies_pg", "student_hostel", "co_living", "single_room", "other_pg" -> "🏠"

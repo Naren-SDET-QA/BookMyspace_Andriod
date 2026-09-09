@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
 import com.bookmyspace.bookmyspace.data.discovery.IndianPinCodeResolver
 import com.bookmyspace.bookmyspace.data.discovery.PlaceDiscoveryEngine
 import com.bookmyspace.bookmyspace.data.healing.ModuleHealthStatus
@@ -1476,8 +1477,13 @@ fun PlaceDiscoveryCard(
                 verticalAlignment = Alignment.Top
             ) {
                 if (place.photoUrl.isNotBlank()) {
+                    val context = LocalContext.current
                     AsyncImage(
-                        model = place.photoUrl,
+                        model = CoilImageLoaderConfig.buildThumbnailRequest(
+                            context = context,
+                            data = place.photoUrl,
+                            sizePx = 220
+                        ),
                         contentDescription = place.name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier

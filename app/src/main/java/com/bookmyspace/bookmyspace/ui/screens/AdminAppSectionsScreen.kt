@@ -51,6 +51,7 @@ fun AdminAppSectionsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var filterMode by remember { mutableStateOf("ALL") } // ALL, ACTIVE_ONLY, INACTIVE_ONLY, NEEDS_HEALING
     var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var editingCategory by remember { mutableStateOf<VenueCategory?>(null) }
     var showHealSummaryDialog by remember { mutableStateOf<List<SelfHealResult>?>(null) }
     var inspectingCategoryReport by remember { mutableStateOf<CategoryHealthReport?>(null) }
 
@@ -425,6 +426,9 @@ fun AdminAppSectionsScreen(
                                 onToggleUnifiedReg = {
                                     BookMySpaceRepository.toggleCategoryUnifiedRegistration(cat.id)
                                 },
+                                onEditCategory = {
+                                    editingCategory = cat
+                                },
                                 onSelfHeal = {
                                     val healRes = CategoryHealthEngine.selfHealCategory(cat.slug)
                                     showHealSummaryDialog = listOf(healRes)
@@ -525,6 +529,7 @@ fun AdminAppSectionsScreen(
     if (showAddCategoryDialog) {
         var catName by remember { mutableStateOf("") }
         var catSlug by remember { mutableStateOf("") }
+        var catEmoji by remember { mutableStateOf("📸") }
         var isUnifiedReg by remember { mutableStateOf(true) }
 
         AlertDialog(
@@ -533,7 +538,7 @@ fun AdminAppSectionsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Configure a fully modular independent category (e.g. Sports Turf, Luxury Villa, Recording Studio, Medical Chamber).",
+                        "Configure a fully modular independent category (e.g. Photography Studio, Sports Turf, Luxury Villa, Recording Studio).",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -545,15 +550,22 @@ fun AdminAppSectionsScreen(
                                 catSlug = it.lowercase().trim().replace(" ", "_")
                             }
                         },
-                        label = { Text("Category Name (e.g. Badminton Courts)") },
+                        label = { Text("Category Name (e.g. Photography Studio)") },
                         modifier = Modifier.fillMaxWidth().testTag("add_category_name_field"),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = catSlug,
                         onValueChange = { catSlug = it },
-                        label = { Text("Unique Slug (e.g. badminton_courts)") },
+                        label = { Text("Unique Slug (e.g. photography_studio)") },
                         modifier = Modifier.fillMaxWidth().testTag("add_category_slug_field"),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = catEmoji,
+                        onValueChange = { catEmoji = it },
+                        label = { Text("Icon / Emoji (e.g. 📸, 🏏, 🎨)") },
+                        modifier = Modifier.fillMaxWidth().testTag("add_category_emoji_field"),
                         singleLine = true
                     )
                     Row(
@@ -578,9 +590,11 @@ fun AdminAppSectionsScreen(
                                 id = "cat_${UUID.randomUUID().toString().take(6)}",
                                 slug = catSlug.ifBlank { catName.lowercase().replace(" ", "_") },
                                 name = catName,
-                                iconName = "domain",
+                                iconName = "photo_camera",
                                 isActive = true,
-                                isUnifiedRegistrationEnabled = isUnifiedReg
+                                isUnifiedRegistrationEnabled = isUnifiedReg,
+                                customEmoji = catEmoji.trim().ifBlank { null },
+                                parentSection = "general"
                             )
                             BookMySpaceRepository.addCategory(newCat)
                             CategoryHealthEngine.selfHealCategory(newCat.slug)
@@ -596,6 +610,88 @@ fun AdminAppSectionsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Edit Category Dialog
+    editingCategory?.let { targetCat ->
+        var editName by remember(targetCat) { mutableStateOf(targetCat.name) }
+        var editEmoji by remember(targetCat) { mutableStateOf(targetCat.customEmoji ?: targetCat.icon) }
+        var editUnifiedReg by remember(targetCat) { mutableStateOf(targetCat.isUnifiedRegistrationEnabled) }
+        var editIsActive by remember(targetCat) { mutableStateOf(targetCat.isActive) }
+
+        AlertDialog(
+            onDismissRequest = { editingCategory = null },
+            title = { Text("Edit Category: ${targetCat.name}", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Category Name") },
+                        modifier = Modifier.fillMaxWidth().testTag("edit_category_name_field"),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = editEmoji,
+                        onValueChange = { editEmoji = it },
+                        label = { Text("Icon / Emoji (e.g. 📸, 🏏, 🎨)") },
+                        modifier = Modifier.fillMaxWidth().testTag("edit_category_emoji_field"),
+                        singleLine = true
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Active Status (ON/OFF)", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Switch(
+                            checked = editIsActive,
+                            onCheckedChange = { editIsActive = it },
+                            modifier = Modifier.testTag("edit_category_active_switch")
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Unified Registration KYC", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Switch(
+                            checked = editUnifiedReg,
+                            onCheckedChange = { editUnifiedReg = it },
+                            modifier = Modifier.testTag("edit_category_unified_switch")
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editName.isNotBlank()) {
+                            val updated = targetCat.copy(
+                                name = editName.trim(),
+                                customEmoji = editEmoji.trim().ifBlank { null },
+                                isActive = editIsActive,
+                                isUnifiedRegistrationEnabled = editUnifiedReg
+                            )
+                            BookMySpaceRepository.updateCategory(updated)
+                            CategoryHealthEngine.refreshHealthReports()
+                            editingCategory = null
+                            Toast.makeText(context, "Updated category '${updated.name}'!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.testTag("submit_edit_category_btn"),
+                    enabled = editName.isNotBlank()
+                ) {
+                    Text("Save Changes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingCategory = null }) {
                     Text("Cancel")
                 }
             }
@@ -727,6 +823,7 @@ private fun ModularCategoryCard(
     report: CategoryHealthReport?,
     onToggleActive: (Boolean) -> Unit,
     onToggleUnifiedReg: () -> Unit,
+    onEditCategory: () -> Unit,
     onSelfHeal: () -> Unit,
     onInspectDiagnostics: () -> Unit
 ) {
@@ -868,11 +965,18 @@ private fun ModularCategoryCard(
                     }
                 }
 
-                // Action Buttons: Self-Heal & Info
+                // Action Buttons: Edit, Info, & Self-Heal
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    IconButton(
+                        onClick = onEditCategory,
+                        modifier = Modifier.size(28.dp).testTag("edit_category_btn_${category.slug}")
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Category", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+
                     IconButton(
                         onClick = onInspectDiagnostics,
                         modifier = Modifier.size(28.dp)

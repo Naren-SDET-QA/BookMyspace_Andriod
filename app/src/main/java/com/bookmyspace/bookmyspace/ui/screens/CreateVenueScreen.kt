@@ -494,13 +494,14 @@ fun CreateVenueScreen(
                         // Data-Driven Category Selector
                         Text("Category (Data-Driven)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(categories.filter { it.slug != "all" }) { cat ->
-                                val isSelected = selectedCategory?.id == cat.id
+                            items(categories.filter { it.slug != "all" && it.isActive }) { cat ->
+                                val isSelected = selectedCategory?.id == cat.id || selectedCategory?.slug == cat.slug
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = { selectedCategory = cat },
-                                    label = { Text(cat.name, fontSize = 11.5.sp) },
-                                    shape = RoundedCornerShape(10.dp)
+                                    label = { Text("${cat.icon} ${cat.name}", fontSize = 11.5.sp) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.testTag("create_venue_cat_chip_${cat.slug}")
                                 )
                             }
                         }

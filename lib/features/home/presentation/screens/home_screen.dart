@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../auth/presentation/auth_providers.dart';
@@ -17,12 +18,30 @@ import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../search/presentation/widgets/voice_search_bottom_sheet.dart';
 
-/// The 4 primary sections of BookMySpace
+/// Sub-section item representation with counter and highlight flag for 3D Cards
+class SubSectionItem {
+  const SubSectionItem({
+    required this.label,
+    required this.emoji,
+    required this.count,
+    required this.slug,
+    this.isHighlight = false,
+  });
+
+  final String label;
+  final String emoji;
+  final int count;
+  final String slug;
+  final bool isHighlight;
+}
+
+/// The primary category sections of BookMySpace
 enum MainHomeSection {
   functionHalls,
   lodgeRooms,
   pgHostels,
-  institutesClasses;
+  institutesClasses,
+  sportsTurfs;
 
   String get id {
     switch (this) {
@@ -34,6 +53,8 @@ enum MainHomeSection {
         return 'pg_hostels';
       case MainHomeSection.institutesClasses:
         return 'institutes_classes';
+      case MainHomeSection.sportsTurfs:
+        return 'sports_turfs';
     }
   }
 
@@ -47,6 +68,23 @@ enum MainHomeSection {
         return 'PG / Hostels';
       case MainHomeSection.institutesClasses:
         return 'Institutes / Classes';
+      case MainHomeSection.sportsTurfs:
+        return 'Sports / Turfs';
+    }
+  }
+
+  String get displayTitle {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 'Function Halls & Celebrations';
+      case MainHomeSection.lodgeRooms:
+        return 'Hotels, Lodges & Rooms';
+      case MainHomeSection.pgHostels:
+        return 'PG Hostels & Co-Living';
+      case MainHomeSection.institutesClasses:
+        return 'Institutes & Academy Classes';
+      case MainHomeSection.sportsTurfs:
+        return 'Sports Turfs & Workspaces';
     }
   }
 
@@ -60,6 +98,23 @@ enum MainHomeSection {
         return 'Gents, Ladies, Co-Living & Student Hostels';
       case MainHomeSection.institutesClasses:
         return 'Coaching, Tuition, Dance, Music & Sports';
+      case MainHomeSection.sportsTurfs:
+        return 'Floodlit Box Cricket, Football Turfs, Gyms & Studios';
+    }
+  }
+
+  String get displaySubtitle {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 'Grand Marriage Halls, Convention Centers, Banquets & Party Lawns';
+      case MainHomeSection.lodgeRooms:
+        return '24-Hour Check-in Hotels, Hourly Micro-Stays & Executive Suites';
+      case MainHomeSection.pgHostels:
+        return 'Verified Gents & Ladies PGs, Co-Living Suites & Student Hostels';
+      case MainHomeSection.institutesClasses:
+        return 'Coaching Labs, IT Academies, Tuition, Dance & Music Studios';
+      case MainHomeSection.sportsTurfs:
+        return 'Floodlit Box Cricket, Football Turfs, Gyms, Co-Working & Studios';
     }
   }
 
@@ -73,6 +128,127 @@ enum MainHomeSection {
         return '🏠';
       case MainHomeSection.institutesClasses:
         return '🎓';
+      case MainHomeSection.sportsTurfs:
+        return '🏆';
+    }
+  }
+
+  IconData get iconData {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return Icons.account_balance_outlined;
+      case MainHomeSection.lodgeRooms:
+        return Icons.hotel_outlined;
+      case MainHomeSection.pgHostels:
+        return Icons.home_outlined;
+      case MainHomeSection.institutesClasses:
+        return Icons.school_outlined;
+      case MainHomeSection.sportsTurfs:
+        return Icons.emoji_events_outlined;
+    }
+  }
+
+  String get popularBadge {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return '# POPULAR';
+      case MainHomeSection.lodgeRooms:
+        return '✨ INSTANT STAY';
+      case MainHomeSection.pgHostels:
+        return '# ZERO BROKERAGE';
+      case MainHomeSection.institutesClasses:
+        return '# FREE DEMO';
+      case MainHomeSection.sportsTurfs:
+        return '# FLOODLIT & 24/7';
+    }
+  }
+
+  int get defaultCount {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 4;
+      case MainHomeSection.lodgeRooms:
+        return 2;
+      case MainHomeSection.pgHostels:
+        return 1;
+      case MainHomeSection.institutesClasses:
+        return 2;
+      case MainHomeSection.sportsTurfs:
+        return 3;
+    }
+  }
+
+  String get highlightBadge {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return '⚡ 10-Min Royal Hold';
+      case MainHomeSection.lodgeRooms:
+        return '⏱️ Flexible Hourly Slots';
+      case MainHomeSection.pgHostels:
+        return '🛡️ Verified Biometric Security';
+      case MainHomeSection.institutesClasses:
+        return '🎓 Certified Master Instructors';
+      case MainHomeSection.sportsTurfs:
+        return '⚡ Instant Slot Booking';
+    }
+  }
+
+  String get startsFromPrice {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return '₹25,000/day';
+      case MainHomeSection.lodgeRooms:
+        return '₹499/hr';
+      case MainHomeSection.pgHostels:
+        return '₹4,500/mo';
+      case MainHomeSection.institutesClasses:
+        return '₹1,200/mo';
+      case MainHomeSection.sportsTurfs:
+        return '₹600/hr';
+    }
+  }
+
+  List<SubSectionItem> get subSections {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return const [
+          SubSectionItem(label: 'Marriage Halls', emoji: '💍', count: 2, slug: 'marriage_hall'),
+          SubSectionItem(label: 'Banquet Halls', emoji: '💐', count: 1, slug: 'banquet_hall'),
+          SubSectionItem(label: 'Convention Halls', emoji: '🏢', count: 1, slug: 'convention_center'),
+          SubSectionItem(label: 'Party Halls & Lawns', emoji: '🎈', count: 2, slug: 'party_hall'),
+          SubSectionItem(label: 'Other Halls & Spaces', emoji: '✨', count: 4, slug: 'other_hall', isHighlight: true),
+        ];
+      case MainHomeSection.lodgeRooms:
+        return const [
+          SubSectionItem(label: 'Hotels & Suites', emoji: '🏨', count: 1, slug: 'hotel'),
+          SubSectionItem(label: 'Hourly Day Rooms', emoji: '🧳', count: 1, slug: 'hourly_room'),
+          SubSectionItem(label: 'Budget Lodges', emoji: '🛏️', count: 2, slug: 'lodge'),
+          SubSectionItem(label: 'Resorts & Homestay', emoji: '🌴', count: 1, slug: 'resort'),
+          SubSectionItem(label: 'Other Stays & Homestays', emoji: '✨', count: 2, slug: 'other_stay', isHighlight: true),
+        ];
+      case MainHomeSection.pgHostels:
+        return const [
+          SubSectionItem(label: 'Gents PG', emoji: '👨', count: 1, slug: 'gents_pg'),
+          SubSectionItem(label: 'Ladies PG', emoji: '👩', count: 1, slug: 'ladies_pg'),
+          SubSectionItem(label: 'Student Hostels', emoji: '🎒', count: 1, slug: 'student_hostel'),
+          SubSectionItem(label: 'Co-Living Spaces', emoji: '🛋️', count: 1, slug: 'coliving'),
+          SubSectionItem(label: 'Other Hostels & Pods', emoji: '✨', count: 1, slug: 'other_pg', isHighlight: true),
+        ];
+      case MainHomeSection.institutesClasses:
+        return const [
+          SubSectionItem(label: 'Coaching Centers', emoji: '📚', count: 1, slug: 'coaching'),
+          SubSectionItem(label: 'Tuition & Test Prep', emoji: '✏️', count: 1, slug: 'tuition'),
+          SubSectionItem(label: 'IT & Computer Training', emoji: '💻', count: 1, slug: 'computer'),
+          SubSectionItem(label: 'Dance & Music Studios', emoji: '🎵', count: 1, slug: 'dance'),
+        ];
+      case MainHomeSection.sportsTurfs:
+        return const [
+          SubSectionItem(label: 'Box Cricket & Turf', emoji: '⚽', count: 1, slug: 'sports'),
+          SubSectionItem(label: 'Gym & Fitness', emoji: '🏋️', count: 1, slug: 'gym'),
+          SubSectionItem(label: 'Co-Working Desks', emoji: '💼', count: 1, slug: 'coworking'),
+          SubSectionItem(label: 'Photo & Film Studios', emoji: '📸', count: 2, slug: 'photography_studio'),
+          SubSectionItem(label: 'Other Turfs & Desks', emoji: '✨', count: 3, slug: 'other', isHighlight: true),
+        ];
     }
   }
 
@@ -86,6 +262,8 @@ enum MainHomeSection {
         return 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=900&auto=format&fit=crop&q=80';
       case MainHomeSection.institutesClasses:
         return 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.sportsTurfs:
+        return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80';
     }
   }
 
@@ -130,6 +308,15 @@ enum MainHomeSection {
           SubCategoryOption('dance', 'Dance Academy', '💃'),
           SubCategoryOption('music', 'Music School', '🎵'),
           SubCategoryOption('sports', 'Sports & Gym', '⚽'),
+        ];
+      case MainHomeSection.sportsTurfs:
+        return const [
+          SubCategoryOption('all', 'All Turfs & Desks', '🏆'),
+          SubCategoryOption('sports', 'Box Cricket & Turf', '⚽'),
+          SubCategoryOption('gym', 'Gym & Fitness', '🏋️'),
+          SubCategoryOption('coworking', 'Co-Working Desks', '💼'),
+          SubCategoryOption('photography_studio', 'Photo & Film Studios', '📸'),
+          SubCategoryOption('other', 'Other Turfs & Desks', '✨'),
         ];
     }
   }
@@ -177,6 +364,119 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final Set<String> _selectedAmenities = {};
   String _searchQuery = '';
 
+  List<SubCategoryOption> _resolveSectionCategories(
+    MainHomeSection section,
+    List<VenueCategory> dynamicCats,
+  ) {
+    final list = <SubCategoryOption>[...section.categoryOptions];
+    for (final cat in dynamicCats) {
+      if (!cat.isActive) continue;
+      final exists = list.any((c) => c.id.toLowerCase() == cat.slug.toLowerCase());
+      if (!exists) {
+        final parent = cat.parentSection?.toLowerCase() ?? 'general';
+        final matches = parent == 'general' ||
+            (parent == 'venues' && section == MainHomeSection.functionHalls) ||
+            (parent == 'hotels' && section == MainHomeSection.lodgeRooms) ||
+            (parent == 'pgs' && section == MainHomeSection.pgHostels) ||
+            (parent == 'classes' && section == MainHomeSection.institutesClasses) ||
+            (parent == 'sports' && section == MainHomeSection.sportsTurfs);
+        if (matches) {
+          list.add(SubCategoryOption(
+            cat.slug,
+            cat.name,
+            cat.icon?.isNotEmpty == true ? cat.icon! : '🏷️',
+          ));
+        }
+      }
+    }
+    return list;
+  }
+
+  void _showAddSubSectionDialog(BuildContext context, MainHomeSection section) {
+    final nameCtrl = TextEditingController();
+    final emojiCtrl = TextEditingController(text: '✨');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Text(section.emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Add Sub-Section to ${section.title}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Create a new custom sub-section for immediate 1-click filtering:',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Sub-Section Name',
+                hintText: 'e.g. Banquet Hall, Film Studio',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emojiCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Emoji Icon',
+                hintText: 'e.g. 📸, 🌟, 🎪',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isNotEmpty) {
+                final slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                final emoji = emojiCtrl.text.trim().isNotEmpty ? emojiCtrl.text.trim() : '✨';
+                ref.read(venueRepositoryProvider).addCategory(
+                  VenueCategory(
+                    id: slug,
+                    name: name,
+                    slug: slug,
+                    icon: emoji,
+                    parentSection: section.id,
+                  ),
+                );
+                ref.invalidate(venueCategoriesProvider);
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "$name" to ${section.title}!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Add Sub-Section'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -211,7 +511,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
 
                   // =========================================================
-                  // 🌟 FIRST SCREEN: EXACTLY 4 MAIN SECTIONS ONLY
+                  // 🌟 FIRST SCREEN: 3D CATEGORY SECTIONS (iOS, Android & Web)
                   // =========================================================
                   if (_selectedSection == null) ...[
                     SliverToBoxAdapter(
@@ -224,7 +524,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Book Your Space',
+                              'Explore Spaces by Category',
                               style: theme.textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: -0.5,
@@ -233,7 +533,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Select what you are looking for to get started:',
+                              'Select a category with 1-click sub-section filters to find your ideal space:',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -244,33 +544,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                    // Dynamic Aspect Ratio Responsive Grid for the 4 Main Sections
+                    // 3D Responsive Grid for Main Category Sections
                     SliverPadding(
                       padding: EdgeInsets.symmetric(
                         horizontal: responsive.horizontalPadding,
                       ),
                       sliver: SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: responsive.categoryColumns,
-                          mainAxisSpacing: responsive.gridSpacing,
-                          crossAxisSpacing: responsive.gridSpacing,
-                          childAspectRatio: responsive.categoryAspectRatio,
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 440,
+                          mainAxisSpacing: 22,
+                          crossAxisSpacing: 22,
+                          mainAxisExtent: 475,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
                             final section = MainHomeSection.values[index];
-                            return _MainSectionHeroCard(
+                            final dynamicCats = (ref.watch(venueCategoriesProvider).value ?? const []);
+                            final cityName = _currentLocation.split('(').first.trim();
+                            return _ThreeDimensionalCategoryHeroCard(
                               section: section,
-                              isTabletOrWide: responsive.isTabletOrLandscape,
-                              onTap: () {
+                              cityName: cityName.isNotEmpty ? cityName : 'Hyderabad',
+                              dynamicCats: dynamicCats,
+                              onTapExplore: () {
                                 setState(() {
                                   _selectedSection = section;
                                   _selectedCategorySlug = 'all';
                                 });
                               },
+                              onSubSectionTap: (slug) {
+                                setState(() {
+                                  _selectedSection = section;
+                                  _selectedCategorySlug = slug;
+                                });
+                                context.push('${AppRoutes.search}?category=$slug');
+                              },
+                              onAddSubSectionTap: () {
+                                _showAddSubSectionDialog(context, section);
+                              },
                             );
                           },
                           childCount: MainHomeSection.values.length,
+                        ),
+                      ),
+                    ),
+
+                    // Dynamic Categories Horizontal Strip
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: responsive.horizontalPadding,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Trending Categories',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 40,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: (ref.watch(venueCategoriesProvider).value ?? const [])
+                                    .where((c) => c.isActive && c.slug != 'all')
+                                    .length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final cats = (ref.watch(venueCategoriesProvider).value ?? const [])
+                                      .where((c) => c.isActive && c.slug != 'all')
+                                      .toList();
+                                  final cat = cats[index];
+                                  return AnimatedCategoryChip(
+                                    selected: false,
+                                    label: cat.name,
+                                    emoji: cat.icon?.isNotEmpty == true ? cat.icon! : '🏷️',
+                                    onTap: () {
+                                      context.push('${AppRoutes.search}?category=${cat.slug}');
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -402,30 +761,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          SizedBox(
-                            height: 44,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: responsive.horizontalPadding,
-                              ),
-                              itemCount: _selectedSection!.categoryOptions.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 8),
-                              itemBuilder: (context, index) {
-                                final cat = _selectedSection!.categoryOptions[index];
-                                final isSelected = _selectedCategorySlug == cat.id;
-                                return AnimatedCategoryChip(
-                                  selected: isSelected,
-                                  label: cat.label,
-                                  emoji: cat.emoji,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCategorySlug = cat.id;
-                                    });
+                          Builder(
+                            builder: (context) {
+                              final dynamicCats = ref.watch(venueCategoriesProvider).value ?? const [];
+                              final options = _resolveSectionCategories(_selectedSection!, dynamicCats);
+                              return SizedBox(
+                                height: 44,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: responsive.horizontalPadding,
+                                  ),
+                                  itemCount: options.length,
+                                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                  itemBuilder: (context, index) {
+                                    final cat = options[index];
+                                    final isSelected = _selectedCategorySlug == cat.id;
+                                    return AnimatedCategoryChip(
+                                      selected: isSelected,
+                                      label: cat.label,
+                                      emoji: cat.emoji,
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedCategorySlug = cat.id;
+                                        });
+                                      },
+                                    );
                                   },
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -924,137 +1289,603 @@ class _TopHeaderBar extends StatelessWidget {
   }
 }
 
-/// Large, eye-catching, extremely simple Hero Card for the 4 Main Sections on the first screen.
-/// Adapts dynamically on phone single-column, tablet 2-column, and extra-wide landscape 4-column layouts.
-class _MainSectionHeroCard extends StatelessWidget {
-  const _MainSectionHeroCard({
+/// Modern 3D Tactile Category Hero Card with Web Hover Perspective, iOS/Android Haptic Scaling,
+/// Active Green Live Status Indicator, 1-Click Sub-Section Filters & High-Precision 3D Shadows.
+class _ThreeDimensionalCategoryHeroCard extends StatefulWidget {
+  const _ThreeDimensionalCategoryHeroCard({
     required this.section,
-    required this.isTabletOrWide,
-    required this.onTap,
+    required this.cityName,
+    required this.dynamicCats,
+    required this.onTapExplore,
+    required this.onSubSectionTap,
+    required this.onAddSubSectionTap,
   });
 
   final MainHomeSection section;
-  final bool isTabletOrWide;
-  final VoidCallback onTap;
+  final String cityName;
+  final List<VenueCategory> dynamicCats;
+  final VoidCallback onTapExplore;
+  final ValueChanged<String> onSubSectionTap;
+  final VoidCallback onAddSubSectionTap;
+
+  @override
+  State<_ThreeDimensionalCategoryHeroCard> createState() =>
+      _ThreeDimensionalCategoryHeroCardState();
+}
+
+class _ThreeDimensionalCategoryHeroCardState
+    extends State<_ThreeDimensionalCategoryHeroCard> {
+  bool _isHovered = false;
+  bool _isPressed = false;
+
+  List<SubSectionItem> _resolveSubSections() {
+    final list = <SubSectionItem>[...widget.section.subSections];
+    for (final cat in widget.dynamicCats) {
+      if (!cat.isActive) continue;
+      final exists = list.any((s) => s.slug.toLowerCase() == cat.slug.toLowerCase());
+      if (!exists) {
+        final parent = cat.parentSection?.toLowerCase() ?? 'general';
+        final matches = (parent == 'general' && widget.section == MainHomeSection.functionHalls) ||
+            (parent == 'venues' && widget.section == MainHomeSection.functionHalls) ||
+            (parent == 'hotels' && widget.section == MainHomeSection.lodgeRooms) ||
+            (parent == 'pgs' && widget.section == MainHomeSection.pgHostels) ||
+            (parent == 'classes' && widget.section == MainHomeSection.institutesClasses) ||
+            (parent == 'sports' && widget.section == MainHomeSection.sportsTurfs);
+        if (matches) {
+          list.add(SubSectionItem(
+            label: cat.name,
+            emoji: cat.icon?.isNotEmpty == true ? cat.icon! : '✨',
+            count: 1,
+            slug: cat.slug,
+            isHighlight: true,
+          ));
+        }
+      }
+    }
+    return list;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final section = widget.section;
+    final subSections = _resolveSubSections();
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isTabletOrWide ? 22 : 18),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background Image
-            AppNetworkImage(
-              url: section.imageUrl,
-              fit: BoxFit.cover,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          widget.onTapExplore();
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0014)
+            ..rotateX(_isHovered ? -0.065 : (_isPressed ? 0.02 : 0.0))
+            ..rotateY(_isHovered ? 0.038 : 0.0)
+            ..translate(
+              0.0,
+              _isPressed
+                  ? 3.0
+                  : (_isHovered ? -10.0 : 0.0),
+              0.0,
+            )
+            ..scale(_isPressed ? 0.982 : (_isHovered ? 1.02 : 1.0)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: _isHovered
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.55)
+                  : const Color(0xFFE2E8F0),
+              width: _isHovered ? 2.0 : 1.5,
             ),
-
-            // High-Contrast Gradient Scrim
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black.withValues(alpha: 0.90),
-                    Colors.black.withValues(alpha: 0.74),
-                    Colors.black.withValues(alpha: 0.35),
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+            boxShadow: [
+              // Dynamic, elevated drop-shadows that deepen during interaction
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(
+                  alpha: _isPressed
+                      ? 0.06
+                      : (_isHovered ? 0.24 : 0.09),
                 ),
+                blurRadius: _isHovered ? 36 : (_isPressed ? 8 : 18),
+                offset: Offset(0, _isHovered ? 18 : (_isPressed ? 3 : 8)),
+                spreadRadius: _isHovered ? 2.5 : 0,
               ),
-            ),
-
-            // Content
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTabletOrWide ? 18 : 16,
-                vertical: 12,
+              // Radiant indigo ambient rim reflection
+              BoxShadow(
+                color: const Color(0xFF6366F1).withValues(
+                  alpha: _isHovered ? 0.25 : 0.05,
+                ),
+                blurRadius: _isHovered ? 28 : 16,
+                offset: Offset(0, _isHovered ? 8 : 3),
               ),
-              child: Row(
-                children: [
-                  // Emoji Badge
-                  Container(
-                    width: isTabletOrWide ? 56 : 48,
-                    height: isTabletOrWide ? 56 : 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      section.emoji,
-                      style: TextStyle(fontSize: isTabletOrWide ? 28 : 24),
+              // Tactile 3D bottom bevel edge
+              BoxShadow(
+                color: const Color(0xFF000000).withValues(
+                  alpha: _isHovered ? 0.08 : 0.04,
+                ),
+                blurRadius: 2,
+                offset: Offset(0, _isHovered ? 4 : 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Stack(
+              children: [
+                // Subtle architectural background watermark image
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.045,
+                    child: Image.network(
+                      section.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                ),
 
-                  // Text Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          section.title,
-                          style: TextStyle(
-                            fontSize: isTabletOrWide ? 18 : 16.5,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
+                // Pronounced Light-Source Effect: Border-based highlight on top edges
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.95),
+                          const Color(0xFFE0E7FF),
+                          Colors.white.withValues(alpha: 0.95),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 36.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.55),
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Card Foreground Content
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Top Row: Icon Container with Green Live Dot + Badges
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Icon Container + Live Status Dot
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: const Color(0xFFC7D2FE),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  section.iconData,
+                                  color: const Color(0xFF4F46E5),
+                                  size: 24,
+                                ),
+                              ),
+                              // Live active dot (bottom-right of icon box)
+                              Positioned(
+                                bottom: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 13,
+                                  height: 13,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+
+                          const Spacer(),
+
+                          // Top-right Badges
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFC7D2FE).withValues(alpha: 0.6),
+                                  ),
+                                ),
+                                child: Text(
+                                  section.popularBadge,
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF4338CA),
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3F4F6),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${section.defaultCount} Spaces in ${widget.cityName}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4B5563),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Title
+                      Text(
+                        section.displayTitle,
+                        style: const TextStyle(
+                          fontSize: 18.5,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.4,
+                          height: 1.2,
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          section.subtitle,
-                          style: TextStyle(
-                            fontSize: isTabletOrWide ? 12 : 11.5,
-                            color: Colors.white.withValues(alpha: 0.85),
-                            height: 1.25,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 5),
+
+                      // Subtitle
+                      SizedBox(
+                        height: 34,
+                        child: Text(
+                          section.displaySubtitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF64748B),
+                            height: 1.35,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
 
-                  const SizedBox(width: 8),
+                      const SizedBox(height: 12),
 
-                  // Circular Action Arrow
-                  Container(
-                    width: isTabletOrWide ? 42 : 36,
-                    height: isTabletOrWide ? 42 : 36,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.brand,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                      // Highlight tag pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFFFDE68A),
+                          ),
+                        ),
+                        child: Text(
+                          section.highlightBadge,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // SUB-SECTIONS INCLUDED row
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.layers_rounded,
+                            size: 15,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'SUB-SECTIONS INCLUDED:',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF475569),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFA7F3D0),
+                              ),
+                            ),
+                            child: const Text(
+                              '1-CLICK FILTER',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF059669),
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Sub-sections Chip Wrap
+                      Wrap(
+                        spacing: 7,
+                        runSpacing: 7,
+                        children: [
+                          ...subSections.map((sub) {
+                            return InkWell(
+                              onTap: () => widget.onSubSectionTap(sub.slug),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: sub.isHighlight
+                                      ? const Color(0xFFFEF3C7)
+                                      : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: sub.isHighlight
+                                        ? const Color(0xFFFCD34D)
+                                        : const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      sub.emoji,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      sub.label,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: sub.isHighlight
+                                            ? const Color(0xFF92400E)
+                                            : const Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: sub.isHighlight
+                                            ? const Color(0xFFFDE68A)
+                                            : const Color(0xFFE2E8F0),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${sub.count}',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: sub.isHighlight
+                                              ? const Color(0xFF78350F)
+                                              : const Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+
+                          // + + Sub-Section chip
+                          InkWell(
+                            onTap: widget.onAddSubSectionTap,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(
+                                    Icons.add_rounded,
+                                    size: 13,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    '+ Sub-Section',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const Spacer(),
+
+                      // Bottom Row: Starts From Price + Explore Spaces Button
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'STARTS FROM',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF94A3B8),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                section.startsFromPrice,
+                                style: const TextStyle(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const Spacer(),
+
+                          // Explore Spaces Pill Button
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                if (_isHovered)
+                                  BoxShadow(
+                                    color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Explore Spaces',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Transform.translate(
+                                  offset: Offset(_isHovered ? 2.5 : 0.0, 0),
+                                  child: const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1337,20 +2168,15 @@ class _SectionVenueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-        ),
+    return GlassmorphicCard(
+      borderRadius: 18,
+      onTap: onTap,
+      accentGradient: const LinearGradient(
+        colors: [Color(0xFF6366F1), Color(0xFF4F46E5), Color(0xFFFF7043)],
       ),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // Venue Cover Image & Badges
             SizedBox(
               height: 130,
@@ -1504,7 +2330,6 @@ class _SectionVenueCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
+    }
   }
-}

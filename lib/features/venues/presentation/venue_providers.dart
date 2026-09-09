@@ -11,9 +11,14 @@ final venueRepositoryProvider = Provider<VenueRepository>((ref) {
   return SupabaseVenueRepository(client);
 });
 
-/// Categories provider.
+/// Categories provider (active categories for discovery/browsing).
 final venueCategoriesProvider = FutureProvider<List<VenueCategory>>((ref) {
-  return ref.watch(venueRepositoryProvider).categories();
+  return ref.watch(venueRepositoryProvider).categories(activeOnly: true);
+});
+
+/// All categories provider for management screens (including inactive ones).
+final allVenueCategoriesProvider = FutureProvider<List<VenueCategory>>((ref) {
+  return ref.watch(venueRepositoryProvider).categories(activeOnly: false);
 });
 
 /// Popular venues provider.

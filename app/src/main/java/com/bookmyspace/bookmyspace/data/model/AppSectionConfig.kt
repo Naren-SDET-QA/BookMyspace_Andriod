@@ -82,6 +82,16 @@ enum class AppSectionKey(
         defaultEnabled = true,
         subCategories = listOf("meeting_room", "conference_room", "coworking", "badminton"),
         quickOptions = listOf("Meeting Room", "Conference Hall", "Hot Desk", "Sports Turf")
+    ),
+    SPORTS_TURFS(
+        id = "sports_turfs",
+        title = "Sports & Turfs",
+        subtitle = "Box Cricket, Football Turfs, Gyms & Studios",
+        emoji = "⚽",
+        iconName = "sports_soccer",
+        defaultEnabled = true,
+        subCategories = listOf("sports", "turf", "cricket", "football", "gym"),
+        quickOptions = listOf("Box Cricket", "Football Turf", "Badminton", "Gym Passes", "Coworking")
     );
 
     companion object {

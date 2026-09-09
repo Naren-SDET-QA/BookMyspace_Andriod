@@ -22,14 +22,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bookmyspace.bookmyspace.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -129,13 +127,130 @@ fun BMSLogoIconBadge(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_bms_logo),
-            contentDescription = "BookMySpace Logo",
+        // Pure Jetpack Compose Emblem: zero resource lookup overhead, 100% resilient & crash-free
+        BMSCanvasEmblem(
             modifier = Modifier
                 .fillMaxSize()
-                .padding((size.value * 0.06f).dp),
-            contentScale = ContentScale.Fit
+                .padding((size.value * 0.14f).dp)
+        )
+    }
+}
+
+/**
+ * Pure Jetpack Compose Vector Emblem representing architectural spaces, sports arenas, and luxury venues.
+ */
+@Composable
+fun BMSCanvasEmblem(
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.04f, w * 0.04f)
+
+        // 1. Left Wing Tower (Sports / Turfs - Emerald Green)
+        val leftLeft = w * 0.20f
+        val leftWidth = w * 0.18f
+        val leftTop = h * 0.42f
+        val leftHeight = h * 0.38f
+        drawRoundRect(
+            color = Color(0xFF10B981),
+            topLeft = androidx.compose.ui.geometry.Offset(leftLeft, leftTop),
+            size = androidx.compose.ui.geometry.Size(leftWidth, leftHeight),
+            cornerRadius = cornerRadius
+        )
+
+        // 2. Center Grand Apex Tower (Convention Halls & Venues - Sky Blue)
+        val centerLeft = w * 0.41f
+        val centerWidth = w * 0.18f
+        val centerTop = h * 0.28f
+        val centerHeight = h * 0.52f
+        drawRoundRect(
+            color = Color(0xFF38BDF8),
+            topLeft = androidx.compose.ui.geometry.Offset(centerLeft, centerTop),
+            size = androidx.compose.ui.geometry.Size(centerWidth, centerHeight),
+            cornerRadius = cornerRadius
+        )
+
+        // 3. Right Wing Tower (Hotels & Hostels - Indigo)
+        val rightLeft = w * 0.62f
+        val rightWidth = w * 0.18f
+        val rightTop = h * 0.46f
+        val rightHeight = h * 0.34f
+        drawRoundRect(
+            color = Color(0xFF818CF8),
+            topLeft = androidx.compose.ui.geometry.Offset(rightLeft, rightTop),
+            size = androidx.compose.ui.geometry.Size(rightWidth, rightHeight),
+            cornerRadius = cornerRadius
+        )
+
+        // 4. Clean Architectural Window Accents
+        val windowColor = Color.White.copy(alpha = 0.9f)
+        val winW = w * 0.08f
+        val winH = h * 0.05f
+        val winCorner = androidx.compose.ui.geometry.CornerRadius(winW * 0.25f, winW * 0.25f)
+
+        // Left Tower Windows
+        drawRoundRect(
+            color = windowColor,
+            topLeft = androidx.compose.ui.geometry.Offset(leftLeft + leftWidth * 0.25f, leftTop + h * 0.08f),
+            size = androidx.compose.ui.geometry.Size(winW, winH),
+            cornerRadius = winCorner
+        )
+        drawRoundRect(
+            color = windowColor,
+            topLeft = androidx.compose.ui.geometry.Offset(leftLeft + leftWidth * 0.25f, leftTop + h * 0.20f),
+            size = androidx.compose.ui.geometry.Size(winW, winH),
+            cornerRadius = winCorner
+        )
+
+        // Center Tower Windows
+        drawRoundRect(
+            color = windowColor,
+            topLeft = androidx.compose.ui.geometry.Offset(centerLeft + centerWidth * 0.25f, centerTop + h * 0.08f),
+            size = androidx.compose.ui.geometry.Size(winW, winH),
+            cornerRadius = winCorner
+        )
+        drawRoundRect(
+            color = windowColor,
+            topLeft = androidx.compose.ui.geometry.Offset(centerLeft + centerWidth * 0.25f, centerTop + h * 0.20f),
+            size = androidx.compose.ui.geometry.Size(winW, winH),
+            cornerRadius = winCorner
+        )
+        drawRoundRect(
+            color = windowColor,
+            topLeft = androidx.compose.ui.geometry.Offset(centerLeft + centerWidth * 0.25f, centerTop + h * 0.32f),
+            size = androidx.compose.ui.geometry.Size(winW, winH),
+            cornerRadius = winCorner
+        )
+
+        // Right Tower Windows
+        drawRoundRect(
+            color = windowColor,
+            topLeft = androidx.compose.ui.geometry.Offset(rightLeft + rightWidth * 0.25f, rightTop + h * 0.08f),
+            size = androidx.compose.ui.geometry.Size(winW, winH),
+            cornerRadius = winCorner
+        )
+
+        // 5. Sports Turf / Base Foundation Arc
+        drawRoundRect(
+            color = Color(0xFF10B981),
+            topLeft = androidx.compose.ui.geometry.Offset(w * 0.12f, h * 0.82f),
+            size = androidx.compose.ui.geometry.Size(w * 0.76f, h * 0.07f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.035f, h * 0.035f)
+        )
+
+        // 6. Golden Star / Beacon at the Apex
+        val beaconCenter = androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.16f)
+        drawCircle(
+            color = Color(0xFFFBBF24),
+            radius = w * 0.07f,
+            center = beaconCenter
+        )
+        drawCircle(
+            color = Color.White,
+            radius = w * 0.03f,
+            center = beaconCenter
         )
     }
 }

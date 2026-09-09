@@ -38,6 +38,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Disable automatic Firebase Performance network collection when offline or running with mock/fallback keys -->
+        <meta-data
+            android:name="firebase_performance_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_performance_collection_deactivated"
+            android:value="true" />
+
         <!-- Firebase Cloud Messaging Service for 1-Hour Push Reminders -->
         <service
             android:name=".data.notification.BookMySpaceFirebaseMessagingService"

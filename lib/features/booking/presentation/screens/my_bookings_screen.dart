@@ -8,6 +8,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../payments/presentation/payment_providers.dart';
 import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
@@ -311,12 +312,28 @@ class _BookingCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final name = booking.venueName.isEmpty ? l10n.venues : booking.venueName;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final statusGradient = switch (booking.status) {
+      BookingStatus.confirmed || BookingStatus.completed => const LinearGradient(
+          colors: [Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399)],
+        ),
+      BookingStatus.pending => const LinearGradient(
+          colors: [Color(0xFFF59E0B), Color(0xFFFF7043), Color(0xFFFB923C)],
+        ),
+      BookingStatus.cancelled => const LinearGradient(
+          colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
+        ),
+      _ => const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFFF7043)],
+        ),
+    };
+
+    return GlassmorphicCard(
+      borderRadius: 18,
+      accentGradient: statusGradient,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -417,10 +434,9 @@ class _BookingCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
+      );
+    }
   }
-}
 
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});

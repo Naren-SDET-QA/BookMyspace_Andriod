@@ -43,6 +43,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     onTap: () => context.push(AppRoutes.ownerVenueCreate),
                   ),
                   _QuickAction(
+                    icon: Icons.category_rounded,
+                    label: 'Manage Space Categories 🏷️',
+                    onTap: () => context.push(AppRoutes.ownerCategories),
+                  ),
+                  _QuickAction(
                     icon: Icons.storefront_rounded,
                     label: l10n.myVenues,
                     onTap: () => context.push(AppRoutes.ownerVenues),

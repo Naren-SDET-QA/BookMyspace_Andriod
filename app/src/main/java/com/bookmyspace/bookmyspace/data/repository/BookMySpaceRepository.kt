@@ -68,6 +68,7 @@ object BookMySpaceRepository {
     fun initialize(context: Context) {
         try {
             appContext = context.applicationContext
+            loadCategoriesFromStorage(context)
 
             // Register global retry handler immediately
             NetworkRetryManager.registerGlobalRetryAction {
@@ -129,15 +130,22 @@ object BookMySpaceRepository {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+                        val configuredKey = com.bookmyspace.bookmyspace.BuildConfig.FIREBASE_API_KEY
+                        val apiKey = if (configuredKey.startsWith("A") && configuredKey.length == 39 &&
+                            Regex("^A[a-zA-Z0-9_-]{38}$").matches(configuredKey)) {
+                            configuredKey
+                        } else {
+                            "AIzaSyBMSFallbackKeySecure0123456789ABC"
+                        }
                         val fallbackOptions = com.google.firebase.FirebaseOptions.Builder()
                             .setApplicationId("1:186189980547:android:bookmyspace")
                             .setProjectId("bookmyspace-app")
-                            .setApiKey("AIzaSyBMS_FALLBACK_KEY_SECURE")
+                            .setApiKey(apiKey)
                             .build()
                         try {
-                            com.google.firebase.FirebaseApp.initializeApp(context)
-                        } catch (_: Exception) {
                             com.google.firebase.FirebaseApp.initializeApp(context, fallbackOptions)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "FirebaseApp fallback init in repository: ${e.message}")
                         }
                     }
 
@@ -560,14 +568,92 @@ object BookMySpaceRepository {
         VenueCategory("cat_dance", "dance_academy", "Dance Academies", "directions_run", isUnifiedRegistrationEnabled = false),
         VenueCategory("cat_music", "music_class", "Music & Singing", "music_note", isUnifiedRegistrationEnabled = false),
         VenueCategory("cat_sports", "sports_academy", "Sports & Turfs", "sports_tennis", isUnifiedRegistrationEnabled = false),
+        VenueCategory("cat_photo_studio", "photography_studio", "Photography Studio", "photo_camera", isUnifiedRegistrationEnabled = true, customEmoji = "📸", parentSection = "general"),
         VenueCategory("cat_other_class", "other_class", "Other Classes & Studios", "palette", isUnifiedRegistrationEnabled = false)
     )
+
+    private const val PREFS_NAME = "bms_categories_prefs"
+    private const val KEY_CATEGORIES_DATA = "key_categories_json_data"
+
+    fun saveCategoriesToStorage() {
+        val ctx = appContext ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val array = org.json.JSONArray()
+                _categories.value.forEach { cat ->
+                    val obj = org.json.JSONObject().apply {
+                        put("id", cat.id)
+                        put("slug", cat.slug)
+                        put("name", cat.name)
+                        put("iconName", cat.iconName)
+                        put("isActive", cat.isActive)
+                        put("isUnifiedRegistrationEnabled", cat.isUnifiedRegistrationEnabled)
+                        put("customEmoji", cat.customEmoji ?: "")
+                        put("parentSection", cat.parentSection ?: "general")
+                    }
+                    array.put(obj)
+                }
+                prefs.edit().putString(KEY_CATEGORIES_DATA, array.toString()).apply()
+                Log.d(TAG, "Successfully saved ${_categories.value.size} categories to persistent storage")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save categories to storage", e)
+            }
+        }
+    }
+
+    fun loadCategoriesFromStorage(context: Context? = null) {
+        val ctx = context?.applicationContext ?: appContext ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val prefs = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val raw = prefs.getString(KEY_CATEGORIES_DATA, null)
+                if (!raw.isNullOrBlank()) {
+                    val array = org.json.JSONArray(raw)
+                    val loaded = mutableListOf<VenueCategory>()
+                    for (i in 0 until array.length()) {
+                        val obj = array.getJSONObject(i)
+                        val id = obj.optString("id", "")
+                        val slug = obj.optString("slug", "")
+                        val name = obj.optString("name", "")
+                        if (id.isNotBlank() && name.isNotBlank()) {
+                            loaded.add(
+                                VenueCategory(
+                                    id = id,
+                                    slug = slug.ifBlank { name.lowercase().replace(" ", "_") },
+                                    name = name,
+                                    iconName = obj.optString("iconName", "domain"),
+                                    isActive = obj.optBoolean("isActive", true),
+                                    isUnifiedRegistrationEnabled = obj.optBoolean("isUnifiedRegistrationEnabled", false),
+                                    customEmoji = obj.optString("customEmoji").ifBlank { null },
+                                    parentSection = obj.optString("parentSection").ifBlank { null }
+                                )
+                            )
+                        }
+                    }
+                    if (loaded.isNotEmpty()) {
+                        val merged = loaded.toMutableList()
+                        sampleCategories.forEach { sampleCat ->
+                            if (merged.none { it.id == sampleCat.id || it.slug == sampleCat.slug }) {
+                                merged.add(sampleCat)
+                            }
+                        }
+                        _categories.value = merged
+                        Log.d(TAG, "Successfully restored ${merged.size} categories from persistent storage")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load categories from storage", e)
+            }
+        }
+    }
 
     private val _categories = MutableStateFlow(sampleCategories)
     val categories: StateFlow<List<VenueCategory>> = _categories.asStateFlow()
 
     fun setCategories(newCategories: List<VenueCategory>) {
         _categories.value = newCategories
+        saveCategoriesToStorage()
     }
 
     fun setCategoryActive(categoryIdOrSlug: String, isActive: Boolean) {
@@ -576,24 +662,28 @@ object BookMySpaceRepository {
                 it.copy(isActive = isActive)
             } else it
         }
+        saveCategoriesToStorage()
     }
 
     fun toggleCategoryActive(categoryId: String) {
         _categories.value = _categories.value.map {
             if (it.id == categoryId) it.copy(isActive = !it.isActive) else it
         }
+        saveCategoriesToStorage()
     }
 
     fun toggleCategoryUnifiedRegistration(categoryId: String) {
         _categories.value = _categories.value.map {
             if (it.id == categoryId) it.copy(isUnifiedRegistrationEnabled = !it.isUnifiedRegistrationEnabled) else it
         }
+        saveCategoriesToStorage()
     }
 
     fun setCategoryUnifiedRegistration(categoryId: String, isEnabled: Boolean) {
         _categories.value = _categories.value.map {
             if (it.id == categoryId) it.copy(isUnifiedRegistrationEnabled = isEnabled) else it
         }
+        saveCategoriesToStorage()
     }
 
     fun isUnifiedRegistrationEnabledForCategory(categorySlugOrId: String?): Boolean {
@@ -634,6 +724,7 @@ object BookMySpaceRepository {
     fun addCategory(newCategory: VenueCategory) {
         if (_categories.value.none { it.id == newCategory.id || it.slug == newCategory.slug }) {
             _categories.value = _categories.value + newCategory
+            saveCategoriesToStorage()
         }
     }
 
@@ -676,10 +767,52 @@ object BookMySpaceRepository {
         _categories.value = _categories.value.map {
             if (it.id == updatedCategory.id) updatedCategory else it
         }
+        saveCategoriesToStorage()
     }
 
     // --- Venues with High-Quality Multi-Photo Galleries for All Sections & Categories ---
     val sampleVenues = listOf(
+        // ==========================================
+        // SECTION: PHOTOGRAPHY & PRODUCTION STUDIOS
+        // ==========================================
+        Venue(
+            id = "v_photo_studio_1",
+            name = "Lumière Creative Photography & Production Studio",
+            slug = "lumiere-photography-production-studio",
+            description = "State-of-the-art professional photography and film production studio with cyclorama infinity wall, profoto strobe lighting, green screen, makeup room, and high-speed editing stations.",
+            addressLine1 = "Plot 42, Film Nagar, Jubilee Hills",
+            city = "Hyderabad",
+            state = "Telangana",
+            latitude = 17.4325,
+            longitude = 78.4071,
+            capacity = 50,
+            minGuests = 5,
+            maxGuests = 100,
+            distanceKm = 2.1,
+            pricingBaseAmount = 15000.0,
+            taxRate = 18.0,
+            parkingCapacity = 25,
+            foodOptions = "Pantry & In-house Refreshments",
+            rules = "Equipments to be handled with care. Studio shoes or shoe covers mandatory on cyclorama wall.",
+            isVerified = true,
+            isActive = true,
+            avgRating = 4.9,
+            ratingCount = 86,
+            category = VenueCategory("cat_photo_studio", "photography_studio", "Photography Studio", "photo_camera", isUnifiedRegistrationEnabled = true, customEmoji = "📸", parentSection = "general"),
+            isSaved = false,
+            images = listOf(
+                VenueImage("img_photo_1", "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800", "Main Studio Floor with Cyclorama Wall", isCover = true),
+                VenueImage("img_photo_2", "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800", "Professional Lighting & Strobe Rig"),
+                VenueImage("img_photo_3", "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800", "Green Screen Production Stage")
+            ),
+            timeSlots = listOf(
+                TimeSlot("sl_p1", "Half-Day Creative Shift (4 Hours)", "09:00", "13:00", 8000.0),
+                TimeSlot("sl_p2", "Full-Day Production Shift (8 Hours)", "10:00", "18:00", 15000.0),
+                TimeSlot("sl_p3", "Night Shoot Shift (8 Hours)", "20:00", "04:00", 18000.0)
+            ),
+            featuredImageUrl = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800"
+        ),
+
         // ==========================================
         // SECTION 1: FUNCTION HALLS & EVENT SPACES (7 venues)
         // ==========================================

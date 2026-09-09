@@ -3,6 +3,7 @@ package com.bookmyspace.bookmyspace.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
 import com.bookmyspace.bookmyspace.data.local.PaymentTransactionEntity
 import com.bookmyspace.bookmyspace.data.model.Booking
 import com.bookmyspace.bookmyspace.data.model.BookingStatus
@@ -347,18 +350,51 @@ private fun BookingCardItem(
     onGetDirections: () -> Unit,
     onViewInvoice: (() -> Unit)? = null
 ) {
+    val statusColors = when (booking.status) {
+        BookingStatus.CONFIRMED, BookingStatus.COMPLETED -> listOf(Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399))
+        BookingStatus.PENDING, BookingStatus.PENDING_OWNER_APPROVAL, BookingStatus.HELD -> listOf(Color(0xFFF59E0B), Color(0xFFFF7043), Color(0xFFFB923C))
+        BookingStatus.CANCELLED, BookingStatus.REJECTED -> listOf(Color(0xFF64748B), Color(0xFFEF4444))
+    }
+
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(
+            1.2.dp,
+            Brush.linearGradient(
+                colors = listOf(
+                    statusColors.first().copy(alpha = 0.45f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.2f)
+                )
+            )
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column {
+            // Dynamic Brand Gradient Stripe
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.5.dp)
+                    .background(Brush.horizontalGradient(statusColors))
+            )
+            Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val context = LocalContext.current
+                val bookingImg = booking.venueCoverUrl.ifBlank { booking.venueImageUrl }.ifBlank { "https://images.unsplash.com/photo-1546519638-68e109498ffc" }
                 AsyncImage(
-                    model = booking.venueCoverUrl.ifBlank { booking.venueImageUrl }.ifBlank { "https://images.unsplash.com/photo-1546519638-68e109498ffc" },
+                    model = CoilImageLoaderConfig.buildThumbnailRequest(
+                        context = context,
+                        data = bookingImg,
+                        sizePx = 200
+                    ),
                     contentDescription = booking.venueName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -544,6 +580,7 @@ private fun BookingCardItem(
                 }
             }
         }
+        }
     }
 }
 
@@ -584,7 +621,20 @@ fun PaymentTransactionCardItem(
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(
+            1.2.dp,
+            Brush.linearGradient(
+                colors = listOf(
+                    statusText.copy(alpha = 0.35f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.15f)
+                )
+            )
+        ),
         modifier = modifier
             .fillMaxWidth()
             .testTag("tx_card_${transaction.transactionId}")

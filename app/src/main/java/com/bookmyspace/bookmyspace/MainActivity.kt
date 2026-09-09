@@ -47,20 +47,36 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         val createStartTime = System.currentTimeMillis()
         Log.i(TAG, "🚀 [Lifecycle] onCreate() started with savedInstanceState=${savedInstanceState != null}")
-        super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge()
+        com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.traceInitBlock(
+            markerName = "init_activity_pre_ui",
+            phase = "activity_bootstrap",
+            isMainThread = true
+        ) {
+            super.onCreate(savedInstanceState)
+            // Initialize Firebase Performance Monitoring & Safe ANR Watchdog
+            com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.initialize(this)
+            com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.startWatchdog(thresholdMs = 2500L)
+            enableEdgeToEdge()
+        }
+
         Log.i(TAG, "🎨 [UI] Setting Compose Content tree...")
 
         try {
-            setContent {
-                BookMySpaceTheme {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        com.bookmyspace.bookmyspace.ui.components.GlobalErrorBoundary {
-                            AppNavigation()
+            com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.traceInitBlock(
+                markerName = "init_activity_set_content",
+                phase = "activity_bootstrap",
+                isMainThread = true
+            ) {
+                setContent {
+                    BookMySpaceTheme {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.background
+                        ) {
+                            com.bookmyspace.bookmyspace.ui.components.GlobalErrorBoundary {
+                                AppNavigation()
+                            }
                         }
                     }
                 }
@@ -71,8 +87,9 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
             throw e
         }
 
-        // Post-launch background tasks: Request runtime permissions & FCM token asynchronously
+        // Post-launch background tasks: Request runtime permissions & FCM token asynchronously after UI settles
         lifecycleScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(1200L)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     val currentPermission = ContextCompat.checkSelfPermission(
@@ -91,15 +108,21 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
             }
 
             try {
-                Log.d(TAG, "🔥 [FCM] Requesting FirebaseMessaging registration token...")
-                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val token = task.result
-                        Log.i(TAG, "🔥 [FCM] Token retrieved successfully: ${token.take(16)}... (length=${token.length})")
-                        BookMySpaceRepository.updateFcmToken(token)
+                if (com.google.firebase.FirebaseApp.getApps(this@MainActivity).isNotEmpty()) {
+                    Log.d(TAG, "🔥 [FCM] Requesting FirebaseMessaging registration token...")
+                    try {
+                        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                val token = task.result
+                                Log.i(TAG, "🔥 [FCM] Token retrieved successfully: ${token.take(16)}... (length=${token.length})")
+                                BookMySpaceRepository.updateFcmToken(token)
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "⚠️ [FCM] FirebaseMessaging component inactive: ${t.message}")
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.w(TAG, "⚠️ [FCM] FirebaseMessaging unavailable or in local fallback mode: ${e.message}")
             }
         }
@@ -126,6 +149,7 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
     }
 
     override fun onDestroy() {
+        com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.stopWatchdog()
         super.onDestroy()
         Log.i(TAG, "🛑 [Lifecycle] onDestroy() - Activity being destroyed")
     }

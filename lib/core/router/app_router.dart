@@ -18,6 +18,7 @@ import '../../features/notifications/presentation/screens/notifications_screen.d
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/owner/presentation/screens/owner_dashboard_screen.dart';
 import '../../features/owner/presentation/screens/owner_registration_screen.dart';
+import '../../features/owner/presentation/screens/owner_categories_screen.dart';
 import '../../features/owner_venues/presentation/screens/owner_venues_screen.dart';
 import '../../features/owner_venues/presentation/screens/create_venue_screen.dart';
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
@@ -58,6 +59,7 @@ abstract class AppRoutes {
   static const adminAudit = '/admin/audit';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
+  static const ownerCategories = '/owner/categories';
   static const ownerVenues = '/owner/venues';
   static const ownerVenueCreate = '/owner/venues/create';
   static const privacyPolicy = '/privacy';
@@ -197,6 +199,11 @@ GoRouter createAppRouter({
         path: AppRoutes.ownerDashboard,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const OwnerDashboardScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCategories,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const OwnerCategoriesScreen(),
       ),
       GoRoute(
         path: AppRoutes.ownerVenues,

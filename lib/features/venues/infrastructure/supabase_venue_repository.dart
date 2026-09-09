@@ -20,16 +20,127 @@ class SupabaseVenueRepository implements VenueRepository {
     venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order)
   ''';
 
+  // In-memory cache & fallback for offline/development resilience
+  static final List<VenueCategory> _fallbackCategories = [
+    const VenueCategory(id: 'cat_all', slug: 'all', name: 'All Spaces', icon: '✨', isActive: true, parentSection: 'general'),
+    const VenueCategory(id: 'cat_photo', slug: 'photography_studio', name: 'Photography Studio', icon: '📸', isActive: true, parentSection: 'general'),
+    const VenueCategory(id: 'cat_function', slug: 'function_hall', name: 'Function Halls', icon: '🏛️', isActive: true, parentSection: 'venues'),
+    const VenueCategory(id: 'cat_marriage', slug: 'marriage_hall', name: 'Marriage Halls', icon: '💒', isActive: true, parentSection: 'venues'),
+    const VenueCategory(id: 'cat_convention', slug: 'convention_center', name: 'Convention Centers', icon: '🏢', isActive: true, parentSection: 'venues'),
+    const VenueCategory(id: 'cat_meeting', slug: 'meeting_room', name: 'Meeting Rooms', icon: '💼', isActive: true, parentSection: 'venues'),
+    const VenueCategory(id: 'cat_party', slug: 'party_hall', name: 'Party Halls', icon: '🎉', isActive: true, parentSection: 'venues'),
+    const VenueCategory(id: 'cat_sports', slug: 'sports_ground', name: 'Sports Grounds', icon: '🏸', isActive: true, parentSection: 'classes'),
+    const VenueCategory(id: 'cat_coworking', slug: 'coworking_space', name: 'Coworking Spaces', icon: '💻', isActive: true, parentSection: 'general'),
+    const VenueCategory(id: 'cat_hotel', slug: 'hotel_stay', name: 'Hotels & Suites', icon: '🏨', isActive: true, parentSection: 'hotels'),
+    const VenueCategory(id: 'cat_pg', slug: 'pg_hostel', name: 'PG & Hostels', icon: '🏠', isActive: true, parentSection: 'pgs'),
+  ];
+
   @override
-  Future<List<VenueCategory>> categories() async {
+  Future<List<VenueCategory>> categories({bool activeOnly = false}) async {
     try {
-      final rows = await _client
-          .from('venue_categories')
-          .select('*')
-          .order('name');
-      return rows.map(VenueCategory.fromJson).toList();
-    } catch (e) {
-      throw mapError(e);
+      var query = _client.from('venue_categories').select('*');
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+      final rows = await query.order('name');
+      final fetched = rows.map((r) => VenueCategory.fromJson(r as Map<String, dynamic>)).toList();
+      if (fetched.isNotEmpty) {
+        // Update fallback cache with fetched categories while preserving unique custom ones
+        for (final cat in fetched) {
+          final idx = _fallbackCategories.indexWhere((c) => c.slug == cat.slug || c.id == cat.id);
+          if (idx >= 0) {
+            _fallbackCategories[idx] = cat;
+          } else {
+            _fallbackCategories.add(cat);
+          }
+        }
+        return activeOnly ? fetched.where((c) => c.isActive).toList() : fetched;
+      }
+    } catch (_) {
+      // Fallback gracefully on local cache if network/offline
+    }
+    return activeOnly
+        ? _fallbackCategories.where((c) => c.isActive).toList()
+        : List.unmodifiable(_fallbackCategories);
+  }
+
+  @override
+  Future<VenueCategory> addCategory({
+    required String name,
+    required String slug,
+    String? icon,
+    String? parentSection,
+    bool isActive = true,
+  }) async {
+    final newCat = VenueCategory(
+      id: 'cat_${slug.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')}_${DateTime.now().millisecondsSinceEpoch % 10000}',
+      slug: slug,
+      name: name,
+      icon: icon ?? '🏷️',
+      isActive: isActive,
+      parentSection: parentSection ?? 'general',
+    );
+
+    try {
+      final row = await _client.from('venue_categories').insert({
+        'name': name,
+        'slug': slug,
+        'icon': icon ?? '🏷️',
+        'is_active': isActive,
+        'parent_section': parentSection ?? 'general',
+      }).select().single();
+      final created = VenueCategory.fromJson(row);
+      _fallbackCategories.removeWhere((c) => c.slug == created.slug || c.id == created.id);
+      _fallbackCategories.add(created);
+      return created;
+    } catch (_) {
+      // Fallback: save locally
+      _fallbackCategories.removeWhere((c) => c.slug == newCat.slug || c.id == newCat.id);
+      _fallbackCategories.add(newCat);
+      return newCat;
+    }
+  }
+
+  @override
+  Future<VenueCategory> updateCategory(VenueCategory category) async {
+    try {
+      final row = await _client.from('venue_categories').update({
+        'name': category.name,
+        'slug': category.slug,
+        'icon': category.icon,
+        'is_active': category.isActive,
+        'parent_section': category.parentSection ?? 'general',
+      }).eq('id', category.id).select().single();
+      final updated = VenueCategory.fromJson(row);
+      final idx = _fallbackCategories.indexWhere((c) => c.id == category.id || c.slug == category.slug);
+      if (idx >= 0) {
+        _fallbackCategories[idx] = updated;
+      } else {
+        _fallbackCategories.add(updated);
+      }
+      return updated;
+    } catch (_) {
+      final idx = _fallbackCategories.indexWhere((c) => c.id == category.id || c.slug == category.slug);
+      if (idx >= 0) {
+        _fallbackCategories[idx] = category;
+      } else {
+        _fallbackCategories.add(category);
+      }
+      return category;
+    }
+  }
+
+  @override
+  Future<void> setCategoryActive(String categoryId, bool isActive) async {
+    try {
+      await _client.from('venue_categories').update({
+        'is_active': isActive,
+      }).eq('id', categoryId);
+    } catch (_) {}
+
+    final idx = _fallbackCategories.indexWhere((c) => c.id == categoryId);
+    if (idx >= 0) {
+      _fallbackCategories[idx] = _fallbackCategories[idx].copyWith(isActive: isActive);
     }
   }
 

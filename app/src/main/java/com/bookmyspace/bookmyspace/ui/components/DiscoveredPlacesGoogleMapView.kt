@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
 import com.bookmyspace.bookmyspace.data.model.PlaceDiscoveryModel
 import kotlin.math.*
 
@@ -406,8 +407,13 @@ fun DiscoveredPlacesGoogleMapView(
                 ) {
                     // Venue Image / Icon
                     if (!selectedPlace.photoUrl.isNullOrBlank()) {
+                        val context = LocalContext.current
                         AsyncImage(
-                            model = selectedPlace.photoUrl,
+                            model = CoilImageLoaderConfig.buildThumbnailRequest(
+                                context = context,
+                                data = selectedPlace.photoUrl,
+                                sizePx = 180
+                            ),
                             contentDescription = selectedPlace.name,
                             modifier = Modifier
                                 .size(56.dp)

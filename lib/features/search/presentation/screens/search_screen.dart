@@ -207,6 +207,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: AnimatedCategoryChip(
                       label: c.name,
+                      emoji: c.icon,
                       selected: query.categorySlug == c.slug,
                       onTap: () {
                         ref.read(searchQueryProvider.notifier).state = query
@@ -377,6 +378,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ...widget.categories.map(
                   (c) => AnimatedCategoryChip(
                     label: c.name,
+                    emoji: c.icon,
                     selected: _categorySlug == c.slug,
                     onTap: () => setState(() => _categorySlug = c.slug),
                   ),

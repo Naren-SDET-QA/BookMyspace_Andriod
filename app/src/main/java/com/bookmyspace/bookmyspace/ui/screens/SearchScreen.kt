@@ -92,6 +92,7 @@ fun SearchScreen(
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val venues by BookMySpaceRepository.venues.collectAsState()
+    val allCategories by BookMySpaceRepository.categories.collectAsState()
     val isSimpleMode by BookMySpaceRepository.isSimpleMode.collectAsState()
     val appSections by BookMySpaceRepository.appSections.collectAsState()
     val syncState by NetworkRetryManager.syncState.collectAsState()
@@ -224,6 +225,7 @@ fun SearchScreen(
                 // Category Matching
                 val matchesCategory = selectedCategorySlug == null || 
                     v.category?.slug == selectedCategorySlug ||
+                    v.category?.id == selectedCategorySlug ||
                     (selectedCategorySlug == "other" && (v.category?.slug?.contains("other") == true || v.category?.slug?.contains("meeting") == true || v.category?.slug?.contains("room") == true))
 
                 // Price Range Filter
@@ -1420,6 +1422,26 @@ fun SearchScreen(
                                 }
                             },
                             label = { Text("🎪 Other Spaces") }
+                        )
+                    }
+
+                    // Dynamic Active Categories (e.g., Photography Studio, Sports Turf, etc.)
+                    val dynamicChips = allCategories.filter {
+                        it.isActive && it.slug !in listOf("all", "function_hall", "pg_hostel", "hotel_stay", "other")
+                    }
+                    items(dynamicChips, key = { it.id }) { cat ->
+                        FilterChip(
+                            selected = selectedCategorySlug == cat.slug || selectedCategorySlug == cat.id,
+                            onClick = {
+                                if (selectedCategorySlug == cat.slug || selectedCategorySlug == cat.id) {
+                                    selectedCategorySlug = null
+                                    selectedPropertyType = "ALL"
+                                } else {
+                                    selectedCategorySlug = cat.slug
+                                    selectedPropertyType = "ALL"
+                                }
+                            },
+                            label = { Text("${cat.icon} ${cat.name}") }
                         )
                     }
 

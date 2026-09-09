@@ -87,6 +87,7 @@ import androidx.compose.material.icons.filled.Wifi
 import com.bookmyspace.bookmyspace.data.model.TimeSlot
 import coil.request.ImageRequest
 import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.semantics.Role
@@ -195,11 +196,14 @@ fun VenueImageCarousel(
                 .clickable { onImageClick() }
         ) { page ->
             val imageUrl = images[page]
+            val context = LocalContext.current
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(imageUrl)
-                    .crossfade(true)
-                    .build(),
+                model = CoilImageLoaderConfig.buildCardBannerRequest(
+                    context = context,
+                    data = imageUrl,
+                    widthPx = 800,
+                    heightPx = 500
+                ),
                 contentDescription = "${venue.name} photo ${page + 1}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -420,8 +424,14 @@ fun VenueCard(
                     .fillMaxWidth()
                     .height(145.dp)
             ) {
+                val context = LocalContext.current
                 AsyncImage(
-                    model = coverUrl,
+                    model = CoilImageLoaderConfig.buildCardBannerRequest(
+                        context = context,
+                        data = coverUrl,
+                        widthPx = 640,
+                        heightPx = 360
+                    ),
                     contentDescription = venue.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -743,8 +753,14 @@ fun VenueCarouselCard(
                     .fillMaxWidth()
                     .height(130.dp)
             ) {
+                val context = LocalContext.current
                 AsyncImage(
-                    model = imageUrl,
+                    model = CoilImageLoaderConfig.buildCardBannerRequest(
+                        context = context,
+                        data = imageUrl,
+                        widthPx = 540,
+                        heightPx = 300
+                    ),
                     contentDescription = venue.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -1211,8 +1227,21 @@ fun QuickBookCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onNavigateToVenue(topVenue.id) },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(
+            1.2.dp,
+            Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    Color(0xFFFF7043).copy(alpha = 0.35f),
+                    Color.White.copy(alpha = 0.2f)
+                )
+            )
+        )
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -1222,7 +1251,14 @@ fun QuickBookCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                Color(0xFFFF7043)
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.FlashOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
@@ -1234,8 +1270,11 @@ fun QuickBookCard(
             }
             Button(
                 onClick = { onNavigateToVenue(topVenue.id) },
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text("Book Now", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }

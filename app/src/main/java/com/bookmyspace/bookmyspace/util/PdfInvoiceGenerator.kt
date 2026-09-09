@@ -22,6 +22,10 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object PdfInvoiceGenerator {
 
@@ -506,51 +510,55 @@ object PdfInvoiceGenerator {
         booking: Booking? = null,
         openDirectly: Boolean = false,
         customConfig: EffectiveTaxInvoiceDetails? = null
-    ): File? {
-        return try {
-            val pdfFile = createInvoicePdfFile(context, transaction, booking, customConfig)
-            val invoiceRepo = TaxInvoiceRepository.getInstance(context)
-            val targetVenueId = transaction.venueId.ifBlank { booking?.venueId }
-            val effectiveConfig = customConfig ?: invoiceRepo.getEffectiveInvoiceConfig(targetVenueId)
-            val invoiceNo = generateInvoiceNumber(transaction, effectiveConfig.invoiceNumberPrefix)
-            val uri: Uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                pdfFile
-            )
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val pdfFile = createInvoicePdfFile(context, transaction, booking, customConfig)
+                val invoiceRepo = TaxInvoiceRepository.getInstance(context)
+                val targetVenueId = transaction.venueId.ifBlank { booking?.venueId }
+                val effectiveConfig = customConfig ?: invoiceRepo.getEffectiveInvoiceConfig(targetVenueId)
+                val invoiceNo = generateInvoiceNumber(transaction, effectiveConfig.invoiceNumberPrefix)
+                val uri: Uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    pdfFile
+                )
 
-            if (openDirectly) {
-                val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/pdf")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                withContext(Dispatchers.Main) {
+                    if (openDirectly) {
+                        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/pdf")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        val chooser = Intent.createChooser(viewIntent, "Open Invoice PDF")
+                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(chooser)
+                    } else {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            putExtra(Intent.EXTRA_SUBJECT, "${effectiveConfig.tradeBrandName} Tax Invoice $invoiceNo - ${transaction.venueName}")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Please find attached the official Tax Invoice & Booking Summary ($invoiceNo) for your reservation at ${transaction.venueName}.\n\nTotal Paid: ₹${String.format(Locale.US, "%.2f", transaction.amount)}"
+                            )
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        val chooser = Intent.createChooser(shareIntent, "Export, Save or Share Invoice PDF")
+                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(chooser)
+                    }
+
+                    Toast.makeText(context, "PDF Invoice $invoiceNo generated successfully", Toast.LENGTH_SHORT).show()
                 }
-                val chooser = Intent.createChooser(viewIntent, "Open Invoice PDF")
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(chooser)
-            } else {
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/pdf"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_SUBJECT, "${effectiveConfig.tradeBrandName} Tax Invoice $invoiceNo - ${transaction.venueName}")
-                    putExtra(
-                        Intent.EXTRA_TEXT,
-                        "Please find attached the official Tax Invoice & Booking Summary ($invoiceNo) for your reservation at ${transaction.venueName}.\n\nTotal Paid: ₹${String.format(Locale.US, "%.2f", transaction.amount)}"
-                    )
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    // Fallback to text sharing if PDF generation encounters system issues
+                    shareTransactionInvoice(context, transaction, booking)
                 }
-                val chooser = Intent.createChooser(shareIntent, "Export, Save or Share Invoice PDF")
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(chooser)
             }
-
-            Toast.makeText(context, "PDF Invoice $invoiceNo generated successfully", Toast.LENGTH_SHORT).show()
-            pdfFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Fallback to text sharing if PDF generation encounters system issues
-            shareTransactionInvoice(context, transaction, booking)
-            null
         }
     }
 

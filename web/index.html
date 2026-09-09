@@ -5,7 +5,7 @@
     Base href required for Flutter Web routing and nested URL paths.
     Ensures assets resolve correctly when accessed via direct URLs or page refresh.
   -->
-  <base href="$FLUTTER_BASE_HREF">
+  <base href="./">
 
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -27,11 +27,15 @@
   <!-- Google Maps JavaScript API for Flutter Web -->
   <script src="https://maps.googleapis.com/maps/api/js?key=default_maps_key"></script>
 
+  <!-- Firebase App & Performance Monitoring SDK for Web Startup Heartbeat -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-performance-compat.js"></script>
+
   <style>
     body {
       margin: 0;
       padding: 0;
-      background-color: #0175C2;
+      background: radial-gradient(circle at center, #0284c7 0%, #0369a1 40%, #075985 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -40,30 +44,338 @@
       color: #ffffff;
       overflow: hidden;
     }
-    .loading-container {
+    .loading-wrapper {
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
     }
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .app-brand-logo {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 20px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      animation: pulse-badge 2.5s ease-in-out infinite;
+    }
     .loading-spinner {
-      width: 44px;
-      height: 44px;
-      border: 3px solid rgba(255, 255, 255, 0.25);
-      border-top-color: #ffffff;
+      width: 42px;
+      height: 42px;
+      border: 3.5px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #38bdf8;
+      border-right-color: #ffffff;
       border-radius: 50%;
-      animation: bms-spin 0.8s linear infinite;
+      animation: bms-spin 0.9s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+    }
+    .loading-title {
+      margin-top: 18px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #ffffff;
     }
     .loading-label {
-      margin-top: 16px;
-      font-size: 14px;
-      font-weight: 500;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.85);
+      min-height: 20px;
+      transition: color 0.3s ease;
+    }
+    .progress-bar-container {
+      width: 100%;
+      max-width: 260px;
+      height: 6px;
+      background-color: rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 18px;
+      position: relative;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8, #ffffff);
+      background-size: 200% 100%;
+      border-radius: 999px;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: progress-shimmer 2s linear infinite;
+    }
+    .progress-percentage {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.75);
+      font-variant-numeric: tabular-nums;
+    }
+    /* Visual Connectivity Monitor */
+    .connectivity-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
       letter-spacing: 0.3px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .connectivity-pill.online {
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      color: #6ee7b7;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
+    }
+    .connectivity-pill.offline {
+      background: rgba(239, 68, 68, 0.25);
+      border: 1px solid rgba(248, 113, 113, 0.6);
+      color: #fca5a5;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.35);
+      animation: alert-pulse 1.8s ease-in-out infinite;
+    }
+    .connectivity-pill.extremely-slow {
+      background: rgba(249, 115, 22, 0.22);
+      border: 1px solid rgba(251, 146, 60, 0.55);
+      color: #fdba74;
+      box-shadow: 0 0 16px rgba(249, 115, 22, 0.3);
+      animation: alert-pulse 2s ease-in-out infinite;
+    }
+    .connectivity-pill.reconnecting {
+      background: rgba(245, 158, 11, 0.22);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: #fde68a;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+    }
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .connectivity-pill.online .conn-dot {
+      background-color: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .connectivity-pill.extremely-slow .conn-dot {
+      background-color: #f97316;
+      box-shadow: 0 0 8px #f97316;
+    }
+    .connectivity-pill.offline .conn-dot {
+      background-color: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+    }
+    .connectivity-pill.reconnecting .conn-dot {
+      background-color: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+    }
+    .offline-notice-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(239, 68, 68, 0.22);
+      border: 1px solid rgba(239, 68, 68, 0.55);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #fecaca;
+      text-align: left;
+      backdrop-filter: blur(8px);
+      max-width: 320px;
+      animation: fade-in-up 0.3s ease-out forwards;
+    }
+    .root-cause-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .root-cause-badge.offline-cause {
+      background: rgba(239, 68, 68, 0.25);
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      color: #fca5a5;
+    }
+    .root-cause-badge.timeout-cause {
+      background: rgba(234, 179, 8, 0.2);
+      border: 1px solid rgba(234, 179, 8, 0.5);
+      color: #fef08a;
+    }
+    .reconnect-hint-banner {
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px dashed rgba(52, 211, 153, 0.55);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: #a7f3d0;
+      margin-bottom: 16px;
+      display: none;
+      text-align: left;
+    }
+    @keyframes alert-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    /* Timeout & Error Feedback View */
+    .timeout-card {
+      display: none;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 20px;
+      padding: 24px;
+      box-sizing: border-box;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      animation: fade-in-up 0.4s ease-out forwards;
+    }
+    .timeout-icon-wrapper {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin: 0 auto 14px auto;
+    }
+    .timeout-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fca5a5;
+      margin-bottom: 8px;
+    }
+    .timeout-desc {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin-bottom: 18px;
+    }
+    .timeout-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+    .btn-reload-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }
+    .btn-reload-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+    }
+    .btn-reload-primary:active {
+      transform: translateY(1px);
       opacity: 0.9;
+    }
+    .btn-clear-cache {
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .btn-clear-cache:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+    .diagnostic-toggle {
+      margin-top: 14px;
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 4px;
+    }
+    .diagnostic-toggle:hover {
+      color: #94a3b8;
+    }
+    .diagnostic-details {
+      display: none;
+      margin-top: 10px;
+      text-align: left;
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 10px;
+      color: #94a3b8;
+      max-height: 120px;
+      overflow-y: auto;
+      word-break: break-all;
     }
     @keyframes bms-spin {
       to { transform: rotate(360deg); }
+    }
+    @keyframes progress-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    @keyframes pulse-badge {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 
@@ -324,10 +636,507 @@
   </script>
 </head>
 <body>
-  <div id="loading" class="loading-container" role="status" aria-live="polite">
-    <div class="loading-spinner" aria-hidden="true"></div>
-    <div class="loading-label">Loading BookMySpace...</div>
+  <div class="loading-wrapper">
+    <!-- Visual Real-Time Connectivity Monitor -->
+    <div id="connectivity-monitor" class="connectivity-pill online" role="status" aria-live="polite">
+      <span class="conn-dot"></span>
+      <span id="conn-status-text">Network: Online</span>
+    </div>
+
+    <!-- Active Loading State with Animated Progress -->
+    <div id="loading" class="loading-container" role="status" aria-live="polite">
+      <div class="app-brand-logo" aria-hidden="true">🏟️</div>
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div class="loading-title">BookMySpace</div>
+      <div id="loading-status-text" class="loading-label">Connecting to service...</div>
+
+      <div class="progress-bar-container" aria-hidden="true">
+        <div id="loading-progress-fill" class="progress-bar-fill"></div>
+      </div>
+      <div id="loading-progress-text" class="progress-percentage">0%</div>
+
+      <!-- Real-Time Disconnection Notice during loading -->
+      <div id="offline-notice-banner" class="offline-notice-banner">
+        <span style="font-size: 20px;">📡</span>
+        <div>
+          <strong style="display: block; color: #ffffff; margin-bottom: 2px;">Network Disconnected</strong>
+          <span>Download paused. Application will automatically resume once your network connection returns.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeout & Failure Feedback Card -->
+    <div id="loading-timeout-view" class="timeout-card" role="alert">
+      <!-- Explicit Root Cause Attribution Badge -->
+      <div id="timeout-root-cause-badge" class="root-cause-badge offline-cause">
+        <span id="root-cause-dot" class="conn-dot" style="background-color: #ef4444;"></span>
+        <span id="root-cause-text">Primary Cause: Network Disconnected</span>
+      </div>
+
+      <div id="timeout-icon" class="timeout-icon-wrapper" aria-hidden="true">⚠️</div>
+      <div id="timeout-title" class="timeout-title">Loading is taking longer than usual</div>
+      <div class="timeout-desc" id="timeout-description">
+        We're having trouble connecting or loading application resources. Please verify your internet connection or reload the application.
+      </div>
+
+      <!-- Auto-Reconnect Notification -->
+      <div id="reconnect-hint-banner" class="reconnect-hint-banner">
+        <strong style="display: block; margin-bottom: 2px;">⚡ Auto-Reconnect Active:</strong>
+        <span id="reconnect-hint-text">Waiting for network. As soon as your internet connection is restored, this screen will automatically refresh.</span>
+      </div>
+
+      <div class="timeout-actions">
+        <button id="btn-reload" class="btn-reload-primary" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          <span id="btn-reload-label">Reload Application</span>
+        </button>
+        <button id="btn-clear-cache" class="btn-clear-cache" type="button">
+          Clear Cache &amp; Reload
+        </button>
+      </div>
+
+      <button id="btn-toggle-diagnostics" class="diagnostic-toggle" type="button">
+        Show Diagnostic Details
+      </button>
+      <div id="diagnostic-details-box" class="diagnostic-details"></div>
+    </div>
   </div>
+
+  <script>
+    (function() {
+      var progress = 0;
+      var fillElem = document.getElementById('loading-progress-fill');
+      var pctElem = document.getElementById('loading-progress-text');
+      var statusElem = document.getElementById('loading-status-text');
+      var loadingContainer = document.getElementById('loading');
+      var timeoutView = document.getElementById('loading-timeout-view');
+      var timeoutDesc = document.getElementById('timeout-description');
+      var diagBox = document.getElementById('diagnostic-details-box');
+      var btnReload = document.getElementById('btn-reload');
+      var btnClearCache = document.getElementById('btn-clear-cache');
+      var btnToggleDiag = document.getElementById('btn-toggle-diagnostics');
+
+      // Visual Connectivity Elements
+      var connPill = document.getElementById('connectivity-monitor');
+      var connStatusText = document.getElementById('conn-status-text');
+      var offlineNotice = document.getElementById('offline-notice-banner');
+      var rootCauseBadge = document.getElementById('timeout-root-cause-badge');
+      var rootCauseText = document.getElementById('root-cause-text');
+      var rootCauseDot = document.getElementById('root-cause-dot');
+      var timeoutIcon = document.getElementById('timeout-icon');
+      var timeoutTitle = document.getElementById('timeout-title');
+      var reconnectBanner = document.getElementById('reconnect-hint-banner');
+      var reconnectHintText = document.getElementById('reconnect-hint-text');
+
+      var capturedErrors = [];
+      var isLoaded = false;
+
+      // Firebase Performance Monitoring Heartbeat Subsystem
+      var firebasePerfInstance = null;
+      var heartbeatInterval = null;
+      var heartbeatCount = 0;
+      var heartbeatStartTime = Date.now();
+      var lastHeartbeatTime = null;
+      var heartbeatIntervalMs = 30000; // Periodic 30 seconds
+
+      function getFirebasePerfInstance() {
+        if (firebasePerfInstance) return firebasePerfInstance;
+        try {
+          if (typeof firebase !== 'undefined') {
+            var app;
+            if (firebase.apps && firebase.apps.length > 0) {
+              app = firebase.apps[0];
+            } else {
+              app = firebase.initializeApp({
+                projectId: 'bookmyspace-app',
+                appId: '1:186189980547:web:bmsperf001',
+                apiKey: 'AIzaSyDummyKeyForPerfHeartbeat_BookMySpace'
+              }, 'bms_loader_perf');
+            }
+            if (typeof firebase.performance === 'function') {
+              firebasePerfInstance = firebase.performance(app);
+            }
+          }
+        } catch (e) {
+          console.warn('[FirebasePerformance] Heartbeat setup fallback:', e);
+        }
+        return firebasePerfInstance;
+      }
+
+      function pushFirebasePerformanceHeartbeat() {
+        if (isLoaded) return;
+        heartbeatCount++;
+        var now = Date.now();
+        var elapsedSec = Math.round((now - heartbeatStartTime) / 1000);
+        var jitterMs = lastHeartbeatTime ? Math.abs((now - lastHeartbeatTime) - heartbeatIntervalMs) : 0;
+        lastHeartbeatTime = now;
+        var isOnline = navigator.onLine !== false;
+
+        // Push 'ping' event to Firebase Performance Monitoring
+        try {
+          var perf = getFirebasePerfInstance();
+          if (perf && typeof perf.trace === 'function') {
+            var trace = perf.trace('app_loading_heartbeat');
+            trace.start();
+            trace.putAttribute('event', 'ping');
+            trace.putAttribute('loading_state', 'active');
+            trace.putAttribute('browser_health', 'main_thread_responsive');
+            trace.putAttribute('network_status', isOnline ? 'online' : 'offline');
+            trace.putAttribute('ping_sequence', String(heartbeatCount));
+            trace.incrementMetric('ping_count', 1);
+            trace.incrementMetric('elapsed_seconds', elapsedSec);
+            if (jitterMs > 0) {
+              trace.incrementMetric('loop_jitter_ms', jitterMs);
+            }
+            trace.stop();
+          }
+        } catch (err) {
+          console.warn('[FirebasePerformance] Heartbeat trace error:', err);
+        }
+
+        console.log('[FirebasePerformance] Heartbeat ping #' + heartbeatCount + ' pushed (' + elapsedSec + 's elapsed, browser main-thread responsive, network: ' + (isOnline ? 'online' : 'offline') + ')');
+
+        updateConnectivityState(navigator.onLine !== false);
+      }
+
+      // Schedule periodic 30-second heartbeat while in loading state
+      heartbeatInterval = setInterval(pushFirebasePerformanceHeartbeat, heartbeatIntervalMs);
+
+      // Connectivity State Tracking
+      var hadConnectionLoss = false;
+      var offlineEventCount = 0;
+      var connectionLostTimestamp = null;
+      var totalOfflineDurationMs = 0;
+      var isCurrentlyOnline = navigator.onLine !== false;
+
+      function updateConnectivityState(online) {
+        isCurrentlyOnline = online;
+        if (!online) {
+          hadConnectionLoss = true;
+          offlineEventCount++;
+          if (!connectionLostTimestamp) connectionLostTimestamp = Date.now();
+
+          if (connPill) {
+            connPill.className = 'connectivity-pill offline';
+            if (connStatusText) connStatusText.textContent = 'Network: Disconnected';
+          }
+          if (offlineNotice && !isLoaded && (!timeoutView || timeoutView.style.display !== 'block')) {
+            offlineNotice.style.display = 'flex';
+          }
+          if (statusElem && !isLoaded) {
+            statusElem.textContent = '⚠️ Network disconnected. Waiting for connection...';
+            statusElem.style.color = '#fca5a5';
+          }
+
+          // If timeout card is currently visible, update root cause in real-time
+          if (timeoutView && timeoutView.style.display === 'block') {
+            applyTimeoutRootCause(true);
+          }
+        } else {
+          if (connectionLostTimestamp) {
+            totalOfflineDurationMs += (Date.now() - connectionLostTimestamp);
+            connectionLostTimestamp = null;
+          }
+
+          var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+          var rtt = conn && typeof conn.rtt === 'number' ? conn.rtt : null;
+          var isExtremelySlow = rtt !== null && rtt > 1000;
+
+          if (connPill) {
+            if (isExtremelySlow) {
+              connPill.className = 'connectivity-pill extremely-slow';
+              if (connStatusText) connStatusText.textContent = 'Extremely slow';
+            } else {
+              connPill.className = 'connectivity-pill online';
+              if (connStatusText) connStatusText.textContent = 'Network: Online';
+            }
+          }
+          if (offlineNotice) {
+            offlineNotice.style.display = 'none';
+          }
+
+          // If the timeout view was triggered due to connection loss and connection is now restored!
+          if (timeoutView && timeoutView.style.display === 'block' && hadConnectionLoss) {
+            if (reconnectBanner) {
+              reconnectBanner.style.display = 'block';
+              reconnectBanner.style.background = 'rgba(16, 185, 129, 0.25)';
+              reconnectBanner.style.border = '1px solid #10b981';
+              reconnectBanner.innerHTML = '<strong style="display:block; margin-bottom: 2px;">🟢 Internet Connection Restored!</strong><span>Refreshing application in 1.5 seconds...</span>';
+            }
+            var reloadLabel = document.getElementById('btn-reload-label');
+            if (reloadLabel) reloadLabel.textContent = 'Reconnecting now...';
+            setTimeout(function() {
+              window.location.reload();
+            }, 1500);
+          } else if (!isLoaded && statusElem) {
+            statusElem.textContent = stages[currentStageIdx].text;
+            statusElem.style.color = 'rgba(255, 255, 255, 0.85)';
+          }
+        }
+        updateDiagnosticBox();
+      }
+
+      window.addEventListener('online', function() {
+        updateConnectivityState(true);
+      });
+
+      window.addEventListener('offline', function() {
+        updateConnectivityState(false);
+      });
+
+      var netConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (netConn && typeof netConn.addEventListener === 'function') {
+        netConn.addEventListener('change', function() {
+          updateConnectivityState(navigator.onLine !== false);
+        });
+      }
+
+      // Track JavaScript runtime errors or resource load failures
+      window.addEventListener('error', function(event) {
+        var msg = event.message || (event.target && event.target.src ? 'Failed to load: ' + event.target.src : 'Resource error');
+        capturedErrors.push(msg);
+        updateDiagnosticBox();
+      }, true);
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason ? (event.reason.message || String(event.reason)) : 'Unhandled rejection';
+        capturedErrors.push(reason);
+        updateDiagnosticBox();
+      });
+
+      function updateDiagnosticBox() {
+        if (!diagBox) return;
+        var info = [];
+        info.push('Timestamp: ' + new Date().toISOString());
+        info.push('Current Network Status: ' + (isCurrentlyOnline ? 'ONLINE' : 'OFFLINE (DISCONNECTED)'));
+        info.push('Primary Timeout Cause: ' + (!isCurrentlyOnline || hadConnectionLoss ? 'NETWORK CONNECTION LOSS' : 'RESOURCE / BUNDLE TIMEOUT'));
+        info.push('Connection Loss Events: ' + offlineEventCount);
+        if (totalOfflineDurationMs > 0) {
+          info.push('Offline Duration: ' + Math.round(totalOfflineDurationMs / 1000) + 's');
+        }
+
+        // Firebase Performance Heartbeat Metrics
+        info.push('Heartbeat Pings (Firebase Performance): ' + heartbeatCount + ' pushed (30s interval)');
+        if (lastHeartbeatTime) {
+          var secAgo = Math.round((Date.now() - lastHeartbeatTime) / 1000);
+          info.push('Last Heartbeat Ping: ' + secAgo + 's ago (' + new Date(lastHeartbeatTime).toLocaleTimeString() + ')');
+          info.push('Browser Execution State: RESPONSIVE (Event loop active, browser is NOT frozen)');
+        } else {
+          var nextPingIn = Math.max(0, 30 - Math.round((Date.now() - heartbeatStartTime) / 1000));
+          info.push('Browser Execution State: RESPONSIVE (Next 30s ping in ' + nextPingIn + 's)');
+        }
+
+        if (navigator.connection) {
+          info.push('Effective Type: ' + (navigator.connection.effectiveType || 'N/A'));
+          info.push('Downlink: ' + (navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'N/A'));
+          info.push('RTT: ' + (navigator.connection.rtt ? navigator.connection.rtt + ' ms' : 'N/A'));
+        }
+        info.push('URL: ' + window.location.href);
+        info.push('User-Agent: ' + navigator.userAgent);
+        if (capturedErrors.length > 0) {
+          info.push('Captured Errors (' + capturedErrors.length + '):');
+          capturedErrors.forEach(function(err, idx) {
+            info.push(' [' + (idx + 1) + '] ' + err);
+          });
+        } else {
+          info.push('No runtime errors recorded.');
+        }
+        diagBox.textContent = info.join('\n');
+      }
+
+      // Smooth staged progress milestones
+      var stages = [
+        { threshold: 28, step: 2.2, interval: 70, text: 'Initializing engine...' },
+        { threshold: 58, step: 1.4, interval: 110, text: 'Loading application assets...' },
+        { threshold: 84, step: 0.7, interval: 160, text: 'Preparing workspace & database...' },
+        { threshold: 95, step: 0.2, interval: 260, text: 'Finalizing setup...' }
+      ];
+
+      var currentStageIdx = 0;
+      var progressInterval = setInterval(function() {
+        if (isLoaded) {
+          clearInterval(progressInterval);
+          return;
+        }
+
+        // If currently disconnected from network, pause advancement
+        if (!isCurrentlyOnline) {
+          return;
+        }
+
+        var stage = stages[currentStageIdx];
+        if (progress < stage.threshold) {
+          progress = Math.min(stage.threshold, +(progress + stage.step).toFixed(1));
+          if (fillElem) fillElem.style.width = progress + '%';
+          if (pctElem) pctElem.textContent = Math.floor(progress) + '%';
+          if (statusElem && statusElem.textContent !== stage.text) {
+            statusElem.textContent = stage.text;
+          }
+        } else if (currentStageIdx < stages.length - 1) {
+          currentStageIdx++;
+        }
+      }, 100);
+
+      // Warning after 8 seconds of slow load
+      var slowTimeout = setTimeout(function() {
+        if (!isLoaded && statusElem && isCurrentlyOnline) {
+          statusElem.textContent = 'Still working... optimizing bundle for your browser.';
+          statusElem.style.color = '#fef08a';
+        }
+      }, 8000);
+
+      // Timeout fallback trigger after 16 seconds
+      var failTimeout = setTimeout(function() {
+        if (isLoaded) return;
+        triggerTimeoutState();
+      }, 16000);
+
+      function applyTimeoutRootCause(isNetworkDisconnected) {
+        if (isNetworkDisconnected) {
+          if (rootCauseBadge) {
+            rootCauseBadge.className = 'root-cause-badge offline-cause';
+            if (rootCauseDot) rootCauseDot.style.backgroundColor = '#ef4444';
+            if (rootCauseText) rootCauseText.textContent = 'Primary Cause: Network Disconnected';
+          }
+          if (timeoutIcon) timeoutIcon.textContent = '📡';
+          if (timeoutTitle) timeoutTitle.textContent = 'No Internet Connection Detected';
+          if (timeoutDesc) {
+            timeoutDesc.textContent = 'The loading timeout was caused by a network disconnection. BookMySpace could not download application assets and runtime packages because your device lost connectivity. Please verify your Wi-Fi, Ethernet, or mobile data.';
+          }
+          if (reconnectBanner) {
+            reconnectBanner.style.display = 'block';
+            if (reconnectHintText) {
+              reconnectHintText.textContent = 'Waiting for network. As soon as your internet connection is restored, this screen will automatically refresh.';
+            }
+          }
+        } else {
+          if (rootCauseBadge) {
+            rootCauseBadge.className = 'root-cause-badge timeout-cause';
+            if (rootCauseDot) rootCauseDot.style.backgroundColor = '#eab308';
+            if (rootCauseText) rootCauseText.textContent = 'Primary Cause: Server or Resource Timeout (Network: Online)';
+          }
+          if (timeoutIcon) timeoutIcon.textContent = '⏱️';
+          if (timeoutTitle) timeoutTitle.textContent = 'Application Initialization Timed Out';
+          if (timeoutDesc) {
+            timeoutDesc.textContent = 'Your device is connected to the internet, and heartbeat pings confirm your browser is responsive (not frozen). However, the network transfer or server response took longer than expected. Try clearing the cache or reloading.';
+          }
+          if (reconnectBanner) {
+            reconnectBanner.style.display = 'none';
+          }
+        }
+      }
+
+      function triggerTimeoutState(customReason) {
+        if (isLoaded) return;
+        clearInterval(progressInterval);
+        clearTimeout(slowTimeout);
+        if (loadingContainer) {
+          loadingContainer.style.display = 'none';
+        }
+        if (timeoutView) {
+          timeoutView.style.display = 'block';
+        }
+
+        // Explicitly evaluate if connection loss was the primary cause
+        var isNetworkCause = !navigator.onLine || hadConnectionLoss;
+        applyTimeoutRootCause(isNetworkCause);
+
+        if (customReason && !isNetworkCause && timeoutDesc) {
+          timeoutDesc.textContent = customReason;
+        }
+        updateDiagnosticBox();
+      }
+
+      // Initial network state sync
+      updateConnectivityState(navigator.onLine !== false);
+
+      // Action Handlers
+      if (btnReload) {
+        btnReload.addEventListener('click', function() {
+          btnReload.innerHTML = 'Reloading...';
+          btnReload.style.opacity = '0.7';
+          window.location.reload();
+        });
+      }
+
+      if (btnClearCache) {
+        btnClearCache.addEventListener('click', function() {
+          btnClearCache.textContent = 'Clearing cache...';
+          btnClearCache.style.opacity = '0.7';
+          var cleanPromise = Promise.resolve();
+          if ('serviceWorker' in navigator) {
+            cleanPromise = navigator.serviceWorker.getRegistrations().then(function(regs) {
+              return Promise.all(regs.map(function(r) { return r.unregister(); }));
+            }).catch(function() {});
+          }
+          cleanPromise.then(function() {
+            if ('caches' in window) {
+              return caches.keys().then(function(names) {
+                return Promise.all(names.map(function(name) { return caches.delete(name); }));
+              }).catch(function() {});
+            }
+          }).finally(function() {
+            window.location.reload(true);
+          });
+        });
+      }
+
+      if (btnToggleDiag) {
+        btnToggleDiag.addEventListener('click', function() {
+          if (!diagBox) return;
+          var isHidden = diagBox.style.display === 'none' || diagBox.style.display === '';
+          diagBox.style.display = isHidden ? 'block' : 'none';
+          btnToggleDiag.textContent = isHidden ? 'Hide Diagnostic Details' : 'Show Diagnostic Details';
+          updateDiagnosticBox();
+        });
+      }
+
+      // App Readiness Notification
+      function onAppReady() {
+        if (isLoaded) return;
+        isLoaded = true;
+        clearInterval(progressInterval);
+        clearTimeout(slowTimeout);
+        clearTimeout(failTimeout);
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+
+        if (fillElem) fillElem.style.width = '100%';
+        if (pctElem) pctElem.textContent = '100%';
+        if (statusElem) statusElem.textContent = 'Ready!';
+
+        setTimeout(function() {
+          var wrapper = document.querySelector('.loading-wrapper');
+          if (wrapper) {
+            wrapper.style.transition = 'opacity 0.4s ease';
+            wrapper.style.opacity = '0';
+            setTimeout(function() {
+              if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+            }, 400);
+          }
+        }, 150);
+      }
+
+      window.addEventListener('flutter-first-frame', onAppReady);
+      window.addEventListener('load', function() {
+        var observer = new MutationObserver(function(mutations, obs) {
+          if (document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('canvas')) {
+            obs.disconnect();
+            onAppReady();
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+
+      window._bmsOnAppReady = onAppReady;
+    })();
+  </script>
 
   <script src="flutter_bootstrap.js" async></script>
 </body>

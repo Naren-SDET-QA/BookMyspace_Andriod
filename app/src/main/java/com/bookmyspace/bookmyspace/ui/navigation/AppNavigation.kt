@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -176,6 +177,7 @@ fun AppNavigation() {
                     modifier = Modifier.padding(innerPadding)
                 ) {
                 composable(Screen.Home.route) {
+                    com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.TrackScreenPerformance("home")
                     HomeScreen(
                         onNavigateToVenue = { id -> navController.navigate(Screen.VenueDetails.createRoute(id)) },
                         onNavigateToSearch = { cat -> navController.navigate(Screen.Search.createRoute(cat)) },
@@ -609,6 +611,13 @@ fun AppNavigation() {
     // Universal Element Inspector Modal
     com.bookmyspace.bookmyspace.ui.components.AdminElementInspectorModal(
         onDismissRequest = {}
+    )
+
+    // Diagnostic Overlay with Firebase Performance Monitoring & UI Thread Stalls Watchdog
+    com.bookmyspace.bookmyspace.ui.components.DiagnosticOverlay(
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .statusBarsPadding()
     )
     }
 }

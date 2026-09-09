@@ -5,10 +5,17 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -38,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
 import com.bookmyspace.bookmyspace.data.model.LocationHierarchy
 import com.bookmyspace.bookmyspace.data.model.LocationSearchRadius
 import com.bookmyspace.bookmyspace.data.location.IndiaLocationMasterData
@@ -102,6 +111,14 @@ enum class HomeScreenSortOption(val displayName: String, val icon: String) {
 /**
  * 4 Primary Main Sections of BookMySpace Customer Experience
  */
+data class SubSectionItemModel(
+    val label: String,
+    val emoji: String,
+    val count: Int,
+    val slug: String,
+    val isHighlight: Boolean = false
+)
+
 enum class MainHomeSection(
     val id: String,
     val title: String,
@@ -109,6 +126,13 @@ enum class MainHomeSection(
     val emoji: String,
     val imageUrl: String,
     val adminSectionKey: String,
+    val displayTitle: String,
+    val displaySubtitle: String,
+    val popularBadge: String,
+    val defaultCount: Int,
+    val highlightBadge: String,
+    val startsFromPrice: String,
+    val subSections: List<SubSectionItemModel>,
     val categoryOptions: List<MainSectionCategoryOption>
 ) {
     FUNCTION_HALLS(
@@ -118,6 +142,20 @@ enum class MainHomeSection(
         emoji = "🏛️",
         imageUrl = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "venues_function_halls",
+        displayTitle = "Function Halls & Event Spaces",
+        displaySubtitle = "Find AC banquet halls, royal marriage venues, convention centers and open party lawns with verified reviews & catering support.",
+        popularBadge = "# 1 MOST POPULAR",
+        defaultCount = 120,
+        highlightBadge = "⚡ 10-Min Royal Hold",
+        startsFromPrice = "₹25,000/day",
+        subSections = listOf(
+            SubSectionItemModel("Marriage Hall", "💒", 34, "marriage_hall"),
+            SubSectionItemModel("Convention Hall", "🏛️", 18, "convention_center"),
+            SubSectionItemModel("Party / Banquet", "🍸", 28, "banquet_hall"),
+            SubSectionItemModel("Community Hall", "🤝", 15, "community_hall"),
+            SubSectionItemModel("Open Lawn", "🌳", 12, "party_lawn"),
+            SubSectionItemModel("Other Halls & Spaces", "✨", 13, "other_hall", isHighlight = true)
+        ),
         categoryOptions = listOf(
             MainSectionCategoryOption("all", "All Halls", "✨"),
             MainSectionCategoryOption("marriage_hall", "Marriage Hall", "💒", "Weddings & Receptions"),
@@ -136,6 +174,20 @@ enum class MainHomeSection(
         emoji = "🏨",
         imageUrl = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "hotels_rooms",
+        displayTitle = "Lodge, Hotels & Day Rooms",
+        displaySubtitle = "Book certified budget lodges, star luxury hotels, family guest houses, hourly day-stays and weekend leisure resorts.",
+        popularBadge = "✨ INSTANT STAY",
+        defaultCount = 95,
+        highlightBadge = "⚡ Zero Pre-Payment Required",
+        startsFromPrice = "₹599/night",
+        subSections = listOf(
+            SubSectionItemModel("Star Hotel", "🏨", 28, "hotel"),
+            SubSectionItemModel("Budget Lodge", "🛏️", 22, "lodge"),
+            SubSectionItemModel("Guest House", "🏡", 14, "guest_house"),
+            SubSectionItemModel("Hourly Room", "⏱️", 12, "hourly_room"),
+            SubSectionItemModel("Nature Resort", "🌴", 9, "resort"),
+            SubSectionItemModel("Other Stays", "🏕️", 10, "other_stay", isHighlight = true)
+        ),
         categoryOptions = listOf(
             MainSectionCategoryOption("all", "All Stays", "✨"),
             MainSectionCategoryOption("hotel", "Hotel", "🏨", "Luxury & Star Stays"),
@@ -153,6 +205,20 @@ enum class MainHomeSection(
         emoji = "🏠",
         imageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "pg_hostels",
+        displayTitle = "PG, Hostels & Co-Living",
+        displaySubtitle = "Discover verified student hostels, executive men's & women's PGs, single rooms and flexible co-living with food and WiFi.",
+        popularBadge = "# ZERO BROKERAGE",
+        defaultCount = 140,
+        highlightBadge = "⚡ Direct Owner Deposit",
+        startsFromPrice = "₹4,500/mo",
+        subSections = listOf(
+            SubSectionItemModel("Gents PG", "👨", 42, "gents_pg"),
+            SubSectionItemModel("Ladies PG", "👩", 38, "ladies_pg"),
+            SubSectionItemModel("Student Hostel", "🎒", 24, "student_hostel"),
+            SubSectionItemModel("Co-Living", "🤝", 16, "co_living"),
+            SubSectionItemModel("Single Room", "🔑", 12, "single_room"),
+            SubSectionItemModel("Other Hostels", "🏡", 8, "other_pg", isHighlight = true)
+        ),
         categoryOptions = listOf(
             MainSectionCategoryOption("all", "All PG & Hostels", "✨"),
             MainSectionCategoryOption("gents_pg", "Gents PG", "👨", "Men's Stays with Food & WiFi"),
@@ -170,6 +236,20 @@ enum class MainHomeSection(
         emoji = "🎓",
         imageUrl = "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "institutes_classes",
+        displayTitle = "Institutes, Coaching & Classes",
+        displaySubtitle = "Enroll in expert tuition centers, IT coding bootcamps, dance academies, singing classes, yoga studios & competitive exams.",
+        popularBadge = "# FREE DEMO CLASS",
+        defaultCount = 110,
+        highlightBadge = "⚡ Verified Faculty Badges",
+        startsFromPrice = "₹999/mo",
+        subSections = listOf(
+            SubSectionItemModel("Coaching & Tuition", "📚", 32, "coaching"),
+            SubSectionItemModel("Computer & IT", "💻", 26, "computer_it"),
+            SubSectionItemModel("Dance Academy", "💃", 18, "dance_academy"),
+            SubSectionItemModel("Music Classes", "🎵", 14, "music_class"),
+            SubSectionItemModel("Sports Academy", "🏸", 12, "sports_academy"),
+            SubSectionItemModel("Other Classes", "🎨", 8, "other_class", isHighlight = true)
+        ),
         categoryOptions = listOf(
             MainSectionCategoryOption("all", "All Classes", "✨"),
             MainSectionCategoryOption("coaching", "Coaching & Tuition", "📚", "School, College & Prep"),
@@ -178,6 +258,36 @@ enum class MainHomeSection(
             MainSectionCategoryOption("music_class", "Music & Singing", "🎵", "Guitar, Keyboard & Vocals"),
             MainSectionCategoryOption("sports_academy", "Sports Academy & Turfs", "🏸", "Badminton, Cricket & Fitness"),
             MainSectionCategoryOption("other_class", "Other Classes & Studios", "🎨", "Art, Yoga, Martial Arts, Cooking & Workshops")
+        )
+    ),
+    SPORTS_TURFS(
+        id = "sports_turfs",
+        title = "Sports & Turfs",
+        subtitle = "Box Cricket, Football Turfs, Gyms & Studios",
+        emoji = "⚽",
+        imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80",
+        adminSectionKey = "sports_turfs",
+        displayTitle = "Sports, Turfs & Studios",
+        displaySubtitle = "Book box cricket pitches, soccer turfs, badminton courts, gym passes, music studios & coworking desks with instant booking.",
+        popularBadge = "# FLOODLIT & 24/7",
+        defaultCount = 85,
+        highlightBadge = "⚡ Instant Pitch Confirmation",
+        startsFromPrice = "₹499/hr",
+        subSections = listOf(
+            SubSectionItemModel("Box Cricket", "🏏", 24, "sports"),
+            SubSectionItemModel("Football Turf", "⚽", 18, "sports"),
+            SubSectionItemModel("Badminton", "🏸", 14, "sports"),
+            SubSectionItemModel("Gym Passes", "🏋️", 12, "gym"),
+            SubSectionItemModel("Coworking", "💼", 10, "coworking"),
+            SubSectionItemModel("Other Studios", "✨", 7, "other", isHighlight = true)
+        ),
+        categoryOptions = listOf(
+            MainSectionCategoryOption("all", "All Turfs & Desks", "🏆"),
+            MainSectionCategoryOption("sports", "Box Cricket & Turf", "⚽", "Floodlit Astro Turf"),
+            MainSectionCategoryOption("gym", "Gym & Fitness", "🏋️", "Daily Passes & Personal Training"),
+            MainSectionCategoryOption("coworking", "Co-Working Desks", "💼", "High-speed WiFi & Meeting Rooms"),
+            MainSectionCategoryOption("photography_studio", "Photo & Film Studios", "📸", "A/C Green Matte & Lighting"),
+            MainSectionCategoryOption("other", "Other Turfs & Desks", "✨", "Custom Gaming & Fitness Arenas")
         )
     )
 }
@@ -209,6 +319,17 @@ fun HomeScreen(
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val context = LocalContext.current
+
+    // Performance Monitoring: Register first screen paint to complete cold start trace and analyze latency
+    DisposableEffect(Unit) {
+        val activity = context as? android.app.Activity
+        com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.recordFirstScreenPainted(
+            screenName = "HomeScreen",
+            activity = activity
+        )
+        onDispose {}
+    }
+
     val venues by BookMySpaceRepository.venues.collectAsState()
     val favoriteVenueIds by BookMySpaceRepository.favoriteVenueIds.collectAsState()
     val savedCount = remember(venues, favoriteVenueIds) {
@@ -257,6 +378,7 @@ fun HomeScreen(
             MainHomeSection.FUNCTION_HALLS -> "VENUE"
             MainHomeSection.PG_HOSTELS -> "PG"
             MainHomeSection.INSTITUTES_CLASSES -> "CLASS"
+            MainHomeSection.SPORTS_TURFS -> "SPORTS"
             null -> "ALL"
         }
     }
@@ -267,6 +389,7 @@ fun HomeScreen(
             "VENUE" -> "$guestCount Guests"
             "PG" -> if (guestCount == 1) "Single Share" else "$guestCount-Sharing"
             "CLASS" -> "$guestCount Attendees"
+            "SPORTS" -> "$guestCount Players"
             else -> "$guestCount Guests"
         }
     }
@@ -390,9 +513,14 @@ fun HomeScreen(
                     MainHomeSection.INSTITUTES_CLASSES -> {
                         slug.contains("institute") || slug.contains("class") || slug.contains("coaching") ||
                                 slug.contains("academy") || slug.contains("dance") || slug.contains("music") ||
-                                slug.contains("sports") || slug.contains("badminton") || slug.contains("turf") ||
                                 name.contains("academy") || name.contains("institute") || name.contains("coaching") ||
                                 name.contains("class") || desc.contains("academy") || desc.contains("classes")
+                    }
+                    MainHomeSection.SPORTS_TURFS -> {
+                        slug.contains("sport") || slug.contains("turf") || slug.contains("cricket") ||
+                                slug.contains("football") || slug.contains("gym") || slug.contains("coworking") ||
+                                slug.contains("studio") || name.contains("turf") || name.contains("cricket") ||
+                                name.contains("court") || name.contains("gym") || desc.contains("pitch")
                     }
                     null -> true
                 }
@@ -509,7 +637,8 @@ fun HomeScreen(
                     MainHomeSection.LODGE_ROOMS -> v.hotelDetails != null || v.category?.slug in listOf("hotel", "hotel_stay", "lodge", "guest_house", "hourly_room", "resort", "other_stay")
                     MainHomeSection.FUNCTION_HALLS -> v.capacity >= 100 || v.category?.slug in listOf("marriage_hall", "convention_center", "banquet_hall", "party_lawn", "community_hall")
                     MainHomeSection.PG_HOSTELS -> v.pgDetails != null || v.category?.slug in listOf("gents_pg", "ladies_pg", "student_hostel", "co_living", "single_room")
-                    MainHomeSection.INSTITUTES_CLASSES -> v.category?.slug in listOf("coaching", "computer_it", "dance_academy", "music_class", "sports_academy")
+                    MainHomeSection.INSTITUTES_CLASSES -> v.category?.slug in listOf("coaching", "computer_it", "dance_academy", "music_class")
+                    MainHomeSection.SPORTS_TURFS -> v.category?.slug in listOf("sports", "sports_academy", "gym", "coworking", "photography_studio", "other")
                     else -> true
                 }
             )
@@ -831,24 +960,106 @@ fun HomeScreen(
                     )
                 }
 
-                // 2. Voice Booking Banner
+                // 2. Explore Spaces by Category Section Header
                 item {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    EasyVoiceBookingBanner(
-                        onClick = { showEasyVoiceBookingDialog = true },
-                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = responsiveInfo.horizontalPadding)
+                    ) {
+                        Text(
+                            text = "Explore Spaces by Category",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            letterSpacing = (-0.5).sp
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = "Select a category with 1-click sub-section filters to find your ideal space:",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // 3. 3D Tactile Category Hero Cards Grid (Prominently visible directly on first screen)
+                if (isSimulatingLoading) {
+                    item {
+                        EyeCatchingCategoryChipsSkeleton(
+                            modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                        )
+                    }
+                } else {
+                    responsiveGridItems(
+                        items = availableSections,
+                        columns = responsiveInfo.categoryGridColumns,
+                        key = { it.id },
+                        horizontalSpacing = responsiveInfo.gridSpacing,
+                        verticalSpacing = 16.dp,
+                        contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
+                    ) { section, _ ->
+                        MainSectionBigHeroCard(
+                            section = section,
+                            cityName = userLocationHierarchy.cityName.ifBlank { "Hyderabad" },
+                            onClick = {
+                                if (section == MainHomeSection.INSTITUTES_CLASSES) {
+                                    onNavigateToInstitutes()
+                                } else {
+                                    selectedMainSection = section
+                                    selectedCategorySlug = "all"
+                                }
+                            },
+                            onSubSectionClick = { subSlug ->
+                                if (section == MainHomeSection.INSTITUTES_CLASSES) {
+                                    onNavigateToInstitutes()
+                                } else {
+                                    selectedMainSection = section
+                                    selectedCategorySlug = subSlug
+                                }
+                            },
+                            onAddSubSectionClick = {
+                                customCategoryTargetSection = section.id
+                                showAddCustomCategoryDialog = true
+                            },
+                            isTabletOrWide = responsiveInfo.isTabletOrWide,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // 4. Auto-Moving Category Strip (Silky smooth right-to-left ticker)
+                item {
+                    Spacer(modifier = Modifier.height(18.dp))
+                    SmoothAutoMovingCategoryStrip(
+                        onSelectCategory = { targetSection, categorySlug ->
+                            if (targetSection == "institutes_classes" || targetSection == "institutes") {
+                                onNavigateToInstitutes()
+                            } else {
+                                val matchingSection = availableSections.find { it.id == targetSection }
+                                if (matchingSection != null) {
+                                    if (matchingSection == MainHomeSection.INSTITUTES_CLASSES) {
+                                        onNavigateToInstitutes()
+                                    } else {
+                                        selectedMainSection = matchingSection
+                                        selectedCategorySlug = categorySlug
+                                    }
+                                } else {
+                                    selectedMainSection = availableSections.firstOrNull()
+                                    selectedCategorySlug = categorySlug
+                                }
+                            }
+                        },
+                        onAddOtherCategory = {
+                            customCategoryTargetSection = "general"
+                            showAddCustomCategoryDialog = true
+                        }
                     )
                 }
 
-                // 3. Live Activity Pulse Ticker
-                item {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    LiveActivityPulseTicker(
-                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
-                    )
-                }
-
-                // 4. Hot Deals Carousel Widget
+                // 5. Hot Deals Carousel Widget
                 item {
                     Spacer(modifier = Modifier.height(12.dp))
                     HotDealsCarouselWidget(
@@ -863,7 +1074,24 @@ fun HomeScreen(
                     )
                 }
 
-                // 5. Smart Space Radar
+                // 6. Voice Booking Banner
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    EasyVoiceBookingBanner(
+                        onClick = { showEasyVoiceBookingDialog = true },
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 7. Live Activity Pulse Ticker
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LiveActivityPulseTicker(
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 8. Smart Space Radar
                 item {
                     Spacer(modifier = Modifier.height(12.dp))
                     SmartSpaceRadarWidget(
@@ -882,7 +1110,7 @@ fun HomeScreen(
                     )
                 }
 
-                // 6. Section Header & Slow Continuous Right-to-Left Sections Marquee
+                // 9. Section Header & Slow Continuous Right-to-Left Sections Marquee
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     Column(modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)) {
@@ -923,67 +1151,6 @@ fun HomeScreen(
                                         selectedMainSection = matchingSection
                                         selectedCategorySlug = "all"
                                     }
-                                }
-                            }
-                        },
-                        onAddOtherCategory = {
-                            customCategoryTargetSection = "general"
-                            showAddCustomCategoryDialog = true
-                        }
-                    )
-                }
-
-                // 7. 4 Main Section Big Hero Cards
-                if (isSimulatingLoading) {
-                    item {
-                        EyeCatchingCategoryChipsSkeleton(
-                            modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
-                        )
-                    }
-                } else {
-                    responsiveGridItems(
-                        items = availableSections,
-                        columns = responsiveInfo.categoryGridColumns,
-                        key = { it.id },
-                        horizontalSpacing = responsiveInfo.gridSpacing,
-                        verticalSpacing = 12.dp,
-                        contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
-                    ) { section, _ ->
-                        MainSectionBigHeroCard(
-                            section = section,
-                            onClick = {
-                                if (section == MainHomeSection.INSTITUTES_CLASSES) {
-                                    onNavigateToInstitutes()
-                                } else {
-                                    selectedMainSection = section
-                                    selectedCategorySlug = "all"
-                                }
-                            },
-                            isTabletOrWide = responsiveInfo.isTabletOrWide,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-                // 8. Auto-Moving Category Strip (Silky smooth right-to-left ticker)
-                item {
-                    Spacer(modifier = Modifier.height(18.dp))
-                    SmoothAutoMovingCategoryStrip(
-                        onSelectCategory = { targetSection, categorySlug ->
-                            if (targetSection == "institutes_classes" || targetSection == "institutes") {
-                                onNavigateToInstitutes()
-                            } else {
-                                val matchingSection = availableSections.find { it.id == targetSection }
-                                if (matchingSection != null) {
-                                    if (matchingSection == MainHomeSection.INSTITUTES_CLASSES) {
-                                        onNavigateToInstitutes()
-                                    } else {
-                                        selectedMainSection = matchingSection
-                                        selectedCategorySlug = categorySlug
-                                    }
-                                } else {
-                                    selectedMainSection = availableSections.firstOrNull()
-                                    selectedCategorySlug = categorySlug
                                 }
                             }
                         },
@@ -1097,12 +1264,13 @@ fun HomeScreen(
                 // 2. Compact Adaptive Search Header (Automatically adapts to Hotels / Function Halls / PGs / Classes)
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    val sectionCategoryType = when (selectedMainSection?.id) {
-                        "hotels" -> "HOTEL"
-                        "venues" -> "VENUE"
-                        "pg" -> "PG"
-                        "institutes" -> "CLASS"
-                        else -> "HOTEL"
+                    val sectionCategoryType = when (selectedMainSection) {
+                        MainHomeSection.LODGE_ROOMS -> "HOTEL"
+                        MainHomeSection.FUNCTION_HALLS -> "VENUE"
+                        MainHomeSection.PG_HOSTELS -> "PG"
+                        MainHomeSection.INSTITUTES_CLASSES -> "CLASS"
+                        MainHomeSection.SPORTS_TURFS -> "SPORTS"
+                        null -> "HOTEL"
                     }
                     Box(
                         modifier = Modifier
@@ -1761,118 +1929,412 @@ fun HomeScreen(
 }
 
 /**
- * Large, eye-catching, extremely simple Hero Card for the 4 Main Sections on the first screen.
- * Adapts responsively on phone single-column vs tablet grid layouts.
+ * 3D Tactile Category Hero Card for Android / Web / Desktop.
+ * Featuring elevated perspective shadows, active emerald green live status dot,
+ * instant 1-click sub-section filter chips with count badges, and explore CTA.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainSectionBigHeroCard(
     section: MainHomeSection,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    cityName: String = "Hyderabad",
+    onSubSectionClick: (String) -> Unit = {},
+    onAddSubSectionClick: () -> Unit = {},
     isTabletOrWide: Boolean = false
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 1. Subtle 3D Tilt Animation on Hover / Interaction
+    val tiltX by animateFloatAsState(
+        targetValue = if (isHovered) -4.5f else if (isPressed) 1.5f else 0f,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "hero_card_tilt_x"
+    )
+    val tiltY by animateFloatAsState(
+        targetValue = if (isHovered) 3.2f else 0f,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "hero_card_tilt_y"
+    )
+    val liftY by animateFloatAsState(
+        targetValue = if (isPressed) 3f else if (isHovered) -10f else 0f,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "hero_card_lift_y"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.982f else if (isHovered) 1.018f else 1.0f,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "hero_card_scale"
+    )
+
+    // 2. Dynamic Elevated Drop-Shadows that Deepen during interaction
+    val dynamicElevation by animateDpAsState(
+        targetValue = if (isPressed) 3.dp else if (isHovered) 22.dp else 7.dp,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "hero_card_elevation"
+    )
+
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(if (isTabletOrWide) 24.dp else 22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(if (isTabletOrWide) 26.dp else 22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = dynamicElevation,
+            pressedElevation = 2.dp,
+            hoveredElevation = 22.dp,
+            focusedElevation = 16.dp
+        ),
+        border = BorderStroke(
+            width = if (isHovered) 2.dp else 1.5.dp,
+            color = if (isHovered) Color(0xFF6366F1).copy(alpha = 0.55f) else Color(0xFFE2E8F0)
+        ),
         modifier = modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = if (isTabletOrWide) 130.dp else 115.dp)
             .testTag("main_section_card_${section.id}")
+            .graphicsLayer {
+                rotationX = tiltX
+                rotationY = tiltY
+                translationY = liftY
+                scaleX = scale
+                scaleY = scale
+                cameraDistance = 14f * density
+            }
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (isTabletOrWide) 140.dp else 125.dp)
+                .background(Color.White)
         ) {
-            // Background Image
+            // Subtle watermark background illustration
             AsyncImage(
                 model = section.imageUrl,
-                contentDescription = section.title,
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // High-contrast gradient overlay to ensure text readability in any lighting
-            Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer { alpha = 0.05f }
+            )
+
+            // 3. Pronounced Light-Source Effect: Border-based highlight on top edges
+            // Specular light reflection line on top edge simulating directional overhead lighting
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .align(Alignment.TopCenter)
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.90f),
-                                Color.Black.copy(alpha = 0.74f),
-                                Color.Black.copy(alpha = 0.35f)
+                            listOf(
+                                Color.White.copy(alpha = 0.95f),
+                                Color(0xFFE0E7FF),
+                                Color.White.copy(alpha = 0.95f)
                             )
                         )
                     )
             )
 
-            // Card Content
-            Row(
+            // Soft downward studio light wash from top edge
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = if (isTabletOrWide) 20.dp else 18.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.55f),
+                                Color.White.copy(alpha = 0.0f)
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(if (isTabletOrWide) 22.dp else 18.dp)
             ) {
+                // Top Row: 48dp Icon Box + Emerald Live Dot + Top Badges
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    // Prominent Emoji Badge
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White.copy(alpha = 0.22f),
-                        modifier = Modifier.size(if (isTabletOrWide) 60.dp else 56.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
+                    // Icon Box with Live Active Green Status Dot
+                    Box(modifier = Modifier.size(54.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFFEEF2FF),
+                            border = BorderStroke(1.5.dp, Color(0xFFC7D2FE)),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = section.emoji,
+                                    fontSize = 24.sp
+                                )
+                            }
+                        }
+
+                        // Emerald Green Live Status Dot with White Border
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF10B981),
+                            border = BorderStroke(2.dp, Color.White),
+                            shadowElevation = 3.dp,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .align(Alignment.BottomEnd)
+                        ) {}
+                    }
+
+                    // Top Badges
+                    Column(horizontalAlignment = Alignment.End) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFEEF2FF),
+                            border = BorderStroke(1.dp, Color(0xFFC7D2FE).copy(alpha = 0.6f))
+                        ) {
                             Text(
-                                text = section.emoji,
-                                fontSize = if (isTabletOrWide) 30.sp else 28.sp
+                                text = section.popularBadge,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF4338CA),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                letterSpacing = 0.3.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF3F4F6)
+                        ) {
+                            Text(
+                                text = "${section.defaultCount} Spaces in $cityName",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF4B5563),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp)
                             )
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.width(if (isTabletOrWide) 18.dp else 16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                    Column {
-                        Text(
-                            text = section.title,
-                            fontSize = if (isTabletOrWide) 20.sp else 19.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White,
-                            letterSpacing = (-0.3).sp
+                // Title
+                Text(
+                    text = section.displayTitle,
+                    fontSize = if (isTabletOrWide) 19.sp else 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF0F172A),
+                    letterSpacing = (-0.4).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Subtitle
+                Text(
+                    text = section.displaySubtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.5.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Highlight Tag Badge
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFEF3C7),
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A))
+                ) {
+                    Text(
+                        text = section.highlightBadge,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF92400E),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Sub-sections header row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = null,
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Spacer(modifier = Modifier.width(5.dp))
                         Text(
-                            text = section.subtitle,
-                            fontSize = if (isTabletOrWide) 13.sp else 12.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 16.sp
+                            text = "SUB-SECTIONS INCLUDED:",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF475569),
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFECFDF5),
+                        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                    ) {
+                        Text(
+                            text = "1-CLICK FILTER",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF059669),
+                            letterSpacing = 0.4.sp,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Large Touch Target Circular Arrow Button
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(if (isTabletOrWide) 48.dp else 44.dp)
+                // Sub-sections FlowRow chips
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Explore ${section.title}",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(if (isTabletOrWide) 22.dp else 20.dp)
+                    section.subSections.forEach { sub ->
+                        Surface(
+                            onClick = { onSubSectionClick(sub.slug) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (sub.isHighlight) Color(0xFFFEF3C7) else Color(0xFFF8FAFC),
+                            border = BorderStroke(
+                                1.dp,
+                                if (sub.isHighlight) Color(0xFFFCD34D) else Color(0xFFE2E8F0)
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            ) {
+                                Text(sub.emoji, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = sub.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (sub.isHighlight) Color(0xFF92400E) else Color(0xFF1E293B)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (sub.isHighlight) Color(0xFFFDE68A) else Color(0xFFE2E8F0)
+                                ) {
+                                    Text(
+                                        text = "${sub.count}",
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (sub.isHighlight) Color(0xFF78350F) else Color(0xFF475569),
+                                        modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // + Sub-Section chip
+                    Surface(
+                        onClick = onAddSubSectionClick,
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "+ Sub-Section",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Bottom Row: Starts From Price + Explore Spaces Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "STARTS FROM",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF94A3B8),
+                            letterSpacing = 0.5.sp
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = section.startsFromPrice,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF0F172A),
+                            letterSpacing = (-0.3).sp
+                        )
+                    }
+
+                    // Explore Spaces Black Pill Button
+                    Surface(
+                        onClick = onClick,
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color(0xFF0F172A),
+                        shadowElevation = 3.dp
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 15.dp, vertical = 9.dp)
+                        ) {
+                            Text(
+                                text = "Explore Spaces",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                letterSpacing = 0.2.sp
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1934,8 +2396,14 @@ fun SectionVenueResultCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
+                val context = LocalContext.current
                 AsyncImage(
-                    model = currentImageUrl,
+                    model = CoilImageLoaderConfig.buildCardBannerRequest(
+                        context = context,
+                        data = currentImageUrl,
+                        widthPx = 720,
+                        heightPx = 450
+                    ),
                     contentDescription = venue.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

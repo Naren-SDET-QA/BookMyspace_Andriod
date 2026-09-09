@@ -1094,7 +1094,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                   const SizedBox(height: 8),
                   categoriesAsync.when(
                     data: (categories) {
-                      final validCats = categories.where((c) => c.slug != 'all').toList();
+                      final validCats = categories.where((c) => c.slug != 'all' && c.isActive).toList();
                       return Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -1102,7 +1102,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           final isSelected = _selectedCategoryId == cat.id ||
                               _selectedCategoryId == cat.slug;
                           return FilterChip(
-                            label: Text(cat.name),
+                            label: Text('${cat.icon?.isNotEmpty == true ? cat.icon! : "🏷️"} ${cat.name}'),
                             selected: isSelected,
                             onSelected: (val) {
                               if (val) {
