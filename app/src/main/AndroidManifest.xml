@@ -46,6 +46,11 @@
             android:name="firebase_performance_collection_deactivated"
             android:value="true" />
 
+        <!-- Disable automatic Firebase Messaging token generation to prevent FIS_AUTH_ERROR in local/fallback environments -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+
         <!-- Firebase Cloud Messaging Service for 1-Hour Push Reminders -->
         <service
             android:name=".data.notification.BookMySpaceFirebaseMessagingService"

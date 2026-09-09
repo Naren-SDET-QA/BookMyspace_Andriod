@@ -141,19 +141,33 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
             val existingApps = FirebaseApp.getApps(this)
             if (existingApps.isEmpty()) {
                 val apiKey = getSafeFirebaseApiKey()
-                val fallbackOptions = FirebaseOptions.Builder()
-                    .setApplicationId("1:186189980547:android:bookmyspace")
-                    .setProjectId("bookmyspace-app")
-                    .setApiKey(apiKey)
-                    .build()
-                
+                if (apiKey.isNotEmpty()) {
+                    val fallbackOptions = FirebaseOptions.Builder()
+                        .setApplicationId("1:186189980547:android:bookmyspace")
+                        .setProjectId("bookmyspace-app")
+                        .setApiKey(apiKey)
+                        .build()
+                    
+                    try {
+                        val fallbackApp = FirebaseApp.initializeApp(this, fallbackOptions)
+                        logStartup("🔥 FirebaseApp initialized: ${fallbackApp.name}")
+                        com.google.firebase.messaging.FirebaseMessaging.getInstance().isAutoInitEnabled = true
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ FirebaseApp init: ${e.message}")
+                    }
+                } else {
+                    Log.i(TAG, "ℹ️ No production Firebase credentials detected; operating in offline-first mode without FIS network calls.")
+                }
+            } else {
                 try {
-                    val fallbackApp = FirebaseApp.initializeApp(this, fallbackOptions)
-                    logStartup("🔥 Fallback FirebaseApp initialized: ${fallbackApp.name}")
-                } catch (e: Exception) {
-                    Log.w(TAG, "⚠️ FirebaseApp fallback init: ${e.message}")
+                    val app = FirebaseApp.getInstance()
+                    val isRealApiKey = app.options.apiKey.isNotEmpty() && !app.options.apiKey.contains("Fallback", ignoreCase = true)
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().isAutoInitEnabled = isRealApiKey
+                } catch (t: Throwable) {
+                    Log.d(TAG, "FCM auto-init config: ${t.message}")
                 }
             }
+
             com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.initialize(this)
         } catch (e: Exception) {
             Log.w(TAG, "⚠️ FirebaseApp safe init: ${e.message}")
@@ -164,7 +178,7 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
         val configuredKey = BuildConfig.FIREBASE_API_KEY
         val isValidFormat = configuredKey.startsWith("A") && configuredKey.length == 39 &&
             Regex("^A[a-zA-Z0-9_-]{38}$").matches(configuredKey)
-        return if (isValidFormat) configuredKey else "AIzaSyBMSFallbackKeySecure0123456789ABC"
+        return if (isValidFormat) configuredKey else ""
     }
 
     private suspend fun initializeCoreServicesAsync() {

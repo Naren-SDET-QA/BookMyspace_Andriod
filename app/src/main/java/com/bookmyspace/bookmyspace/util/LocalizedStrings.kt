@@ -86,6 +86,30 @@ object LocalizedStrings {
             "te" to "అన్నీ",
             "hi" to "सभी",
             "ta" to "அனைத்தும்"
+        ),
+        "home" to mapOf(
+            "en" to "Home",
+            "te" to "హోమ్",
+            "hi" to "होम",
+            "ta" to "முகப்பு",
+            "kn" to "ಮುಖಪುಟ",
+            "mr" to "मुख्यपृष्ठ"
+        ),
+        "my_bookings" to mapOf(
+            "en" to "My Bookings",
+            "te" to "నా బుకింగ్స్",
+            "hi" to "मेरी बुकिंग",
+            "ta" to "என் முன்பதிவுகள்",
+            "kn" to "ನನ್ನ ಬುಕಿಂಗ್ಸ್",
+            "mr" to "माझे बुकिंग"
+        ),
+        "profile" to mapOf(
+            "en" to "Profile",
+            "te" to "ప్రొఫైల్",
+            "hi" to "प्रोफ़ाइल",
+            "ta" to "சுயவிவரம்",
+            "kn" to "ಪ್ರೊಫೈಲ್",
+            "mr" to "प्रोफाइल"
         )
     )
 

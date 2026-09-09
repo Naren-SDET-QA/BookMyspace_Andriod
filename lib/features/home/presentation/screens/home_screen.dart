@@ -551,10 +551,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       sliver: SliverGrid(
                         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 440,
-                          mainAxisSpacing: 22,
-                          crossAxisSpacing: 22,
-                          mainAxisExtent: 475,
+                          maxCrossAxisExtent: 260,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          mainAxisExtent: 195,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
@@ -1289,8 +1289,90 @@ class _TopHeaderBar extends StatelessWidget {
   }
 }
 
-/// Modern 3D Tactile Category Hero Card with Web Hover Perspective, iOS/Android Haptic Scaling,
-/// Active Green Live Status Indicator, 1-Click Sub-Section Filters & High-Precision 3D Shadows.
+class _CategoryPalette {
+  final Color primary;
+  final Color secondary;
+  final List<Color> gradient;
+  final List<Color> surfaceGradient;
+  final List<Color> borderGradient;
+  final Color glowColor;
+  final Color badgeBg;
+  final Color badgeText;
+
+  const _CategoryPalette({
+    required this.primary,
+    required this.secondary,
+    required this.gradient,
+    required this.surfaceGradient,
+    required this.borderGradient,
+    required this.glowColor,
+    required this.badgeBg,
+    required this.badgeText,
+  });
+}
+
+_CategoryPalette _getCategoryPalette(MainHomeSection section) {
+  switch (section) {
+    case MainHomeSection.functionHalls:
+      return const _CategoryPalette(
+        primary: Color(0xFF6366F1),
+        secondary: Color(0xFF9333EA),
+        gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFA855F7)],
+        surfaceGradient: [Color(0xFFFFFFFF), Color(0xFFF5F3FF)],
+        borderGradient: [Color(0xFF818CF8), Color(0xFFC084FC)],
+        glowColor: Color(0xFF8B5CF6),
+        badgeBg: Color(0xFFEEF2FF),
+        badgeText: Color(0xFF4338CA),
+      );
+    case MainHomeSection.lodgeRooms:
+      return const _CategoryPalette(
+        primary: Color(0xFFF59E0B),
+        secondary: Color(0xFFEF4444),
+        gradient: [Color(0xFFF59E0B), Color(0xFFF97316), Color(0xFFEF4444)],
+        surfaceGradient: [Color(0xFFFFFFFF), Color(0xFFFFFBEB)],
+        borderGradient: [Color(0xFFFBBF24), Color(0xFFFB7185)],
+        glowColor: Color(0xFFF97316),
+        badgeBg: Color(0xFFFEF3C7),
+        badgeText: Color(0xFFB45309),
+      );
+    case MainHomeSection.pgHostels:
+      return const _CategoryPalette(
+        primary: Color(0xFF10B981),
+        secondary: Color(0xFF06B6D4),
+        gradient: [Color(0xFF10B981), Color(0xFF14B8A6), Color(0xFF06B6D4)],
+        surfaceGradient: [Color(0xFFFFFFFF), Color(0xFFECFDF5)],
+        borderGradient: [Color(0xFF34D399), Color(0xFF22D3EE)],
+        glowColor: Color(0xFF10B981),
+        badgeBg: Color(0xFFD1FAE5),
+        badgeText: Color(0xFF047857),
+      );
+    case MainHomeSection.institutesClasses:
+      return const _CategoryPalette(
+        primary: Color(0xFF0EA5E9),
+        secondary: Color(0xFF3B82F6),
+        gradient: [Color(0xFF0EA5E9), Color(0xFF2563EB), Color(0xFF3B82F6)],
+        surfaceGradient: [Color(0xFFFFFFFF), Color(0xFFF0F9FF)],
+        borderGradient: [Color(0xFF38BDF8), Color(0xFF60A5FA)],
+        glowColor: Color(0xFF0284C7),
+        badgeBg: Color(0xFFE0F2FE),
+        badgeText: Color(0xFF0369A1),
+      );
+    case MainHomeSection.sportsTurfs:
+      return const _CategoryPalette(
+        primary: Color(0xFF84CC16),
+        secondary: Color(0xFF10B981),
+        gradient: [Color(0xFF84CC16), Color(0xFF22C55E), Color(0xFF10B981)],
+        surfaceGradient: [Color(0xFFFFFFFF), Color(0xFFF7FEE7)],
+        borderGradient: [Color(0xFFA3E635), Color(0xFF34D399)],
+        glowColor: Color(0xFF84CC16),
+        badgeBg: Color(0xFFECFCCB),
+        badgeText: Color(0xFF3F6212),
+      );
+  }
+}
+
+/// Compact World-Class 3D Glass Category Card with Dynamic Category Colors,
+/// 3D Perspective Tilt, Ambient Glow, Specular Highlights & 1-Tap Quick Filters.
 class _ThreeDimensionalCategoryHeroCard extends StatefulWidget {
   const _ThreeDimensionalCategoryHeroCard({
     required this.section,
@@ -1348,7 +1430,9 @@ class _ThreeDimensionalCategoryHeroCardState
   @override
   Widget build(BuildContext context) {
     final section = widget.section;
+    final palette = _getCategoryPalette(section);
     final subSections = _resolveSubSections();
+    final topSubSections = subSections.take(2).toList();
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1362,106 +1446,86 @@ class _ThreeDimensionalCategoryHeroCardState
         },
         onTapCancel: () => setState(() => _isPressed = false),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           transform: Matrix4.identity()
-            ..setEntry(3, 2, 0.0014)
-            ..rotateX(_isHovered ? -0.065 : (_isPressed ? 0.02 : 0.0))
-            ..rotateY(_isHovered ? 0.038 : 0.0)
+            ..setEntry(3, 2, 0.0015)
+            ..rotateX(_isHovered ? -0.05 : (_isPressed ? 0.015 : 0.0))
+            ..rotateY(_isHovered ? 0.03 : 0.0)
             ..translate(
               0.0,
               _isPressed
-                  ? 3.0
-                  : (_isHovered ? -10.0 : 0.0),
+                  ? 2.0
+                  : (_isHovered ? -5.0 : 0.0),
               0.0,
             )
-            ..scale(_isPressed ? 0.982 : (_isHovered ? 1.02 : 1.0)),
+            ..scale(_isPressed ? 0.965 : (_isHovered ? 1.025 : 1.0)),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: palette.surfaceGradient,
+            ),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: _isHovered
-                  ? const Color(0xFF6366F1).withValues(alpha: 0.55)
-                  : const Color(0xFFE2E8F0),
-              width: _isHovered ? 2.0 : 1.5,
+                  ? palette.primary
+                  : palette.borderGradient.first.withValues(alpha: 0.45),
+              width: _isHovered ? 1.8 : 1.2,
             ),
             boxShadow: [
-              // Dynamic, elevated drop-shadows that deepen during interaction
+              BoxShadow(
+                color: palette.glowColor.withValues(
+                  alpha: _isHovered ? 0.28 : 0.08,
+                ),
+                blurRadius: _isHovered ? 18 : 6,
+                offset: Offset(0, _isHovered ? 6 : 2),
+              ),
               BoxShadow(
                 color: const Color(0xFF0F172A).withValues(
-                  alpha: _isPressed
-                      ? 0.06
-                      : (_isHovered ? 0.24 : 0.09),
+                  alpha: _isPressed ? 0.04 : 0.06,
                 ),
-                blurRadius: _isHovered ? 36 : (_isPressed ? 8 : 18),
-                offset: Offset(0, _isHovered ? 18 : (_isPressed ? 3 : 8)),
-                spreadRadius: _isHovered ? 2.5 : 0,
-              ),
-              // Radiant indigo ambient rim reflection
-              BoxShadow(
-                color: const Color(0xFF6366F1).withValues(
-                  alpha: _isHovered ? 0.25 : 0.05,
-                ),
-                blurRadius: _isHovered ? 28 : 16,
-                offset: Offset(0, _isHovered ? 8 : 3),
-              ),
-              // Tactile 3D bottom bevel edge
-              BoxShadow(
-                color: const Color(0xFF000000).withValues(
-                  alpha: _isHovered ? 0.08 : 0.04,
-                ),
-                blurRadius: 2,
-                offset: Offset(0, _isHovered ? 4 : 2),
+                blurRadius: 4,
+                offset: const Offset(0, 1.5),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(22.5),
+            borderRadius: BorderRadius.circular(17),
             child: Stack(
               children: [
-                // Subtle architectural background watermark image
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.045,
-                    child: Image.network(
-                      section.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-
-                // Pronounced Light-Source Effect: Border-based highlight on top edges
+                // Top Specular Highlight edge
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 3.0,
+                  height: 2.5,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
                           Colors.white.withValues(alpha: 0.95),
-                          const Color(0xFFE0E7FF),
+                          palette.primary.withValues(alpha: 0.4),
                           Colors.white.withValues(alpha: 0.95),
                         ],
                       ),
                     ),
                   ),
                 ),
+
+                // Radial ambient glow orb
                 Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 36.0,
+                  top: -20,
+                  right: -20,
+                  width: 80,
+                  height: 80,
                   child: Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
                         colors: [
-                          Colors.white.withValues(alpha: 0.55),
-                          Colors.white.withValues(alpha: 0.0),
+                          palette.glowColor.withValues(alpha: _isHovered ? 0.22 : 0.12),
+                          Colors.transparent,
                         ],
                       ),
                     ),
@@ -1470,415 +1534,244 @@ class _ThreeDimensionalCategoryHeroCardState
 
                 // Card Foreground Content
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 20,
-                  ),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Top Row: Icon Container with Green Live Dot + Badges
+                      // Top Row: 3D Icon Orb + Emerald Live Dot + Space Count Badge
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Icon Container + Live Status Dot
+                          // 3D Glass Icon Orb
                           Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Container(
-                                width: 48,
-                                height: 48,
+                                width: 36,
+                                height: 36,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF2FF),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color(0xFFC7D2FE),
-                                    width: 1.5,
+                                  gradient: LinearGradient(
+                                    colors: palette.gradient,
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: palette.glowColor.withValues(alpha: 0.35),
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                                 alignment: Alignment.center,
-                                child: Icon(
-                                  section.iconData,
-                                  color: const Color(0xFF4F46E5),
-                                  size: 24,
+                                child: Text(
+                                  section.emoji,
+                                  style: const TextStyle(fontSize: 18),
                                 ),
                               ),
-                              // Live active dot (bottom-right of icon box)
+                              // Live active dot
                               Positioned(
-                                bottom: -2,
-                                right: -2,
+                                bottom: -1,
+                                right: -1,
                                 child: Container(
-                                  width: 13,
-                                  height: 13,
+                                  width: 9,
+                                  height: 9,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF10B981),
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: Colors.white,
-                                      width: 2.5,
+                                      width: 1.5,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF10B981).withValues(alpha: 0.4),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const Spacer(),
+
+                          // Count Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: palette.badgeBg.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: palette.primary.withValues(alpha: 0.3),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              '${section.defaultCount} in ${widget.cityName}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: palette.badgeText,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Title & Starts From Price
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            section.displayTitle,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.3,
+                              height: 1.15,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Starts ${section.startsFromPrice}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: palette.primary,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+
+                      // Quick Sub-Section Mini-Pills (Top 2 + Add)
+                      Row(
+                        children: [
+                          ...topSubSections.map((sub) {
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () => widget.onSubSectionTap(sub.slug),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(7),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        sub.emoji,
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          sub.label,
+                                          style: const TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF334155),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-
-                          const Spacer(),
-
-                          // Top-right Badges
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF2FF),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: const Color(0xFFC7D2FE).withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                child: Text(
-                                  section.popularBadge,
-                                  style: const TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF4338CA),
-                                    letterSpacing: 0.4,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${section.defaultCount} Spaces in ${widget.cityName}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF4B5563),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Title
-                      Text(
-                        section.displayTitle,
-                        style: const TextStyle(
-                          fontSize: 18.5,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -0.4,
-                          height: 1.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 5),
-
-                      // Subtitle
-                      SizedBox(
-                        height: 34,
-                        child: Text(
-                          section.displaySubtitle,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF64748B),
-                            height: 1.35,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Highlight tag pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: const Color(0xFFFDE68A),
-                          ),
-                        ),
-                        child: Text(
-                          section.highlightBadge,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF92400E),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // SUB-SECTIONS INCLUDED row
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.layers_rounded,
-                            size: 15,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            'SUB-SECTIONS INCLUDED:',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF475569),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFECFDF5),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: const Color(0xFFA7F3D0),
-                              ),
-                            ),
-                            child: const Text(
-                              '1-CLICK FILTER',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF059669),
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      // Sub-sections Chip Wrap
-                      Wrap(
-                        spacing: 7,
-                        runSpacing: 7,
-                        children: [
-                          ...subSections.map((sub) {
-                            return InkWell(
-                              onTap: () => widget.onSubSectionTap(sub.slug),
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: sub.isHighlight
-                                      ? const Color(0xFFFEF3C7)
-                                      : const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: sub.isHighlight
-                                        ? const Color(0xFFFCD34D)
-                                        : const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      sub.emoji,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      sub.label,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: sub.isHighlight
-                                            ? const Color(0xFF92400E)
-                                            : const Color(0xFF1E293B),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5,
-                                        vertical: 1.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: sub.isHighlight
-                                            ? const Color(0xFFFDE68A)
-                                            : const Color(0xFFE2E8F0),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${sub.count}',
-                                        style: TextStyle(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: sub.isHighlight
-                                              ? const Color(0xFF78350F)
-                                              : const Color(0xFF475569),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                             );
                           }),
-
-                          // + + Sub-Section chip
-                          InkWell(
+                          // + button
+                          GestureDetector(
                             onTap: widget.onAddSubSectionTap,
-                            borderRadius: BorderRadius.circular(16),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
+                                horizontal: 6,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
+                                color: palette.badgeBg.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(7),
                                 border: Border.all(
-                                  color: const Color(0xFFCBD5E1),
+                                  color: palette.primary.withValues(alpha: 0.25),
+                                  width: 0.8,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(
-                                    Icons.add_rounded,
-                                    size: 13,
-                                    color: Color(0xFF64748B),
-                                  ),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    '+ Sub-Section',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
+                              child: Text(
+                                '+',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: palette.primary,
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
 
-                      const Spacer(),
-
-                      // Bottom Row: Starts From Price + Explore Spaces Button
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'STARTS FROM',
+                      // Explore CTA Pill with Dynamic Gradient
+                      GestureDetector(
+                        onTap: widget.onTapExplore,
+                        child: Container(
+                          width: double.infinity,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: palette.gradient,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              if (_isHovered)
+                                BoxShadow(
+                                  color: palette.glowColor.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Text(
+                                'Explore',
                                 style: TextStyle(
-                                  fontSize: 9.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF94A3B8),
-                                  letterSpacing: 0.5,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                section.startsFromPrice,
-                                style: const TextStyle(
-                                  fontSize: 16.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF0F172A),
-                                  letterSpacing: -0.3,
-                                ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 12,
+                                color: Colors.white,
                               ),
                             ],
                           ),
-
-                          const Spacer(),
-
-                          // Explore Spaces Pill Button
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                if (_isHovered)
-                                  BoxShadow(
-                                    color: const Color(0xFF0F172A).withValues(alpha: 0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Explore Spaces',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Transform.translate(
-                                  offset: Offset(_isHovered ? 2.5 : 0.0, 0),
-                                  child: const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),

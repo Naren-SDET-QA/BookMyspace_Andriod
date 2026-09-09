@@ -17,10 +17,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.bookmyspace.bookmyspace.data.model.BookingStatus
 import com.bookmyspace.bookmyspace.data.model.UserRole
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.BMSFullPageLoadingScreen
@@ -34,7 +36,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Search : Screen("search?category={category}", "Search", Icons.Default.Search) {
         fun createRoute(categorySlug: String? = null) = if (categorySlug != null) "search?category=$categorySlug" else "search"
     }
-    object Bookings : Screen("bookings", "Bookings", Icons.Default.ConfirmationNumber)
+    object Bookings : Screen("bookings", "My Bookings", Icons.Default.ConfirmationNumber)
     object Saved : Screen("saved", "Saved", Icons.Default.Bookmark)
     object Profile : Screen("profile", "Profile", Icons.Default.Person)
 
@@ -94,20 +96,23 @@ fun AppNavigation() {
 
     val bottomBarScreens = listOf(
         Screen.Home,
-        Screen.Map,
-        Screen.Search,
         Screen.Bookings,
         Screen.Profile
     )
 
+    val allBookings by BookMySpaceRepository.bookings.collectAsState()
+    val activeBookingsCount = remember(allBookings) {
+        allBookings.count { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING }
+    }
+
     val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
-        Screen.Map.route,
-        "search",
-        Screen.Search.route,
         Screen.Bookings.route,
+        Screen.Profile.route,
         Screen.Saved.route,
-        Screen.Profile.route
+        Screen.Map.route,
+        Screen.Search.route,
+        "search"
     )
 
     val featureConfigs by BookMySpaceRepository.featureConfigs.collectAsState()
@@ -134,40 +139,65 @@ fun AppNavigation() {
                 }
             },
             bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    bottomBarScreens.forEach { screen ->
-                        val selected = currentRoute == screen.route ||
-                                (screen == Screen.Search && currentRoute?.startsWith("search") == true)
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(screen.icon ?: Icons.Default.Home, contentDescription = screen.title) },
-                            label = {
-                                val localizedTitle = when (screen) {
-                                    Screen.Home -> LocalizedStrings.get("home")
-                                    Screen.Map -> LocalizedStrings.get("map")
-                                    Screen.Search -> LocalizedStrings.get("search")
-                                    Screen.Bookings -> LocalizedStrings.get("my_bookings")
-                                    Screen.Saved -> LocalizedStrings.get("saved")
-                                    Screen.Profile -> LocalizedStrings.get("profile")
-                                    else -> screen.title
-                                }
-                                Text(localizedTitle)
+                if (showBottomBar) {
+                    NavigationBar(
+                        modifier = Modifier.testTag("bottom_navigation_bar"),
+                        tonalElevation = 6.dp
+                    ) {
+                        bottomBarScreens.forEach { screen ->
+                            val selected = currentRoute == screen.route
+                            val localizedTitle = when (screen) {
+                                Screen.Home -> LocalizedStrings.get("home")
+                                Screen.Bookings -> LocalizedStrings.get("my_bookings")
+                                Screen.Profile -> LocalizedStrings.get("profile")
+                                else -> screen.title
                             }
-                        )
+
+                            NavigationBarItem(
+                                modifier = Modifier.testTag("bottom_nav_${screen.route}"),
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = {
+                                    if (screen == Screen.Bookings && activeBookingsCount > 0) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge {
+                                                    Text(activeBookingsCount.toString())
+                                                }
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = screen.icon ?: Icons.Default.ConfirmationNumber,
+                                                contentDescription = localizedTitle
+                                            )
+                                        }
+                                    } else {
+                                        Icon(
+                                            imageVector = screen.icon ?: Icons.Default.Home,
+                                            contentDescription = localizedTitle
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        text = localizedTitle,
+                                        maxLines = 1
+                                    )
+                                },
+                                alwaysShowLabel = true
+                            )
+                        }
                     }
                 }
             }
-        }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
             SharedTransitionLayout {

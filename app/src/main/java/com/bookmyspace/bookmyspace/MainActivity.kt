@@ -109,17 +109,28 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
 
             try {
                 if (com.google.firebase.FirebaseApp.getApps(this@MainActivity).isNotEmpty()) {
-                    Log.d(TAG, "🔥 [FCM] Requesting FirebaseMessaging registration token...")
-                    try {
-                        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                val token = task.result
-                                Log.i(TAG, "🔥 [FCM] Token retrieved successfully: ${token.take(16)}... (length=${token.length})")
-                                BookMySpaceRepository.updateFcmToken(token)
+                    val firebaseApp = com.google.firebase.FirebaseApp.getInstance()
+                    val apiKey = firebaseApp.options.apiKey
+                    val isRealApiKey = apiKey.isNotEmpty() && !apiKey.contains("Fallback", ignoreCase = true)
+
+                    if (isRealApiKey) {
+                        Log.d(TAG, "🔥 [FCM] Requesting FirebaseMessaging registration token...")
+                        try {
+                            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    val token = task.result
+                                    Log.i(TAG, "🔥 [FCM] Token retrieved successfully: ${token.take(16)}... (length=${token.length})")
+                                    BookMySpaceRepository.updateFcmToken(token)
+                                } else {
+                                    Log.w(TAG, "⚠️ [FCM] Token retrieval not completed: ${task.exception?.message}")
+                                }
                             }
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "⚠️ [FCM] FirebaseMessaging component inactive: ${t.message}")
                         }
-                    } catch (t: Throwable) {
-                        Log.w(TAG, "⚠️ [FCM] FirebaseMessaging component inactive: ${t.message}")
+                    } else {
+                        Log.i(TAG, "ℹ️ [FCM] Local/fallback Firebase environment detected; assigning local device token for in-app reminders.")
+                        BookMySpaceRepository.updateFcmToken("local_device_token_${this@MainActivity.packageName}")
                     }
                 }
             } catch (e: Throwable) {

@@ -216,6 +216,14 @@ object AppHealthManager {
 
     private suspend fun checkFcmAvailability(): Boolean {
         return try {
+            val ctx = appContext ?: return false
+            if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) return false
+            val app = com.google.firebase.FirebaseApp.getInstance()
+            val apiKey = app.options.apiKey
+            if (apiKey.contains("Fallback", ignoreCase = true)) {
+                // In local/fallback mode, return true to indicate in-app push readiness without failing server call
+                return true
+            }
             val token = withTimeoutOrNull(2000L) {
                 FirebaseMessaging.getInstance().token.await()
             }

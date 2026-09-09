@@ -1928,10 +1928,76 @@ fun HomeScreen(
 }
 }
 
+data class CategoryVisualTheme(
+    val primaryColor: Color,
+    val secondaryColor: Color,
+    val gradientColors: List<Color>,
+    val glassSurfaceGradient: List<Color>,
+    val rimBorderGradient: List<Color>,
+    val glowColor: Color,
+    val textBadgeColor: Color,
+    val badgeBgColor: Color
+)
+
+fun getCategoryVisualTheme(section: MainHomeSection): CategoryVisualTheme {
+    return when (section) {
+        MainHomeSection.FUNCTION_HALLS -> CategoryVisualTheme(
+            primaryColor = Color(0xFF6366F1),
+            secondaryColor = Color(0xFF9333EA),
+            gradientColors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFA855F7)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFF5F3FF)),
+            rimBorderGradient = listOf(Color(0xFF818CF8).copy(alpha = 0.85f), Color(0xFFC084FC).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
+            glowColor = Color(0xFF8B5CF6),
+            textBadgeColor = Color(0xFF4F46E5),
+            badgeBgColor = Color(0xFFEEF2FF)
+        )
+        MainHomeSection.LODGE_ROOMS -> CategoryVisualTheme(
+            primaryColor = Color(0xFFF59E0B),
+            secondaryColor = Color(0xFFEF4444),
+            gradientColors = listOf(Color(0xFFF59E0B), Color(0xFFF97316), Color(0xFFEF4444)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFFFFBEB)),
+            rimBorderGradient = listOf(Color(0xFFFBBF24).copy(alpha = 0.85f), Color(0xFFFB7185).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
+            glowColor = Color(0xFFF97316),
+            textBadgeColor = Color(0xFFB45309),
+            badgeBgColor = Color(0xFFFEF3C7)
+        )
+        MainHomeSection.PG_HOSTELS -> CategoryVisualTheme(
+            primaryColor = Color(0xFF10B981),
+            secondaryColor = Color(0xFF06B6D4),
+            gradientColors = listOf(Color(0xFF10B981), Color(0xFF14B8A6), Color(0xFF06B6D4)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFECFDF5)),
+            rimBorderGradient = listOf(Color(0xFF34D399).copy(alpha = 0.85f), Color(0xFF22D3EE).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
+            glowColor = Color(0xFF10B981),
+            textBadgeColor = Color(0xFF047857),
+            badgeBgColor = Color(0xFFD1FAE5)
+        )
+        MainHomeSection.INSTITUTES_CLASSES -> CategoryVisualTheme(
+            primaryColor = Color(0xFF0EA5E9),
+            secondaryColor = Color(0xFF3B82F6),
+            gradientColors = listOf(Color(0xFF0EA5E9), Color(0xFF2563EB), Color(0xFF3B82F6)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFF0F9FF)),
+            rimBorderGradient = listOf(Color(0xFF38BDF8).copy(alpha = 0.85f), Color(0xFF60A5FA).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
+            glowColor = Color(0xFF0284C7),
+            textBadgeColor = Color(0xFF0369A1),
+            badgeBgColor = Color(0xFFE0F2FE)
+        )
+        MainHomeSection.SPORTS_TURFS -> CategoryVisualTheme(
+            primaryColor = Color(0xFF84CC16),
+            secondaryColor = Color(0xFF10B981),
+            gradientColors = listOf(Color(0xFF84CC16), Color(0xFF22C55E), Color(0xFF10B981)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFF7FEE7)),
+            rimBorderGradient = listOf(Color(0xFFA3E635).copy(alpha = 0.85f), Color(0xFF34D399).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
+            glowColor = Color(0xFF84CC16),
+            textBadgeColor = Color(0xFF3F6212),
+            badgeBgColor = Color(0xFFECFCCB)
+        )
+    }
+}
+
 /**
- * 3D Tactile Category Hero Card for Android / Web / Desktop.
- * Featuring elevated perspective shadows, active emerald green live status dot,
- * instant 1-click sub-section filter chips with count badges, and explore CTA.
+ * World-Class Compact 3D Glass Category Card.
+ * Compact, beautiful, simple, vibrant dynamic color identity per category,
+ * tactile 3D perspective animations, specular rim highlights, and 1-tap filters.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1944,53 +2010,53 @@ fun MainSectionBigHeroCard(
     onAddSubSectionClick: () -> Unit = {},
     isTabletOrWide: Boolean = false
 ) {
+    val theme = remember(section) { getCategoryVisualTheme(section) }
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // 1. Subtle 3D Tilt Animation on Hover / Interaction
+    // 3D Perspective Tilt & Micro-Elevation Animation
     val tiltX by animateFloatAsState(
-        targetValue = if (isHovered) -4.5f else if (isPressed) 1.5f else 0f,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        targetValue = if (isHovered) -3.2f else if (isPressed) 1.2f else 0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "hero_card_tilt_x"
     )
     val tiltY by animateFloatAsState(
-        targetValue = if (isHovered) 3.2f else 0f,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        targetValue = if (isHovered) 2.5f else 0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "hero_card_tilt_y"
     )
     val liftY by animateFloatAsState(
-        targetValue = if (isPressed) 3f else if (isHovered) -10f else 0f,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        targetValue = if (isPressed) 1.5f else if (isHovered) -5.dp.value else 0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "hero_card_lift_y"
     )
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.982f else if (isHovered) 1.018f else 1.0f,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        targetValue = if (isPressed) 0.965f else if (isHovered) 1.022f else 1.0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "hero_card_scale"
     )
-
-    // 2. Dynamic Elevated Drop-Shadows that Deepen during interaction
     val dynamicElevation by animateDpAsState(
-        targetValue = if (isPressed) 3.dp else if (isHovered) 22.dp else 7.dp,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        targetValue = if (isPressed) 1.5.dp else if (isHovered) 12.dp else 3.5.dp,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "hero_card_elevation"
     )
 
     Card(
         onClick = onClick,
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(if (isTabletOrWide) 26.dp else 22.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(
             defaultElevation = dynamicElevation,
-            pressedElevation = 2.dp,
-            hoveredElevation = 22.dp,
-            focusedElevation = 16.dp
+            pressedElevation = 1.5.dp,
+            hoveredElevation = 12.dp
         ),
         border = BorderStroke(
-            width = if (isHovered) 2.dp else 1.5.dp,
-            color = if (isHovered) Color(0xFF6366F1).copy(alpha = 0.55f) else Color(0xFFE2E8F0)
+            width = if (isHovered) 1.8.dp else 1.2.dp,
+            brush = Brush.linearGradient(
+                colors = if (isHovered) theme.gradientColors else theme.rimBorderGradient
+            )
         ),
         modifier = modifier
             .testTag("main_section_card_${section.id}")
@@ -2000,53 +2066,49 @@ fun MainSectionBigHeroCard(
                 translationY = liftY
                 scaleX = scale
                 scaleY = scale
-                cameraDistance = 14f * density
+                cameraDistance = 16f * density
             }
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(
+                    Brush.verticalGradient(
+                        colors = theme.glassSurfaceGradient
+                    )
+                )
         ) {
-            // Subtle watermark background illustration
-            AsyncImage(
-                model = section.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = 0.05f }
-            )
-
-            // 3. Pronounced Light-Source Effect: Border-based highlight on top edges
-            // Specular light reflection line on top edge simulating directional overhead lighting
+            // Directional specular top highlight
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(3.dp)
+                    .height(2.5.dp)
                     .align(Alignment.TopCenter)
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.95f),
-                                Color(0xFFE0E7FF),
-                                Color.White.copy(alpha = 0.95f)
+                                Color.White.copy(alpha = 0.9f),
+                                theme.primaryColor.copy(alpha = 0.4f),
+                                Color.White.copy(alpha = 0.9f)
                             )
                         )
                     )
             )
 
-            // Soft downward studio light wash from top edge
+            // Ambient background glow orb
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .align(Alignment.TopCenter)
+                    .size(90.dp)
+                    .align(Alignment.TopEnd)
+                    .graphicsLayer {
+                        translationX = 25f
+                        translationY = -25f
+                    }
                     .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.55f),
-                                Color.White.copy(alpha = 0.0f)
+                        Brush.radialGradient(
+                            colors = listOf(
+                                theme.glowColor.copy(alpha = if (isHovered) 0.22f else 0.12f),
+                                Color.Transparent
                             )
                         )
                     )
@@ -2055,286 +2117,168 @@ fun MainSectionBigHeroCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(if (isTabletOrWide) 22.dp else 18.dp)
+                    .padding(13.dp)
             ) {
-                // Top Row: 48dp Icon Box + Emerald Live Dot + Top Badges
+                // Top Row: 3D Illuminated Glass Icon Orb + Live Status + Count Badge
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Icon Box with Live Active Green Status Dot
-                    Box(modifier = Modifier.size(54.dp)) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = Color(0xFFEEF2FF),
-                            border = BorderStroke(1.5.dp, Color(0xFFC7D2FE)),
-                            modifier = Modifier.size(48.dp)
+                    // 3D Glass Icon Orb
+                    Box(contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(theme.gradientColors)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = section.emoji,
-                                    fontSize = 24.sp
-                                )
-                            }
+                            Text(
+                                text = section.emoji,
+                                fontSize = 19.sp
+                            )
                         }
 
-                        // Emerald Green Live Status Dot with White Border
+                        // Emerald Live Dot
                         Surface(
                             shape = CircleShape,
                             color = Color(0xFF10B981),
-                            border = BorderStroke(2.dp, Color.White),
-                            shadowElevation = 3.dp,
+                            border = BorderStroke(1.5.dp, Color.White),
+                            shadowElevation = 2.dp,
                             modifier = Modifier
-                                .size(14.dp)
+                                .size(10.dp)
                                 .align(Alignment.BottomEnd)
                         ) {}
                     }
 
-                    // Top Badges
-                    Column(horizontalAlignment = Alignment.End) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFEEF2FF),
-                            border = BorderStroke(1.dp, Color(0xFFC7D2FE).copy(alpha = 0.6f))
-                        ) {
-                            Text(
-                                text = section.popularBadge,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF4338CA),
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                                letterSpacing = 0.3.sp
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF3F4F6)
-                        ) {
-                            Text(
-                                text = "${section.defaultCount} Spaces in $cityName",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF4B5563),
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp)
-                            )
-                        }
+                    // Compact Frosted Badge
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = theme.badgeBgColor.copy(alpha = 0.85f),
+                        border = BorderStroke(0.8.dp, theme.primaryColor.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = "${section.defaultCount} in $cityName",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = theme.textBadgeColor,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                            letterSpacing = 0.2.sp
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(9.dp))
 
                 // Title
                 Text(
                     text = section.displayTitle,
-                    fontSize = if (isTabletOrWide) 19.sp else 18.sp,
+                    fontSize = 14.5.sp,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF0F172A),
-                    letterSpacing = (-0.4).sp,
+                    letterSpacing = (-0.3).sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
-                // Subtitle
+                // Starts from price
                 Text(
-                    text = section.displaySubtitle,
-                    fontSize = 12.sp,
-                    color = Color(0xFF64748B),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 16.5.sp
+                    text = "Starts ${section.startsFromPrice}",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = theme.primaryColor,
+                    maxLines = 1,
+                    letterSpacing = (-0.2).sp
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Highlight Tag Badge
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFFEF3C7),
-                    border = BorderStroke(1.dp, Color(0xFFFDE68A))
-                ) {
-                    Text(
-                        text = section.highlightBadge,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF92400E),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Sub-sections header row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Layers,
-                            contentDescription = null,
-                            tint = Color(0xFF64748B),
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            text = "SUB-SECTIONS INCLUDED:",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF475569),
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFFECFDF5),
-                        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
-                    ) {
-                        Text(
-                            text = "1-CLICK FILTER",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF059669),
-                            letterSpacing = 0.4.sp,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                        )
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Sub-sections FlowRow chips
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                // Quick Sub-Section Filter Mini-Chips (Top 2 items for clean, compact look)
+                val displaySubSections = remember(section) { section.subSections.take(2) }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    section.subSections.forEach { sub ->
+                    displaySubSections.forEach { sub ->
                         Surface(
                             onClick = { onSubSectionClick(sub.slug) },
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (sub.isHighlight) Color(0xFFFEF3C7) else Color(0xFFF8FAFC),
-                            border = BorderStroke(
-                                1.dp,
-                                if (sub.isHighlight) Color(0xFFFCD34D) else Color(0xFFE2E8F0)
-                            )
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White.copy(alpha = 0.85f),
+                            border = BorderStroke(0.8.dp, Color(0xFFE2E8F0)),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.5.dp)
                             ) {
-                                Text(sub.emoji, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(sub.emoji, fontSize = 10.sp)
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Text(
-                                    text = sub.label,
-                                    fontSize = 11.sp,
+                                    text = sub.label.take(9),
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (sub.isHighlight) Color(0xFF92400E) else Color(0xFF1E293B)
+                                    color = Color(0xFF334155),
+                                    maxLines = 1
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (sub.isHighlight) Color(0xFFFDE68A) else Color(0xFFE2E8F0)
-                                ) {
-                                    Text(
-                                        text = "${sub.count}",
-                                        fontSize = 9.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (sub.isHighlight) Color(0xFF78350F) else Color(0xFF475569),
-                                        modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 1.dp)
-                                    )
-                                }
                             }
                         }
                     }
 
-                    // + Sub-Section chip
+                    // +More chip
                     Surface(
                         onClick = onAddSubSectionClick,
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                        shape = RoundedCornerShape(8.dp),
+                        color = theme.badgeBgColor.copy(alpha = 0.5f),
+                        border = BorderStroke(0.8.dp, theme.primaryColor.copy(alpha = 0.25f))
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = Color(0xFF64748B),
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = "+ Sub-Section",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF64748B)
-                            )
-                        }
+                        Text(
+                            text = "+",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = theme.primaryColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.5.dp)
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Bottom Row: Starts From Price + Explore Spaces Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Explore CTA Pill with Dynamic Gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            Brush.horizontalGradient(theme.gradientColors)
+                        )
+                        .clickable { onClick() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
-                        Text(
-                            text = "STARTS FROM",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF94A3B8),
-                            letterSpacing = 0.5.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = section.startsFromPrice,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF0F172A),
-                            letterSpacing = (-0.3).sp
-                        )
-                    }
-
-                    // Explore Spaces Black Pill Button
-                    Surface(
-                        onClick = onClick,
-                        shape = RoundedCornerShape(22.dp),
-                        color = Color(0xFF0F172A),
-                        shadowElevation = 3.dp
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 15.dp, vertical = 9.dp)
-                        ) {
-                            Text(
-                                text = "Explore Spaces",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                letterSpacing = 0.2.sp
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
+                        Text(
+                            text = "Explore",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            letterSpacing = 0.3.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
                     }
                 }
             }
