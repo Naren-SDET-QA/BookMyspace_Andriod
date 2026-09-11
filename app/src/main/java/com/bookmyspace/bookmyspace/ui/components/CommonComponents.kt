@@ -4,13 +4,19 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.ExpandLess
@@ -23,6 +29,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -408,14 +417,47 @@ fun VenueCard(
         list.take(3)
     }
 
+    val cardInteractionSource = remember { MutableInteractionSource() }
+    val isHovered by cardInteractionSource.collectIsHoveredAsState()
+    val isPressed by cardInteractionSource.collectIsPressedAsState()
+
+    val cardScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.985f
+            isHovered -> 1.022f
+            else -> 1.0f
+        },
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
+        label = "venueCardScale"
+    )
+    val cardLiftY by animateFloatAsState(
+        targetValue = if (isHovered) -4f else 0f,
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
+        label = "venueCardLiftY"
+    )
+    val cardElevation by animateDpAsState(
+        targetValue = if (isHovered) 12.dp else 2.dp,
+        animationSpec = tween(durationMillis = 120),
+        label = "venueCardElevation"
+    )
+
     Card(
         onClick = onClick,
+        interactionSource = cardInteractionSource,
         modifier = modifier
             .fillMaxWidth()
+            .hoverable(interactionSource = cardInteractionSource)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+                translationY = cardLiftY
+            }
             .testTag("venue_card_${venue.id}"),
         shape = RoundedCornerShape(16.dp),
+        border = if (isHovered) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)) else null,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // 1. Compact Fixed-Height Media Banner with Compact Overlays

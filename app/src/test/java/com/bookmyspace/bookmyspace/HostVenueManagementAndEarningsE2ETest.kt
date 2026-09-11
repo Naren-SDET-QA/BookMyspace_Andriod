@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -72,8 +73,8 @@ class HostVenueManagementAndEarningsE2ETest {
                 userId = "cust_202",
                 userName = "Suresh Kumar",
                 userPhone = "9988776655",
-                bookingDate = "2026-09-02",
-                date = "2026-09-02",
+                bookingDate = LocalDate.now().plusDays(2).toString(),
+                date = LocalDate.now().plusDays(2).toString(),
                 startTime = "07:00 AM",
                 endTime = "08:00 AM",
                 slotLabel = "07:00 AM - 08:00 AM",

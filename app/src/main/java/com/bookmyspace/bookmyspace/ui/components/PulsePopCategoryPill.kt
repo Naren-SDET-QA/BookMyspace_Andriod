@@ -5,7 +5,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -18,8 +20,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,6 +51,7 @@ fun PulsePopCategoryPill(
     testTag: String = ""
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
 
     // Interactive Pulse & Pop Spring Animation
@@ -76,19 +85,17 @@ fun PulsePopCategoryPill(
         }
     }
 
-    // Steady state spring scale
+    // Steady state fast hover & press scale
     val targetScale = when {
         isPressed -> 0.94f
+        isHovered -> 1.07f
         selected -> 1.04f
         else -> 1.0f
     }
 
     val baseScale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
         label = "pill_base_scale"
     )
 
@@ -96,11 +103,8 @@ fun PulsePopCategoryPill(
 
     // Emoji/Icon micro-bounce
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.20f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioHighBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        targetValue = if (selected || isHovered) 1.18f else 1.0f,
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
         label = "pill_icon_scale"
     )
 
@@ -108,51 +112,120 @@ fun PulsePopCategoryPill(
     val containerColor by animateColorAsState(
         targetValue = when {
             selected -> MaterialTheme.colorScheme.primary
+            isHovered -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
             isSpecialAddPill -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f)
             else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
         },
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = 120),
         label = "pill_container_color"
     )
 
     val contentColor by animateColorAsState(
         targetValue = when {
             selected -> MaterialTheme.colorScheme.onPrimary
+            isHovered -> MaterialTheme.colorScheme.onPrimaryContainer
             isSpecialAddPill -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.onSurface
         },
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = 120),
         label = "pill_content_color"
     )
 
     val borderColor by animateColorAsState(
         targetValue = when {
             selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+            isHovered -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
             isSpecialAddPill -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
         },
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = 120),
         label = "pill_border_color"
     )
 
+    // 1. Subtle 3D Tilt Animation on Hover
+    val tiltX by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 2.0f
+            isHovered -> -4.2f
+            selected -> -1.5f
+            else -> 0f
+        },
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "pill_tilt_x"
+    )
+    val tiltY by animateFloatAsState(
+        targetValue = when {
+            isPressed -> -1.2f
+            isHovered -> 3.2f
+            selected -> 1.0f
+            else -> 0f
+        },
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "pill_tilt_y"
+    )
+    val liftY by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 1.5f
+            isHovered -> -5f
+            selected -> -1.5f
+            else -> 0f
+        },
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "pill_lift_y"
+    )
+
     val elevation by animateDpAsState(
-        targetValue = if (selected) 4.dp else 0.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = when {
+            isPressed -> 1.dp
+            isHovered -> 14.dp
+            selected -> 6.dp
+            else -> 1.dp
+        },
+        animationSpec = tween(durationMillis = 150),
         label = "pill_elevation"
     )
 
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = containerColor,
-        border = BorderStroke(if (selected || isSpecialAddPill) 1.5.dp else 1.dp, borderColor),
-        shadowElevation = elevation,
+        // Top-illuminated directional light-source border
+        border = BorderStroke(
+            width = if (selected || isHovered || isSpecialAddPill) 1.6.dp else 1.dp,
+            brush = if (selected || isHovered) {
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.95f),
+                        borderColor.copy(alpha = 0.85f),
+                        borderColor.copy(alpha = 0.35f),
+                        Color.Transparent
+                    )
+                )
+            } else {
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.55f),
+                        borderColor.copy(alpha = 0.35f),
+                        Color.Transparent
+                    )
+                )
+            }
+        ),
         modifier = modifier
+            .hoverable(interactionSource = interactionSource)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = (if (selected || isHovered) borderColor else Color.Black).copy(alpha = if (isHovered) 0.42f else 0.16f),
+                spotColor = (if (selected || isHovered) borderColor else Color.Black).copy(alpha = if (isHovered) 0.65f else 0.28f)
+            )
             .graphicsLayer {
                 scaleX = finalScale
                 scaleY = finalScale
+                rotationX = tiltX
+                rotationY = tiltY
+                translationY = liftY
+                cameraDistance = 14f * density
             }
             .clip(RoundedCornerShape(16.dp))
             .clickable(
@@ -162,10 +235,47 @@ fun PulsePopCategoryPill(
             )
             .then(if (testTag.isNotBlank()) Modifier.testTag(testTag) else Modifier)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-                .defaultMinSize(minHeight = 36.dp),
+        // Restructured layout: Top edge highlight bar + content
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Directional Light-Source Highlight on Top Edge
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.5.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                borderColor.copy(alpha = 0.2f),
+                                borderColor.copy(alpha = if (isHovered) 0.95f else 0.80f),
+                                Color.White.copy(alpha = if (isHovered) 1.0f else 0.92f),
+                                borderColor.copy(alpha = if (isHovered) 0.95f else 0.80f),
+                                borderColor.copy(alpha = 0.2f)
+                            )
+                        )
+                    )
+            )
+
+            // Secondary subtle glow
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                borderColor.copy(alpha = if (isHovered) 0.20f else 0.10f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .defaultMinSize(minHeight = 36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
@@ -222,4 +332,5 @@ fun PulsePopCategoryPill(
             }
         }
     }
+}
 }

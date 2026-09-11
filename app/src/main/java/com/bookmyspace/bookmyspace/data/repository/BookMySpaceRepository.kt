@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
 import java.util.UUID
 
 object BookMySpaceRepository {
@@ -2150,11 +2151,20 @@ object BookMySpaceRepository {
     private val _bookings = MutableStateFlow(sampleBookings)
     val bookings: StateFlow<List<Booking>> = _bookings.asStateFlow()
 
-    fun addBooking(booking: Booking) {
+    fun addBooking(booking: Booking, enforceFutureOnly: Boolean = false) {
+        val bookingDate = booking.bookingDate.ifBlank { booking.date }
+        if (enforceFutureOnly && isDateInPast(bookingDate)) {
+            android.util.Log.w("BookMySpaceRepository", "Booking rejected: cannot book past date $bookingDate")
+            return
+        }
         _bookings.value = listOf(booking) + _bookings.value
         appContext?.let { ctx ->
             if (booking.status == BookingStatus.CONFIRMED) {
-                BookingReminderNotificationManager.schedule1HourReminder(ctx, booking)
+                try {
+                    BookingReminderNotificationManager.schedule1HourReminder(ctx, booking)
+                } catch (e: Throwable) {
+                    android.util.Log.w("BookMySpaceRepository", "Could not schedule reminder: ${e.message}")
+                }
             }
         }
         val db = firestoreDb
@@ -4243,7 +4253,21 @@ object BookMySpaceRepository {
     }
 
     // --- Slot & Date Availability Helpers ---
+    fun isDateInPast(dateStr: String): Boolean {
+        if (dateStr.isBlank()) return false
+        return try {
+            val cleanDate = dateStr.trim().take(10)
+            val date = LocalDate.parse(cleanDate)
+            date.isBefore(LocalDate.now())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun isSlotAlreadyBooked(venueId: String, date: String, slotLabel: String): Boolean {
+        if (isDateInPast(date)) {
+            return true
+        }
         return _bookings.value.any {
             it.venueId == venueId &&
             (it.date == date || it.bookingDate == date) &&
@@ -4256,6 +4280,9 @@ object BookMySpaceRepository {
     fun getDateAvailability(venueId: String, date: String): DateAvailabilityInfo {
         val venue = _venues.value.firstOrNull { it.id == venueId }
         val slots = venue?.timeSlots ?: emptyList()
+        if (isDateInPast(date)) {
+            return DateAvailabilityInfo(date, DateAvailabilityStatus.PAST_DATE, 0, slots.size)
+        }
         val bookedCount = slots.count { isSlotAlreadyBooked(venueId, date, it.label) }
         val availableCount = (slots.size - bookedCount).coerceAtLeast(0)
         val status = when {

@@ -44,6 +44,8 @@ import com.bookmyspace.bookmyspace.ui.components.VenueRichMediaViewer
 import com.bookmyspace.bookmyspace.ui.components.DynamicListingFieldsDisplay
 import com.bookmyspace.bookmyspace.data.model.ListingTargetCategory
 import com.bookmyspace.bookmyspace.util.PgRentCalculator
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -237,7 +239,18 @@ fun VenueDetailsScreen(
     var quickDiscount by remember { mutableStateOf(0.0) }
 
     if (showQuickBookDialog) {
-        val quickDates = listOf("Today, Aug 08", "Tomorrow, Aug 09", "Sun, Aug 10", "Mon, Aug 11")
+        val today = remember { LocalDate.now() }
+        val dtfMonthDay = remember { DateTimeFormatter.ofPattern("MMM dd") }
+        val dtfDay = remember { DateTimeFormatter.ofPattern("EEE, MMM dd") }
+        val quickDateOptions = remember(today) {
+            listOf(
+                today.toString() to "Today, ${today.format(dtfMonthDay)}",
+                today.plusDays(1).toString() to "Tomorrow, ${today.plusDays(1).format(dtfMonthDay)}",
+                today.plusDays(2).toString() to today.plusDays(2).format(dtfDay),
+                today.plusDays(3).toString() to today.plusDays(3).format(dtfDay)
+            )
+        }
+        val chosenDate = quickDateOptions.getOrNull(quickBookDateIndex)?.first ?: today.toString()
         val selectedSlot = quickBookSlot ?: venue.timeSlots.firstOrNull()
         val basePrice = selectedSlot?.priceAmount ?: venue.pricingBaseAmount
         val taxAmount = basePrice * (venue.taxRate / 100.0)
@@ -264,14 +277,14 @@ fun VenueDetailsScreen(
                     Text("1. Select Date", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        quickDates.take(3).forEachIndexed { idx, d ->
+                        quickDateOptions.take(3).forEachIndexed { idx, (_, label) ->
                             FilterChip(
                                 selected = quickBookDateIndex == idx,
                                 onClick = {
                                     quickBookDateIndex = idx
                                     BookMySpaceRepository.notifySlotInteraction()
                                 },
-                                label = { Text(d.split(",")[0], fontSize = 11.sp) }
+                                label = { Text(label.split(",")[0], fontSize = 11.sp) }
                             )
                         }
                     }
@@ -281,7 +294,7 @@ fun VenueDetailsScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     venue.timeSlots.take(4).forEach { slot ->
                         val isSelected = selectedSlot?.id == slot.id
-                        val isSlotBooked = BookMySpaceRepository.isSlotAlreadyBooked(venue.id, "2026-08-${8 + quickBookDateIndex}", slot.label)
+                        val isSlotBooked = BookMySpaceRepository.isSlotAlreadyBooked(venue.id, chosenDate, slot.label)
                         Surface(
                             onClick = {
                                 if (!isSlotBooked) {
@@ -403,7 +416,6 @@ fun VenueDetailsScreen(
                 Button(
                     onClick = {
                         val slot = selectedSlot
-                        val chosenDate = "2026-08-${8 + quickBookDateIndex}"
                         val newBooking = Booking(
                             id = "bk_qt_${System.currentTimeMillis()}",
                             userId = user?.id ?: "guest",
@@ -412,6 +424,7 @@ fun VenueDetailsScreen(
                             venueImageUrl = venue.coverImageUrl,
                             slotLabel = slot?.label ?: "Standard Slot",
                             bookingDate = chosenDate,
+                            date = chosenDate,
                             startTime = slot?.startTime ?: "09:00",
                             endTime = slot?.endTime ?: "11:00",
                             baseAmount = basePrice,
@@ -422,7 +435,7 @@ fun VenueDetailsScreen(
                             status = if (quickPaymentMethod == "VENUE") BookingStatus.CONFIRMED else BookingStatus.PENDING,
                             isPaid = false
                         )
-                        BookMySpaceRepository.addBooking(newBooking)
+                        BookMySpaceRepository.addBooking(newBooking, enforceFutureOnly = true)
                         showQuickBookDialog = false
                         onBookSlot(venue.id)
                     },

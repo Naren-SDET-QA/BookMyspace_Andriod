@@ -26,6 +26,11 @@ import androidx.compose.ui.unit.sp
 import com.bookmyspace.bookmyspace.data.health.AppHealthManager
 import com.bookmyspace.bookmyspace.data.health.HealthSeverity
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
+import androidx.compose.ui.platform.LocalContext
+import com.bookmyspace.bookmyspace.BookMySpaceApplication
 
 /**
  * Global Error Boundary & UI Wrapper that safely wraps UI components to catch
@@ -148,6 +153,7 @@ private fun ErrorRecoveryScreen(
     onResetState: () -> Unit
 ) {
     var showDetails by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -223,6 +229,43 @@ private fun ErrorRecoveryScreen(
                 Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Restore Safe State & Memory Cache", fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = {
+                    val logs = buildString {
+                        appendLine("=== BookMySpace System Startup Diagnostics ===")
+                        appendLine("Timestamp: ${java.util.Date()}")
+                        appendLine("App Initialized: ${BookMySpaceApplication.isAppInitialized}")
+                        appendLine("Startup Duration: ${BookMySpaceApplication.startupDurationMs}ms")
+                        appendLine("Error Context: $error")
+                        appendLine("")
+                        appendLine("--- Recent Startup Logs ---")
+                        synchronized(BookMySpaceApplication.startupLogs) {
+                            BookMySpaceApplication.startupLogs.takeLast(25).forEach { appendLine("  $it") }
+                        }
+                    }
+                    val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:support@bookmyspace.in")
+                        putExtra(Intent.EXTRA_SUBJECT, "BookMySpace Startup Diagnostic Report")
+                        putExtra(Intent.EXTRA_TEXT, logs)
+                    }
+                    try {
+                        context.startActivity(emailIntent)
+                    } catch (e: Exception) {
+                        Log.w("GlobalErrorBoundary", "Failed to launch email: ${e.message}")
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Email Diagnostics", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(20.dp))

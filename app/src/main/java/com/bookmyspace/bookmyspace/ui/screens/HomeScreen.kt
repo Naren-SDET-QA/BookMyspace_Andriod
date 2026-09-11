@@ -34,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -87,6 +88,8 @@ import com.bookmyspace.bookmyspace.data.network.NetworkRetryManager
 import com.bookmyspace.bookmyspace.data.network.NetworkSyncState
 import com.bookmyspace.bookmyspace.ui.components.NetworkErrorRetryCard
 import com.bookmyspace.bookmyspace.ui.components.NetworkSyncStatusBanner
+import com.bookmyspace.bookmyspace.ui.components.TopSpotlightSection
+import com.bookmyspace.bookmyspace.ui.components.Top3DGlassCategoriesStrip
 import com.bookmyspace.bookmyspace.util.LocalizedStrings
 import com.bookmyspace.bookmyspace.util.PerformanceTracer
 import com.bookmyspace.bookmyspace.util.TraceCategory
@@ -960,7 +963,39 @@ fun HomeScreen(
                     )
                 }
 
-                // 2. Explore Spaces by Category Section Header
+                // 2. 🌟 TOP SPOTLIGHT SECTION (Kept at the top with dramatic 3D glass stage lighting)
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    TopSpotlightSection(
+                        venues = venues,
+                        onNavigateToVenue = onNavigateToVenue,
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 3. 🌟 TOP 3D GLASS CATEGORIES ("catagerios" with 3D glass type)
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Top3DGlassCategoriesStrip(
+                        availableSections = availableSections,
+                        selectedSection = selectedMainSection,
+                        onSelectSection = { section ->
+                            if (section == MainHomeSection.INSTITUTES_CLASSES) {
+                                onNavigateToInstitutes()
+                            } else {
+                                selectedMainSection = section
+                                selectedCategorySlug = "all"
+                            }
+                        },
+                        onAddCustomCategory = {
+                            customCategoryTargetSection = "general"
+                            showAddCustomCategoryDialog = true
+                        },
+                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                    )
+                }
+
+                // 4. Explore Spaces by Category Section Header
                 item {
                     Spacer(modifier = Modifier.height(14.dp))
                     Column(
@@ -2017,28 +2052,29 @@ fun MainSectionBigHeroCard(
 
     // 3D Perspective Tilt & Micro-Elevation Animation
     val tiltX by animateFloatAsState(
-        targetValue = if (isHovered) -3.2f else if (isPressed) 1.2f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        targetValue = if (isHovered) -4.6f else if (isPressed) 1.8f else 0f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "hero_card_tilt_x"
     )
     val tiltY by animateFloatAsState(
-        targetValue = if (isHovered) 2.5f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        targetValue = if (isHovered) 3.6f else if (isPressed) -1.2f else 0f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "hero_card_tilt_y"
     )
     val liftY by animateFloatAsState(
-        targetValue = if (isPressed) 1.5f else if (isHovered) -5.dp.value else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        targetValue = if (isPressed) 2.0f else if (isHovered) -7.dp.value else 0f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "hero_card_lift_y"
     )
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.965f else if (isHovered) 1.022f else 1.0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        targetValue = if (isPressed) 0.96f else if (isHovered) 1.032f else 1.0f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "hero_card_scale"
     )
+    // Dynamic elevated drop-shadow that deepens during interaction
     val dynamicElevation by animateDpAsState(
-        targetValue = if (isPressed) 1.5.dp else if (isHovered) 12.dp else 3.5.dp,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        targetValue = if (isPressed) 2.dp else if (isHovered) 20.dp else 4.dp,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "hero_card_elevation"
     )
 
@@ -2047,19 +2083,35 @@ fun MainSectionBigHeroCard(
         interactionSource = interactionSource,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = dynamicElevation,
-            pressedElevation = 1.5.dp,
-            hoveredElevation = 12.dp
-        ),
+        // Directional border-based highlight with different color look per category
         border = BorderStroke(
-            width = if (isHovered) 1.8.dp else 1.2.dp,
-            brush = Brush.linearGradient(
-                colors = if (isHovered) theme.gradientColors else theme.rimBorderGradient
+            width = if (isHovered) 2.dp else 1.2.dp,
+            brush = Brush.verticalGradient(
+                colors = if (isHovered) {
+                    listOf(
+                        Color.White,
+                        theme.primaryColor.copy(alpha = 0.95f),
+                        theme.secondaryColor.copy(alpha = 0.60f),
+                        theme.primaryColor.copy(alpha = 0.25f)
+                    )
+                } else {
+                    listOf(
+                        Color.White.copy(alpha = 0.90f),
+                        theme.primaryColor.copy(alpha = 0.65f),
+                        theme.rimBorderGradient.first().copy(alpha = 0.35f),
+                        Color.Transparent
+                    )
+                }
             )
         ),
         modifier = modifier
             .testTag("main_section_card_${section.id}")
+            .shadow(
+                elevation = dynamicElevation,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = theme.glowColor.copy(alpha = if (isHovered) 0.50f else 0.20f),
+                spotColor = theme.primaryColor.copy(alpha = if (isHovered) 0.72f else 0.32f)
+            )
             .graphicsLayer {
                 rotationX = tiltX
                 rotationY = tiltY
@@ -2078,18 +2130,36 @@ fun MainSectionBigHeroCard(
                     )
                 )
         ) {
-            // Directional specular top highlight
+            // Restructured Layout: Pronounced Light-Source Highlight on Top Edge
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.5.dp)
+                    .height(3.5.dp)
                     .align(Alignment.TopCenter)
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.9f),
-                                theme.primaryColor.copy(alpha = 0.4f),
-                                Color.White.copy(alpha = 0.9f)
+                                theme.primaryColor.copy(alpha = 0.35f),
+                                theme.primaryColor.copy(alpha = if (isHovered) 0.98f else 0.85f),
+                                Color.White.copy(alpha = if (isHovered) 1.0f else 0.95f),
+                                theme.secondaryColor.copy(alpha = if (isHovered) 0.98f else 0.85f),
+                                theme.secondaryColor.copy(alpha = 0.35f)
+                            )
+                        )
+                    )
+            )
+
+            // Secondary overhead light-source beam bloom
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                theme.primaryColor.copy(alpha = if (isHovered) 0.26f else 0.14f),
+                                Color.Transparent
                             )
                         )
                     )

@@ -6,6 +6,12 @@
 (function() {
   'use strict';
 
+  // Mark bootstrap immediately active so index.html fast observers trigger with zero delay
+  window._bmsBootstrapLoaded = true;
+  if (typeof window._bmsOnAppReady === 'function') {
+    try { window._bmsOnAppReady(); } catch(e) {}
+  }
+
   // 1. Master Venue Catalog (Reflecting BookMySpace Repository)
   var venues = [
     {
@@ -143,6 +149,8 @@
     searchQuery: '',
     selectedCity: 'Hyderabad',
     activeBookingVenue: null,
+    bookingsRendered: false,
+    profileRendered: false,
     bookingsList: [
       {
         id: 'BMS-94821',
@@ -163,7 +171,9 @@
 
   // 3. Inject CSS Styles for Web Interface
   function injectStyles() {
+    if (document.getElementById('bms-injected-styles')) return;
     var style = document.createElement('style');
+    style.id = 'bms-injected-styles';
     style.textContent = `
       #bookmyspace-app {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", sans-serif;
@@ -355,193 +365,304 @@
         box-shadow: 0 0 12px rgba(37, 99, 235, 0.45);
       }
 
-      /* 3D Glass Cards Responsive Grid (Compact, sleek & attractive) */
+      /* 3D Glass Cards Responsive Grid (World-Class Interactive Showcase) */
       .bms-3d-cards-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
         perspective: 1000px;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
+      }
+
+      /* Ambient floating micro-animation on idle */
+      @keyframes bmsFloat3D {
+        0%, 100% {
+          transform: perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0px);
+        }
+        50% {
+          transform: perspective(900px) rotateX(-2deg) rotateY(1.5deg) translateY(-4px);
+        }
       }
 
       /* Base 3D Glass Card */
       .bms-3d-glass-card {
         position: relative;
-        border-radius: 16px;
-        padding: 12px 14px;
-        min-height: 160px;
+        border-radius: 20px;
+        padding: 16px 14px 14px 14px;
+        min-height: 172px;
         cursor: pointer;
-        transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.22s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.2s ease;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         transform-style: preserve-3d;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         overflow: hidden;
+        will-change: transform, box-shadow;
+        transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+        animation: bmsFloat3D 6s ease-in-out infinite;
+      }
+      .bms-3d-glass-card:nth-child(1) { animation-delay: 0s; }
+      .bms-3d-glass-card:nth-child(2) { animation-delay: 1.2s; }
+      .bms-3d-glass-card:nth-child(3) { animation-delay: 2.4s; }
+      .bms-3d-glass-card:nth-child(4) { animation-delay: 3.6s; }
+      .bms-3d-glass-card:nth-child(5) { animation-delay: 4.8s; }
+
+      /* Pause float when actively hovering/tilting */
+      .bms-3d-glass-card:hover, .bms-3d-glass-card.active {
+        animation-play-state: paused;
       }
 
-      /* Top Specular Light Highlight */
-      .bms-3d-glass-card::before {
-        content: '';
+      /* World-Class Holographic Specular Prism Glare Layer */
+      .bms-3d-card-glare {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 6;
+        opacity: 0;
+        background: radial-gradient(circle 240px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.65), rgba(56, 189, 248, 0.28) 32%, rgba(192, 132, 252, 0.15) 55%, transparent 75%);
+        transition: opacity 0.2s ease;
+        mix-blend-mode: color-dodge;
+      }
+      .bms-3d-glass-card:hover .bms-3d-card-glare {
+        opacity: 1;
+      }
+
+      /* Directional Specular Top-Edge Light Bar (Realistic 3D Refractive Light Source) */
+      .bms-3d-card-top-light {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.85) 100%);
-        opacity: 0.9;
+        height: 3.5px;
+        z-index: 5;
+        border-radius: 18px 18px 0 0;
+        pointer-events: none;
+        transition: height 0.2s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+      }
+      .bms-3d-glass-card:hover .bms-3d-card-top-light, .bms-3d-glass-card.active .bms-3d-card-top-light {
+        height: 5.5px;
       }
 
-      /* Ambient Radial Glow */
+      /* Secondary Overhead Light-Source Glow for Realistic 3D Illumination */
+      .bms-3d-card-top-glow {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 42px;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0.4;
+        transition: opacity 0.2s ease;
+      }
+      .bms-3d-glass-card:hover .bms-3d-card-top-glow, .bms-3d-glass-card.active .bms-3d-card-top-glow {
+        opacity: 0.85;
+      }
+
+      /* Ambient Radial Core Glow */
       .bms-3d-glass-card::after {
         content: '';
         position: absolute;
-        top: -24px;
-        right: -24px;
-        width: 85px;
-        height: 85px;
+        top: -30px;
+        right: -30px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
-        opacity: 0.22;
+        opacity: 0.25;
         transition: opacity 0.25s, transform 0.25s;
         pointer-events: none;
+        z-index: 1;
       }
-
       .bms-3d-glass-card:hover::after {
-        opacity: 0.55;
-        transform: scale(1.25);
+        opacity: 0.75;
+        transform: scale(1.4);
       }
 
-      /* Dynamic Theme 1: Function Halls (Royal Indigo & Violet) */
+      /* Dynamic Theme 1: Function Halls (Imperial Royal Indigo & Violet) */
       .bms-3d-glass-card.theme-indigo {
-        background: linear-gradient(145deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.92) 100%);
-        border: 1.2px solid rgba(129, 140, 248, 0.35);
-        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(145deg, rgba(30, 27, 75, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        border: 1.5px solid rgba(129, 140, 248, 0.45);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+      .bms-3d-glass-card.theme-indigo .bms-3d-card-top-light {
+        background: linear-gradient(90deg, #c7d2fe 0%, #818cf8 25%, #ffffff 50%, #c084fc 75%, #c7d2fe 100%);
+        box-shadow: 0 1px 16px rgba(129, 140, 248, 0.95), 0 0 26px rgba(192, 132, 252, 0.75);
+      }
+      .bms-3d-glass-card.theme-indigo .bms-3d-card-top-glow {
+        background: linear-gradient(180deg, rgba(129, 140, 248, 0.4) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-indigo::after {
         background: radial-gradient(circle, #818cf8 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-indigo:hover, .bms-3d-glass-card.theme-indigo.active {
-        border-color: #818cf8;
-        box-shadow: 0 12px 26px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        transform: perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02);
+        border-color: #a5b4fc;
+        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(99, 102, 241, 0.65), 0 0 35px rgba(129, 140, 248, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
-      /* Dynamic Theme 2: Lodge & Day Rooms (Sunset Amber & Coral) */
+      /* Dynamic Theme 2: Lodge & Day Rooms (Molten Sunset Amber & Flame) */
       .bms-3d-glass-card.theme-amber {
-        background: linear-gradient(145deg, rgba(69, 26, 3, 0.8) 0%, rgba(15, 23, 42, 0.92) 100%);
-        border: 1.2px solid rgba(251, 191, 36, 0.35);
-        box-shadow: 0 4px 16px rgba(245, 158, 11, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(145deg, rgba(78, 29, 3, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        border: 1.5px solid rgba(251, 191, 36, 0.45);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(245, 158, 11, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+      .bms-3d-glass-card.theme-amber .bms-3d-card-top-light {
+        background: linear-gradient(90deg, #fef3c7 0%, #f59e0b 25%, #ffffff 50%, #fbbf24 75%, #fef3c7 100%);
+        box-shadow: 0 1px 16px rgba(245, 158, 11, 0.95), 0 0 26px rgba(251, 191, 36, 0.75);
+      }
+      .bms-3d-glass-card.theme-amber .bms-3d-card-top-glow {
+        background: linear-gradient(180deg, rgba(245, 158, 11, 0.4) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-amber::after {
         background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-amber:hover, .bms-3d-glass-card.theme-amber.active {
-        border-color: #f59e0b;
-        box-shadow: 0 12px 26px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        transform: perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02);
+        border-color: #fde047;
+        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(245, 158, 11, 0.65), 0 0 35px rgba(251, 191, 36, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
-      /* Dynamic Theme 3: PG & Hostels (Vivid Emerald & Cyan) */
+      /* Dynamic Theme 3: PG & Hostels (Hyper Mint Emerald & Aqua) */
       .bms-3d-glass-card.theme-emerald {
-        background: linear-gradient(145deg, rgba(6, 78, 59, 0.8) 0%, rgba(15, 23, 42, 0.92) 100%);
-        border: 1.2px solid rgba(52, 211, 153, 0.35);
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(145deg, rgba(6, 78, 59, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        border: 1.5px solid rgba(52, 211, 153, 0.45);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+      .bms-3d-glass-card.theme-emerald .bms-3d-card-top-light {
+        background: linear-gradient(90deg, #a7f3d0 0%, #10b981 25%, #ffffff 50%, #34d399 75%, #a7f3d0 100%);
+        box-shadow: 0 1px 16px rgba(16, 185, 129, 0.95), 0 0 26px rgba(52, 211, 153, 0.75);
+      }
+      .bms-3d-glass-card.theme-emerald .bms-3d-card-top-glow {
+        background: linear-gradient(180deg, rgba(16, 185, 129, 0.4) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-emerald::after {
         background: radial-gradient(circle, #10b981 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-emerald:hover, .bms-3d-glass-card.theme-emerald.active {
-        border-color: #34d399;
-        box-shadow: 0 12px 26px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        transform: perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02);
+        border-color: #6ee7b7;
+        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(16, 185, 129, 0.65), 0 0 35px rgba(52, 211, 153, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
-      /* Dynamic Theme 4: Institutes & Classes (Sky Blue & Cobalt) */
+      /* Dynamic Theme 4: Institutes & Classes (Cyber Sky Blue & Cobalt) */
       .bms-3d-glass-card.theme-sky {
-        background: linear-gradient(145deg, rgba(12, 74, 110, 0.8) 0%, rgba(15, 23, 42, 0.92) 100%);
-        border: 1.2px solid rgba(56, 189, 248, 0.35);
-        box-shadow: 0 4px 16px rgba(14, 165, 233, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(145deg, rgba(12, 74, 110, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        border: 1.5px solid rgba(56, 189, 248, 0.45);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(14, 165, 233, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+      .bms-3d-glass-card.theme-sky .bms-3d-card-top-light {
+        background: linear-gradient(90deg, #bae6fd 0%, #0ea5e9 25%, #ffffff 50%, #38bdf8 75%, #bae6fd 100%);
+        box-shadow: 0 1px 16px rgba(14, 165, 233, 0.95), 0 0 26px rgba(56, 189, 248, 0.75);
+      }
+      .bms-3d-glass-card.theme-sky .bms-3d-card-top-glow {
+        background: linear-gradient(180deg, rgba(14, 165, 233, 0.4) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-sky::after {
         background: radial-gradient(circle, #38bdf8 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-sky:hover, .bms-3d-glass-card.theme-sky.active {
-        border-color: #38bdf8;
-        box-shadow: 0 12px 26px rgba(14, 165, 233, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        transform: perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02);
+        border-color: #7dd3fc;
+        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(14, 165, 233, 0.65), 0 0 35px rgba(56, 189, 248, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
-      /* Dynamic Theme 5: Sports & Turfs (Neon Lime & Spring Green) */
+      /* Dynamic Theme 5: Sports & Turfs (Electric Lime & Turf Green) */
       .bms-3d-glass-card.theme-lime {
-        background: linear-gradient(145deg, rgba(54, 83, 20, 0.8) 0%, rgba(15, 23, 42, 0.92) 100%);
-        border: 1.2px solid rgba(163, 230, 53, 0.35);
-        box-shadow: 0 4px 16px rgba(132, 204, 22, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(145deg, rgba(54, 83, 20, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        border: 1.5px solid rgba(163, 230, 53, 0.45);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(132, 204, 22, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+      .bms-3d-glass-card.theme-lime .bms-3d-card-top-light {
+        background: linear-gradient(90deg, #d9f99d 0%, #84cc16 25%, #ffffff 50%, #a3e635 75%, #d9f99d 100%);
+        box-shadow: 0 1px 16px rgba(132, 204, 22, 0.95), 0 0 26px rgba(163, 230, 53, 0.75);
+      }
+      .bms-3d-glass-card.theme-lime .bms-3d-card-top-glow {
+        background: linear-gradient(180deg, rgba(132, 204, 22, 0.4) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-lime::after {
         background: radial-gradient(circle, #a3e635 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-lime:hover, .bms-3d-glass-card.theme-lime.active {
-        border-color: #a3e635;
-        box-shadow: 0 12px 26px rgba(132, 204, 22, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        transform: perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02);
+        border-color: #bef264;
+        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(132, 204, 22, 0.65), 0 0 35px rgba(163, 230, 53, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
-      /* Card Top Elements */
+      /* Parallax Inner Layers for High-End 3D Depth */
       .bms-3d-card-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-bottom: 6px;
+        transform: translateZ(28px);
+        transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        z-index: 3;
       }
       .bms-3d-icon-orb {
         position: relative;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 17px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
-        border: 1.2px solid rgba(255, 255, 255, 0.35);
+        font-size: 20px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+        border: 1.4px solid rgba(255, 255, 255, 0.4);
+        transform: translateZ(35px);
+        transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+      }
+      .bms-3d-glass-card:hover .bms-3d-icon-orb {
+        transform: translateZ(50px) scale(1.15) rotate(4deg);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55), inset 0 1.5px 2px rgba(255, 255, 255, 0.7);
       }
       .bms-3d-live-dot {
         position: absolute;
-        bottom: -1px;
-        right: -1px;
-        width: 8.5px;
-        height: 8.5px;
+        bottom: -2px;
+        right: -2px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
-        background: #10b981;
-        border: 1.5px solid #0f172a;
-        box-shadow: 0 0 6px #10b981;
+        background: #22c55e;
+        border: 1.8px solid #0f172a;
+        box-shadow: 0 0 8px #22c55e;
+        animation: bmsDotPulse 2s infinite;
+      }
+      @keyframes bmsDotPulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { transform: scale(1.15); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
       }
       .bms-3d-count-badge {
         font-size: 10px;
         font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 12px;
+        padding: 4px 9px;
+        border-radius: 9999px;
         letter-spacing: 0.2px;
         backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        transform: translateZ(25px);
       }
 
-      /* Card Mid Text */
+      /* Card Mid Text with 3D Parallax */
       .bms-3d-card-mid {
         margin-bottom: 6px;
+        transform: translateZ(24px);
+        transition: transform 0.2s ease;
+        z-index: 3;
       }
       .bms-3d-card-title {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 800;
         color: #ffffff;
-        margin: 0 0 2px 0;
+        margin: 0 0 3px 0;
         line-height: 1.2;
         letter-spacing: -0.2px;
+        text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
       }
       .bms-3d-card-starts {
         font-size: 11.5px;
         font-weight: 700;
         letter-spacing: -0.1px;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
       }
 
       /* Sub-pills row */
@@ -549,16 +670,25 @@
         display: flex;
         gap: 5px;
         margin-bottom: 8px;
+        transform: translateZ(22px);
+        transition: transform 0.2s ease;
+        z-index: 3;
       }
       .bms-3d-sub-chip {
-        font-size: 9px;
+        font-size: 9.5px;
         background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #cbd5e1;
-        padding: 2px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: #e2e8f0;
+        padding: 2.5px 7px;
         border-radius: 6px;
         white-space: nowrap;
         font-weight: 600;
+        transition: all 0.2s ease;
+      }
+      .bms-3d-glass-card:hover .bms-3d-sub-chip {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.26);
+        color: #ffffff;
       }
 
       /* Explore Pill Button */
@@ -566,26 +696,29 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 5px 9px;
-        border-radius: 7px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 6px 11px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.10);
+        border: 1px solid rgba(255, 255, 255, 0.18);
         font-size: 11px;
         font-weight: 700;
         color: #ffffff;
-        transition: all 0.2s ease;
+        transform: translateZ(30px);
+        transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        z-index: 3;
       }
       .bms-3d-glass-card:hover .bms-3d-card-cta, .bms-3d-glass-card.active .bms-3d-card-cta {
         background: #ffffff;
         color: #0f172a;
-        box-shadow: 0 4px 10px rgba(255, 255, 255, 0.35);
+        box-shadow: 0 6px 16px rgba(255, 255, 255, 0.4);
+        transform: translateZ(42px) scale(1.05);
       }
       .bms-3d-card-cta .cta-arrow {
         transition: transform 0.2s ease;
         display: inline-block;
       }
       .bms-3d-glass-card:hover .bms-3d-card-cta .cta-arrow {
-        transform: translateX(3px);
+        transform: translateX(4px);
       }
 
       /* Main Content Grid */
@@ -617,28 +750,51 @@
         gap: 20px;
       }
       .bms-card {
-        background: #151c2c;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
+        background: linear-gradient(145deg, #151c2c 0%, #0d1322 100%);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 18px;
         overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transform-style: preserve-3d;
+        perspective: 1000px;
+        will-change: transform, box-shadow;
+        transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.22s ease, border-color 0.2s ease;
         display: flex;
         flex-direction: column;
       }
       .bms-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-        border-color: rgba(56, 189, 248, 0.3);
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 22px 46px -8px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.35);
+        border-color: rgba(56, 189, 248, 0.6);
+      }
+      .bms-card:hover .bms-card-img {
+        transform: scale(1.08);
       }
       .bms-card-img-wrapper {
         position: relative;
         height: 180px;
         background: #0f172a;
+        overflow: hidden;
+      }
+      .bms-card-img-wrapper.loading {
+        background: linear-gradient(90deg, #111827 25%, #1e293b 50%, #111827 75%);
+        background-size: 200% 100%;
+        animation: bmsShimmer 1.8s infinite;
+      }
+      @keyframes bmsShimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
       .bms-card-img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
+      }
+      .bms-lazy-img {
+        opacity: 0;
+      }
+      .bms-img-loaded {
+        opacity: 1 !important;
       }
       .bms-card-badge {
         position: absolute;
@@ -1029,11 +1185,493 @@
       .bms-profile-row:hover {
         background: rgba(255, 255, 255, 0.03);
       }
+
+      /* ========================================================= */
+      /* FAST MOUSE OVER & 3D HARDWARE ACCELERATION (120 FPS)     */
+      /* ========================================================= */
+      .bms-top-spotlight-section {
+        margin-bottom: 24px;
+        position: relative;
+      }
+      .bms-spotlight-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .bms-spotlight-title-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .bms-spotlight-badge {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.5));
+        border: 1px solid rgba(245, 158, 11, 0.8);
+        color: #fde68a;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+      }
+      .bms-spotlight-headline {
+        font-size: 16px;
+        font-weight: 800;
+        color: #f8fafc;
+      }
+      .bms-spotlight-nav {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .bms-spotlight-nav-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), background 0.12s ease, box-shadow 0.12s ease;
+        will-change: transform;
+      }
+      .bms-spotlight-nav-btn:hover {
+        background: #f59e0b;
+        color: #000;
+        transform: scale(1.15);
+        box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
+      }
+      .bms-spotlight-nav-btn:active {
+        transform: scale(0.92);
+      }
+      .bms-spotlight-count {
+        font-size: 12px;
+        font-weight: 700;
+        color: #94a3b8;
+        padding: 0 4px;
+      }
+
+      /* 3D Glass Spotlight Card with Stage Lighting Beam */
+      .bms-spotlight-card {
+        position: relative;
+        height: 260px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1.5px solid rgba(245, 158, 11, 0.45);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.2);
+        cursor: pointer;
+        transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.12s ease, border-color 0.12s ease;
+        will-change: transform;
+      }
+      .bms-spotlight-card:hover {
+        transform: translateY(-5px) scale(1.015);
+        border-color: #f59e0b;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 35px rgba(245, 158, 11, 0.45);
+      }
+      .bms-spotlight-card:hover .bms-spotlight-bg-img {
+        transform: scale(1.05);
+      }
+      .bms-spotlight-card:hover .bms-spotlight-arrow-btn {
+        background: #f59e0b;
+        color: #000;
+        transform: scale(1.16);
+        box-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
+      }
+
+      .bms-spotlight-bg-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      /* Dramatic Stage Spotlight Lighting Beam (Radial Cone) */
+      .bms-spotlight-stage-beam {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 0%, rgba(254, 240, 138, 0.38) 0%, rgba(245, 158, 11, 0.16) 45%, transparent 75%),
+                    linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.85) 100%);
+        pointer-events: none;
+        transition: background 0.15s ease;
+      }
+      .bms-spotlight-card:hover .bms-spotlight-stage-beam {
+        background: radial-gradient(circle at 50% 0%, rgba(254, 240, 138, 0.52) 0%, rgba(245, 158, 11, 0.26) 50%, transparent 80%),
+                    linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.88) 100%);
+      }
+
+      /* Top Spotlight Tags */
+      .bms-spotlight-top-tags {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: none;
+      }
+      .bms-spotlight-tag-pill {
+        background: rgba(0, 0, 0, 0.55);
+        border: 1px solid rgba(245, 158, 11, 0.8);
+        color: #fde68a;
+        padding: 5px 12px;
+        border-radius: 12px;
+        font-size: 11.5px;
+        font-weight: 800;
+        backdrop-filter: blur(8px);
+      }
+      .bms-spotlight-rating-pill {
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+        padding: 5px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 800;
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      /* Bottom 3D Glass Information Plate */
+      .bms-spotlight-bottom-plate {
+        position: absolute;
+        bottom: 14px;
+        left: 14px;
+        right: 14px;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1.2px solid rgba(255, 255, 255, 0.22);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        border-radius: 18px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .bms-spotlight-venue-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .bms-spotlight-venue-title {
+        font-size: 16.5px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0 0 3px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .bms-spotlight-venue-meta {
+        font-size: 12px;
+        color: #cbd5e1;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .bms-spotlight-price-box {
+        text-align: right;
+      }
+      .bms-spotlight-price-val {
+        font-size: 17.5px;
+        font-weight: 900;
+        color: #fde68a;
+        line-height: 1.1;
+      }
+      .bms-spotlight-price-unit {
+        font-size: 10px;
+        color: #94a3b8;
+        display: block;
+      }
+      .bms-spotlight-arrow-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), background 0.12s ease, box-shadow 0.12s ease;
+        will-change: transform;
+      }
+
+      /* Spotlight Dots */
+      .bms-spotlight-dots {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .bms-spotlight-dot {
+        height: 6px;
+        width: 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.25);
+        cursor: pointer;
+        transition: width 0.12s ease, background 0.12s ease;
+      }
+      .bms-spotlight-dot:hover {
+        background: #f59e0b;
+      }
+      .bms-spotlight-dot.active {
+        width: 24px;
+        background: #f59e0b;
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+      }
+
+      /* TOP 3D GLASS CATEGORIES STRIP ("catagerios") */
+      .bms-top-categories-strip {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding: 4px 2px 12px 2px;
+        margin-bottom: 20px;
+        scrollbar-width: none;
+      }
+      .bms-top-categories-strip::-webkit-scrollbar {
+        display: none;
+      }
+      .bms-glass-pill {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 16px;
+        border-radius: 20px;
+        background: rgba(30, 41, 59, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1.2px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        color: #e2e8f0;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        transform-style: preserve-3d;
+        transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        will-change: transform;
+        overflow: hidden;
+      }
+      /* Top-Edge Border Highlight Bar for 3D depth and light-source */
+      .bms-glass-pill::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2.5px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.3) 0%, #ffffff 50%, rgba(56, 189, 248, 0.8) 100%);
+        border-radius: 20px 20px 0 0;
+        opacity: 0.85;
+        transition: height 0.15s ease, opacity 0.15s ease;
+      }
+      .bms-glass-pill:hover::before, .bms-glass-pill.active::before {
+        height: 3.5px;
+        opacity: 1;
+        box-shadow: 0 1px 8px rgba(56, 189, 248, 0.8);
+      }
+      .bms-glass-pill:hover {
+        transform: perspective(600px) rotateX(-5deg) rotateY(3deg) translateY(-5px) scale(1.065);
+        background: rgba(56, 189, 248, 0.24);
+        border-color: #38bdf8;
+        color: #ffffff;
+        box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.75), 0 8px 18px -2px rgba(56, 189, 248, 0.55), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
+      }
+      .bms-glass-pill:active {
+        transform: scale(0.95);
+      }
+      .bms-glass-pill.active {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(79, 70, 229, 0.9));
+        border-color: #60a5fa;
+        color: #ffffff;
+        box-shadow: 0 12px 26px -2px rgba(37, 99, 235, 0.65), inset 0 1.5px 0 rgba(255, 255, 255, 0.6);
+      }
+      .bms-glass-pill-orb {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+      .bms-glass-pill-count {
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 2px 6px;
+        border-radius: 10px;
+        color: #94a3b8;
+      }
+      .bms-glass-pill:hover .bms-glass-pill-count, .bms-glass-pill.active .bms-glass-pill-count {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      /* WORLD-CLASS MOUSE-OVER EYE CANDY FOR VENUE CARDS & INTERACTIVES */
+      .bms-card {
+        transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s ease !important;
+        will-change: transform, box-shadow !important;
+        cursor: pointer !important;
+        position: relative !important;
+      }
+      .bms-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3.5px;
+        background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+        opacity: 0;
+        z-index: 4;
+        transition: opacity 0.2s ease;
+        border-radius: 14px 14px 0 0;
+        pointer-events: none;
+      }
+      .bms-card:hover {
+        transform: translateY(-8px) scale(1.025) !important;
+        box-shadow: 0 24px 48px -6px rgba(0, 0, 0, 0.82), 0 0 26px rgba(56, 189, 248, 0.38) !important;
+        border-color: rgba(56, 189, 248, 0.6) !important;
+      }
+      .bms-card:hover::before {
+        opacity: 1;
+      }
+      .bms-card:hover .bms-card-img {
+        transform: scale(1.08) !important;
+      }
+      .bms-card-img {
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+      }
+      .bms-card:hover .bms-book-btn {
+        background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
+        box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6) !important;
+        transform: scale(1.04) !important;
+      }
+      .bms-book-btn, .bms-pay-btn, .bms-voice-btn, .bms-bottom-nav-item, .bms-quick-slot-chip {
+        transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s ease, background 0.15s ease !important;
+        will-change: transform !important;
+        cursor: pointer !important;
+      }
+      .bms-book-btn:hover {
+        transform: scale(1.06) !important;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.65) !important;
+      }
+      .bms-book-btn:active {
+        transform: scale(0.96) !important;
+      }
+      .bms-quick-slot-chip:hover {
+        transform: translateY(-3px) scale(1.08) !important;
+        border-color: #38bdf8 !important;
+        color: #38bdf8 !important;
+        box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4) !important;
+      }
+      .bms-spotlight-card:hover {
+        transform: translateY(-4px) scale(1.01) !important;
+        box-shadow: 0 28px 60px -8px rgba(0, 0, 0, 0.85), 0 0 35px rgba(56, 189, 248, 0.35) !important;
+        border-color: rgba(56, 189, 248, 0.6) !important;
+      }
+      .bms-spotlight-card:hover .bms-spotlight-bg-img {
+        transform: scale(1.05) !important;
+      }
+      .bms-spotlight-card:hover .bms-spotlight-stage-beam {
+        opacity: 0.9 !important;
+      }
+      .bms-spotlight-card:hover .bms-spotlight-arrow-btn {
+        transform: scale(1.15) rotate(4deg) !important;
+        box-shadow: 0 0 22px rgba(56, 189, 248, 0.85) !important;
+      }
     `;
     document.head.appendChild(style);
   }
 
   // 4. Render App Shell
+  var spotlightVenues = [
+    {
+      id: 'v_royal_palace',
+      name: 'Grand Royal Convention & AC Marriage Hall',
+      category: 'function_halls',
+      categoryLabel: 'Marriage & AC Banquet Hall',
+      locality: 'Banjara Hills, Road No. 12',
+      city: 'Hyderabad',
+      distance: '3.4 km',
+      rating: 4.8,
+      reviewsCount: 194,
+      price: '₹45,000',
+      priceUnit: 'starts from / day',
+      tag: '👑 Spotlight Choice',
+      image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&auto=format&fit=crop&q=80'
+    },
+    {
+      id: 'v_smash_arena',
+      name: 'Smash Arena Badminton & Sports Complex',
+      category: 'sports_turfs',
+      categoryLabel: 'Box Cricket & Badminton',
+      locality: 'Gachibowli, Financial District',
+      city: 'Hyderabad',
+      distance: '1.2 km',
+      rating: 4.9,
+      reviewsCount: 238,
+      price: '₹650',
+      priceUnit: 'starts from / hour',
+      tag: '⚡ 24/7 Floodlit Turf',
+      image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80'
+    },
+    {
+      id: 'v_urban_nest_lodge',
+      name: 'Urban Nest Luxury Hotel & Executive Suites',
+      category: 'lodge_rooms',
+      categoryLabel: 'Hotel & Day Rooms',
+      locality: 'Hitec City, Mindspace Metro',
+      city: 'Hyderabad',
+      distance: '0.8 km',
+      rating: 4.7,
+      reviewsCount: 312,
+      price: '₹2,200',
+      priceUnit: 'starts from / night',
+      tag: '⭐ Verified Premium Stay',
+      image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80'
+    },
+    {
+      id: 'v_cricket_turf_legends',
+      name: 'Legends Box Cricket & Football Arena',
+      category: 'sports_turfs',
+      categoryLabel: 'Floodlit Astro Turf',
+      locality: 'Kondapur, Botanical Garden Rd',
+      city: 'Hyderabad',
+      distance: '2.7 km',
+      rating: 4.8,
+      reviewsCount: 185,
+      price: '₹900',
+      priceUnit: 'starts from / hour',
+      tag: '🏆 FIFA Grade AstroTurf',
+      image: 'https://images.unsplash.com/photo-1529900244469-99853974dc45?w=800&auto=format&fit=crop&q=80'
+    }
+  ];
+
+  var currentSpotlightIndex = 0;
+  var spotlightInterval = null;
+
   function renderApp() {
     var existingApp = document.getElementById('bookmyspace-app');
     if (existingApp) existingApp.remove();
@@ -1083,6 +1721,96 @@
         <!-- Hero & 3D Glass Category Section -->
         <section class="bms-hero">
         <div class="bms-hero-container">
+
+          <!-- 1. TOP SPOTLIGHT SECTION ("Spotlight Kept in Top") -->
+          <div class="bms-top-spotlight-section" id="bms-top-spotlight-container">
+            <div class="bms-spotlight-header-row">
+              <div class="bms-spotlight-title-group">
+                <span class="bms-spotlight-badge">✨ SPOTLIGHT • TOP RATED</span>
+                <span class="bms-spotlight-headline">Handpicked Spaces</span>
+              </div>
+              <div class="bms-spotlight-nav">
+                <button class="bms-spotlight-nav-btn" id="bms-spotlight-prev" title="Previous Spotlight Space">‹</button>
+                <span class="bms-spotlight-count" id="bms-spotlight-counter">1 / 4</span>
+                <button class="bms-spotlight-nav-btn" id="bms-spotlight-next" title="Next Spotlight Space">›</button>
+              </div>
+            </div>
+
+            <!-- 3D Glass Spotlight Card with Stage Lighting Beam -->
+            <div class="bms-spotlight-card" id="bms-spotlight-card" data-venue-id="${spotlightVenues[0].id}">
+              <img class="bms-spotlight-bg-img" id="bms-spotlight-img" src="${spotlightVenues[0].image}" alt="${spotlightVenues[0].name}" fetchpriority="high" decoding="async" loading="eager" />
+              <!-- Dramatic Stage Lighting Beam (Spotlight Cone) -->
+              <div class="bms-spotlight-stage-beam"></div>
+
+              <!-- Top Tags -->
+              <div class="bms-spotlight-top-tags">
+                <span class="bms-spotlight-tag-pill" id="bms-spotlight-tag">${spotlightVenues[0].tag}</span>
+                <span class="bms-spotlight-rating-pill" id="bms-spotlight-rating">⭐ ${spotlightVenues[0].rating} (${spotlightVenues[0].reviewsCount}) • Verified</span>
+              </div>
+
+              <!-- Bottom 3D Glass Information Plate -->
+              <div class="bms-spotlight-bottom-plate">
+                <div class="bms-spotlight-venue-info">
+                  <h3 class="bms-spotlight-venue-title" id="bms-spotlight-title">
+                    <span>${spotlightVenues[0].name}</span>
+                  </h3>
+                  <div class="bms-spotlight-venue-meta">
+                    <span id="bms-spotlight-meta">📍 ${spotlightVenues[0].locality} • ${spotlightVenues[0].distance}</span>
+                  </div>
+                </div>
+
+                <div class="bms-spotlight-price-box">
+                  <span class="bms-spotlight-price-val" id="bms-spotlight-price">${spotlightVenues[0].price}</span>
+                  <span class="bms-spotlight-price-unit" id="bms-spotlight-unit">${spotlightVenues[0].priceUnit}</span>
+                </div>
+
+                <button class="bms-spotlight-arrow-btn" id="bms-spotlight-arrow-btn" title="View &amp; Book Space">➜</button>
+              </div>
+            </div>
+
+            <!-- Spotlight Pagination Dots -->
+            <div class="bms-spotlight-dots" id="bms-spotlight-dots">
+              <div class="bms-spotlight-dot active" data-index="0"></div>
+              <div class="bms-spotlight-dot" data-index="1"></div>
+              <div class="bms-spotlight-dot" data-index="2"></div>
+              <div class="bms-spotlight-dot" data-index="3"></div>
+            </div>
+          </div>
+
+          <!-- 2. TOP 3D GLASS CATEGORIES STRIP ("catagerios") -->
+          <div class="bms-top-categories-strip" id="bms-top-categories-strip">
+            <button class="bms-glass-pill active" data-cat="all">
+              <span class="bms-glass-pill-orb">✨</span>
+              <span>All Spaces</span>
+              <span class="bms-glass-pill-count">24</span>
+            </button>
+            <button class="bms-glass-pill" data-cat="function_halls">
+              <span class="bms-glass-pill-orb">🏛️</span>
+              <span>Function Halls</span>
+              <span class="bms-glass-pill-count">4</span>
+            </button>
+            <button class="bms-glass-pill" data-cat="lodge_rooms">
+              <span class="bms-glass-pill-orb">🏨</span>
+              <span>Lodge &amp; Rooms</span>
+              <span class="bms-glass-pill-count">5</span>
+            </button>
+            <button class="bms-glass-pill" data-cat="hostel_pg">
+              <span class="bms-glass-pill-orb">🏡</span>
+              <span>PG &amp; Hostels</span>
+              <span class="bms-glass-pill-count">4</span>
+            </button>
+            <button class="bms-glass-pill" data-cat="tuition_classes">
+              <span class="bms-glass-pill-orb">📚</span>
+              <span>Institutes &amp; Classes</span>
+              <span class="bms-glass-pill-count">5</span>
+            </button>
+            <button class="bms-glass-pill" data-cat="sports_turfs">
+              <span class="bms-glass-pill-orb">⚽</span>
+              <span>Sports &amp; Turfs</span>
+              <span class="bms-glass-pill-count">6</span>
+            </button>
+          </div>
+
           <h1 class="bms-hero-headline">Find &amp; Book Verified Spaces</h1>
           <p class="bms-hero-sub">Explore function halls, sports turfs, day-stay rooms, and academy classes with instant slots.</p>
 
@@ -1100,6 +1828,9 @@
             
             <!-- Card 1: Function Halls -->
             <div class="bms-3d-glass-card theme-indigo" data-cat="function_halls">
+              <div class="bms-3d-card-glare"></div>
+              <div class="bms-3d-card-top-light"></div>
+              <div class="bms-3d-card-top-glow"></div>
               <div class="bms-3d-card-top">
                 <div class="bms-3d-icon-orb" style="background: linear-gradient(135deg, #4f46e5, #9333ea);">
                   <span>🏛️</span>
@@ -1123,6 +1854,9 @@
 
             <!-- Card 2: Lodge & Rooms -->
             <div class="bms-3d-glass-card theme-amber" data-cat="lodge_rooms">
+              <div class="bms-3d-card-glare"></div>
+              <div class="bms-3d-card-top-light"></div>
+              <div class="bms-3d-card-top-glow"></div>
               <div class="bms-3d-card-top">
                 <div class="bms-3d-icon-orb" style="background: linear-gradient(135deg, #d97706, #ef4444);">
                   <span>🏨</span>
@@ -1146,6 +1880,9 @@
 
             <!-- Card 3: PG & Hostels -->
             <div class="bms-3d-glass-card theme-emerald" data-cat="pg_hostels">
+              <div class="bms-3d-card-glare"></div>
+              <div class="bms-3d-card-top-light"></div>
+              <div class="bms-3d-card-top-glow"></div>
               <div class="bms-3d-card-top">
                 <div class="bms-3d-icon-orb" style="background: linear-gradient(135deg, #059669, #0891b2);">
                   <span>🏡</span>
@@ -1169,6 +1906,9 @@
 
             <!-- Card 4: Institutes & Classes -->
             <div class="bms-3d-glass-card theme-sky" data-cat="institutes_classes">
+              <div class="bms-3d-card-glare"></div>
+              <div class="bms-3d-card-top-light"></div>
+              <div class="bms-3d-card-top-glow"></div>
               <div class="bms-3d-card-top">
                 <div class="bms-3d-icon-orb" style="background: linear-gradient(135deg, #0284c7, #2563eb);">
                   <span>📚</span>
@@ -1192,6 +1932,9 @@
 
             <!-- Card 5: Sports & Turfs -->
             <div class="bms-3d-glass-card theme-lime" data-cat="sports_turfs">
+              <div class="bms-3d-card-glare"></div>
+              <div class="bms-3d-card-top-light"></div>
+              <div class="bms-3d-card-top-glow"></div>
               <div class="bms-3d-card-top">
                 <div class="bms-3d-icon-orb" style="background: linear-gradient(135deg, #65a30d, #059669);">
                   <span>⚽</span>
@@ -1230,118 +1973,11 @@
       </main>
       </div> <!-- End TAB 1: HOME VIEW -->
 
-      <!-- TAB 2: MY BOOKINGS VIEW -->
-      <div id="bms-view-bookings" class="bms-tab-view" style="display: none;">
-        <div class="bms-view-container">
-          <div class="bms-view-header">
-            <h1 class="bms-view-title">My Bookings &amp; Passes 🎟️</h1>
-            <p class="bms-view-sub">Manage your space reservations, verified entry tickets, and live payment receipts</p>
-          </div>
-          <div id="bms-bookings-list-container">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-      </div>
+      <!-- TAB 2: MY BOOKINGS VIEW (Deferred / Lazy-loaded on demand) -->
+      <div id="bms-view-bookings" class="bms-tab-view" style="display: none;"></div>
 
-      <!-- TAB 3: PROFILE VIEW -->
-      <div id="bms-view-profile" class="bms-tab-view" style="display: none;">
-        <div class="bms-view-container" style="max-width: 800px;">
-          <div class="bms-profile-header-card">
-            <div class="bms-profile-avatar-lg">NQ</div>
-            <div style="flex: 1;">
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
-                <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: #fff;">Naren Q.</h2>
-                <span class="bms-booking-badge-confirmed" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
-                  ⭐ Prime Verified Member
-                </span>
-              </div>
-              <p style="margin: 0 0 8px 0; color: #94a3b8; font-size: 14px;">narenqe2@gmail.com • +91 98765 43210</p>
-              <div style="display: flex; gap: 16px; font-size: 13px; color: #cbd5e1; flex-wrap: wrap;">
-                <span>💳 Wallet: <strong style="color: #34d399;">₹${state.walletBalance}</strong></span>
-                <span>🎟️ Bookings: <strong id="bms-profile-bookings-count">${state.bookingsList.length}</strong></span>
-                <span>📍 Hyderabad</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: Payment & Wallet -->
-          <div class="bms-profile-section">
-            <div class="bms-profile-row" onclick="alert('Wallet Balance: ₹1,500. Linked via UPI & Netbanking.')">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 20px;">💳</span>
-                <div>
-                  <strong style="color: #fff; font-size: 14px; display: block;">Wallet &amp; Payment Methods</strong>
-                  <span style="color: #94a3b8; font-size: 12px;">Manage UPI, Cards, and Auto-Refunds</span>
-                </div>
-              </div>
-              <span style="color: #64748b;">➔</span>
-            </div>
-            <div class="bms-profile-row" onclick="window._bmsSwitchTab('bookings')">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 20px;">🎟️</span>
-                <div>
-                  <strong style="color: #fff; font-size: 14px; display: block;">Booking History &amp; Invoices</strong>
-                  <span style="color: #94a3b8; font-size: 12px;">View digital entrance passes &amp; receipts</span>
-                </div>
-              </div>
-              <span style="color: #64748b;">➔</span>
-            </div>
-          </div>
-
-          <!-- Section: Preferences & Language -->
-          <div class="bms-profile-section">
-            <div class="bms-profile-row">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 20px;">🌐</span>
-                <div>
-                  <strong style="color: #fff; font-size: 14px; display: block;">App Language</strong>
-                  <span style="color: #94a3b8; font-size: 12px;">Currently: English (India)</span>
-                </div>
-              </div>
-              <select style="background: #0f172a; border: 1px solid rgba(255,255,255,0.15); color: #38bdf8; border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                <option selected>English</option>
-                <option>తెలుగు (Telugu)</option>
-                <option>हिन्दी (Hindi)</option>
-                <option>தமிழ் (Tamil)</option>
-              </select>
-            </div>
-            <div class="bms-profile-row">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 20px;">🔔</span>
-                <div>
-                  <strong style="color: #fff; font-size: 14px; display: block;">Booking Reminders &amp; SMS</strong>
-                  <span style="color: #94a3b8; font-size: 12px;">Instant slot confirmation &amp; pass alerts</span>
-                </div>
-              </div>
-              <input type="checkbox" checked style="accent-color: #0284c7; width: 18px; height: 18px; cursor: pointer;" />
-            </div>
-          </div>
-
-          <!-- Section: Help & Security -->
-          <div class="bms-profile-section">
-            <div class="bms-profile-row" onclick="alert('BookMySpace 24x7 Support: support@bookmyspace.in | Toll-free: 1800-419-SPACE')">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 20px;">🎧</span>
-                <div>
-                  <strong style="color: #fff; font-size: 14px; display: block;">Help &amp; Customer Support</strong>
-                  <span style="color: #94a3b8; font-size: 12px;">24x7 resolution desk for court &amp; hall bookings</span>
-                </div>
-              </div>
-              <span style="color: #64748b;">➔</span>
-            </div>
-            <div class="bms-profile-row" onclick="alert('Terms & Privacy: BookMySpace adheres to secure Indian data protection and encrypted payment guidelines.')">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 20px;">🛡️</span>
-                <div>
-                  <strong style="color: #fff; font-size: 14px; display: block;">Privacy &amp; Terms of Service</strong>
-                  <span style="color: #94a3b8; font-size: 12px;">Data security, policies and dispute redressal</span>
-                </div>
-              </div>
-              <span style="color: #64748b;">➔</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- TAB 3: PROFILE VIEW (Deferred / Lazy-loaded on demand) -->
+      <div id="bms-view-profile" class="bms-tab-view" style="display: none;"></div>
 
       <!-- Bottom Navigation Bar ('Home', 'My Bookings', 'Profile') -->
       <nav class="bms-bottom-nav" id="bms-bottom-nav" role="navigation" aria-label="Main Bottom Navigation">
@@ -1376,11 +2012,79 @@
 
     document.body.appendChild(appContainer);
 
-    setupEventHandlers();
-    renderVenueCards();
+    // Immediately remove loading and timeout screens so the application UI is visible instantly
+    try {
+      var loadingWrappers = document.querySelectorAll('.loading-wrapper, #loading, #loading-timeout-view');
+      loadingWrappers.forEach(function(w) {
+        if (w) {
+          w.style.display = 'none';
+          if (w.parentNode) w.parentNode.removeChild(w);
+        }
+      });
+    } catch(e) {}
+
+    document.body.classList.add('app-loaded');
+    document.body.style.display = 'block';
+    document.body.style.overflowY = 'auto';
+    document.body.style.overflowX = 'hidden';
+    document.body.style.minHeight = '100vh';
+    document.body.style.background = '#0b0f19';
+
+    try {
+      setupEventHandlers();
+    } catch(e) {
+      console.warn('[BookMySpace Bootstrap] Event handler setup warning:', e);
+    }
+
+    try {
+      renderVenueCards();
+    } catch(e) {
+      console.warn('[BookMySpace Bootstrap] Venue render warning:', e);
+    }
   }
 
-  // 5. Render Venue Cards
+  // 5. Render Venue Cards with Lazy-Loading Prioritization
+  var lazyImageObserver = null;
+  function initLazyImages() {
+    if ('IntersectionObserver' in window) {
+      if (!lazyImageObserver) {
+        lazyImageObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              var img = entry.target;
+              var src = img.getAttribute('data-src');
+              if (src) {
+                img.src = src;
+                img.onload = function() {
+                  img.classList.add('bms-img-loaded');
+                  if (img.parentElement) {
+                    img.parentElement.classList.remove('loading');
+                  }
+                };
+                img.removeAttribute('data-src');
+              }
+              lazyImageObserver.unobserve(img);
+            }
+          });
+        }, { rootMargin: '250px 0px 250px 0px' });
+      }
+
+      var lazyImages = document.querySelectorAll('.bms-lazy-img[data-src]');
+      lazyImages.forEach(function(img) {
+        lazyImageObserver.observe(img);
+      });
+    } else {
+      var lazyImages = document.querySelectorAll('.bms-lazy-img[data-src]');
+      lazyImages.forEach(function(img) {
+        var src = img.getAttribute('data-src');
+        if (src) {
+          img.src = src;
+          img.classList.add('bms-img-loaded');
+        }
+      });
+    }
+  }
+
   function renderVenueCards() {
     var container = document.getElementById('bms-venue-container');
     if (!container) return;
@@ -1410,16 +2114,23 @@
       return;
     }
 
-    var html = filtered.map(function(venue) {
+    var html = filtered.map(function(venue, index) {
       var badgeClass = 'badge-' + venue.badgeType;
       var amenitiesHtml = venue.amenities.map(function(a) {
         return '<span class="bms-amenity-tag">' + a + '</span>';
       }).join('');
 
+      // Critical above-the-fold prioritization: first 2 cards load immediately, remainder lazy-loaded
+      var isAboveFold = index < 2;
+      var imgHtml = isAboveFold
+        ? `<img src="${venue.image}" alt="${venue.title}" class="bms-card-img bms-img-loaded" decoding="async" loading="eager" />`
+        : `<img data-src="${venue.image}" alt="${venue.title}" class="bms-card-img bms-lazy-img" decoding="async" loading="lazy" />`;
+      var wrapperClass = isAboveFold ? 'bms-card-img-wrapper' : 'bms-card-img-wrapper loading';
+
       return `
         <div class="bms-card" data-venue-id="${venue.id}">
-          <div class="bms-card-img-wrapper">
-            <img src="${venue.image}" alt="${venue.title}" class="bms-card-img" loading="lazy" />
+          <div class="${wrapperClass}">
+            ${imgHtml}
             <span class="bms-card-badge ${badgeClass}">${venue.badge}</span>
           </div>
           <div class="bms-card-body">
@@ -1445,6 +2156,10 @@
     }).join('');
 
     container.innerHTML = html;
+    initLazyImages();
+    if (typeof window._bmsAttachVenueTilt === 'function') {
+      window._bmsAttachVenueTilt();
+    }
   }
 
   // 6. Interactive Booking Flow
@@ -1568,6 +2283,127 @@
     `;
   };
 
+  // Deferred / Lazy Rendering of Non-Critical Tab Contents
+  function renderBookingsTabContent() {
+    var bookingsView = document.getElementById('bms-view-bookings');
+    if (!bookingsView) return;
+    bookingsView.innerHTML = `
+      <div class="bms-view-container">
+        <div class="bms-view-header">
+          <h1 class="bms-view-title">My Bookings &amp; Passes 🎟️</h1>
+          <p class="bms-view-sub">Manage your space reservations, verified entry tickets, and live payment receipts</p>
+        </div>
+        <div id="bms-bookings-list-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    `;
+    renderBookingsView();
+  }
+
+  function renderProfileTabContent() {
+    var profileView = document.getElementById('bms-view-profile');
+    if (!profileView) return;
+    profileView.innerHTML = `
+      <div class="bms-view-container" style="max-width: 800px;">
+        <div class="bms-profile-header-card">
+          <div class="bms-profile-avatar-lg">NQ</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+              <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: #fff;">Naren Q.</h2>
+              <span class="bms-booking-badge-confirmed" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+                ⭐ Prime Verified Member
+              </span>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #94a3b8; font-size: 14px;">narenqe2@gmail.com • +91 98765 43210</p>
+            <div style="display: flex; gap: 16px; font-size: 13px; color: #cbd5e1; flex-wrap: wrap;">
+              <span>💳 Wallet: <strong style="color: #34d399;">₹${state.walletBalance}</strong></span>
+              <span>🎟️ Bookings: <strong id="bms-profile-bookings-count">${state.bookingsList.length}</strong></span>
+              <span>📍 Hyderabad</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Payment & Wallet -->
+        <div class="bms-profile-section">
+          <div class="bms-profile-row" onclick="alert('Wallet Balance: ₹1,500. Linked via UPI & Netbanking.')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 20px;">💳</span>
+              <div>
+                <strong style="color: #fff; font-size: 14px; display: block;">Wallet &amp; Payment Methods</strong>
+                <span style="color: #94a3b8; font-size: 12px;">Manage UPI, Cards, and Auto-Refunds</span>
+              </div>
+            </div>
+            <span style="color: #64748b;">➔</span>
+          </div>
+          <div class="bms-profile-row" onclick="window._bmsSwitchTab('bookings')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 20px;">🎟️</span>
+              <div>
+                <strong style="color: #fff; font-size: 14px; display: block;">Booking History &amp; Invoices</strong>
+                <span style="color: #94a3b8; font-size: 12px;">View digital entrance passes &amp; receipts</span>
+              </div>
+            </div>
+            <span style="color: #64748b;">➔</span>
+          </div>
+        </div>
+
+        <!-- Section: Preferences & Language -->
+        <div class="bms-profile-section">
+          <div class="bms-profile-row">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 20px;">🌐</span>
+              <div>
+                <strong style="color: #fff; font-size: 14px; display: block;">App Language</strong>
+                <span style="color: #94a3b8; font-size: 12px;">Currently: English (India)</span>
+              </div>
+            </div>
+            <select style="background: #0f172a; border: 1px solid rgba(255,255,255,0.15); color: #38bdf8; border-radius: 6px; padding: 4px 8px; font-size: 12px;">
+              <option selected>English</option>
+              <option>తెలుగు (Telugu)</option>
+              <option>हिन्दी (Hindi)</option>
+              <option>தமிழ் (Tamil)</option>
+            </select>
+          </div>
+          <div class="bms-profile-row">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 20px;">🔔</span>
+              <div>
+                <strong style="color: #fff; font-size: 14px; display: block;">Booking Reminders &amp; SMS</strong>
+                <span style="color: #94a3b8; font-size: 12px;">Instant slot confirmation &amp; pass alerts</span>
+              </div>
+            </div>
+            <input type="checkbox" checked style="accent-color: #0284c7; width: 18px; height: 18px; cursor: pointer;" />
+          </div>
+        </div>
+
+        <!-- Section: Help & Security -->
+        <div class="bms-profile-section">
+          <div class="bms-profile-row" onclick="alert('BookMySpace 24x7 Support: support@bookmyspace.in | Toll-free: 1800-419-SPACE')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 20px;">🎧</span>
+              <div>
+                <strong style="color: #fff; font-size: 14px; display: block;">Help &amp; Customer Support</strong>
+                <span style="color: #94a3b8; font-size: 12px;">24x7 resolution desk for court &amp; hall bookings</span>
+              </div>
+            </div>
+            <span style="color: #64748b;">➔</span>
+          </div>
+          <div class="bms-profile-row" onclick="alert('Terms & Privacy: BookMySpace adheres to secure Indian data protection and encrypted payment guidelines.')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 20px;">🛡️</span>
+              <div>
+                <strong style="color: #fff; font-size: 14px; display: block;">Privacy &amp; Terms of Service</strong>
+                <span style="color: #94a3b8; font-size: 12px;">Data security, policies and dispute redressal</span>
+              </div>
+            </div>
+            <span style="color: #64748b;">➔</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   // Switch Active Tab: 'home' | 'bookings' | 'profile'
   window._bmsSwitchTab = function(tabId) {
     state.activeTab = tabId;
@@ -1588,10 +2424,21 @@
     if (homeView) homeView.style.display = (tabId === 'home') ? 'block' : 'none';
     if (bookingsView) {
       bookingsView.style.display = (tabId === 'bookings') ? 'block' : 'none';
-      if (tabId === 'bookings') renderBookingsView();
+      if (tabId === 'bookings') {
+        if (!state.bookingsRendered) {
+          renderBookingsTabContent();
+          state.bookingsRendered = true;
+        } else {
+          renderBookingsView();
+        }
+      }
     }
     if (profileView) {
       profileView.style.display = (tabId === 'profile') ? 'block' : 'none';
+      if (tabId === 'profile' && !state.profileRendered) {
+        renderProfileTabContent();
+        state.profileRendered = true;
+      }
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1621,7 +2468,7 @@
     var html = state.bookingsList.map(function(b) {
       return `
         <div class="bms-booking-card">
-          <img src="${b.image}" alt="${b.venueTitle}" class="bms-booking-img" />
+          <img src="${b.image}" alt="${b.venueTitle}" class="bms-booking-img" loading="lazy" decoding="async" />
           <div class="bms-booking-info">
             <div>
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
@@ -1707,26 +2554,230 @@
     var glassCards = document.querySelectorAll('.bms-3d-glass-card');
     var resetAllBtn = document.getElementById('bms-cat-reset-all');
 
-    glassCards.forEach(function(card) {
-      // 3D mouse tracking micro-interaction on desktop
-      card.addEventListener('mousemove', function(e) {
-        var rect = card.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var y = e.clientY - rect.top;
-        var centerX = rect.width / 2;
-        var centerY = rect.height / 2;
-        var rotateX = ((y - centerY) / centerY) * -7;
-        var rotateY = ((x - centerX) / centerX) * 7;
-        card.style.transform = 'perspective(1000px) rotateX(' + rotateX.toFixed(1) + 'deg) rotateY(' + rotateY.toFixed(1) + 'deg) translateY(-5px) scale(1.025)';
-      });
+    // =========================================================
+    // 1. Setup Top Spotlight Carousel & 3D Glass Categories
+    // =========================================================
+    function updateSpotlightUI(index) {
+      currentSpotlightIndex = (index + spotlightVenues.length) % spotlightVenues.length;
+      var venue = spotlightVenues[currentSpotlightIndex];
+      
+      var card = document.getElementById('bms-spotlight-card');
+      var img = document.getElementById('bms-spotlight-img');
+      var tag = document.getElementById('bms-spotlight-tag');
+      var rating = document.getElementById('bms-spotlight-rating');
+      var title = document.getElementById('bms-spotlight-title');
+      var meta = document.getElementById('bms-spotlight-meta');
+      var price = document.getElementById('bms-spotlight-price');
+      var unit = document.getElementById('bms-spotlight-unit');
+      var counter = document.getElementById('bms-spotlight-counter');
 
-      card.addEventListener('mouseleave', function() {
-        if (card.classList.contains('active')) {
-          card.style.transform = 'perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02)';
+      if (card) card.setAttribute('data-venue-id', venue.id);
+      if (img) {
+        img.src = venue.image;
+        img.alt = venue.name;
+      }
+      if (tag) tag.textContent = venue.tag;
+      if (rating) rating.textContent = '⭐ ' + venue.rating + ' (' + venue.reviewsCount + ') • Verified';
+      if (title) title.innerHTML = '<span>' + venue.name + '</span>';
+      if (meta) meta.textContent = '📍 ' + venue.locality + ' • ' + venue.distance;
+      if (price) price.textContent = venue.price;
+      if (unit) unit.textContent = venue.priceUnit;
+      if (counter) counter.textContent = (currentSpotlightIndex + 1) + ' / ' + spotlightVenues.length;
+
+      var dots = document.querySelectorAll('.bms-spotlight-dot');
+      dots.forEach(function(dot, idx) {
+        if (idx === currentSpotlightIndex) {
+          dot.classList.add('active');
         } else {
-          card.style.transform = '';
+          dot.classList.remove('active');
         }
       });
+    }
+
+    var spotlightPrev = document.getElementById('bms-spotlight-prev');
+    var spotlightNext = document.getElementById('bms-spotlight-next');
+    var spotlightCard = document.getElementById('bms-spotlight-card');
+
+    if (spotlightPrev) {
+      spotlightPrev.addEventListener('click', function(e) {
+        e.stopPropagation();
+        updateSpotlightUI(currentSpotlightIndex - 1);
+      });
+    }
+    if (spotlightNext) {
+      spotlightNext.addEventListener('click', function(e) {
+        e.stopPropagation();
+        updateSpotlightUI(currentSpotlightIndex + 1);
+      });
+    }
+
+    // Dots navigation
+    var spotlightDots = document.querySelectorAll('.bms-spotlight-dot');
+    spotlightDots.forEach(function(dot) {
+      dot.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var idx = parseInt(dot.getAttribute('data-index') || '0', 10);
+        updateSpotlightUI(idx);
+      });
+    });
+
+    // Spotlight card click -> opens booking modal
+    if (spotlightCard) {
+      spotlightCard.addEventListener('click', function() {
+        var vId = spotlightCard.getAttribute('data-venue-id') || spotlightVenues[currentSpotlightIndex].id;
+        window._bmsOpenBooking(vId);
+      });
+
+      // Pause carousel on hover, resume on mouseleave
+      spotlightCard.addEventListener('mouseenter', function() {
+        if (spotlightInterval) clearInterval(spotlightInterval);
+      });
+      spotlightCard.addEventListener('mouseleave', function() {
+        startSpotlightTimer();
+      });
+    }
+
+    function startSpotlightTimer() {
+      if (spotlightInterval) clearInterval(spotlightInterval);
+      spotlightInterval = setInterval(function() {
+        updateSpotlightUI(currentSpotlightIndex + 1);
+      }, 5500);
+    }
+
+    // Defer non-critical background assets and carousel timer to idle window
+    function scheduleIdleTask(task, timeout) {
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(task, { timeout: timeout || 2500 });
+      } else {
+        setTimeout(task, timeout || 2000);
+      }
+    }
+
+    scheduleIdleTask(function() {
+      // Prefetch non-critical secondary spotlight images
+      if (typeof Image !== 'undefined') {
+        for (var i = 1; i < spotlightVenues.length; i++) {
+          try {
+            var preloader = new Image();
+            preloader.src = spotlightVenues[i].image;
+          } catch(e) {}
+        }
+      }
+      // Start auto-slide carousel timer after initial interaction priority window
+      startSpotlightTimer();
+    }, 2800);
+
+    // Top 3D Glass Category Pills Filtering ("catagerios")
+    var topGlassPills = document.querySelectorAll('.bms-glass-pill');
+    topGlassPills.forEach(function(pill) {
+      pill.addEventListener('click', function() {
+        topGlassPills.forEach(function(p) { p.classList.remove('active'); });
+        pill.classList.add('active');
+        state.selectedCategory = pill.getAttribute('data-cat');
+        renderVenueCards();
+
+        // Also sync 3D category cards
+        glassCards.forEach(function(c) {
+          if (c.getAttribute('data-cat') === state.selectedCategory) {
+            c.classList.add('active');
+            c.style.transform = 'perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02)';
+          } else {
+            c.classList.remove('active');
+            c.style.transform = '';
+          }
+        });
+        if (resetAllBtn) {
+          if (state.selectedCategory === 'all') resetAllBtn.classList.add('active');
+          else resetAllBtn.classList.remove('active');
+        }
+
+        var venueGrid = document.getElementById('bms-venue-container');
+        if (venueGrid) {
+          venueGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // World-Class Ultra-Smooth 3D Magnetic Tilt & Specular Reflection Engine
+    function attach3DMagneticTilt(el, config) {
+      if (!el) return;
+      config = config || {};
+      var maxTilt = config.maxTilt || 10;
+      var scale = config.scale || 1.04;
+      var liftY = config.liftY || -8;
+      var perspective = config.perspective || 1000;
+      var isHovered = false;
+      var rafId = null;
+      var currX = 0, currY = 0;
+      var targX = 0, targY = 0;
+      var mousePxX = 0, mousePxY = 0;
+
+      function renderLoop() {
+        if (!isHovered) return;
+        // Smooth physics-based dampening for buttery 60/120fps motion
+        currX += (targX - currX) * 0.22;
+        currY += (targY - currY) * 0.22;
+
+        el.style.setProperty('--mouse-x', mousePxX.toFixed(1) + 'px');
+        el.style.setProperty('--mouse-y', mousePxY.toFixed(1) + 'px');
+        el.style.transform = 'perspective(' + perspective + 'px) rotateX(' + currX.toFixed(2) + 'deg) rotateY(' + currY.toFixed(2) + 'deg) translateY(' + liftY + 'px) scale(' + scale + ')';
+
+        rafId = requestAnimationFrame(renderLoop);
+      }
+
+      el.addEventListener('mousemove', function(e) {
+        var rect = el.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        var normX = (x / rect.width) * 2 - 1;
+        var normY = (y / rect.height) * 2 - 1;
+
+        targX = -normY * maxTilt;
+        targY = normX * maxTilt;
+        mousePxX = x;
+        mousePxY = y;
+
+        if (!isHovered) {
+          isHovered = true;
+          el.style.transition = 'none';
+          renderLoop();
+        }
+      }, { passive: true });
+
+      el.addEventListener('mouseleave', function() {
+        isHovered = false;
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        el.style.transition = 'transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.2s ease';
+        el.style.removeProperty('--mouse-x');
+        el.style.removeProperty('--mouse-y');
+        if (el.classList.contains('active')) {
+          el.style.transform = 'perspective(' + perspective + 'px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02)';
+        } else {
+          el.style.transform = '';
+        }
+      });
+    }
+
+    // Attach 3D tilt to spotlight showcase card
+    if (spotlightCard) {
+      attach3DMagneticTilt(spotlightCard, { maxTilt: 5, scale: 1.015, liftY: -4, perspective: 1200 });
+    }
+
+    // Expose tilt attachment for dynamic venue cards
+    window._bmsAttachVenueTilt = function() {
+      var venueCards = document.querySelectorAll('.bms-card');
+      venueCards.forEach(function(vc) {
+        attach3DMagneticTilt(vc, { maxTilt: 6.5, scale: 1.02, liftY: -6, perspective: 1100 });
+      });
+    };
+    window._bmsAttachVenueTilt();
+
+    glassCards.forEach(function(card) {
+      // World-class 3D magnetic tilt with specular holographic lighting
+      attach3DMagneticTilt(card, { maxTilt: 11, scale: 1.045, liftY: -9, perspective: 950 });
 
       // Card click filter
       card.addEventListener('click', function() {
@@ -1737,7 +2788,7 @@
         if (resetAllBtn) resetAllBtn.classList.remove('active');
 
         card.classList.add('active');
-        card.style.transform = 'perspective(1000px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02)';
+        card.style.transform = 'perspective(950px) rotateX(-4.5deg) rotateY(3.5deg) translateY(-6px) scale(1.03)';
 
         state.selectedCategory = card.getAttribute('data-cat');
         renderVenueCards();
@@ -1834,18 +2885,23 @@
   }
 
   // 8. Bootstrap Sequence: Mount UI and Notify Readiness to index.html
-  injectStyles();
-  renderApp();
-
-  // Fire readiness event and call index.html completion callback
-  setTimeout(function() {
+  window._bmsBootstrapLoaded = true;
+  try {
+    injectStyles();
+    renderApp();
+  } catch(err) {
+    console.error('[BookMySpace Bootstrap] Render exception caught:', err);
+  } finally {
+    // Fire readiness event immediately so app transitions smoothly without hanging
     try {
       window.dispatchEvent(new CustomEvent('flutter-first-frame'));
     } catch(e) {}
 
     if (typeof window._bmsOnAppReady === 'function') {
-      window._bmsOnAppReady();
+      try {
+        window._bmsOnAppReady();
+      } catch(e) {}
     }
-  }, 100);
+  }
 
 })();

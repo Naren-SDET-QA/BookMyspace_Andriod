@@ -24,25 +24,51 @@
 
   <title>BookMySpace</title>
 
-  <!-- Google Maps JavaScript API for Flutter Web -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=default_maps_key"></script>
-
-  <!-- Firebase App & Performance Monitoring SDK for Web Startup Heartbeat -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-performance-compat.js"></script>
+  <!-- Firebase App & Performance Monitoring SDK (Loaded non-blocking) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js" async defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-performance-compat.js" async defer></script>
 
   <style>
     body {
       margin: 0;
       padding: 0;
-      background: radial-gradient(circle at center, #0284c7 0%, #0369a1 40%, #075985 100%);
+      background: #0b0f19;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #ffffff;
-      overflow: hidden;
+      overflow-x: hidden;
+    }
+    body.app-loaded {
+      display: block !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      height: auto !important;
+      min-height: 100vh !important;
+      background: #0b0f19 !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    /* Instant CSS elimination of loading overlay without timer/event dependency */
+    body:has(#bookmyspace-app) {
+      display: block !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      height: auto !important;
+      min-height: 100vh !important;
+      background: #0b0f19 !important;
+    }
+    body:has(#bookmyspace-app) #loading-wrapper,
+    body:has(#bookmyspace-app) .loading-wrapper,
+    body:has(#bookmyspace-app) #loading,
+    body:has(#bookmyspace-app) #loading-timeout-view {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      height: 0 !important;
+      overflow: hidden !important;
     }
     .loading-wrapper {
       width: 100%;
@@ -295,6 +321,121 @@
       gap: 10px;
       width: 100%;
     }
+    /* Smart Retry Primary Button */
+    .btn-smart-retry {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #7c3aed 100%);
+      color: #ffffff;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      position: relative;
+    }
+    .btn-smart-retry:hover {
+      transform: translateY(-2px) scale(1.015);
+      box-shadow: 0 8px 26px rgba(37, 99, 235, 0.7), 0 0 20px rgba(56, 189, 248, 0.5);
+      border-color: #38bdf8;
+    }
+    .btn-smart-retry:active {
+      transform: translateY(1px) scale(0.985);
+      opacity: 0.92;
+    }
+    .btn-smart-retry.is-retrying {
+      pointer-events: none;
+      opacity: 0.88;
+      background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
+    }
+    .smart-retry-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .smart-retry-sub {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: #bae6fd;
+      letter-spacing: 0.2px;
+    }
+    .smart-retry-feedback {
+      display: none;
+      margin-top: 2px;
+      margin-bottom: 2px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      line-height: 1.4;
+      text-align: left;
+      box-sizing: border-box;
+      width: 100%;
+      animation: fade-in-up 0.3s ease-out forwards;
+    }
+    .smart-retry-feedback.active {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14, 165, 233, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #e0f2fe;
+    }
+    .smart-retry-feedback.error {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+    .smart-retry-spinner {
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: bms-spin 0.7s linear infinite;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .btn-reload-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .btn-reload-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+    .btn-reload-secondary:active {
+      transform: translateY(1px);
+      opacity: 0.9;
+    }
     .btn-reload-primary {
       background: linear-gradient(135deg, #0284c7, #2563eb);
       color: #ffffff;
@@ -333,6 +474,31 @@
     .btn-clear-cache:hover {
       background: rgba(255, 255, 255, 0.15);
       color: #ffffff;
+    }
+    .btn-email-diagnostics {
+      background: rgba(14, 165, 233, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+    }
+    .btn-email-diagnostics:hover {
+      background: rgba(14, 165, 233, 0.22);
+      border-color: rgba(56, 189, 248, 0.6);
+      color: #7dd3fc;
+      transform: translateY(-1px);
+    }
+    .btn-email-diagnostics:active {
+      transform: translateY(1px);
+      opacity: 0.9;
     }
     .diagnostic-toggle {
       margin-top: 14px;
@@ -686,16 +852,36 @@
       </div>
 
       <div class="timeout-actions">
-        <button id="btn-reload" class="btn-reload-primary" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Smart Retry: Re-fetches critical flutter_bootstrap.js without full page reload -->
+        <button id="btn-smart-retry" class="btn-smart-retry" type="button" aria-label="Smart Retry: Re-fetch critical bootstrap file without full page reload">
+          <div class="smart-retry-header">
+            <span id="smart-retry-icon" style="font-size: 16px;">⚡</span>
+            <span id="smart-retry-label">Smart Retry (Fetch Bootstrap)</span>
+          </div>
+          <span id="smart-retry-sub" class="smart-retry-sub">Fast recovery • Re-fetches critical file without full page reload</span>
+        </button>
+        <div id="smart-retry-feedback" class="smart-retry-feedback" role="status" aria-live="polite">
+          <span class="smart-retry-spinner"></span>
+          <span id="smart-retry-feedback-text">Re-fetching flutter_bootstrap.js...</span>
+        </div>
+
+        <button id="btn-reload" class="btn-reload-secondary" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"></polyline>
             <polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
-          <span id="btn-reload-label">Reload Application</span>
+          <span id="btn-reload-label">Full Page Reload</span>
         </button>
         <button id="btn-clear-cache" class="btn-clear-cache" type="button">
           Clear Cache &amp; Reload
+        </button>
+        <button id="btn-email-diagnostics" class="btn-email-diagnostics" type="button" aria-label="Email system diagnostic logs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+          </svg>
+          <span id="btn-email-label">Email Diagnostics</span>
         </button>
       </div>
 
@@ -707,8 +893,17 @@
   </div>
 
   <script>
+    // Early readiness bridge so bootstrap can trigger immediately without race conditions
+    window._bmsOnAppReady = function() {
+      window._bmsEarlyReadyTriggered = true;
+      if (typeof window._bmsInternalOnAppReady === 'function') {
+        window._bmsInternalOnAppReady();
+      }
+    };
+
     (function() {
       var progress = 0;
+      var fastCheckInterval = null;
       var fillElem = document.getElementById('loading-progress-fill');
       var pctElem = document.getElementById('loading-progress-text');
       var statusElem = document.getElementById('loading-status-text');
@@ -719,6 +914,17 @@
       var btnReload = document.getElementById('btn-reload');
       var btnClearCache = document.getElementById('btn-clear-cache');
       var btnToggleDiag = document.getElementById('btn-toggle-diagnostics');
+      var btnEmailDiag = document.getElementById('btn-email-diagnostics');
+      var btnEmailLabel = document.getElementById('btn-email-label');
+
+      // Smart Retry Elements
+      var btnSmartRetry = document.getElementById('btn-smart-retry');
+      var smartRetryLabel = document.getElementById('smart-retry-label');
+      var smartRetrySub = document.getElementById('smart-retry-sub');
+      var smartRetryFeedback = document.getElementById('smart-retry-feedback');
+      var smartRetryFeedbackText = document.getElementById('smart-retry-feedback-text');
+      var isSmartRetrying = false;
+      var smartRetryTimeoutId = null;
 
       // Visual Connectivity Elements
       var connPill = document.getElementById('connectivity-monitor');
@@ -908,9 +1114,9 @@
         updateDiagnosticBox();
       });
 
-      function updateDiagnosticBox() {
-        if (!diagBox) return;
+      function generateSystemDiagnosticLogs() {
         var info = [];
+        info.push('=== BOOKMYSPACE SYSTEM STARTUP DIAGNOSTICS ===');
         info.push('Timestamp: ' + new Date().toISOString());
         info.push('Current Network Status: ' + (isCurrentlyOnline ? 'ONLINE' : 'OFFLINE (DISCONNECTED)'));
         info.push('Primary Timeout Cause: ' + (!isCurrentlyOnline || hadConnectionLoss ? 'NETWORK CONNECTION LOSS' : 'RESOURCE / BUNDLE TIMEOUT'));
@@ -935,6 +1141,9 @@
           info.push('Downlink: ' + (navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'N/A'));
           info.push('RTT: ' + (navigator.connection.rtt ? navigator.connection.rtt + ' ms' : 'N/A'));
         }
+        var elapsedSec = Math.round((Date.now() - heartbeatStartTime) / 1000);
+        info.push('Startup Elapsed Time: ' + elapsedSec + 's');
+        info.push('Loading Progress Milestone: ' + Math.floor(progress) + '% (' + (stages[currentStageIdx] ? stages[currentStageIdx].text : 'Startup') + ')');
         info.push('URL: ' + window.location.href);
         info.push('User-Agent: ' + navigator.userAgent);
         if (capturedErrors.length > 0) {
@@ -945,55 +1154,50 @@
         } else {
           info.push('No runtime errors recorded.');
         }
-        diagBox.textContent = info.join('\n');
+        info.push('===============================================');
+        return info.join('\n');
       }
 
-      // Smooth staged progress milestones
-      var stages = [
-        { threshold: 28, step: 2.2, interval: 70, text: 'Initializing engine...' },
-        { threshold: 58, step: 1.4, interval: 110, text: 'Loading application assets...' },
-        { threshold: 84, step: 0.7, interval: 160, text: 'Preparing workspace & database...' },
-        { threshold: 95, step: 0.2, interval: 260, text: 'Finalizing setup...' }
-      ];
+      function updateDiagnosticBox() {
+        if (!diagBox) return;
+        diagBox.textContent = generateSystemDiagnosticLogs();
+      }
 
-      var currentStageIdx = 0;
+      // Rapid responsive progress: advances briskly while checking for app readiness
       var progressInterval = setInterval(function() {
         if (isLoaded) {
           clearInterval(progressInterval);
           return;
         }
 
-        // If currently disconnected from network, pause advancement
-        if (!isCurrentlyOnline) {
+        if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded || window._bmsEarlyReadyTriggered) {
+          onAppReady();
           return;
         }
 
-        var stage = stages[currentStageIdx];
-        if (progress < stage.threshold) {
-          progress = Math.min(stage.threshold, +(progress + stage.step).toFixed(1));
+        if (progress < 90) {
+          progress = Math.min(90, +(progress + 15).toFixed(1));
           if (fillElem) fillElem.style.width = progress + '%';
           if (pctElem) pctElem.textContent = Math.floor(progress) + '%';
-          if (statusElem && statusElem.textContent !== stage.text) {
-            statusElem.textContent = stage.text;
+          if (statusElem) {
+            statusElem.textContent = progress > 50 ? 'Preparing workspace...' : 'Connecting to service...';
           }
-        } else if (currentStageIdx < stages.length - 1) {
-          currentStageIdx++;
         }
-      }, 100);
+      }, 60);
 
-      // Warning after 8 seconds of slow load
+      // Warning after 10 seconds of slow load if genuinely unmounted
       var slowTimeout = setTimeout(function() {
         if (!isLoaded && statusElem && isCurrentlyOnline) {
-          statusElem.textContent = 'Still working... optimizing bundle for your browser.';
+          statusElem.textContent = 'Optimizing bundle for your browser...';
           statusElem.style.color = '#fef08a';
         }
-      }, 8000);
+      }, 10000);
 
-      // Timeout fallback trigger after 16 seconds
+      // Timeout fallback trigger after 25 seconds (prevents premature timeout screens)
       var failTimeout = setTimeout(function() {
         if (isLoaded) return;
         triggerTimeoutState();
-      }, 16000);
+      }, 25000);
 
       function applyTimeoutRootCause(isNetworkDisconnected) {
         if (isNetworkDisconnected) {
@@ -1032,6 +1236,12 @@
 
       function triggerTimeoutState(customReason) {
         if (isLoaded) return;
+        // Check if application is already mounted to avoid premature timeout screen
+        if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded) {
+          onAppReady();
+          return;
+        }
+
         clearInterval(progressInterval);
         clearTimeout(slowTimeout);
         if (loadingContainer) {
@@ -1054,7 +1264,145 @@
       // Initial network state sync
       updateConnectivityState(navigator.onLine !== false);
 
+      // Smart Retry Implementation: Re-fetches only the critical flutter_bootstrap.js file
+      function triggerSmartRetry() {
+        if (isLoaded || isSmartRetrying) return;
+        isSmartRetrying = true;
+
+        if (btnSmartRetry) btnSmartRetry.classList.add('is-retrying');
+        if (smartRetryLabel) {
+          smartRetryLabel.innerHTML = '<span class="smart-retry-spinner"></span> Re-fetching flutter_bootstrap.js...';
+        }
+        if (smartRetrySub) {
+          smartRetrySub.textContent = 'Requesting critical bundle directly from server...';
+        }
+        if (smartRetryFeedback) {
+          smartRetryFeedback.className = 'smart-retry-feedback active';
+          if (smartRetryFeedbackText) {
+            smartRetryFeedbackText.textContent = 'Contacting server for fresh flutter_bootstrap.js...';
+          }
+        }
+
+        capturedErrors.push('Smart Retry triggered at ' + new Date().toLocaleTimeString() + ' (re-fetching flutter_bootstrap.js without full page reload)');
+        updateDiagnosticBox();
+
+        // 12-second safety timeout on this specific retry attempt
+        if (smartRetryTimeoutId) clearTimeout(smartRetryTimeoutId);
+        smartRetryTimeoutId = setTimeout(function() {
+          if (!isLoaded && isSmartRetrying) {
+            onSmartRetryFailed('Smart retry timed out after 12s. Server or network not responding.');
+          }
+        }, 12000);
+
+        var cacheBustUrl = 'flutter_bootstrap.js?smart_retry=' + Date.now();
+
+        // Step 1: Use Fetch API to retrieve only the critical flutter_bootstrap.js file
+        if (window.fetch) {
+          fetch(cacheBustUrl, { cache: 'no-store' })
+            .then(function(res) {
+              if (!res.ok) {
+                throw new Error('Server returned HTTP ' + res.status + ' (' + res.statusText + ')');
+              }
+              if (smartRetryFeedbackText) {
+                smartRetryFeedbackText.textContent = 'Critical bootstrap bundle received! Executing script...';
+              }
+              return res.text();
+            })
+            .then(function(code) {
+              // Remove old bootstrap script elements
+              var oldScripts = document.querySelectorAll('script[src*="flutter_bootstrap.js"], #bms-smart-retry-script');
+              oldScripts.forEach(function(s) {
+                if (s.parentNode) s.parentNode.removeChild(s);
+              });
+
+              // Create and inject fresh script
+              var script = document.createElement('script');
+              script.id = 'bms-smart-retry-script';
+              script.text = code;
+              document.body.appendChild(script);
+
+              if (smartRetryFeedbackText) {
+                smartRetryFeedbackText.textContent = 'Initializing BookMySpace interface...';
+              }
+
+              // Verify readiness after microtick
+              setTimeout(function() {
+                if (!isLoaded) {
+                  if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded) {
+                    onAppReady();
+                  } else {
+                    onSmartRetryFailed('Script executed, but application container was not mounted.');
+                  }
+                }
+              }, 250);
+            })
+            .catch(function(err) {
+              console.warn('[SmartRetry] Fetch failed, falling back to dynamic script tag:', err);
+              fallbackScriptLoad(cacheBustUrl);
+            });
+        } else {
+          fallbackScriptLoad(cacheBustUrl);
+        }
+      }
+
+      function fallbackScriptLoad(url) {
+        if (smartRetryFeedbackText) {
+          smartRetryFeedbackText.textContent = 'Re-loading flutter_bootstrap.js via script pipeline...';
+        }
+        var oldScripts = document.querySelectorAll('script[src*="flutter_bootstrap.js"], #bms-smart-retry-script');
+        oldScripts.forEach(function(s) {
+          if (s.parentNode) s.parentNode.removeChild(s);
+        });
+
+        var script = document.createElement('script');
+        script.id = 'bms-smart-retry-script';
+        script.src = url;
+        script.async = true;
+        script.onload = function() {
+          setTimeout(function() {
+            if (!isLoaded) {
+              if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded) {
+                onAppReady();
+              } else {
+                onSmartRetryFailed('Script tag loaded, but application was not mounted.');
+              }
+            }
+          }, 250);
+        };
+        script.onerror = function(err) {
+          onSmartRetryFailed('Network error loading script tag: ' + (err && err.message ? err.message : 'Resource unreachable'));
+        };
+        document.body.appendChild(script);
+      }
+
+      function onSmartRetryFailed(errorMessage) {
+        if (smartRetryTimeoutId) {
+          clearTimeout(smartRetryTimeoutId);
+          smartRetryTimeoutId = null;
+        }
+        isSmartRetrying = false;
+        if (btnSmartRetry) btnSmartRetry.classList.remove('is-retrying');
+        if (smartRetryLabel) {
+          smartRetryLabel.innerHTML = '⚡ Smart Retry (Try Again)';
+        }
+        if (smartRetrySub) {
+          smartRetrySub.textContent = 'Fetch failed. Click to re-attempt or use Full Page Reload below';
+        }
+        if (smartRetryFeedback) {
+          smartRetryFeedback.className = 'smart-retry-feedback error';
+          if (smartRetryFeedbackText) {
+            smartRetryFeedbackText.textContent = '⚠️ ' + errorMessage;
+          }
+        }
+        capturedErrors.push('Smart Retry Failure: ' + errorMessage);
+        updateDiagnosticBox();
+      }
+
       // Action Handlers
+      if (btnSmartRetry) {
+        btnSmartRetry.addEventListener('click', triggerSmartRetry);
+      }
+
       if (btnReload) {
         btnReload.addEventListener('click', function() {
           btnReload.innerHTML = 'Reloading...';
@@ -1095,6 +1443,33 @@
         });
       }
 
+      if (btnEmailDiag) {
+        btnEmailDiag.addEventListener('click', function() {
+          var logs = generateSystemDiagnosticLogs();
+          var timestampStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+          var subject = 'BookMySpace Startup Timeout Diagnostic Report [' + timestampStr + ']';
+          var body = 'Hello BookMySpace Support Team,\n\n' +
+            'I experienced a startup timeout issue when launching BookMySpace.\n\n' +
+            '--- USER NOTES (Optional) ---\n' +
+            '[Please describe your device, network conditions, or any behavior observed here]\n\n' +
+            '--- SYSTEM DIAGNOSTIC LOGS ---\n' +
+            logs + '\n\n' +
+            'Please investigate this startup issue. Thank you!';
+
+          var mailtoUrl = 'mailto:support@bookmyspace.in?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+
+          if (btnEmailLabel) {
+            var originalText = btnEmailLabel.textContent;
+            btnEmailLabel.textContent = 'Opening Email Client...';
+            setTimeout(function() {
+              btnEmailLabel.textContent = originalText;
+            }, 3000);
+          }
+
+          window.location.href = mailtoUrl;
+        });
+      }
+
       // App Readiness Notification
       function onAppReady() {
         if (isLoaded) return;
@@ -1102,6 +1477,15 @@
         clearInterval(progressInterval);
         clearTimeout(slowTimeout);
         clearTimeout(failTimeout);
+        if (fastCheckInterval) {
+          clearInterval(fastCheckInterval);
+          fastCheckInterval = null;
+        }
+        if (smartRetryTimeoutId) {
+          clearTimeout(smartRetryTimeoutId);
+          smartRetryTimeoutId = null;
+        }
+        isSmartRetrying = false;
         if (heartbeatInterval) {
           clearInterval(heartbeatInterval);
           heartbeatInterval = null;
@@ -1111,33 +1495,68 @@
         if (pctElem) pctElem.textContent = '100%';
         if (statusElem) statusElem.textContent = 'Ready!';
 
-        setTimeout(function() {
-          var wrapper = document.querySelector('.loading-wrapper');
-          if (wrapper) {
-            wrapper.style.transition = 'opacity 0.4s ease';
-            wrapper.style.opacity = '0';
-            setTimeout(function() {
-              if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
-            }, 400);
-          }
-        }, 150);
+        document.body.classList.add('app-loaded');
+        document.body.style.display = 'block';
+        document.body.style.overflowY = 'auto';
+
+        // Immediately hide and remove all loading/timeout wrappers so the app is instantly interactive
+        try {
+          var wrappers = document.querySelectorAll('.loading-wrapper, #loading, #loading-timeout-view');
+          wrappers.forEach(function(w) {
+            if (w) {
+              w.style.display = 'none';
+              if (w.parentNode) w.parentNode.removeChild(w);
+            }
+          });
+        } catch(e) {}
       }
 
+      window._bmsInternalOnAppReady = onAppReady;
       window.addEventListener('flutter-first-frame', onAppReady);
-      window.addEventListener('load', function() {
-        var observer = new MutationObserver(function(mutations, obs) {
-          if (document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('canvas')) {
+
+      // Fast detection: check every 20ms for instant mount
+      fastCheckInterval = setInterval(function() {
+        if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded || window._bmsEarlyReadyTriggered) {
+          onAppReady();
+        }
+      }, 20);
+
+      // Immediate DOM mutation detection (does not wait for window.onload)
+      try {
+        var fastObserver = new MutationObserver(function(mutations, obs) {
+          if (document.getElementById('bookmyspace-app') || document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('canvas')) {
             obs.disconnect();
             onAppReady();
           }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
-      });
+        fastObserver.observe(document.body, { childList: true, subtree: true });
+      } catch(e) {}
 
-      window._bmsOnAppReady = onAppReady;
+      // Immediate synchronous check
+      if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded || window._bmsEarlyReadyTriggered) {
+        onAppReady();
+      }
+
+      window.addEventListener('load', function() {
+        if (document.getElementById('bookmyspace-app') || document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('canvas')) {
+          onAppReady();
+        }
+      });
     })();
   </script>
 
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Load critical application bootstrap bundle directly with cache buster -->
+  <script src="flutter_bootstrap.js?v=20260911_0110"></script>
+  <script>
+    // Failsafe auto-mount fallback: If applet hasn't mounted in 1200ms, force trigger bootstrap
+    setTimeout(function() {
+      if (!window._bmsBootstrapLoaded && !document.getElementById('bookmyspace-app')) {
+        console.warn('[BookMySpace] Bootstrap delay detected, force re-fetching flutter_bootstrap.js...');
+        var retryScript = document.createElement('script');
+        retryScript.src = 'flutter_bootstrap.js?smart_retry=' + Date.now();
+        document.body.appendChild(retryScript);
+      }
+    }, 1200);
+  </script>
 </body>
 </html>
