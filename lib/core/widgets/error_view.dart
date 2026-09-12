@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../errors/app_exceptions.dart';
 import '../localization/app_localizations.dart';
 
 /// Full-screen error state with a retry button.
@@ -26,7 +27,7 @@ class ErrorView extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                message,
+                _friendlyMessage(message),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
@@ -47,5 +48,16 @@ class ErrorView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static String _friendlyMessage(String message) {
+    final lower = message.toLowerCase();
+    final technical = lower.contains('socketexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('clientexception') ||
+        lower.contains('connection refused') ||
+        lower.contains('xmlhttprequest');
+    if (technical) return mapError(Exception(message)).message;
+    return message;
   }
 }

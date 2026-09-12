@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../errors/app_exceptions.dart';
+
 /// Retry configuration for API calls.
 class RetryConfig {
   const RetryConfig({
@@ -16,6 +18,20 @@ class RetryConfig {
 
   /// Default config with exponential backoff.
   static const defaultConfig = RetryConfig();
+}
+
+/// Bounded retry for **safe reads**. Writes must pass [retryWhen] that proves
+/// the operation is idempotent. Payment checkout must never use this helper
+/// to restart a charge.
+Future<T> withReadRetry<T>(
+  Future<T> Function() operation, {
+  RetryConfig config = RetryConfig.defaultConfig,
+}) {
+  return withRetry(
+    operation,
+    config: config,
+    retryWhen: isRetryableReadError,
+  );
 }
 
 /// Executes an async operation with exponential-backoff retry logic.

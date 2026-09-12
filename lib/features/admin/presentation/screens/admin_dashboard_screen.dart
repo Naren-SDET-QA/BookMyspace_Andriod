@@ -134,6 +134,12 @@ class AdminDashboardScreen extends ConsumerWidget {
               subtitle: 'Administrative actions',
               onTap: () => context.push(AppRoutes.adminAudit),
             ),
+            _AdminLink(
+              icon: Icons.view_carousel_outlined,
+              title: 'Home banners',
+              subtitle: 'CMS titles and subtitles shown on customer Home',
+              onTap: () => context.push(AppRoutes.adminCms),
+            ),
             users.maybeWhen(
               error: (e, _) => Padding(
                 padding: const EdgeInsets.only(top: 16),

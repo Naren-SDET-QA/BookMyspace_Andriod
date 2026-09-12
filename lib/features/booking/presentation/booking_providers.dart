@@ -24,6 +24,16 @@ final myBookingsProvider = FutureProvider<List<Booking>>((ref) {
   return ref.watch(bookingRepositoryProvider).myBookings();
 });
 
+/// Single booking from the caller's readable set. Never invents a row.
+final bookingByIdProvider =
+    FutureProvider.autoDispose.family<Booking?, String>((ref, bookingId) async {
+  final bookings = await ref.watch(myBookingsProvider.future);
+  for (final booking in bookings) {
+    if (booking.id == bookingId) return booking;
+  }
+  return null;
+});
+
 /// The currently selected booking date (reset per screen visit).
 final selectedBookingDateProvider = StateProvider<DateTime?>((ref) => null);
 

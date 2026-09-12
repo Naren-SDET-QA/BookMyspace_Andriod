@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_exceptions.dart'
     show NotFoundException, mapError;
 import '../../../core/firebase/error_logger.dart';
+import '../../../core/network/retry.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
 
@@ -223,7 +224,8 @@ class SupabaseVenueRepository implements VenueRepository {
           .select('city')
           .eq('is_active', true)
           .not('city', 'is', null)
-          .order('city');
+          .order('city')
+          .limit(200);
       final cities = <String>{};
       for (final row in rows.whereType<Map<String, dynamic>>()) {
         final city = (row['city'] as String? ?? '').trim();
@@ -278,12 +280,20 @@ class SupabaseVenueRepository implements VenueRepository {
   @override
   Future<List<Venue>> search(VenueSearchQuery query) async {
     try {
+      return await withReadRetry(() => _searchOnce(query));
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  Future<List<Venue>> _searchOnce(VenueSearchQuery query) async {
+    try {
       if (query.hasCoordinates) {
         final nearby = await nearbyVenues(
           latitude: query.latitude!,
           longitude: query.longitude!,
           maxDistanceKm: (query.radiusKm ?? 10).toDouble(),
-          limit: 50,
+          limit: query.limit.clamp(1, 50),
         );
         return nearby.where((venue) {
           if (query.categorySlug != null &&
@@ -378,7 +388,7 @@ class SupabaseVenueRepository implements VenueRepository {
             " AND category_id = '${categoryId ?? ''}'::uuid"
             "${query.query.trim().isNotEmpty ? " AND search_document @@ to_tsquery('${query.query.trim()}')" : ""}"
             "${query.city != null && query.city!.trim().isNotEmpty ? " AND city ILIKE '%${query.city!.trim()}%'" : ""}"
-            " ORDER BY $orderColumn ${ascending ? 'ASC' : 'DESC'} LIMIT 50;";
+            " ORDER BY $orderColumn ${ascending ? 'ASC' : 'DESC'} LIMIT ${query.limit.clamp(1, 50)};";
 
         ErrorLogger.logMessage(
           'Executing PostgREST Category Search SQL [slug=${query.categorySlug}, category_id=${categoryId ?? 'NULL'}]: $executedSql',
@@ -386,8 +396,11 @@ class SupabaseVenueRepository implements VenueRepository {
         );
       }
 
-      final rows =
-          await builder.order(orderColumn, ascending: ascending).limit(50);
+      final pageSize = query.limit.clamp(1, 50);
+      final start = query.offset < 0 ? 0 : query.offset;
+      final rows = await builder
+          .order(orderColumn, ascending: ascending)
+          .range(start, start + pageSize - 1);
       return rows
           .whereType<Map<String, dynamic>>()
           .map(Venue.fromJson)

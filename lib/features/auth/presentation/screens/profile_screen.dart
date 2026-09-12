@@ -140,9 +140,7 @@ class ProfileScreen extends ConsumerWidget {
                                   Text(
                                     user?.fullName.isNotEmpty == true
                                         ? user!.fullName
-                                        : (user == null
-                                            ? 'Guest'
-                                            : 'Guest User'),
+                                        : l10n.guest,
                                     style:
                                         theme.textTheme.titleLarge?.copyWith(
                                       fontWeight: FontWeight.w900,
@@ -155,9 +153,7 @@ class ProfileScreen extends ConsumerWidget {
                                   Text(
                                     user?.email.isNotEmpty == true
                                         ? user!.email
-                                        : (user == null
-                                            ? 'Not signed in'
-                                            : 'Signed in via phone'),
+                                        : l10n.notSignedIn,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
@@ -292,6 +288,13 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Admin console',
                     subtitle: 'Users, owners, venues, support, and audit',
                     onTap: () => context.push(AppRoutes.adminDashboard),
+                  ),
+                if (roles.contains(AppRole.supportAgent) && !isAdmin)
+                  _ProfileMenuTile(
+                    icon: Icons.support_agent_outlined,
+                    title: l10n.support,
+                    subtitle: 'Tickets your support role can read',
+                    onTap: () => context.push(AppRoutes.adminSupport),
                   ),
                 _ProfileMenuTile(
                   icon: Icons.headset_mic_outlined,

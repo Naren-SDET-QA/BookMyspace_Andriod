@@ -18,6 +18,11 @@ class SupabaseOwnerRepository implements OwnerRepository {
     required String email,
     required String name,
     required String password,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
   }) async {
     try {
       final authResponse = await _client.auth.signUp(
@@ -52,6 +57,14 @@ class SupabaseOwnerRepository implements OwnerRepository {
           .single();
 
       await _ensureOrganization(user.id, name.trim());
+      await _persistBusinessDetails(
+        userId: user.id,
+        legalName: legalName,
+        gstin: gstin,
+        pan: pan,
+        city: city,
+        state: state,
+      );
       return Owner.fromJson(profile);
     } catch (error) {
       if (error is app_errors.AppException) rethrow;
@@ -145,5 +158,39 @@ class SupabaseOwnerRepository implements OwnerRepository {
       'org_type': 'venue_owner',
       'name': '$ownerName Spaces',
     });
+  }
+
+  Future<void> _persistBusinessDetails({
+    required String userId,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
+  }) async {
+    final patch = <String, dynamic>{};
+    void put(String key, String? value) {
+      final trimmed = value?.trim() ?? '';
+      if (trimmed.isNotEmpty) patch[key] = trimmed;
+    }
+
+    put('legal_name', legalName);
+    put('gstin', gstin);
+    put('pan', pan);
+    put('city', city);
+    put('state', state);
+    if (gstin != null && gstin.trim().isNotEmpty) {
+      patch['business_verification'] = 'submitted';
+    }
+    if (pan != null && pan.trim().isNotEmpty) {
+      patch['identity_verification'] = 'submitted';
+    }
+    if (patch.isEmpty) return;
+
+    await _client
+        .from('organizations')
+        .update(patch)
+        .eq('owner_user_id', userId)
+        .isFilter('deleted_at', null);
   }
 }

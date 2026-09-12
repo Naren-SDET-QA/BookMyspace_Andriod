@@ -44,16 +44,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         (fullTotal - payableAmount).clamp(0.0, fullTotal).toDouble();
 
     if (paymentState.isSuccess) {
-      return Scaffold(
-        body: SafeArea(
-          child: _PaymentSuccessView(
-            booking: booking,
-            paymentId: paymentState.paymentId,
-            orderId: paymentState.orderId,
-            note: paymentState.note,
-            selectedMethod: _selectedMethod,
-          ),
-        ),
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go(
+          AppRoutes.bookingSuccess.replaceAll(':id', widget.booking.id),
+        );
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -146,6 +144,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
     if (success) {
       ref.invalidate(myBookingsProvider);
+      if (mounted) {
+        context.go(
+          AppRoutes.bookingSuccess.replaceAll(':id', widget.booking.id),
+        );
+      }
     }
   }
 
@@ -155,6 +158,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         .refreshPaymentStatus(bookingId: widget.booking.id);
     if (success && mounted) {
       ref.invalidate(myBookingsProvider);
+      context.go(
+        AppRoutes.bookingSuccess.replaceAll(':id', widget.booking.id),
+      );
     }
   }
 }
@@ -512,7 +518,9 @@ class _ErrorRecoveryCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PaymentSuccessView extends StatelessWidget {
+  // ignore: unused_element
   const _PaymentSuccessView({
     required this.booking,
     required this.paymentId,

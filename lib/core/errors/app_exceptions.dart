@@ -76,6 +76,43 @@ class ConfigurationException extends AppException {
   const ConfigurationException(super.message, {super.code});
 }
 
+enum ErrorKind {
+  network,
+  authentication,
+  authorization,
+  validation,
+  conflict,
+  timeout,
+  server,
+  payment,
+  unknown,
+}
+
+ErrorKind classifyError(Object error) {
+  if (error is AuthException) return ErrorKind.authentication;
+  if (error is BookingConflictException) return ErrorKind.conflict;
+  if (error is ValidationException) return ErrorKind.validation;
+  if (error is TimeoutException) return ErrorKind.timeout;
+  if (error is NetworkException) return ErrorKind.network;
+  if (error is ServerException) {
+    if (error.statusCode == 401) return ErrorKind.authentication;
+    if (error.statusCode == 403) return ErrorKind.authorization;
+    return ErrorKind.server;
+  }
+  final text = error.toString().toLowerCase();
+  if (text.contains('payment')) return ErrorKind.payment;
+  if (text.contains('timeout')) return ErrorKind.timeout;
+  if (text.contains('socket') || text.contains('network')) {
+    return ErrorKind.network;
+  }
+  return ErrorKind.unknown;
+}
+
+bool isRetryableReadError(Object error) {
+  final kind = classifyError(error);
+  return kind == ErrorKind.network || kind == ErrorKind.timeout;
+}
+
 /// Convert a raw error into a typed [AppException] for presentation.
 AppException mapError(Object error) {
   if (error is AppException) return error;

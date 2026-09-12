@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
+import '../../features/admin/presentation/screens/admin_cms_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
@@ -17,6 +18,7 @@ import 'search_route.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/booking/domain/booking.dart';
 import '../../features/booking/presentation/screens/booking_screen.dart';
+import '../../features/booking/presentation/screens/booking_success_screen.dart';
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
 import '../../features/courses/presentation/screens/course_detail_screen.dart';
 import '../../features/courses/presentation/screens/courses_list_screen.dart';
@@ -37,6 +39,7 @@ import '../../features/payments/presentation/screens/payment_screen.dart';
 import '../../features/qr_checkin/presentation/screens/qr_check_in_scanner_screen.dart';
 import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/settings/presentation/screens/features_hub_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/map/presentation/screens/venue_map_screen.dart';
 import '../../features/support/presentation/screens/support_screen.dart';
@@ -46,6 +49,7 @@ import '../localization/app_localizations.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {
+  static const root = '/';
   static const onboarding = '/onboarding';
   static const shell = '/home';
   static const home = '/home';
@@ -59,6 +63,7 @@ abstract class AppRoutes {
   static const venueDetails = '/venues/:id';
   static const bookingFlow = '/venues/:id/book';
   static const paymentFlow = '/bookings/:id/pay';
+  static const bookingSuccess = '/bookings/:id/success';
   static const eventsList = '/events';
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
@@ -76,6 +81,7 @@ abstract class AppRoutes {
   static const adminCourses = '/admin/courses';
   static const adminSupport = '/admin/support';
   static const adminAudit = '/admin/audit';
+  static const adminCms = '/admin/cms';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
   static const ownerCategories = '/owner/categories';
@@ -85,6 +91,7 @@ abstract class AppRoutes {
   static const privacyPolicy = '/privacy';
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
+  static const featuresHub = '/features';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -151,17 +158,51 @@ GoRouter createAppRouter({
         ready = auth is! AuthLoading;
         user = auth.user;
       }
+      final path = state.uri.path.isEmpty ? AppRoutes.root : state.uri.path;
+      // Never leave `/` unmatched. Auth still loading used to return null here,
+      // which made go_router throw: no routes for location: /
+      if (path == AppRoutes.root || state.matchedLocation == AppRoutes.root) {
+        if (!ready || allowUnauthenticatedPreview) return AppRoutes.shell;
+        return user == null ? AppRoutes.login : AppRoutes.shell;
+      }
       if (!ready) return null;
-      final location = state.matchedLocation;
       final isPublic =
-          location == AppRoutes.onboarding || location == AppRoutes.login;
+          path == AppRoutes.onboarding || path == AppRoutes.login;
       if (allowUnauthenticatedPreview) return null;
       if (user == null) {
         return isPublic ? null : AppRoutes.login;
       }
       return isPublic ? AppRoutes.shell : null;
     },
+    errorBuilder: (context, state) {
+      return _UnknownRouteScreen(location: state.uri.path);
+    },
     routes: [
+      GoRoute(
+        path: AppRoutes.root,
+        builder: (context, state) => const HomeScreen(),
+        redirect: (context, state) => AppRoutes.shell,
+      ),
+      GoRoute(
+        path: '/alerts',
+        builder: (context, state) => const NotificationsScreen(),
+        redirect: (context, state) => AppRoutes.notifications,
+      ),
+      GoRoute(
+        path: '/venue/:id',
+        redirect: (context, state) =>
+            '/venues/${state.pathParameters['id']}',
+      ),
+      GoRoute(
+        path: '/course/:id',
+        redirect: (context, state) =>
+            '/courses/${state.pathParameters['id']}',
+      ),
+      GoRoute(
+        path: '/event/:id',
+        redirect: (context, state) =>
+            '/events/${state.pathParameters['id']}',
+      ),
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
@@ -313,7 +354,11 @@ GoRouter createAppRouter({
         path: AppRoutes.adminSupport,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
-          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          requiredRoles: {
+            AppRole.administrator,
+            AppRole.superAdministrator,
+            AppRole.supportAgent,
+          },
           child: AdminSupportScreen(),
         ),
       ),
@@ -326,6 +371,14 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.adminCms,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminCmsScreen(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.ownerRegistration,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const OwnerRegistrationScreen(),
@@ -334,7 +387,11 @@ GoRouter createAppRouter({
         path: AppRoutes.ownerDashboard,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
-          requiredRoles: {AppRole.venueOwner},
+          requiredRoles: {
+            AppRole.venueOwner,
+            AppRole.instituteOwner,
+            AppRole.eventOrganizer,
+          },
           child: OwnerDashboardScreen(),
         ),
       ),
@@ -397,9 +454,21 @@ GoRouter createAppRouter({
         },
       ),
       GoRoute(
+        path: AppRoutes.bookingSuccess,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => BookingSuccessScreen(
+          bookingId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.qrScanner,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const QrCheckInScannerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.featuresHub,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const FeaturesHubScreen(),
       ),
       GoRoute(
         path: AppRoutes.saved,
@@ -519,51 +588,93 @@ class _AppShell extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(28),
               child: NavigationBar(
-        // Keep labels visible so first-time users can understand each
-        // destination without relying on platform-specific icon knowledge.
-        // Material 3 sizes the six destinations responsively on phones and
-        // preserves their accessibility labels on every platform.
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home_rounded),
-            label: l10n.navHome,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.notifications_outlined),
-            selectedIcon: const Icon(Icons.notifications_rounded),
-            label: isCompact ? 'Alerts' : l10n.notifications,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.search_outlined),
-            selectedIcon: const Icon(Icons.search_rounded),
-            label: l10n.navSearch,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.receipt_long_outlined),
-            selectedIcon: const Icon(Icons.receipt_long_rounded),
-            label: l10n.navBookings,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.school_outlined),
-            selectedIcon: const Icon(Icons.school_rounded),
-            label: l10n.courses,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline_rounded),
-            selectedIcon: const Icon(Icons.person_rounded),
-            label: l10n.navProfile,
-          ),
-        ],
+                // Keep labels visible so first-time users can understand each
+                // destination without relying on platform-specific icon knowledge.
+                // Material 3 sizes the six destinations responsively on phones and
+                // preserves their accessibility labels on every platform.
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                selectedIndex: navigationShell.currentIndex,
+                onDestinationSelected: (index) {
+                  navigationShell.goBranch(
+                    index,
+                    initialLocation: index == navigationShell.currentIndex,
+                  );
+                },
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.home_outlined),
+                    selectedIcon: const Icon(Icons.home_rounded),
+                    label: l10n.navHome,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.notifications_outlined),
+                    selectedIcon: const Icon(Icons.notifications_rounded),
+                    label: isCompact ? 'Alerts' : l10n.notifications,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.search_outlined),
+                    selectedIcon: const Icon(Icons.search_rounded),
+                    label: l10n.navSearch,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    selectedIcon: const Icon(Icons.receipt_long_rounded),
+                    label: l10n.navBookings,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.school_outlined),
+                    selectedIcon: const Icon(Icons.school_rounded),
+                    label: l10n.courses,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.person_outline_rounded),
+                    selectedIcon: const Icon(Icons.person_rounded),
+                    label: l10n.navProfile,
+                  ),
+                ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnknownRouteScreen extends StatelessWidget {
+  const _UnknownRouteScreen({required this.location});
+
+  final String location;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.map_outlined, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  'This page is not available.',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  location,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () => context.go(AppRoutes.home),
+                  child: const Text('Go to Home'),
+                ),
+              ],
             ),
           ),
         ),

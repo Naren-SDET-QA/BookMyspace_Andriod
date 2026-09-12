@@ -7,6 +7,7 @@ import 'core/config/settings_controller.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/offline_banner.dart';
 
 /// Root widget that wires together providers, theming, localization and routing.
 class BookMySpaceApp extends ConsumerWidget {
@@ -42,7 +43,7 @@ class BookMySpaceApp extends ConsumerWidget {
             systemNavigationBarIconBrightness:
                 isDark ? Brightness.light : Brightness.dark,
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: OfflineBanner(child: child ?? const SizedBox.shrink()),
         );
       },
       supportedLocales: AppLocalizations.supportedLocales,

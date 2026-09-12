@@ -94,6 +94,137 @@ void main() {
     expect(uri, AppRoutes.shell);
   });
 
+  testWidgets('root path / redirects unauthenticated users to login',
+      (tester) async {
+    final uri = await _redirectTo(
+      tester,
+      initialLocation: AppRoutes.root,
+      currentUser: null,
+      authReady: true,
+    );
+    expect(uri, AppRoutes.login);
+  });
+
+  testWidgets('root path / redirects authenticated users to home',
+      (tester) async {
+    final uri = await _redirectTo(
+      tester,
+      initialLocation: AppRoutes.root,
+      currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+      authReady: true,
+    );
+    expect(uri, AppRoutes.shell);
+  });
+
+  testWidgets('root path / does not show page-not-found while auth loads',
+      (tester) async {
+    final router = createAppRouter(
+      initialLocation: AppRoutes.root,
+      currentUser: null,
+      authReady: false,
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(
+            MockAuthRepository(),
+          ),
+          venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
+          eventRepositoryProvider.overrideWithValue(MockEventRepository()),
+          courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+          couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+          bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('This page is not available.'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('customer tab aliases resolve without unknown-route screen',
+      (tester) async {
+    const user = AuthUser(id: 'u1', email: 'a@b.com');
+    for (final location in [
+      AppRoutes.root,
+      AppRoutes.home,
+      AppRoutes.search,
+      AppRoutes.bookings,
+      AppRoutes.coursesList,
+      AppRoutes.profile,
+      '/alerts',
+      AppRoutes.settings,
+      AppRoutes.login,
+    ]) {
+      final uri = await _redirectTo(
+        tester,
+        initialLocation: location,
+        currentUser: user,
+        authReady: true,
+      );
+      expect(uri, isNot('/'), reason: location);
+      expect(uri.contains('not available'), isFalse);
+    }
+  });
+
+  testWidgets('root path / in preview mode goes to home', (tester) async {
+    final router = createAppRouter(
+      initialLocation: AppRoutes.root,
+      currentUser: null,
+      authReady: true,
+      allowUnauthenticatedPreview: true,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(
+            MockAuthRepository(initialUser: null),
+          ),
+          venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
+          eventRepositoryProvider.overrideWithValue(MockEventRepository()),
+          courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+          couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+          bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+  });
+
+  testWidgets('authenticated user can open search', (tester) async {
+    final uri = await _redirectTo(
+      tester,
+      initialLocation: AppRoutes.search,
+      currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+      authReady: true,
+    );
+    expect(uri, AppRoutes.search);
+  });
+
   testWidgets('auth not ready skips gating', (tester) async {
     final uri = await _redirectTo(
       tester,

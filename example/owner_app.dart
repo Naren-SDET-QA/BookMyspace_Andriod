@@ -29,6 +29,11 @@ class _FakeOwnerRepository implements OwnerRepository {
     required String email,
     required String name,
     required String password,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
   }) async =>
       Owner(
         id: '1',

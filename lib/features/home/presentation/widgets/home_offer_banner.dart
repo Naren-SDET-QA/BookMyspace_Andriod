@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../cms/domain/cms_banner.dart';
 import '../../../offers/domain/coupon.dart';
 
 class _BannerSlide {
@@ -25,9 +26,14 @@ class _BannerSlide {
 /// Premium promotional banner. Uses live coupon records when present;
 /// never invents discounts.
 class HomeOfferBanner extends StatefulWidget {
-  const HomeOfferBanner({super.key, this.coupons = const []});
+  const HomeOfferBanner({
+    super.key,
+    this.coupons = const [],
+    this.cmsBanners = const [],
+  });
 
   final List<Coupon> coupons;
+  final List<CmsBanner> cmsBanners;
 
   @override
   State<HomeOfferBanner> createState() => _HomeOfferBannerState();
@@ -44,6 +50,15 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   bool? _running;
 
   List<_BannerSlide> get _slides {
+    if (widget.cmsBanners.isNotEmpty) {
+      return [
+        for (final banner in widget.cmsBanners)
+          _BannerSlide(
+            headline: banner.title,
+            subtitle: banner.subtitle,
+          ),
+      ];
+    }
     if (widget.coupons.isEmpty) {
       return const [
         _BannerSlide(

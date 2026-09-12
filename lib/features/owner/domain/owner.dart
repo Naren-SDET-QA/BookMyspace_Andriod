@@ -27,6 +27,11 @@ abstract interface class OwnerRepository {
     required String email,
     required String name,
     required String password,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
   });
 
   /// Get the current owner profile, if any.

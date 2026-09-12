@@ -17,6 +17,7 @@ import '../../../booking/presentation/booking_providers.dart';
 import '../../../courses/presentation/course_providers.dart';
 import '../../../events/presentation/event_providers.dart';
 import '../../../location/presentation/gps_session.dart';
+import '../../../cms/presentation/cms_providers.dart';
 import '../../../offers/presentation/coupon_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
@@ -96,6 +97,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final eventsAsync = ref.watch(upcomingEventsProvider);
     final coursesAsync = ref.watch(publishedCoursesProvider);
     final couponsAsync = ref.watch(activeCouponsProvider);
+    final cmsBanners = ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
     final myBookingsAsync = ref.watch(myBookingsProvider);
 
     return Scaffold(
@@ -166,6 +168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: RepaintBoundary(
                         child: HomeOfferBanner(
                           coupons: couponsAsync.valueOrNull ?? const [],
+                          cmsBanners: cmsBanners,
                         ),
                       ),
                     ),

@@ -421,7 +421,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               children: [
                 IconButton(
                   key: const Key('filters_back'),
-                  tooltip: 'Back',
+                  tooltip: l10n.back,
                   onPressed: _close,
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
@@ -444,6 +444,12 @@ class _FilterSheetState extends State<_FilterSheet> {
                     });
                   },
                   child: Text(l10n.clearFilters),
+                ),
+                IconButton(
+                  key: const Key('filters_close'),
+                  tooltip: l10n.close,
+                  onPressed: _close,
+                  icon: const Icon(Icons.close_rounded),
                 ),
               ],
             ),

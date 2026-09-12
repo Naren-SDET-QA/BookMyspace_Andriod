@@ -394,6 +394,8 @@ class VenueSearchQuery {
     this.longitude,
     this.radiusKm,
     this.pincode,
+    this.limit = 24,
+    this.offset = 0,
   });
 
   final String query;
@@ -406,6 +408,8 @@ class VenueSearchQuery {
   final double? longitude;
   final int? radiusKm;
   final String? pincode;
+  final int limit;
+  final int offset;
 
   bool get hasCoordinates => latitude != null && longitude != null;
 
@@ -430,6 +434,8 @@ class VenueSearchQuery {
     double? Function()? longitude,
     int? Function()? radiusKm,
     String? Function()? pincode,
+    int? limit,
+    int? offset,
   }) {
     return VenueSearchQuery(
       query: query ?? this.query,
@@ -442,6 +448,8 @@ class VenueSearchQuery {
       longitude: longitude != null ? longitude() : this.longitude,
       radiusKm: radiusKm != null ? radiusKm() : this.radiusKm,
       pincode: pincode != null ? pincode() : this.pincode,
+      limit: limit ?? this.limit,
+      offset: offset ?? this.offset,
     );
   }
 
@@ -458,7 +466,9 @@ class VenueSearchQuery {
             latitude == other.latitude &&
             longitude == other.longitude &&
             radiusKm == other.radiusKm &&
-            pincode == other.pincode;
+            pincode == other.pincode &&
+            limit == other.limit &&
+            offset == other.offset;
   }
 
   @override
@@ -473,5 +483,7 @@ class VenueSearchQuery {
         longitude,
         radiusKm,
         pincode,
+        limit,
+        offset,
       );
 }

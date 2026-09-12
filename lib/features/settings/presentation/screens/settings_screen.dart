@@ -35,6 +35,13 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showLanguagePicker(context, ref),
           ),
+          ListTile(
+            leading: const Icon(Icons.extension_outlined),
+            title: Text(l10n.featuresHub),
+            subtitle: Text(l10n.featuresHubSubtitle),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push(AppRoutes.featuresHub),
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
@@ -84,6 +91,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showThemePicker(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -91,7 +99,7 @@ class SettingsScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('SYSTEM'),
+              title: Text(l10n.systemTheme),
               onTap: () {
                 ref
                     .read(themeModeProvider.notifier)
@@ -100,7 +108,7 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
             ListTile(
-              title: const Text('LIGHT'),
+              title: Text(l10n.lightTheme),
               onTap: () {
                 ref
                     .read(themeModeProvider.notifier)
@@ -109,7 +117,7 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
             ListTile(
-              title: const Text('DARK'),
+              title: Text(l10n.darkTheme),
               onTap: () {
                 ref
                     .read(themeModeProvider.notifier)
@@ -141,6 +149,27 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('తెలుగు'),
               onTap: () {
                 ref.read(localeProvider.notifier).setLocale(const Locale('te'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('हिन्दी'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('hi'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('ಕನ್ನಡ'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('kn'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('தமிழ்'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('ta'));
                 Navigator.pop(sheetContext);
               },
             ),
