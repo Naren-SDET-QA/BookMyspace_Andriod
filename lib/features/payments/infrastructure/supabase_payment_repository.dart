@@ -108,49 +108,6 @@ class SupabasePaymentRepository implements PaymentRepository {
     }
   }
 
-  @override
-  Future<bool> verifyPayment({
-    required String bookingId,
-    required String orderId,
-    required String paymentId,
-    required String signature,
-  }) async {
-    try {
-      final response = await _client.functions.invoke(
-        'verify-payment',
-        body: {
-          'booking_id': bookingId,
-          'order_id': orderId,
-          'payment_id': paymentId,
-          'signature': signature,
-        },
-      );
-      final data = response.data;
-      if (data is Map<String, dynamic> && data['success'] == true) {
-        return true;
-      }
-      return false;
-    } catch (_) {
-      // Direct RPC fallback if the Edge Function is pending deployment
-      try {
-        await _client.rpc('confirm_booking', params: {
-          'p_booking_id': bookingId,
-          'p_payment_ref': paymentId,
-        });
-        await _client
-            .from('payments')
-            .update({
-              'status': 'captured',
-              'provider_payment_id': paymentId,
-            })
-            .eq('provider_order_id', orderId);
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-  }
-
   app_errors.AppException _mapFunctionException(FunctionException e) {
     final details = e.details;
     final error = details is Map<String, dynamic>
@@ -158,50 +115,59 @@ class SupabasePaymentRepository implements PaymentRepository {
         : '';
     return switch (error) {
       'booking_not_found' => app_errors.NotFoundException(
-        'The booking could not be found.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'The booking could not be found.',
+          code: error,
+          statusCode: e.status,
+        ),
       'not_authorized' => app_errors.BusinessException(
-        'You are not allowed to pay for this booking.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'You are not allowed to pay for this booking.',
+          code: error,
+          statusCode: e.status,
+        ),
       'amount_mismatch' => app_errors.BusinessException(
-        'The payment amount does not match the booking total.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'The payment amount does not match the booking total.',
+          code: error,
+          statusCode: e.status,
+        ),
       'payment_duplicate' => app_errors.BusinessException(
-        'A payment for this booking already exists.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'A payment for this booking already exists.',
+          code: error,
+          statusCode: e.status,
+        ),
+      'booking_not_payable' => app_errors.BusinessException(
+          'This booking is not awaiting payment.',
+          code: error,
+          statusCode: e.status,
+        ),
+      'booking_expired' => app_errors.HoldExpiredException(
+          'This booking hold has expired. Please start a new booking.',
+          code: error,
+        ),
       'not_refundable' => app_errors.BusinessException(
-        'This booking is not refundable.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'This booking is not refundable.',
+          code: error,
+          statusCode: e.status,
+        ),
       'no_captured_payment' => app_errors.BusinessException(
-        'No captured payment was found for this booking.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'No captured payment was found for this booking.',
+          code: error,
+          statusCode: e.status,
+        ),
       'invalid_amount' => app_errors.BusinessException(
-        'The refund amount is invalid.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'The refund amount is invalid.',
+          code: error,
+          statusCode: e.status,
+        ),
       'already_refunded' => app_errors.BusinessException(
-        'This booking has already been refunded.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'This booking has already been refunded.',
+          code: error,
+          statusCode: e.status,
+        ),
       _ => app_errors.ServerException(
-        'Payment service error (${e.status}).',
-        code: error,
-        statusCode: e.status,
-      ),
+          'Payment service error (${e.status}).',
+          code: error,
+          statusCode: e.status,
+        ),
     };
   }
 }

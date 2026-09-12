@@ -1,10 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
+import '../../domain/owner_venue_repository.dart';
 import '../providers/owner_venue_providers.dart';
 
 /// Photo item representation in the gallery.
@@ -59,18 +61,26 @@ class GalleryPhoto {
 /// Operating slot model.
 class OperatingSlot {
   OperatingSlot({
-    required this.id,
+    this.id,
     required this.title,
-    required this.timing,
+    required this.startTime,
+    required this.endTime,
     required this.price,
     this.isSelected = true,
   });
 
-  final String id;
+  final String? id;
   final String title;
-  final String timing;
+  final String startTime;
+  final String endTime;
   final double price;
   bool isSelected;
+
+  String get timing {
+    final start = startTime.length >= 5 ? startTime.substring(0, 5) : startTime;
+    final end = endTime.length >= 5 ? endTime.substring(0, 5) : endTime;
+    return '$start - $end';
+  }
 }
 
 /// Multi-step owner venue creation and editing screen.
@@ -137,39 +147,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
 
   // Time Slots
   late List<OperatingSlot> _slots;
-
-  // Fullscreen Photo Viewer URL
-  String? _fullscreenPhotoUrl;
-
-  // Camera preview URL
-  String? _pendingCameraUrl;
-
-  final List<(String, String)> _presetImages = const [
-    (
-      'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80',
-      'Grand Ballroom',
-    ),
-    (
-      'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1200&q=80',
-      'Floral Stage',
-    ),
-    (
-      'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80',
-      'Open Lawn',
-    ),
-    (
-      'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=80',
-      'Skyline Rooftop',
-    ),
-    (
-      'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
-      'Co-Working Space',
-    ),
-    (
-      'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80',
-      'Sports Turf',
-    ),
-  ];
+  List<VenueBlockedDate> _blockedDates = [];
+  final _picker = ImagePicker();
+  bool _uploadingImage = false;
 
   @override
   void initState() {
@@ -185,20 +165,22 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
       text: ev != null && ev.capacity > 0 ? ev.capacity.toString() : '500',
     );
     _addressController = TextEditingController(text: ev?.address ?? '');
-    _cityController = TextEditingController(text: ev?.city ?? 'Hyderabad');
-    _stateController = TextEditingController(text: ev?.state ?? 'Telangana');
-    _pincodeController = TextEditingController(text: ev?.pincode ?? '500081');
+    _cityController = TextEditingController(text: ev?.city ?? '');
+    _stateController = TextEditingController(text: ev?.state ?? '');
+    _pincodeController = TextEditingController(text: ev?.pincode ?? '');
     _latController = TextEditingController(
-      text: ev != null ? ev.latitude.toString() : '17.4435',
+      text: ev != null && ev.latitude != 0 ? ev.latitude.toString() : '',
     );
     _lngController = TextEditingController(
-      text: ev != null ? ev.longitude.toString() : '78.3772',
+      text: ev != null && ev.longitude != 0 ? ev.longitude.toString() : '',
     );
 
-    _videoTitleController = TextEditingController(text: 'Virtual Walkthrough Tour');
+    _videoTitleController =
+        TextEditingController(text: 'Virtual Walkthrough Tour');
     _videoUrlController = TextEditingController();
     _tour3dUrlController = TextEditingController();
-    _tour3dHotspotsController = TextEditingController(text: 'Grand Entrance, Main Ballroom, Dining Area');
+    _tour3dHotspotsController = TextEditingController(
+        text: 'Grand Entrance, Main Ballroom, Dining Area');
 
     if (ev?.category != null && ev!.category!.id.isNotEmpty) {
       _selectedCategoryId = ev.category!.id;
@@ -207,27 +189,14 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     if (ev != null && ev.images.isNotEmpty) {
       _photos = ev.images.asMap().entries.map((entry) {
         return GalleryPhoto(
-          id: 'img_${entry.key}',
+          id: entry.value.id.isNotEmpty ? entry.value.id : 'img_${entry.key}',
           url: entry.value.url,
           fileName: 'Venue Photo ${entry.key + 1}',
           isCover: entry.key == 0 || entry.value.isCover,
         );
       }).toList();
     } else {
-      _photos = [
-        const GalleryPhoto(
-          id: 'preset_1',
-          url: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80',
-          fileName: 'Grand Ballroom & Stage',
-          isCover: true,
-        ),
-        const GalleryPhoto(
-          id: 'preset_2',
-          url: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1200&q=80',
-          fileName: 'Floral Arch & Setup',
-          isCover: false,
-        ),
-      ];
+      _photos = [];
     }
 
     if (ev != null && ev.facilities.isNotEmpty) {
@@ -239,24 +208,110 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     final baseAmount = double.tryParse(_priceController.text) ?? 35000.0;
     _slots = [
       OperatingSlot(
-        id: 'slot_morning',
         title: 'Morning Session',
-        timing: '08:00 AM - 02:00 PM',
+        startTime: '08:00:00',
+        endTime: '14:00:00',
         price: (baseAmount * 0.6).roundToDouble(),
       ),
       OperatingSlot(
-        id: 'slot_evening',
         title: 'Evening Gala / Reception',
-        timing: '04:00 PM - 11:30 PM',
+        startTime: '16:00:00',
+        endTime: '23:30:00',
         price: baseAmount,
       ),
       OperatingSlot(
-        id: 'slot_fullday',
         title: 'Full Day Exclusive Access',
-        timing: '24 Hours (Full Access)',
+        startTime: '00:00:00',
+        endTime: '23:59:00',
         price: (baseAmount * 1.5).roundToDouble(),
+        isSelected: false,
       ),
     ];
+
+    if (ev != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAvailability(ev.id);
+      });
+    }
+  }
+
+  Future<void> _loadAvailability(String venueId) async {
+    try {
+      final repo = ref.read(ownerVenueRepositoryProvider);
+      final slots = await repo.listTimeSlots(venueId);
+      final blocked = await repo.listBlockedDates(venueId);
+      if (!mounted) return;
+      setState(() {
+        if (slots.isNotEmpty) {
+          _slots = slots
+              .map(
+                (slot) => OperatingSlot(
+                  id: slot.id,
+                  title: slot.label,
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  price: slot.priceAmount,
+                  isSelected: slot.isActive,
+                ),
+              )
+              .toList();
+        }
+        _blockedDates = blocked;
+      });
+    } catch (_) {
+      // Availability editors remain usable with local defaults.
+    }
+  }
+
+  Future<void> _addBlockedDateRange() async {
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+    if (range == null || !mounted) return;
+    final reasonController = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reason (optional)'),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(
+            hintText: 'Maintenance, private event, ...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, ''),
+            child: const Text('Skip'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, reasonController.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    reasonController.dispose();
+    if (!mounted || reason == null) return;
+    final dates = <VenueBlockedDate>[];
+    for (var day = range.start;
+        !day.isAfter(range.end);
+        day = day.add(const Duration(days: 1))) {
+      final exists = _blockedDates.any((item) =>
+          item.date.year == day.year &&
+          item.date.month == day.month &&
+          item.date.day == day.day);
+      if (!exists) {
+        dates.add(VenueBlockedDate(
+          date: DateTime(day.year, day.month, day.day),
+          reason: reason.isEmpty ? null : reason,
+        ));
+      }
+    }
+    setState(() => _blockedDates = [..._blockedDates, ...dates]);
   }
 
   @override
@@ -317,8 +372,20 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     final pincode = _pincodeController.text.trim();
     final pricing = double.tryParse(_priceController.text.trim()) ?? 15000.0;
     final capacity = int.tryParse(_capacityController.text.trim()) ?? 100;
-    final lat = double.tryParse(_latController.text.trim()) ?? 17.4435;
-    final lng = double.tryParse(_lngController.text.trim()) ?? 78.3772;
+    final lat = double.tryParse(_latController.text.trim());
+    final lng = double.tryParse(_lngController.text.trim());
+    if (city.isEmpty || lat == null || lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('City, latitude, and longitude are required.'),
+        ),
+      );
+      setState(() {
+        _isSaving = false;
+        _currentStep = 0;
+      });
+      return;
+    }
 
     final venueImages = _photos.asMap().entries.map((entry) {
       return VenueImage(
@@ -330,14 +397,13 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
       );
     }).toList();
 
-    final selectedFacilities = _facilities.entries
-        .where((e) => e.value)
-        .map((e) => e.key)
-        .toList();
+    final selectedFacilities =
+        _facilities.entries.where((e) => e.value).map((e) => e.key).toList();
 
     try {
+      late final Venue saved;
       if (_isEditMode) {
-        await ref.read(
+        saved = await ref.read(
           updateVenueProvider((
             venueId: widget.existingVenue!.id,
             name: name,
@@ -358,24 +424,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
             isActive: true,
           )).future,
         );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text('Updated "$name" successfully!'),
-                ],
-              ),
-              backgroundColor: const Color(0xFF2E7D32),
-            ),
-          );
-          context.pop();
-        }
       } else {
-        await ref.read(
+        saved = await ref.read(
           createVenueProvider((
             name: name,
             categoryId: _selectedCategoryId,
@@ -394,22 +444,45 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
             tour3dUrl: _tour3dUrlController.text.trim(),
           )).future,
         );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.celebration, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text('Space "$name" published successfully!'),
-                ],
+      }
+      final repo = ref.read(ownerVenueRepositoryProvider);
+      await repo.replaceTimeSlots(
+        saved.id,
+        _slots
+            .map(
+              (slot) => TimeSlotDraft(
+                id: slot.id,
+                label: slot.title,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                priceAmount: slot.price,
+                isActive: slot.isSelected,
               ),
-              backgroundColor: const Color(0xFF2E7D32),
+            )
+            .toList(),
+      );
+      await repo.replaceBlockedDates(saved.id, _blockedDates);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  _isEditMode ? Icons.check_circle : Icons.celebration,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _isEditMode
+                      ? 'Updated "$name" successfully!'
+                      : 'Space "$name" published successfully!',
+                ),
+              ],
             ),
-          );
-          context.pop();
-        }
+            backgroundColor: const Color(0xFF2E7D32),
+          ),
+        );
+        context.pop();
       }
     } catch (e) {
       if (mounted) {
@@ -457,10 +530,103 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     }
   }
 
-  void _removePhoto(int index) {
+  Future<void> _removePhoto(int index) async {
+    final photo = _photos[index];
     setState(() {
       _photos.removeAt(index);
     });
+    try {
+      await ref.read(ownerVenueRepositoryProvider).deleteStoredImage(photo.url);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete stored image: $error')),
+      );
+    }
+  }
+
+  Future<void> _pickAndUpload(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 2000,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('The selected image is invalid.')),
+          );
+        }
+        return;
+      }
+      setState(() {
+        _uploadingImage = true;
+        _isBatchUploading = true;
+        _batchProgress = 0.35;
+        _batchStatus = 'Uploading to Supabase Storage...';
+      });
+      final url = await ref.read(
+        uploadOwnerVenueImageProvider((
+          bytes: bytes,
+          fileName: picked.name,
+          contentType: picked.mimeType,
+        )).future,
+      );
+      if (!mounted) return;
+      setState(() {
+        _photos.add(
+          GalleryPhoto(
+            id: 'img_${DateTime.now().microsecondsSinceEpoch}',
+            url: url,
+            fileName: picked.name,
+            fileSizeFormatted: '${(bytes.length / 1024).round()} KB',
+          ),
+        );
+        _uploadingImage = false;
+        _isBatchUploading = false;
+        _batchProgress = 1;
+        _batchStatus = 'Upload complete';
+      });
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _uploadingImage = false;
+        _isBatchUploading = false;
+      });
+      final denied = error.code.toLowerCase().contains('denied') ||
+          error.code.toLowerCase().contains('permission');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            denied
+                ? 'Permission denied. Enable camera or photos in Settings.'
+                : 'Could not pick image: ${error.message ?? error.code}',
+          ),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _pickAndUpload(source),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _uploadingImage = false;
+        _isBatchUploading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: $error'),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _pickAndUpload(source),
+          ),
+        ),
+      );
+    }
   }
 
   void _showAddPhotoSheet() {
@@ -495,7 +661,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                         Text(
                           'Upload high-resolution images of your space',
                           style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                                color:
+                                    Theme.of(ctx).colorScheme.onSurfaceVariant,
                               ),
                         ),
                       ],
@@ -511,39 +678,48 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Theme.of(ctx).colorScheme.primaryContainer,
-                    child: Icon(Icons.camera_alt, color: Theme.of(ctx).colorScheme.primary),
+                    child: Icon(Icons.camera_alt,
+                        color: Theme.of(ctx).colorScheme.primary),
                   ),
-                  title: const Text('Take Live Photo 📷', style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: const Text('Take Live Photo 📷',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: const Text('Capture space highlights using camera'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _simulateCameraCapture();
+                    _pickAndUpload(ImageSource.camera);
                   },
                 ),
                 const SizedBox(height: 8),
                 // Device Gallery / Presets
                 ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Theme.of(ctx).colorScheme.secondaryContainer,
-                    child: Icon(Icons.photo_library, color: Theme.of(ctx).colorScheme.secondary),
+                    backgroundColor:
+                        Theme.of(ctx).colorScheme.secondaryContainer,
+                    child: Icon(Icons.photo_library,
+                        color: Theme.of(ctx).colorScheme.secondary),
                   ),
-                  title: const Text('Choose from Gallery 🖼️', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Select photos with instant WebP batch upload'),
+                  title: const Text('Choose from Gallery 🖼️',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text(
+                      'Select photos and upload to Supabase Storage'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _startBatchUploadSimulation();
+                    _pickAndUpload(ImageSource.gallery);
                   },
                 ),
                 const SizedBox(height: 8),
                 // URL input
                 ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Theme.of(ctx).colorScheme.tertiaryContainer,
-                    child: Icon(Icons.link, color: Theme.of(ctx).colorScheme.tertiary),
+                    backgroundColor:
+                        Theme.of(ctx).colorScheme.tertiaryContainer,
+                    child: Icon(Icons.link,
+                        color: Theme.of(ctx).colorScheme.tertiary),
                   ),
-                  title: const Text('Add by Web URL 🔗', style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: const Text('Add by Web URL 🔗',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: const Text('Paste direct high-res image link'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
@@ -560,138 +736,6 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     );
   }
 
-  void _simulateCameraCapture() {
-    setState(() {
-      _pendingCameraUrl = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80';
-    });
-    _showCameraPreviewDialog();
-  }
-
-  void _showCameraPreviewDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Photo Preview 📸',
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 10,
-                    child: Image.network(
-                      _pendingCameraUrl ?? '',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade200,
-                        alignment: Alignment.Center,
-                        child: const Icon(Icons.broken_image, size: 40),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Review your venue photo before adding it to the listing gallery.',
-                  textAlign: TextAlign.Center,
-                  style: TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Retake'),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _simulateCameraCapture();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.check, size: 16),
-                        label: const Text('Confirm & Add'),
-                        onPressed: () {
-                          if (_pendingCameraUrl != null) {
-                            setState(() {
-                              _photos.add(GalleryPhoto(
-                                id: 'cam_${DateTime.now().millisecondsSinceEpoch}',
-                                url: _pendingCameraUrl!,
-                                fileName: 'Captured Photo ${_photos.length + 1}',
-                              ));
-                              _pendingCameraUrl = null;
-                            });
-                          }
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Photo added to gallery! 📸')),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _startBatchUploadSimulation() async {
-    setState(() {
-      _isBatchUploading = true;
-      _batchProgress = 0.2;
-      _batchStatus = 'Compressing & WebP encoding images...';
-    });
-
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-    setState(() {
-      _batchProgress = 0.6;
-      _batchStatus = 'Uploading batch to Supabase Storage...';
-    });
-
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
-    setState(() {
-      _batchProgress = 1.0;
-      _batchStatus = 'Upload complete (2 images added)';
-      _photos.addAll([
-        const GalleryPhoto(
-          id: 'gallery_add_1',
-          url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80',
-          fileName: 'Outdoor Lawn Setup',
-          fileSizeFormatted: '1.4 MB',
-        ),
-        const GalleryPhoto(
-          id: 'gallery_add_2',
-          url: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=80',
-          fileName: 'Rooftop Ambient Lounge',
-          fileSizeFormatted: '980 KB',
-        ),
-      ]);
-      _isBatchUploading = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Uploaded 2 high-resolution photos! 🖼️')),
-    );
-  }
-
   void _showUrlInputDialog() {
     _urlInputController.clear();
     _urlInputError = null;
@@ -702,14 +746,17 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final urlText = _urlInputController.text.trim();
-            final isValid = urlText.startsWith('http://') || urlText.startsWith('https://');
+            final isValid =
+                urlText.startsWith('http://') || urlText.startsWith('https://');
 
             return AlertDialog(
               title: const Row(
                 children: [
                   Icon(Icons.link, color: Colors.deepPurple),
                   SizedBox(width: 8),
-                  Text('Add Image by URL', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  Text('Add Image by URL',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
                 ],
               ),
               content: Column(
@@ -725,17 +772,19 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                     controller: _urlInputController,
                     decoration: InputDecoration(
                       labelText: 'Image URL',
-                      hintText: 'https://images.unsplash.com/...',
+                      hintText: 'https://cdn.example.com/venue.jpg',
                       border: const OutlineInputBorder(),
                       errorText: _urlInputError,
                       suffixIcon: urlText.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
-                              onPressed: () => setDialogState(() => _urlInputController.clear()),
+                              onPressed: () => setDialogState(
+                                  () => _urlInputController.clear()),
                             )
                           : null,
                     ),
-                    onChanged: (v) => setDialogState(() => _urlInputError = null),
+                    onChanged: (v) =>
+                        setDialogState(() => _urlInputError = null),
                   ),
                   if (isValid) ...[
                     const SizedBox(height: 12),
@@ -748,8 +797,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: Colors.grey.shade100,
-                            alignment: Alignment.Center,
-                            child: const Text('Unable to preview link', style: TextStyle(fontSize: 11)),
+                            alignment: Alignment.center,
+                            child: const Text('Unable to preview link',
+                                style: TextStyle(fontSize: 11)),
                           ),
                         ),
                       ),
@@ -768,7 +818,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                       : () {
                           if (!isValid) {
                             setDialogState(() {
-                              _urlInputError = 'Please enter a valid HTTP/HTTPS URL';
+                              _urlInputError =
+                                  'Please enter a valid HTTP/HTTPS URL';
                             });
                             return;
                           }
@@ -781,7 +832,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           });
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Image added from URL! 🔗')),
+                            const SnackBar(
+                                content: Text('Image added from URL! 🔗')),
                           );
                         },
                   child: const Text('Add Image'),
@@ -795,8 +847,6 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
   }
 
   void _showFullscreenLightbox(String url) {
-    setState(() => _fullscreenPhotoUrl = url);
-
     showDialog<void>(
       context: context,
       useSafeArea: false,
@@ -804,20 +854,26 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
         final currentIndex = _photos.indexWhere((p) => p.url == url);
 
         return Scaffold(
-          backgroundColor: Colors.black.withOpacity(0.95),
+          backgroundColor: Colors.black.withValues(alpha: 0.95),
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             foregroundColor: Colors.white,
             elevation: 0,
             title: Text(
-              currentIndex >= 0 ? 'Photo ${currentIndex + 1} of ${_photos.length}' : 'Space Photo',
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              currentIndex >= 0
+                  ? 'Photo ${currentIndex + 1} of ${_photos.length}'
+                  : 'Space Photo',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
             ),
             actions: [
               if (currentIndex > 0)
                 TextButton.icon(
                   icon: const Icon(Icons.star, color: Colors.amber, size: 18),
-                  label: const Text('Make Cover', style: TextStyle(color: Colors.white)),
+                  label: const Text('Make Cover',
+                      style: TextStyle(color: Colors.white)),
                   onPressed: () {
                     _makeCover(currentIndex);
                     Navigator.pop(ctx);
@@ -837,18 +893,15 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 url,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image, color: Colors.white70, size: 60),
+                  child:
+                      Icon(Icons.broken_image, color: Colors.white70, size: 60),
                 ),
               ),
             ),
           ),
         );
       },
-    ).then((_) {
-      if (mounted) {
-        setState(() => _fullscreenPhotoUrl = null);
-      }
-    });
+    ).then((_) {});
   }
 
   @override
@@ -891,7 +944,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
             color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 offset: const Offset(0, -2),
                 blurRadius: 8,
               ),
@@ -954,9 +1007,10 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         border: Border(
-          bottom: BorderSide(color: theme.colorScheme.outlineVariant.withOpacity(0.4)),
+          bottom: BorderSide(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
         ),
       ),
       child: Column(
@@ -973,7 +1027,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 onTap: () => setState(() => _currentStep = idx),
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -985,7 +1040,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                                 ? theme.colorScheme.primary
                                 : theme.colorScheme.outlineVariant),
                         child: isDone
-                            ? const Icon(Icons.check, size: 14, color: Colors.white)
+                            ? const Icon(Icons.check,
+                                size: 14, color: Colors.white)
                             : Icon(icon, size: 13, color: Colors.white),
                       ),
                       const SizedBox(width: 4),
@@ -993,7 +1049,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                         title,
                         style: TextStyle(
                           fontSize: 11.5,
-                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isCurrent ? FontWeight.bold : FontWeight.normal,
                           color: isCurrent
                               ? theme.colorScheme.primary
                               : theme.colorScheme.onSurfaceVariant,
@@ -1008,8 +1065,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
           const SizedBox(height: 6),
           LinearProgressIndicator(
             value: (_currentStep + 1) / 4.0,
-            backgroundColor: theme.colorScheme.surfaceVariant,
-            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            valueColor:
+                AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
             borderRadius: BorderRadius.circular(4),
           ),
         ],
@@ -1047,7 +1105,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 0,
             color: theme.colorScheme.surface,
             child: Padding(
@@ -1071,8 +1130,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                       hintText: 'e.g. Imperial Crystal Banquet & Lawns',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Please enter a venue name' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Please enter a venue name'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   // Description
@@ -1081,7 +1141,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                     maxLines: 3,
                     decoration: const InputDecoration(
                       labelText: 'Description & Highlights',
-                      hintText: 'Describe amenities, capacity, accessibility, and unique ambiance...',
+                      hintText:
+                          'Describe amenities, capacity, accessibility, and unique ambiance...',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -1089,12 +1150,15 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                   // Category Selector
                   Text(
                     'Category (Data-Driven)',
-                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   categoriesAsync.when(
                     data: (categories) {
-                      final validCats = categories.where((c) => c.slug != 'all' && c.isActive).toList();
+                      final validCats = categories
+                          .where((c) => c.slug != 'all' && c.isActive)
+                          .toList();
                       return Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -1102,7 +1166,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           final isSelected = _selectedCategoryId == cat.id ||
                               _selectedCategoryId == cat.slug;
                           return FilterChip(
-                            label: Text('${cat.icon?.isNotEmpty == true ? cat.icon! : "🏷️"} ${cat.name}'),
+                            label: Text(
+                                '${cat.icon?.isNotEmpty == true ? cat.icon! : "🏷️"} ${cat.name}'),
                             selected: isSelected,
                             onSelected: (val) {
                               if (val) {
@@ -1120,22 +1185,26 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                         FilterChip(
                           label: const Text('Banquet Hall'),
                           selected: _selectedCategoryId == 'banquet',
-                          onSelected: (_) => setState(() => _selectedCategoryId = 'banquet'),
+                          onSelected: (_) =>
+                              setState(() => _selectedCategoryId = 'banquet'),
                         ),
                         FilterChip(
                           label: const Text('Party Lawn'),
                           selected: _selectedCategoryId == 'lawn',
-                          onSelected: (_) => setState(() => _selectedCategoryId = 'lawn'),
+                          onSelected: (_) =>
+                              setState(() => _selectedCategoryId = 'lawn'),
                         ),
                         FilterChip(
                           label: const Text('Conference Room'),
                           selected: _selectedCategoryId == 'conference',
-                          onSelected: (_) => setState(() => _selectedCategoryId = 'conference'),
+                          onSelected: (_) => setState(
+                              () => _selectedCategoryId = 'conference'),
                         ),
                         FilterChip(
                           label: const Text('Co-Working Space'),
                           selected: _selectedCategoryId == 'coworking',
-                          onSelected: (_) => setState(() => _selectedCategoryId = 'coworking'),
+                          onSelected: (_) =>
+                              setState(() => _selectedCategoryId = 'coworking'),
                         ),
                       ],
                     ),
@@ -1154,8 +1223,10 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                             border: OutlineInputBorder(),
                           ),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Enter price';
-                            if (double.tryParse(v) == null) return 'Valid number';
+                            if (v == null || v.trim().isEmpty)
+                              return 'Enter price';
+                            if (double.tryParse(v) == null)
+                              return 'Valid number';
                             return null;
                           },
                         ),
@@ -1171,7 +1242,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                             border: OutlineInputBorder(),
                           ),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Enter capacity';
+                            if (v == null || v.trim().isEmpty)
+                              return 'Enter capacity';
                             if (int.tryParse(v) == null) return 'Valid integer';
                             return null;
                           },
@@ -1186,7 +1258,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
           const SizedBox(height: 12),
           // Location Information Card
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 0,
             color: theme.colorScheme.surface,
             child: Padding(
@@ -1220,8 +1293,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                             labelText: 'City *',
                             border: OutlineInputBorder(),
                           ),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Enter city' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Enter city'
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1290,7 +1364,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
           color: theme.colorScheme.surface,
           child: Padding(
@@ -1309,7 +1384,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(8),
@@ -1340,9 +1416,12 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                     margin: const EdgeInsets.only(bottom: 14),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                      color: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                      border: Border.all(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1352,11 +1431,13 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           children: [
                             Text(
                               _batchStatus,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               '${(_batchProgress * 100).toInt()}%',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -1378,19 +1459,26 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                       height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        border: Border.all(color: theme.colorScheme.outlineVariant, width: 1.5),
+                        border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1.5),
                         borderRadius: BorderRadius.circular(12),
-                        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_photo_alternate, size: 36, color: theme.colorScheme.primary),
+                          Icon(Icons.add_photo_alternate,
+                              size: 36, color: theme.colorScheme.primary),
                           const SizedBox(height: 4),
-                          const Text('No photos added yet', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text('No photos added yet',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                           Text(
                             'Tap to take photo, choose from gallery, or add URL',
-                            style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurfaceVariant),
                           ),
                         ],
                       ),
@@ -1417,7 +1505,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                                   : theme.colorScheme.outlineVariant,
                               width: isCover ? 2 : 1,
                             ),
-                            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.3),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1427,19 +1516,24 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                                 child: Stack(
                                   children: [
                                     GestureDetector(
-                                      onTap: () => _showFullscreenLightbox(photo.url),
+                                      onTap: () =>
+                                          _showFullscreenLightbox(photo.url),
                                       child: ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                                top: Radius.circular(12)),
                                         child: SizedBox(
                                           width: double.infinity,
                                           height: double.infinity,
                                           child: Image.network(
                                             photo.url,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Container(
+                                            errorBuilder: (_, __, ___) =>
+                                                Container(
                                               color: Colors.grey.shade300,
-                                              alignment: Alignment.Center,
-                                              child: const Icon(Icons.broken_image),
+                                              alignment: Alignment.center,
+                                              child: const Icon(
+                                                  Icons.broken_image),
                                             ),
                                           ),
                                         ),
@@ -1451,15 +1545,19 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                                         top: 6,
                                         left: 6,
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: theme.colorScheme.primary,
-                                            borderRadius: BorderRadius.circular(6),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.star, size: 10, color: Colors.white),
+                                              Icon(Icons.star,
+                                                  size: 10,
+                                                  color: Colors.white),
                                               SizedBox(width: 2),
                                               Text(
                                                 'COVER',
@@ -1485,7 +1583,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                                             color: Colors.black54,
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                          child: const Icon(Icons.close,
+                                              size: 14, color: Colors.white),
                                         ),
                                       ),
                                     ),
@@ -1494,26 +1593,35 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                               ),
                               // Controls Row: Left, #Index, Right
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 4),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.keyboard_arrow_left, size: 18),
+                                      icon: const Icon(
+                                          Icons.keyboard_arrow_left,
+                                          size: 18),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                      onPressed: idx > 0 ? () => _movePhotoLeft(idx) : null,
+                                      onPressed: idx > 0
+                                          ? () => _movePhotoLeft(idx)
+                                          : null,
                                     ),
                                     Text(
                                       '#${idx + 1}',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.keyboard_arrow_right, size: 18),
+                                      icon: const Icon(
+                                          Icons.keyboard_arrow_right,
+                                          size: 18),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                       onPressed: idx < _photos.length - 1
@@ -1535,38 +1643,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 FilledButton.tonalIcon(
                   icon: const Icon(Icons.add_photo_alternate, size: 18),
                   label: const Text('+ Add Photos (Camera, Gallery, URL)'),
-                  onPressed: _showAddPhotoSheet,
-                ),
-                const SizedBox(height: 12),
-                // Presets
-                Text(
-                  'Or tap to add preset HD venue shots:',
-                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: _presetImages.map((preset) {
-                    final (presetUrl, title) = preset;
-                    return ActionChip(
-                      label: Text('+ $title', style: const TextStyle(fontSize: 11)),
-                      onPressed: () {
-                        if (_photos.none((p) => p.url == presetUrl)) {
-                          setState(() {
-                            _photos.add(GalleryPhoto(
-                              id: 'preset_${DateTime.now().millisecondsSinceEpoch}',
-                              url: presetUrl,
-                              fileName: title,
-                            ));
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Added $title shot!')),
-                          );
-                        }
-                      },
-                    );
-                  }).toList(),
+                  onPressed: _uploadingImage ? null : _showAddPhotoSheet,
                 ),
               ],
             ),
@@ -1585,7 +1662,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
       children: [
         // Video & 3D Walkthrough
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
           color: theme.colorScheme.surface,
           child: Padding(
@@ -1603,7 +1681,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Allow clients to take interactive virtual tours and short video walkthroughs before booking.',
-                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                      fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -1637,7 +1716,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                   controller: _tour3dHotspotsController,
                   decoration: const InputDecoration(
                     labelText: '3D Tour Hotspots (Comma-separated)',
-                    hintText: 'Grand Entrance, Main Lawn, Ballroom, Dining Area',
+                    hintText:
+                        'Grand Entrance, Main Lawn, Ballroom, Dining Area',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -1648,7 +1728,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
         const SizedBox(height: 12),
         // Time Slots & Session Pricing
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
           color: theme.colorScheme.surface,
           child: Padding(
@@ -1666,15 +1747,19 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Select available slots and verify base session pricing:',
-                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                      fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 10),
                 ..._slots.map((slot) {
                   return CheckboxListTile(
                     value: slot.isSelected,
                     contentPadding: EdgeInsets.zero,
-                    title: Text(slot.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                    subtitle: Text('${slot.timing} • ₹${slot.price.toInt()} / session'),
+                    title: Text(slot.title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: Text(
+                        '${slot.timing} • ₹${slot.price.toInt()} / session'),
                     onChanged: (val) {
                       setState(() => slot.isSelected = val ?? false);
                     },
@@ -1685,9 +1770,66 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        Card(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+          color: theme.colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Blocked dates',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Blocked dates cannot be held or booked by customers.',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                if (_blockedDates.isEmpty)
+                  const Text('No blocked dates yet.')
+                else
+                  ..._blockedDates.map((item) {
+                    final label =
+                        '${item.date.year}-${item.date.month.toString().padLeft(2, '0')}-${item.date.day.toString().padLeft(2, '0')}';
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(label),
+                      subtitle: item.reason == null || item.reason!.isEmpty
+                          ? null
+                          : Text(item.reason!),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() => _blockedDates.remove(item));
+                        },
+                      ),
+                    );
+                  }),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _addBlockedDateRange,
+                    icon: const Icon(Icons.event_busy_outlined),
+                    label: const Text('Block dates'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         // Facilities & Amenities
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
           color: theme.colorScheme.surface,
           child: Padding(
@@ -1729,16 +1871,18 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
   // STEP 4: REVIEW & LIVE PREVIEW
   // ==========================================
   Widget _buildStep4Preview(ThemeData theme) {
-    final name = _nameController.text.trim().isEmpty ? 'Space Title' : _nameController.text.trim();
+    final name = _nameController.text.trim().isEmpty
+        ? 'Space Title'
+        : _nameController.text.trim();
     final price = double.tryParse(_priceController.text) ?? 35000.0;
     final capacity = int.tryParse(_capacityController.text) ?? 500;
-    final city = _cityController.text.trim().isEmpty ? 'Hyderabad' : _cityController.text.trim();
+    final city =
+        _cityController.text.trim().isEmpty ? 'City' : _cityController.text.trim();
     final address = _addressController.text.trim();
-    final coverUrl = _photos.isNotEmpty
-        ? _photos.first.url
-        : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80';
+    final coverUrl = _photos.isNotEmpty ? _photos.first.url : '';
 
-    final activeFacilities = _facilities.entries.where((e) => e.value).map((e) => e.key).toList();
+    final activeFacilities =
+        _facilities.entries.where((e) => e.value).map((e) => e.key).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1761,7 +1905,10 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
               ),
               child: const Text(
                 '● Live Preview Mode',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E7D32)),
               ),
             ),
           ],
@@ -1769,7 +1916,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
         const SizedBox(height: 12),
         // Mock Venue Card matching customer app
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           elevation: 2,
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -1785,7 +1933,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         color: Colors.grey.shade200,
-                        alignment: Alignment.Center,
+                        alignment: Alignment.center,
                         child: const Icon(Icons.stadium, size: 50),
                       ),
                     ),
@@ -1794,14 +1942,18 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                     top: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         _selectedCategoryId.toUpperCase(),
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
                       ),
                     ),
                   ),
@@ -1809,7 +1961,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                     top: 12,
                     right: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF2E7D32),
                         borderRadius: BorderRadius.circular(6),
@@ -1821,7 +1974,10 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           SizedBox(width: 4),
                           Text(
                             'Verified Partner',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           ),
                         ],
                       ),
@@ -1836,17 +1992,21 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                   children: [
                     Text(
                       name,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 16, color: Colors.red),
+                        const Icon(Icons.location_on,
+                            size: 16, color: Colors.red),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             address.isNotEmpty ? '$address, $city' : city,
-                            style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant),
                           ),
                         ),
                       ],
@@ -1858,7 +2018,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Pricing per slot', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            const Text('Pricing per slot',
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.grey)),
                             Text(
                               '₹${price.toInt()}',
                               style: TextStyle(
@@ -1870,16 +2032,21 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                            color: theme.colorScheme.primaryContainer
+                                .withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             children: [
                               const Icon(Icons.people, size: 16),
                               const SizedBox(width: 6),
-                              Text('Max $capacity Guests', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              Text('Max $capacity Guests',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
                             ],
                           ),
                         ),
@@ -1901,9 +2068,11 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                         runSpacing: 6,
                         children: activeFacilities.take(5).map((f) {
                           return Chip(
-                            label: Text(f, style: const TextStyle(fontSize: 10.5)),
+                            label:
+                                Text(f, style: const TextStyle(fontSize: 10.5)),
                             padding: EdgeInsets.zero,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                           );
                         }).toList(),
                       ),

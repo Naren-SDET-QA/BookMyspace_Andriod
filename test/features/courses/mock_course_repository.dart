@@ -66,6 +66,22 @@ class MockCourseRepository implements CourseRepository {
     if (failEnroll) throw Exception('enroll failed');
     lastEnrollBatchId = batchId;
     calls.add('enroll:$batchId');
+    courses = courses
+        .map(
+          (course) => course.copyWith(
+            batches: course.batches
+                .map(
+                  (batch) => batch.id == batchId
+                      ? batch.copyWith(
+                          userEnrolled: true,
+                          enrolledCount: batch.enrolledCount + 1,
+                        )
+                      : batch,
+                )
+                .toList(),
+          ),
+        )
+        .toList();
   }
 
   final List<String> calls = [];
@@ -75,5 +91,23 @@ class MockCourseRepository implements CourseRepository {
     if (failDrop) throw Exception('drop failed');
     lastDropBatchId = batchId;
     calls.add('drop:$batchId');
+    courses = courses
+        .map(
+          (course) => course.copyWith(
+            batches: course.batches
+                .map(
+                  (batch) => batch.id == batchId
+                      ? batch.copyWith(
+                          userEnrolled: false,
+                          enrolledCount: batch.enrolledCount > 0
+                              ? batch.enrolledCount - 1
+                              : 0,
+                        )
+                      : batch,
+                )
+                .toList(),
+          ),
+        )
+        .toList();
   }
 }

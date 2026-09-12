@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,8 +12,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
-import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/presentation/discovery_location.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
@@ -53,10 +52,12 @@ class VenueMapScreen extends ConsumerStatefulWidget {
     super.key,
     this.initialVenueId,
     this.initialCategory,
+    this.initialQuery = '',
   });
 
   final String? initialVenueId;
   final String? initialCategory;
+  final String initialQuery;
 
   @override
   ConsumerState<VenueMapScreen> createState() => _VenueMapScreenState();
@@ -66,6 +67,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
   GoogleMapController? _mapController;
   late final TextEditingController _searchController;
   Timer? _searchDebounce;
+  late VenueSearchQuery _query;
 
   // Selected venue identifier for two-way synchronization
   String? _selectedVenueId;
@@ -73,8 +75,13 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
   // Current map zoom level tracked for dynamic clustering
   double _currentZoom = 12.0;
 
-  // Default coordinate center (Hyderabad tech & culture hub)
-  static const LatLng _defaultCenter = LatLng(17.3850, 78.4867);
+  LatLng get _mapCenter {
+    final location = ref.read(discoveryLocationProvider);
+    if (location.hasCoordinates) {
+      return LatLng(location.latitude!, location.longitude!);
+    }
+    return const LatLng(17.3850, 78.4867);
+  }
 
   // Scroll controller for the list view to scroll selected item into view
   final ScrollController _listScrollController = ScrollController();
@@ -87,17 +94,17 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController();
+    _query = VenueSearchQuery(
+      query: widget.initialQuery,
+      categorySlug: widget.initialCategory,
+    );
+    _searchController = TextEditingController(text: _query.query);
     _selectedVenueId = widget.initialVenueId;
+  }
 
-    if (widget.initialCategory != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final current = ref.read(searchQueryProvider);
-        ref.read(searchQueryProvider.notifier).state = current.copyWith(
-          categorySlug: () => widget.initialCategory,
-        );
-      });
-    }
+  void _setQuery(VenueSearchQuery query) {
+    if (_query == query) return;
+    setState(() => _query = query);
   }
 
   @override
@@ -113,10 +120,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
-      final current = ref.read(searchQueryProvider);
-      ref.read(searchQueryProvider.notifier).state = current.copyWith(
-        query: text.trim(),
-      );
+      _setQuery(_query.copyWith(query: text.trim()));
     });
   }
 
@@ -154,7 +158,8 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
 
   /// Clusters venues using a simple grid-based distance metric according to zoom level.
   List<VenueCluster> _computeClusters(List<Venue> venues, double zoom) {
-    final validVenues = venues.where((v) => v.latitude != 0.0 && v.longitude != 0.0).toList();
+    final validVenues =
+        venues.where((v) => v.latitude != 0.0 && v.longitude != 0.0).toList();
     if (validVenues.isEmpty) return const [];
 
     // Threshold radius in degrees decreases as zoom increases
@@ -217,8 +222,10 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             markerId: MarkerId(venue.id),
             position: LatLng(venue.latitude, venue.longitude),
             icon: isSelected
-                ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan)
-                : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+                ? BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueCyan)
+                : BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueViolet),
             infoWindow: InfoWindow(
               title: venue.name,
               snippet: '${venue.city} · ${formatInr(venue.price)}',
@@ -227,7 +234,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
               ),
             ),
             onTap: () => _selectVenue(venue, animateMap: false),
-            zIndex: isSelected ? 10.0 : 1.0,
+            zIndexInt: isSelected ? 10 : 1,
           ),
         );
       } else {
@@ -237,7 +244,8 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
           Marker(
             markerId: MarkerId(cluster.id),
             position: cluster.position,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
             infoWindow: InfoWindow(
               title: '$count Venues in this area',
               snippet: 'Tap or zoom in to explore',
@@ -265,9 +273,9 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final query = ref.watch(searchQueryProvider);
+    final query = _query;
     final categoriesAsync = ref.watch(venueCategoriesProvider);
-    final searchResultsAsync = ref.watch(searchResultsProvider);
+    final searchResultsAsync = ref.watch(searchResultsProvider(query));
 
     return Scaffold(
       appBar: AppBar(
@@ -289,8 +297,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
               tooltip: l10n.clearFilters,
               onPressed: () {
                 _searchController.clear();
-                ref.read(searchQueryProvider.notifier).state =
-                    const VenueSearchQuery();
+                _setQuery(const VenueSearchQuery());
               },
             ),
           IconButton(
@@ -299,7 +306,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             onPressed: () {
               _mapController?.animateCamera(
                 CameraUpdate.newCameraPosition(
-                  const CameraPosition(target: _defaultCenter, zoom: 12.0),
+                  CameraPosition(target: _mapCenter, zoom: 12.0),
                 ),
               );
             },
@@ -378,7 +385,8 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                   ),
                   error: (e, _) => ErrorView(
                     message: e.toString(),
-                    onRetry: () => ref.invalidate(searchResultsProvider),
+                    onRetry: () =>
+                        ref.invalidate(searchResultsProvider(query)),
                   ),
                 ),
               ),
@@ -418,8 +426,10 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                     )
                   : null,
               filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              fillColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -435,7 +445,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                 return ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: categories.length + 1,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       final isAll = query.categorySlug == null;
@@ -444,8 +454,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                         label: l10n.allCategories,
                         emoji: '🌐',
                         onTap: () {
-                          ref.read(searchQueryProvider.notifier).state =
-                              query.copyWith(categorySlug: () => null);
+                          _setQuery(query.copyWith(categorySlug: () => null));
                         },
                       );
                     }
@@ -456,9 +465,10 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                       label: cat.name,
                       emoji: cat.icon,
                       onTap: () {
-                        ref.read(searchQueryProvider.notifier).state =
-                            query.copyWith(
-                          categorySlug: () => isSelected ? null : cat.slug,
+                        _setQuery(
+                          query.copyWith(
+                            categorySlug: () => isSelected ? null : cat.slug,
+                          ),
                         );
                       },
                     );
@@ -477,7 +487,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                   ],
                 ),
               ),
-              error: (_, _) => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
           ),
         ],
@@ -486,16 +496,19 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
   }
 
   Widget _buildGoogleMap(Set<Marker> markers, List<Venue> venues) {
-    LatLng initialTarget = _defaultCenter;
+    LatLng initialTarget = _mapCenter;
     if (_selectedVenueId != null) {
-      final selected = venues.where((v) => v.id == _selectedVenueId).firstOrNull;
+      final selected =
+          venues.where((v) => v.id == _selectedVenueId).firstOrNull;
       if (selected != null && selected.latitude != 0.0) {
         initialTarget = LatLng(selected.latitude, selected.longitude);
       }
     } else if (venues.isNotEmpty) {
-      final firstWithCoords = venues.where((v) => v.latitude != 0.0).firstOrNull;
+      final firstWithCoords =
+          venues.where((v) => v.latitude != 0.0).firstOrNull;
       if (firstWithCoords != null) {
-        initialTarget = LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
+        initialTarget =
+            LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
       }
     }
 
@@ -553,7 +566,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
       controller: _listScrollController,
       padding: const EdgeInsets.all(12),
       itemCount: venues.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final venue = venues[index];
         final isSelected = venue.id == _selectedVenueId;

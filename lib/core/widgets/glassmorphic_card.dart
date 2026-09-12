@@ -78,17 +78,17 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         end: Offset.zero,
       ).animate(
         CurvedAnimation(
-          parent: _entranceController!,
+          parent: _entranceController,
           curve: Curves.easeOutCubic,
         ),
       );
 
       if (widget.entranceDelayMs > 0) {
         Future.delayed(Duration(milliseconds: widget.entranceDelayMs), () {
-          if (mounted) _entranceController?.forward();
+          if (mounted) _entranceController.forward();
         });
       } else {
-        _entranceController?.forward();
+        _entranceController.forward();
       }
     } else {
       _entranceController = null;
@@ -109,20 +109,29 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
     final isDark = theme.brightness == Brightness.dark;
 
     // Glass base tints tailored for light and dark palettes
-    final baseColor = widget.surfaceColor ??
-        (isDark ? const Color(0xFF181824) : Colors.white);
+    final baseColor =
+        widget.surfaceColor ?? (isDark ? AppTheme.darkCard : Colors.white);
     final glassColor = baseColor.withValues(alpha: widget.surfaceAlpha);
+
+    // Accent used for the hover rim/glow: derived from accentGradient when
+    // the caller supplies one (e.g. a per-category color), falling back to
+    // the app's brand color everywhere else so existing callers look
+    // unchanged.
+    final Color hoverAccent = widget.accentGradient is LinearGradient &&
+            (widget.accentGradient as LinearGradient).colors.isNotEmpty
+        ? (widget.accentGradient as LinearGradient).colors.first
+        : AppTheme.brand;
 
     // Specular border highlights
     final borderColor = _isHovered
-        ? AppTheme.brand.withValues(alpha: isDark ? 0.6 : 0.45)
+        ? hoverAccent.withValues(alpha: isDark ? 0.6 : 0.45)
         : (isDark
             ? Colors.white.withValues(alpha: 0.12)
             : const Color(0xFFE2E8F0));
 
-    // Dynamic brand rim glow
+    // Dynamic rim glow, tinted with the accent color
     final glowColor = _isHovered
-        ? AppTheme.brand.withValues(alpha: isDark ? 0.35 : 0.22)
+        ? hoverAccent.withValues(alpha: isDark ? 0.35 : 0.22)
         : Colors.transparent;
 
     Widget cardContent = AnimatedContainer(
@@ -133,14 +142,18 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
           ? (Matrix4.identity()
             ..setEntry(3, 2, 0.001)
             ..rotateX(_isHovered ? -widget.tiltIntensity : 0.0)
-            ..translate(
+            ..translateByDouble(
               0.0,
-              _isPressed
-                  ? 2.0
-                  : (_isHovered ? widget.hoverLift : 0.0),
+              _isPressed ? 2.0 : (_isHovered ? widget.hoverLift : 0.0),
               0.0,
+              1.0,
             )
-            ..scale(_isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0)))
+            ..scaleByDouble(
+              _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
+              _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
+              _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
+              1.0,
+            ))
           : Matrix4.identity(),
       transformAlignment: Alignment.center,
       decoration: BoxDecoration(
@@ -172,7 +185,8 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.borderRadius - widget.borderWidth),
+        borderRadius:
+            BorderRadius.circular(widget.borderRadius - widget.borderWidth),
         clipBehavior: widget.clipBehavior,
         child: Stack(
           children: [
@@ -220,7 +234,8 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
       cardContent = MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) {
-          if (kIsWeb || defaultTargetPlatform == TargetPlatform.macOS ||
+          if (kIsWeb ||
+              defaultTargetPlatform == TargetPlatform.macOS ||
               defaultTargetPlatform == TargetPlatform.windows ||
               defaultTargetPlatform == TargetPlatform.linux) {
             setState(() => _isHovered = true);
@@ -245,9 +260,9 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         _fadeAnimation != null &&
         _slideAnimation != null) {
       return FadeTransition(
-        opacity: _fadeAnimation!,
+        opacity: _fadeAnimation,
         child: SlideTransition(
-          position: _slideAnimation!,
+          position: _slideAnimation,
           child: cardContent,
         ),
       );

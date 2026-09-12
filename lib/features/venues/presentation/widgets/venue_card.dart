@@ -4,32 +4,54 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/category_accent.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
+import '../../../auth/presentation/auth_providers.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
 import 'venue_badges.dart';
 
+Future<void> _toggleFavorite(
+  BuildContext context,
+  WidgetRef ref,
+  String venueId,
+) async {
+  if (ref.read(currentUserProvider) == null) {
+    context.push(AppRoutes.login);
+    return;
+  }
+  await ref.read(favoriteControllerProvider).toggle(venueId);
+}
+
 /// A tappable venue card used in listings and the home screen.
 class VenueCard extends ConsumerWidget {
-  const VenueCard({super.key, required this.venue});
+  const VenueCard({super.key, required this.venue, this.entranceIndex = 0});
 
   final Venue venue;
+
+  /// Position of this card within its list/grid. When set (> 0), the card
+  /// cascades into view with a small per-index delay instead of all cards
+  /// animating in at once — used on screens that render venues in a list
+  /// (e.g. Search). Defaults to 0, which keeps existing call sites (Home,
+  /// Saved, Owner Venues, Map) animating exactly as before.
+  final int entranceIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
+    final accent = categoryAccentColor(venue.category?.parentSection);
+    final accentGradient =
+        categoryAccentGradient(venue.category?.parentSection);
 
     return GlassmorphicCard(
       borderRadius: 18,
+      entranceDelayMs: entranceIndex * 60,
       onTap: () =>
           context.push(AppRoutes.venueDetails.replaceAll(':id', venue.id)),
-      accentGradient: const LinearGradient(
-        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFFF7043)],
-      ),
+      accentGradient: accentGradient,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -45,15 +67,14 @@ class VenueCard extends ConsumerWidget {
                   right: 8,
                   child: favorite.when(
                     data: (isFav) => FavoriteButton(
-                      isFavorite: isFav ?? false,
-                      onPressed: () =>
-                          ref.read(toggleFavoriteProvider(venue.id).future),
+                      isFavorite: isFav,
+                      onPressed: () => _toggleFavorite(context, ref, venue.id),
                     ),
                     loading: () => const FavoriteButton(
                       isFavorite: false,
                       onPressed: null,
                     ),
-                    error: (_, _) => const FavoriteButton(
+                    error: (_, __) => const FavoriteButton(
                       isFavorite: false,
                       onPressed: null,
                     ),
@@ -121,9 +142,7 @@ class VenueCard extends ConsumerWidget {
                     const SizedBox(width: 2),
                     Expanded(
                       child: Text(
-                        venue.city.isNotEmpty
-                            ? venue.city
-                            : venue.addressLine1,
+                        venue.city.isNotEmpty ? venue.city : venue.addressLine1,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -152,7 +171,7 @@ class VenueCard extends ConsumerWidget {
                 Text(
                   '${l10n.pricing} ${formatInr(venue.price)}',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: AppTheme.brand,
+                    color: accent,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

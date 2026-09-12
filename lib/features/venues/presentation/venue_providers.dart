@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/app_exceptions.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../home/presentation/discovery_location.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
 import '../infrastructure/supabase_venue_repository.dart';
@@ -26,23 +28,33 @@ final popularVenuesProvider = FutureProvider<List<Venue>>((ref) {
   return ref.watch(venueRepositoryProvider).popularVenues();
 });
 
-/// Nearby venues provider with default or location-based coords.
-final nearbyVenuesProvider = FutureProvider<List<Venue>>((ref) {
+/// Distinct cities from readable venue listings.
+final listedVenueCitiesProvider = FutureProvider<List<String>>((ref) {
+  return ref.watch(venueRepositoryProvider).listedCities();
+});
+
+/// Nearby venues. Coordinates must come from a real user-selected location;
+/// this provider does not invent a city centroid.
+final nearbyVenuesProvider = FutureProvider<List<Venue>>((ref) async {
+  final location = ref.watch(discoveryLocationProvider);
+  if (!location.hasCoordinates) return const <Venue>[];
   return ref.watch(venueRepositoryProvider).nearbyVenues(
-    latitude: 17.3850,
-    longitude: 78.4867,
-    maxDistanceKm: 25,
-  );
+        latitude: location.latitude!,
+        longitude: location.longitude!,
+        maxDistanceKm: location.radiusKm.toDouble(),
+      );
 });
 
-/// Search query state provider.
-final searchQueryProvider = StateProvider<VenueSearchQuery>((ref) {
-  return const VenueSearchQuery();
-});
-
-/// Search results provider driven by searchQueryProvider.
-final searchResultsProvider = FutureProvider<List<Venue>>((ref) {
-  final query = ref.watch(searchQueryProvider);
+/// Search results for an explicit [VenueSearchQuery].
+///
+/// The query must come from route parameters or from a user action in the
+/// current screen. Screens must not write a shared search provider during
+/// widget construction (`initState` / `build`).
+final searchResultsProvider =
+    FutureProvider.autoDispose.family<List<Venue>, VenueSearchQuery>((
+  ref,
+  query,
+) {
   return ref.watch(venueRepositoryProvider).search(query);
 });
 
@@ -54,43 +66,53 @@ final venueDetailsProvider = FutureProvider.autoDispose.family<Venue, String>((
   return ref.watch(venueRepositoryProvider).venueById(venueId);
 });
 
-/// Favorite IDs provider.
+/// Canonical favorite-id list. All per-venue hearts derive from this.
 final favoriteVenueIdsProvider = FutureProvider<List<String>>((ref) {
   final user = ref.watch(currentUserProvider);
-  if (user == null) return [];
+  if (user == null) return const [];
   return ref.watch(venueRepositoryProvider).favoriteIds();
 });
 
-/// Favorite status for a specific venue.
-final isFavoriteProvider = FutureProvider.autoDispose.family<bool, String>((
-  ref,
-  venueId,
-) async {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return false;
-  final ids = await ref.watch(venueRepositoryProvider).favoriteIds();
-  return ids.contains(venueId);
+/// Favorite status for a venue, derived from [favoriteVenueIdsProvider].
+final isFavoriteProvider =
+    Provider.autoDispose.family<AsyncValue<bool>, String>((ref, venueId) {
+  return ref.watch(favoriteVenueIdsProvider).whenData(
+        (ids) => ids.contains(venueId),
+      );
 });
 
-/// Toggle favorite action.
-final toggleFavoriteProvider = FutureProvider.autoDispose.family<void, String>((
-  ref,
-  venueId,
-) async {
-  final repo = ref.watch(venueRepositoryProvider);
-  final isFav = await repo.favoriteIds();
-  if (isFav.contains(venueId)) {
-    await repo.removeFavorite(venueId);
-  } else {
-    await repo.addFavorite(venueId);
+/// User-action helper for favorite toggles. Do not watch from build().
+class FavoriteController {
+  FavoriteController(this._ref);
+
+  final Ref _ref;
+
+  Future<void> toggle(String venueId) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      throw const AuthException('Sign in to save venues.');
+    }
+    final repo = _ref.read(venueRepositoryProvider);
+    final ids = await repo.favoriteIds();
+    if (ids.contains(venueId)) {
+      await repo.removeFavorite(venueId);
+    } else {
+      await repo.addFavorite(venueId);
+    }
+    _ref.invalidate(favoriteVenueIdsProvider);
+    _ref.invalidate(savedVenuesProvider);
   }
-  ref.invalidate(favoriteVenueIdsProvider);
-  ref.invalidate(isFavoriteProvider(venueId));
+}
+
+final favoriteControllerProvider = Provider<FavoriteController>((ref) {
+  return FavoriteController(ref);
 });
 
 /// Saved venues list provider.
 final savedVenuesProvider = FutureProvider<List<Venue>>((ref) {
   final user = ref.watch(currentUserProvider);
-  if (user == null) return [];
+  if (user == null) return const [];
   return ref.watch(venueRepositoryProvider).favorites();
 });
+
+final favoritesProvider = savedVenuesProvider;

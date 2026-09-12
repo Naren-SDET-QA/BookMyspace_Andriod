@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'mock_payment_repository.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Payment Models', () {
     test('PaymentOrder parses response and serializes to json', () {
       final order = PaymentOrder.fromResponse({
@@ -106,7 +108,7 @@ void main() {
       );
     });
 
-    test('successfully completes Razorpay payment flow and verifies', () async {
+    test('completes checkout only after server booking confirmation', () async {
       final success = await notifier.processPayment(
         booking: testBooking,
         selectedMethod: PaymentMethodType.razorpayCheckout,
@@ -123,20 +125,32 @@ void main() {
       expect(fakeCheckout.lastCurrency, 'INR');
     });
 
-    test('handles Pay at Venue without invoking online checkout', () async {
+    test('does not turn order creation failure into payment success', () async {
+      mockRepo.failCreateOrder = true;
+
       final success = await notifier.processPayment(
         booking: testBooking,
-        selectedMethod: PaymentMethodType.payAtVenue,
-        payableAmount: 0.0,
-        remainingDueAtVenue: 4720.0,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+
+      expect(success, isFalse);
+      expect(notifier.state.isSuccess, isFalse);
+      expect(notifier.state.errorMessage, isNotNull);
+      expect(fakeCheckout.lastOrderId, isNull);
+    });
+
+    test('uses the deployed Razorpay payment method', () async {
+      final success = await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.values.first,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
       );
 
       expect(success, isTrue);
-      expect(notifier.state.isSuccess, isTrue);
-      expect(notifier.state.paymentId?.startsWith('desk_'), isTrue);
-      expect(notifier.state.orderId, 'pay_at_venue');
-      // Checkout service was not called for pay at venue
-      expect(fakeCheckout.lastOrderId, isNull);
+      expect(fakeCheckout.lastOrderId, 'order_1');
     });
 
     test('handles payment cancellation gracefully', () async {
@@ -144,7 +158,7 @@ void main() {
 
       final success = await notifier.processPayment(
         booking: testBooking,
-        selectedMethod: PaymentMethodType.upiGpay,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
         payableAmount: 4720.0,
         remainingDueAtVenue: 0.0,
       );
@@ -159,7 +173,7 @@ void main() {
 
       final success = await notifier.processPayment(
         booking: testBooking,
-        selectedMethod: PaymentMethodType.creditDebitCard,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
         payableAmount: 4720.0,
         remainingDueAtVenue: 0.0,
       );
@@ -169,22 +183,195 @@ void main() {
       expect(notifier.state.errorMessage, isNotNull);
     });
 
-    test('handles split advance token correctly', () async {
-      final success = await notifier.processPayment(
+    test('launches checkout with the server order amount, not the client total',
+        () async {
+      await notifier.processPayment(
         booking: testBooking,
-        selectedMethod: PaymentMethodType.splitAdvanceToken,
-        payableAmount: 944.0, // 20% advance
-        remainingDueAtVenue: 3776.0,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 1.0,
+        remainingDueAtVenue: 0.0,
       );
 
-      expect(success, isTrue);
+      expect(fakeCheckout.lastAmount, 4720.0);
+      expect(fakeCheckout.lastOrderId, 'order_1');
+      expect(fakeCheckout.lastCurrency, 'INR');
+    });
+
+    test('does not confirm when the webhook is still pending', () async {
+      mockRepo.statusResult = BookingStatus.pending;
+      notifier = PaymentNotifier(
+        paymentRepository: mockRepo,
+        checkoutService: fakeCheckout,
+        confirmationPollDelay: Duration.zero,
+        confirmationAttempts: 3,
+      );
+
+      final success = await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+
+      expect(success, isFalse);
+      expect(notifier.state.isSuccess, isFalse);
+      expect(notifier.state.isAwaitingConfirmation, isTrue);
+      expect(notifier.state.paymentId, 'pay_test');
+    });
+
+    test('does not confirm when the backend rejects the booking', () async {
+      mockRepo.statusResult = BookingStatus.cancelled;
+      notifier = PaymentNotifier(
+        paymentRepository: mockRepo,
+        checkoutService: fakeCheckout,
+        confirmationPollDelay: Duration.zero,
+        confirmationAttempts: 2,
+      );
+
+      final success = await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+
+      expect(success, isFalse);
+      expect(notifier.state.isSuccess, isFalse);
+      expect(notifier.state.isAwaitingConfirmation, isFalse);
+      expect(notifier.state.errorMessage, isNotNull);
+    });
+
+    test('status refresh confirms without opening another checkout', () async {
+      mockRepo.statusResult = BookingStatus.pending;
+      notifier = PaymentNotifier(
+        paymentRepository: mockRepo,
+        checkoutService: fakeCheckout,
+        confirmationPollDelay: Duration.zero,
+        confirmationAttempts: 1,
+      );
+
+      await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+      final checkoutCallsBeforeRefresh = fakeCheckout.checkoutCalls;
+
+      mockRepo.statusResult = BookingStatus.confirmed;
+      final refreshed = await notifier.refreshPaymentStatus(
+        bookingId: testBooking.id,
+      );
+
+      expect(refreshed, isTrue);
       expect(notifier.state.isSuccess, isTrue);
-      expect(notifier.state.note, contains('Advance token paid'));
+      expect(fakeCheckout.checkoutCalls, checkoutCallsBeforeRefresh);
+      expect(mockRepo.lastOrderBookingId, testBooking.id);
+    });
+
+    test('pending status refresh remains awaiting without creating an order',
+        () async {
+      mockRepo.statusResult = BookingStatus.pending;
+      notifier = PaymentNotifier(
+        paymentRepository: mockRepo,
+        checkoutService: fakeCheckout,
+        confirmationPollDelay: Duration.zero,
+        confirmationAttempts: 1,
+      );
+
+      await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+      final checkoutCallsBeforeRefresh = fakeCheckout.checkoutCalls;
+
+      final refreshed = await notifier.refreshPaymentStatus(
+        bookingId: testBooking.id,
+      );
+
+      expect(refreshed, isFalse);
+      expect(notifier.state.isAwaitingConfirmation, isTrue);
+      expect(notifier.state.isSuccess, isFalse);
+      expect(fakeCheckout.checkoutCalls, checkoutCallsBeforeRefresh);
+    });
+
+    test('does not start a second checkout while awaiting confirmation',
+        () async {
+      mockRepo.statusResult = BookingStatus.pending;
+      notifier = PaymentNotifier(
+        paymentRepository: mockRepo,
+        checkoutService: fakeCheckout,
+        confirmationPollDelay: Duration.zero,
+        confirmationAttempts: 1,
+      );
+
+      await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+      final checkoutCallsBeforeRetry = fakeCheckout.checkoutCalls;
+
+      final retried = await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+
+      expect(retried, isFalse);
+      expect(fakeCheckout.checkoutCalls, checkoutCallsBeforeRetry);
+      expect(notifier.state.isAwaitingConfirmation, isTrue);
+    });
+
+    test('rejects a duplicate in-flight payment attempt', () async {
+      fakeCheckout.result = CheckoutResult.paid;
+      mockRepo.statusResult = BookingStatus.pending;
+      notifier = PaymentNotifier(
+        paymentRepository: mockRepo,
+        checkoutService: fakeCheckout,
+        confirmationPollDelay: const Duration(milliseconds: 30),
+        confirmationAttempts: 4,
+      );
+
+      final first = notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+      final second = await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+
+      expect(second, isFalse);
+      await first;
+    });
+
+    test('surfaces a duplicate order from the server', () async {
+      mockRepo.duplicateOrder = true;
+      final success = await notifier.processPayment(
+        booking: testBooking,
+        selectedMethod: PaymentMethodType.razorpayCheckout,
+        payableAmount: 4720.0,
+        remainingDueAtVenue: 0.0,
+      );
+      expect(success, isFalse);
+      expect(notifier.state.isSuccess, isFalse);
+      expect(notifier.state.errorMessage, contains('already exists'));
+      expect(fakeCheckout.lastOrderId, isNull);
     });
   });
 
   group('NativeRazorpayCheckoutService', () {
-    test('provides Web and self-healing fallback without unhandled exceptions', () async {
+    test('does not report success when native checkout is unavailable',
+        () async {
       final service = NativeRazorpayCheckoutService();
 
       final result = await service.openCheckout(
@@ -196,10 +383,10 @@ void main() {
         bookingRef: 'BMS-UNIT-1',
       );
 
-      expect(result, CheckoutResult.paid);
+      expect(result, CheckoutResult.failed);
       expect(service.lastResponse, isNotNull);
-      expect(service.lastResponse?.result, CheckoutResult.paid);
-      expect(service.lastResponse?.paymentId?.startsWith('pay_rzp_'), isTrue);
+      expect(service.lastResponse?.result, CheckoutResult.failed);
+      expect(service.lastResponse?.errorCode, 'native_checkout_unavailable');
     });
   });
 }

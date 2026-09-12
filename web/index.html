@@ -27,6 +27,9 @@
   <!-- Google Maps JavaScript API for Flutter Web -->
   <script src="https://maps.googleapis.com/maps/api/js?key=default_maps_key"></script>
 
+  <!-- Razorpay Standard Checkout for Flutter Web (public key only). -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
   <!-- Firebase App & Performance Monitoring SDK for Web Startup Heartbeat -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-performance-compat.js"></script>
@@ -413,6 +416,74 @@
           });
         });
       }
+
+      window.bookMySpaceRazorpay = {
+        isAvailable: function() {
+          return typeof Razorpay === 'function';
+        },
+        openCheckout: function(optionsJson) {
+          return new Promise(function(resolve) {
+            var options;
+            try {
+              options = JSON.parse(optionsJson);
+            } catch (e) {
+              resolve(JSON.stringify({
+                status: 'failed',
+                errorCode: 'invalid_options',
+                message: String(e)
+              }));
+              return;
+            }
+            if (typeof Razorpay !== 'function') {
+              resolve(JSON.stringify({
+                status: 'failed',
+                errorCode: 'web_checkout_unavailable',
+                message: 'Razorpay Checkout.js is not loaded.'
+              }));
+              return;
+            }
+            var settled = false;
+            function finish(payload) {
+              if (settled) return;
+              settled = true;
+              resolve(JSON.stringify(payload));
+            }
+            options.handler = function(response) {
+              finish({
+                status: 'success',
+                paymentId: response && response.razorpay_payment_id,
+                orderId: response && response.razorpay_order_id,
+                signature: response && response.razorpay_signature
+              });
+            };
+            options.modal = options.modal || {};
+            options.modal.ondismiss = function() {
+              finish({
+                status: 'cancelled',
+                message: 'Payment dismissed by user.'
+              });
+            };
+            try {
+              var rzp = new Razorpay(options);
+              rzp.on('payment.failed', function(response) {
+                var err = (response && response.error) || {};
+                finish({
+                  status: 'failed',
+                  errorCode: err.code || 'payment_failed',
+                  message: err.description || 'Payment failed.'
+                });
+              });
+              rzp.open();
+            } catch (e) {
+              finish({
+                status: 'failed',
+                errorCode: 'checkout_error',
+                message: String(e)
+              });
+            }
+          });
+        }
+      };
 
       window.bookMySpaceWebPush = {
         requestPermission: function() {

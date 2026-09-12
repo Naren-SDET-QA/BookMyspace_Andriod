@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
+import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/screens/admin_directory_screens.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
+import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/auth_user.dart';
+import '../../features/auth/presentation/auth_providers.dart';
+import '../../features/auth/domain/app_role.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/widgets/role_gate.dart';
+import '../config/app_config.dart';
+import 'search_route.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/booking/domain/booking.dart';
 import '../../features/booking/presentation/screens/booking_screen.dart';
@@ -19,6 +28,7 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/owner/presentation/screens/owner_dashboard_screen.dart';
 import '../../features/owner/presentation/screens/owner_registration_screen.dart';
 import '../../features/owner/presentation/screens/owner_categories_screen.dart';
+import '../../features/owner/presentation/screens/owner_bookings_screen.dart';
 import '../../features/owner_venues/presentation/screens/owner_venues_screen.dart';
 import '../../features/owner_venues/presentation/screens/create_venue_screen.dart';
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
@@ -56,12 +66,22 @@ abstract class AppRoutes {
   static const notifications = '/notifications';
   static const analytics = '/analytics';
   static const support = '/support';
+  static const adminDashboard = '/admin';
+  static const adminUsers = '/admin/users';
+  static const adminOwners = '/admin/owners';
+  static const adminVenues = '/admin/venues';
+  static const adminBookings = '/admin/bookings';
+  static const adminPayments = '/admin/payments';
+  static const adminEvents = '/admin/events';
+  static const adminCourses = '/admin/courses';
+  static const adminSupport = '/admin/support';
   static const adminAudit = '/admin/audit';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
   static const ownerCategories = '/owner/categories';
   static const ownerVenues = '/owner/venues';
   static const ownerVenueCreate = '/owner/venues/create';
+  static const ownerBookings = '/owner/bookings';
   static const privacyPolicy = '/privacy';
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
@@ -70,25 +90,73 @@ abstract class AppRoutes {
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Default initial location for the live app router.
+final routerInitialLocationProvider =
+    Provider<String>((ref) => AppRoutes.shell);
+
+/// Stable application router. Auth changes refresh redirects without
+/// constructing a new [GoRouter] on every widget rebuild.
+final appRouterProvider = Provider.family<GoRouter, String>((
+  ref,
+  initialLocation,
+) {
+  final refresh = ValueNotifier<int>(0);
+  ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+    final previousUserId = previous?.user?.id;
+    final nextUserId = next.user?.id;
+    if (previous.runtimeType == next.runtimeType &&
+        previousUserId == nextUserId) {
+      return;
+    }
+    refresh.value++;
+  });
+
+  final router = createAppRouter(
+    initialLocation: initialLocation,
+    refreshListenable: refresh,
+    authStateReader: () => ref.read(authNotifierProvider),
+    allowUnauthenticatedPreview: AppConfig.isUiTestMode,
+  );
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
+  return router;
+});
+
 /// Creates the application router. [initialLocation] is overridable in tests.
 ///
-/// When [currentUser] is provided, protected routes redirect to the login
-/// screen for unauthenticated users, and signed-in users are bounced away from
-/// the onboarding/login screens. A `null` [currentUser] disables gating.
+/// When [authStateReader] is provided, redirects read live auth state on every
+/// refresh. Otherwise [currentUser] / [authReady] are used (tests).
+///
+/// A `null` user disables gating when [allowUnauthenticatedPreview] is
+/// enabled. Preview mode does not create an authentication session.
 GoRouter createAppRouter({
   String initialLocation = AppRoutes.shell,
   AuthUser? currentUser,
   bool authReady = true,
+  bool allowUnauthenticatedPreview = false,
+  Listenable? refreshListenable,
+  AuthState Function()? authStateReader,
 }) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: initialLocation,
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
-      if (!authReady) return null;
+      var ready = authReady;
+      var user = currentUser;
+      if (authStateReader != null) {
+        final auth = authStateReader();
+        ready = auth is! AuthLoading;
+        user = auth.user;
+      }
+      if (!ready) return null;
       final location = state.matchedLocation;
       final isPublic =
           location == AppRoutes.onboarding || location == AppRoutes.login;
-      if (currentUser == null) {
+      if (allowUnauthenticatedPreview) return null;
+      if (user == null) {
         return isPublic ? null : AppRoutes.login;
       }
       return isPublic ? AppRoutes.shell : null;
@@ -112,16 +180,11 @@ GoRouter createAppRouter({
         path: AppRoutes.map,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
-          final extra = state.extra;
-          final initialVenueId = extra is Map<String, dynamic>
-              ? extra['venueId'] as String?
-              : null;
-          final initialCategory = extra is Map<String, dynamic>
-              ? extra['category'] as String?
-              : null;
+          final params = SearchRouteParams.fromGoRouterState(state);
           return VenueMapScreen(
-            initialVenueId: initialVenueId,
-            initialCategory: initialCategory,
+            initialVenueId: params.venueId,
+            initialCategory: params.categorySlug,
+            initialQuery: params.query,
           );
         },
       ),
@@ -159,11 +222,6 @@ GoRouter createAppRouter({
             EventDetailScreen(eventId: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
-        path: AppRoutes.coursesList,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const CoursesListScreen(),
-      ),
-      GoRoute(
         path: AppRoutes.courseDetails,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => CourseDetailScreen(
@@ -171,14 +229,16 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
-        path: AppRoutes.notifications,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const NotificationsScreen(),
-      ),
-      GoRoute(
         path: AppRoutes.analytics,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AnalyticsScreen(),
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {
+            AppRole.venueOwner,
+            AppRole.administrator,
+            AppRole.superAdministrator,
+          },
+          child: AnalyticsScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.support,
@@ -186,9 +246,84 @@ GoRouter createAppRouter({
         builder: (context, state) => const SupportTicketsScreen(),
       ),
       GoRoute(
+        path: AppRoutes.adminDashboard,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminDashboardScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminUsers,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminUsersScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminOwners,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminOwnersScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminVenues,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminVenuesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminBookings,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminBookingsBlockedScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminPayments,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminPaymentsBlockedScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminEvents,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminEventsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminCourses,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminCoursesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminSupport,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminSupportScreen(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.adminAudit,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AdminAuditScreen(),
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminAuditScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.ownerRegistration,
@@ -198,24 +333,44 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.ownerDashboard,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const OwnerDashboardScreen(),
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.venueOwner},
+          child: OwnerDashboardScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.ownerCategories,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const OwnerCategoriesScreen(),
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.venueOwner},
+          child: OwnerCategoriesScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.ownerVenues,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const OwnerVenuesScreen(),
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.venueOwner},
+          child: OwnerVenuesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerBookings,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.venueOwner},
+          child: OwnerBookingsScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.ownerVenueCreate,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
           final extraVenue = state.extra as Venue?;
-          return CreateVenueScreen(existingVenue: extraVenue);
+          return RoleGate(
+            requiredRoles: const {AppRole.venueOwner},
+            child: CreateVenueScreen(existingVenue: extraVenue),
+          );
         },
       ),
       GoRoute(
@@ -246,6 +401,11 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const QrCheckInScannerScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.saved,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SavedScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return _AppShell(navigationShell: navigationShell);
@@ -262,13 +422,22 @@ GoRouter createAppRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.notifications,
+                builder: (context, state) => const NotificationsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.search,
                 builder: (context, state) {
-                  final extra = state.extra;
-                  final category = extra is Map<String, dynamic>
-                      ? extra['category'] as String?
-                      : null;
-                  return SearchScreen(initialCategory: category);
+                  final params = SearchRouteParams.fromGoRouterState(state);
+                  return SearchScreen(
+                    initialCategory: params.categorySlug,
+                    initialQuery: params.query,
+                    routeQuery: params.toQuery(),
+                  );
                 },
               ),
             ],
@@ -284,8 +453,8 @@ GoRouter createAppRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.saved,
-                builder: (context, state) => const SavedScreen(),
+                path: AppRoutes.coursesList,
+                builder: (context, state) => const CoursesListScreen(),
               ),
             ],
           ),
@@ -311,9 +480,50 @@ class _AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.fromLTRB(
+          10,
+          0,
+          10,
+          bottomInset > 0 ? bottomInset : 10,
+        ),
+        child: MediaQuery.removePadding(
+          context: context,
+          removeBottom: true,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xF0102433)
+                  : Colors.white.withValues(alpha: 0.94),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFE2E8F0),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A)
+                      .withValues(alpha: isDark ? 0.45 : 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: NavigationBar(
+        // Keep labels visible so first-time users can understand each
+        // destination without relying on platform-specific icon knowledge.
+        // Material 3 sizes the six destinations responsively on phones and
+        // preserves their accessibility labels on every platform.
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (index) {
           navigationShell.goBranch(
@@ -330,7 +540,7 @@ class _AppShell extends StatelessWidget {
           NavigationDestination(
             icon: const Icon(Icons.notifications_outlined),
             selectedIcon: const Icon(Icons.notifications_rounded),
-            label: l10n.notifications,
+            label: isCompact ? 'Alerts' : l10n.notifications,
           ),
           NavigationDestination(
             icon: const Icon(Icons.search_outlined),
@@ -353,6 +563,10 @@ class _AppShell extends StatelessWidget {
             label: l10n.navProfile,
           ),
         ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

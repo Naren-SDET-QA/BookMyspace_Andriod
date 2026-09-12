@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/app_config.dart';
+import '../../../core/errors/app_exceptions.dart';
 import '../../booking/domain/booking.dart';
 import '../domain/checkout_service.dart';
 import '../domain/payment.dart';
 import '../domain/payment_repository.dart';
-import '../infrastructure/native_razorpay_checkout_service.dart';
+import '../infrastructure/checkout_service_factory.dart';
 import '../infrastructure/supabase_payment_repository.dart';
 
 /// Provider for the [PaymentRepository].
@@ -15,11 +17,12 @@ final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
 
 /// Provider for the platform-aware [CheckoutService].
 final checkoutServiceProvider = Provider<CheckoutService>((ref) {
-  return NativeRazorpayCheckoutService();
+  return createCheckoutService();
 });
 
 /// Provider fetching payments for the current user.
-final myPaymentsProvider = FutureProvider.autoDispose<List<Payment>>((ref) async {
+final myPaymentsProvider =
+    FutureProvider.autoDispose<List<Payment>>((ref) async {
   final repo = ref.watch(paymentRepositoryProvider);
   return repo.myPayments();
 });
@@ -29,6 +32,7 @@ class PaymentState {
   const PaymentState({
     this.isLoading = false,
     this.isSuccess = false,
+    this.isAwaitingConfirmation = false,
     this.errorMessage,
     this.paymentId,
     this.orderId,
@@ -38,6 +42,7 @@ class PaymentState {
 
   final bool isLoading;
   final bool isSuccess;
+  final bool isAwaitingConfirmation;
   final String? errorMessage;
   final String? paymentId;
   final String? orderId;
@@ -47,6 +52,7 @@ class PaymentState {
   PaymentState copyWith({
     bool? isLoading,
     bool? isSuccess,
+    bool? isAwaitingConfirmation,
     String? errorMessage,
     String? paymentId,
     String? orderId,
@@ -56,6 +62,8 @@ class PaymentState {
     return PaymentState(
       isLoading: isLoading ?? this.isLoading,
       isSuccess: isSuccess ?? this.isSuccess,
+      isAwaitingConfirmation:
+          isAwaitingConfirmation ?? this.isAwaitingConfirmation,
       errorMessage: errorMessage,
       paymentId: paymentId ?? this.paymentId,
       orderId: orderId ?? this.orderId,
@@ -65,16 +73,20 @@ class PaymentState {
   }
 }
 
-/// Notifier handling the end-to-end payment flow: order creation, checkout launch,
-/// signature verification, and error recovery.
+/// Notifier handling server-order creation, checkout launch, and webhook
+/// confirmation. Razorpay secrets and booking confirmation remain server-side.
 class PaymentNotifier extends StateNotifier<PaymentState> {
   PaymentNotifier({
     required this.paymentRepository,
     required this.checkoutService,
+    this.confirmationPollDelay = const Duration(seconds: 2),
+    this.confirmationAttempts = 10,
   }) : super(const PaymentState());
 
   final PaymentRepository paymentRepository;
   final CheckoutService checkoutService;
+  final Duration confirmationPollDelay;
+  final int confirmationAttempts;
 
   Future<bool> processPayment({
     required Booking booking,
@@ -85,55 +97,52 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     String? customerEmail,
     String? customerPhone,
   }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    if (state.isLoading || state.isAwaitingConfirmation) return false;
+    state = state.copyWith(
+      isLoading: true,
+      isSuccess: false,
+      isAwaitingConfirmation: false,
+      errorMessage: null,
+    );
 
     try {
-      // Step 1: Pay-at-venue bypasses online payment gateway
-      if (selectedMethod == PaymentMethodType.payAtVenue) {
-        final deskTxId = 'desk_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
-        await paymentRepository.verifyPayment(
-          bookingId: booking.id,
-          orderId: 'pay_at_venue',
-          paymentId: deskTxId,
-          signature: 'desk_signature_confirmed',
-        );
-
-        state = state.copyWith(
-          isLoading: false,
-          isSuccess: true,
-          paymentId: deskTxId,
-          orderId: 'pay_at_venue',
-          note: 'Reservation secured! Show your check-in token and pay ₹${remainingDueAtVenue.toInt()} at the venue desk.',
-        );
-        return true;
-      }
-
-      // Step 2: Create server-authoritative Razorpay Order
-      PaymentOrder order;
-      try {
-        order = await paymentRepository.createOrder(bookingId: booking.id);
-      } catch (e) {
-        // Fallback order generation for dev/offline resilience
-        order = PaymentOrder(
-          orderId: 'order_${booking.id.replaceAll('-', '').substring(0, 14)}',
-          amount: payableAmount,
-          currency: 'INR',
-          keyId: 'rzp_test_bookmyspace',
+      if (selectedMethod != PaymentMethodType.razorpayCheckout) {
+        throw const BusinessException(
+          'This payment option is not available yet. Use Razorpay Checkout.',
+          code: 'payment_method_unavailable',
         );
       }
 
-      // Step 3: Open the native or web Razorpay checkout sheet
+      // The Edge Function calculates the amount from the booking. The values
+      // passed from the widget are display-only and are never trusted here.
+      final order = await paymentRepository.createOrder(bookingId: booking.id);
+      if (order.orderId.isEmpty || order.amount <= 0) {
+        throw const ServerException(
+          'Payment service returned an invalid order.',
+          code: 'invalid_payment_order',
+        );
+      }
+
+      // Public key may come from the order function; never a secret key.
       final result = await checkoutService.openCheckout(
         orderId: order.orderId,
-        amount: payableAmount,
+        amount: order.amount,
         currency: order.currency,
-        keyId: order.keyId ?? 'rzp_test_bookmyspace',
+        keyId: order.keyId ?? AppConfig.razorpayKeyId,
+        venueName: booking.venueName,
+        bookingRef: booking.bookingRef,
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerPhone: customerPhone,
       );
 
       if (result == CheckoutResult.cancelled) {
         state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Payment was cancelled. Your slot hold is still reserved.',
+          isSuccess: false,
+          isAwaitingConfirmation: false,
+          errorMessage:
+              'Payment was cancelled. Your slot hold is still reserved.',
         );
         return false;
       }
@@ -142,57 +151,157 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
         final lastResp = checkoutService.lastResponse;
         state = state.copyWith(
           isLoading: false,
-          errorMessage: lastResp?.errorMessage ?? 'Payment failed. Please try again.',
+          isSuccess: false,
+          isAwaitingConfirmation: false,
+          errorMessage:
+              lastResp?.errorMessage ?? 'Payment failed. Please try again.',
         );
         return false;
       }
 
-      // Step 4: Verify payment signature and confirm booking
       final lastResp = checkoutService.lastResponse;
-      final paymentId = lastResp?.paymentId ?? 'pay_rzp_${DateTime.now().millisecondsSinceEpoch}';
-      final signature = lastResp?.signature ?? 'sig_${DateTime.now().millisecondsSinceEpoch}';
-
-      final verified = await paymentRepository.verifyPayment(
-        bookingId: booking.id,
-        orderId: order.orderId,
-        paymentId: paymentId,
-        signature: signature,
-      );
-
-      final note = selectedMethod == PaymentMethodType.splitAdvanceToken
-          ? 'Advance token paid! Remaining balance of ₹${remainingDueAtVenue.toInt()} will be collected upon check-in.'
-          : 'Payment successfully processed and verified in real-time.';
-
-      state = state.copyWith(
-        isLoading: false,
-        isSuccess: true,
-        paymentId: paymentId,
-        orderId: order.orderId,
-        signature: signature,
-        note: note,
-      );
-      return verified;
-    } catch (e) {
-      // Autonomous self-healing fallback
-      final fallbackTx = 'pay_healed_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
-      try {
-        await paymentRepository.verifyPayment(
-          bookingId: booking.id,
-          orderId: 'order_fallback',
-          paymentId: fallbackTx,
-          signature: 'auto_healed_sig',
+      final paymentId = lastResp?.paymentId;
+      if (paymentId == null || paymentId.isEmpty) {
+        throw const ServerException(
+          'The payment provider returned no payment reference.',
+          code: 'missing_payment_reference',
         );
-      } catch (_) {}
+      }
+
+      // Confirmation is performed by the deployed Razorpay webhook. The
+      // client only observes the booking row; it never marks payment captured
+      // from a client callback or signature.
+      final confirmed = await _waitForBookingConfirmation(booking.id);
+      if (!confirmed) {
+        final latest = await paymentRepository.bookingStatus(booking.id);
+        if (latest == BookingStatus.cancelled ||
+            latest == BookingStatus.refunded) {
+          state = state.copyWith(
+            isLoading: false,
+            isSuccess: false,
+            isAwaitingConfirmation: false,
+            paymentId: paymentId,
+            orderId: order.orderId,
+            errorMessage:
+                'The booking was not confirmed. Please contact support if you were charged.',
+          );
+          return false;
+        }
+        state = state.copyWith(
+          isLoading: false,
+          isSuccess: false,
+          isAwaitingConfirmation: true,
+          paymentId: paymentId,
+          orderId: order.orderId,
+          note:
+              'Payment was submitted. Waiting for BookMySpace to confirm the booking.',
+        );
+        return false;
+      }
 
       state = state.copyWith(
         isLoading: false,
         isSuccess: true,
-        paymentId: fallbackTx,
-        orderId: 'order_healed',
-        note: 'Payment auto-reconciled via Self-Healing gateway. Booking secured!',
+        isAwaitingConfirmation: false,
+        paymentId: paymentId,
+        orderId: order.orderId,
+        signature: lastResp?.signature,
+        note: 'Payment confirmed by BookMySpace.',
       );
       return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        isSuccess: false,
+        errorMessage: _messageFor(e),
+      );
+      return false;
     }
+  }
+
+  Future<bool> _waitForBookingConfirmation(String bookingId) async {
+    for (var attempt = 0; attempt < confirmationAttempts; attempt++) {
+      final status = await paymentRepository.bookingStatus(bookingId);
+      if (status == BookingStatus.confirmed) return true;
+      if (status == BookingStatus.cancelled ||
+          status == BookingStatus.refunded) {
+        return false;
+      }
+      if (attempt < confirmationAttempts - 1 &&
+          confirmationPollDelay > Duration.zero) {
+        await Future<void>.delayed(confirmationPollDelay);
+      }
+    }
+    return false;
+  }
+
+  /// Refreshes the server-owned payment/booking state without starting a new
+  /// checkout. This is the only safe action after the initial confirmation
+  /// polling window expires because the original provider payment may still
+  /// be settling asynchronously.
+  Future<bool> refreshPaymentStatus({required String bookingId}) async {
+    if (state.isLoading) return false;
+
+    state = state.copyWith(
+      isLoading: true,
+      isSuccess: false,
+      isAwaitingConfirmation: true,
+      errorMessage: null,
+      note: 'Checking the latest booking status…',
+    );
+
+    try {
+      final latest = await paymentRepository.bookingStatus(bookingId);
+      if (latest == BookingStatus.confirmed ||
+          latest == BookingStatus.completed) {
+        state = state.copyWith(
+          isLoading: false,
+          isSuccess: true,
+          isAwaitingConfirmation: false,
+          errorMessage: null,
+          note: 'Payment confirmed by BookMySpace.',
+        );
+        return true;
+      }
+
+      if (latest == BookingStatus.cancelled ||
+          latest == BookingStatus.refunded ||
+          latest == BookingStatus.noShow) {
+        state = state.copyWith(
+          isLoading: false,
+          isSuccess: false,
+          isAwaitingConfirmation: false,
+          errorMessage:
+              'The booking was not confirmed. Please contact support if you were charged.',
+          note: null,
+        );
+        return false;
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        isSuccess: false,
+        isAwaitingConfirmation: true,
+        errorMessage: null,
+        note:
+            'Payment was submitted. Waiting for BookMySpace to confirm the booking.',
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        isSuccess: false,
+        isAwaitingConfirmation: true,
+        errorMessage: _messageFor(e),
+        note: 'Unable to refresh the booking status. Please try again.',
+      );
+      return false;
+    }
+  }
+
+  String _messageFor(Object error) {
+    if (error is AppException) return error.message;
+    return error.toString();
   }
 
   void reset() {

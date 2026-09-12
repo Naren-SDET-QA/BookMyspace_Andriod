@@ -32,3 +32,8 @@ key.properties
 .idea/
 *.iml
 .vscode/
+
+# Local tooling / generated
+node_modules/
+analyze.txt
+supabase/.temp/

@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
@@ -38,9 +38,11 @@ class PushNotificationService {
   final NotificationRepository _repository;
   final FlutterSecureStorage _storage;
 
-  final StreamController<PushNotificationPayload> _notificationReceivedController =
+  final StreamController<PushNotificationPayload>
+      _notificationReceivedController =
       StreamController<PushNotificationPayload>.broadcast();
-  final StreamController<PushNotificationPayload> _notificationClickedController =
+  final StreamController<PushNotificationPayload>
+      _notificationClickedController =
       StreamController<PushNotificationPayload>.broadcast();
 
   Stream<PushNotificationPayload> get onNotificationReceived =>
@@ -84,7 +86,8 @@ class PushNotificationService {
 
     // Also listen to internal clicked stream to perform deep-link navigation
     onNotificationClicked.listen((payload) {
-      handleNotificationRouting(payload.data ?? payload.toMap(), action: payload.action);
+      handleNotificationRouting(payload.data ?? payload.toMap(),
+          action: payload.action);
     });
   }
 
@@ -96,7 +99,8 @@ class PushNotificationService {
     _apnsChannel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'onTokenReceived':
-          final token = call.arguments is Map ? call.arguments['token'] as String? : null;
+          final token =
+              call.arguments is Map ? call.arguments['token'] as String? : null;
           if (token != null && token.isNotEmpty) {
             _currentDeviceToken = token;
             await _storage.write(key: 'push_token', value: token);
@@ -105,7 +109,9 @@ class PushNotificationService {
           break;
 
         case 'onNotificationReceived':
-          final args = call.arguments is Map ? Map<String, dynamic>.from(call.arguments as Map) : <String, dynamic>{};
+          final args = call.arguments is Map
+              ? Map<String, dynamic>.from(call.arguments as Map)
+              : <String, dynamic>{};
           final payload = PushNotificationPayload.fromMap(args);
           _notificationReceivedController.add(payload);
           // Insert into in-app notifications so it displays in notification feed
@@ -113,7 +119,9 @@ class PushNotificationService {
           break;
 
         case 'onNotificationClicked':
-          final args = call.arguments is Map ? Map<String, dynamic>.from(call.arguments as Map) : <String, dynamic>{};
+          final args = call.arguments is Map
+              ? Map<String, dynamic>.from(call.arguments as Map)
+              : <String, dynamic>{};
           final payload = PushNotificationPayload.fromMap(args);
           _notificationClickedController.add(payload);
           break;
@@ -122,7 +130,8 @@ class PushNotificationService {
 
     // Check existing iOS permission status and retrieve stored APNs token
     try {
-      final statusResult = await _apnsChannel.invokeMethod<Map>('getPermissionStatus');
+      final statusResult =
+          await _apnsChannel.invokeMethod<Map>('getPermissionStatus');
       final statusStr = statusResult?['status'] as String? ?? 'notDetermined';
       _permissionStatus = _parseIosPermissionStatus(statusStr);
 
@@ -135,9 +144,11 @@ class PushNotificationService {
       }
 
       // Check if cold-started by tapping a notification
-      final initialNotif = await _apnsChannel.invokeMethod<Map>('getInitialNotification');
+      final initialNotif =
+          await _apnsChannel.invokeMethod<Map>('getInitialNotification');
       if (initialNotif != null) {
-        final payload = PushNotificationPayload.fromMap(Map<String, dynamic>.from(initialNotif));
+        final payload = PushNotificationPayload.fromMap(
+            Map<String, dynamic>.from(initialNotif));
         _notificationClickedController.add(payload);
       }
     } catch (e) {
@@ -206,10 +217,12 @@ class PushNotificationService {
     try {
       final sub = await WebPushBridge.getSubscription();
       if (sub != null) {
-        final endpoint = sub['endpoint'] as String? ?? 'web_push_endpoint_${DateTime.now().millisecondsSinceEpoch}';
+        final endpoint = sub['endpoint'] as String? ??
+            'web_push_endpoint_${DateTime.now().millisecondsSinceEpoch}';
         _currentDeviceToken = endpoint;
         await _storage.write(key: 'push_token', value: endpoint);
-        await _repository.registerPushToken(endpoint, 'web', subscriptionData: sub);
+        await _repository.registerPushToken(endpoint, 'web',
+            subscriptionData: sub);
       }
     } catch (_) {}
   }
@@ -229,12 +242,16 @@ class PushNotificationService {
       return _permissionStatus;
     } else if (!kIsWeb && Platform.isIOS) {
       try {
-        final result = await _apnsChannel.invokeMethod<Map>('requestPermission');
+        final result =
+            await _apnsChannel.invokeMethod<Map>('requestPermission');
         final granted = result?['granted'] as bool? ?? false;
-        _permissionStatus = granted ? PushPermissionStatus.granted : PushPermissionStatus.denied;
+        _permissionStatus = granted
+            ? PushPermissionStatus.granted
+            : PushPermissionStatus.denied;
 
         if (granted) {
-          final tokenResult = await _apnsChannel.invokeMethod<Map>('getApnsToken');
+          final tokenResult =
+              await _apnsChannel.invokeMethod<Map>('getApnsToken');
           final token = tokenResult?['token'] as String?;
           if (token != null && token.isNotEmpty) {
             _currentDeviceToken = token;
@@ -261,7 +278,8 @@ class PushNotificationService {
       return _permissionStatus;
     } else if (!kIsWeb && Platform.isIOS) {
       try {
-        final result = await _apnsChannel.invokeMethod<Map>('getPermissionStatus');
+        final result =
+            await _apnsChannel.invokeMethod<Map>('getPermissionStatus');
         final statusStr = result?['status'] as String? ?? 'notDetermined';
         _permissionStatus = _parseIosPermissionStatus(statusStr);
         return _permissionStatus;
@@ -326,7 +344,8 @@ class PushNotificationService {
       } catch (_) {}
     }
 
-    final slotStart = DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
+    final slotStart = DateTime(
+        targetDate.year, targetDate.month, targetDate.day, hour, minute);
     // 1 hour prior to slot start
     final oneHourBefore = slotStart.subtract(const Duration(hours: 1));
     return oneHourBefore.millisecondsSinceEpoch;
@@ -337,20 +356,22 @@ class PushNotificationService {
   Future<void> schedule1HourReminder(Booking booking) async {
     if (booking.id.isEmpty) return;
 
-    final dateLabel = booking.bookingDate.isNotEmpty ? booking.bookingDate : booking.date;
-    final startLabel = booking.startTime.isNotEmpty ? booking.startTime : '10:00 AM';
-    final reminderEpochMs = calculate1HourReminderTimeMillis(dateLabel, startLabel);
+    final dateLabel = booking.bookDate.toIso8601String().split('T').first;
+    final startLabel =
+        booking.startTime.isNotEmpty ? booking.startTime : '10:00 AM';
+    final reminderEpochMs =
+        calculate1HourReminderTimeMillis(dateLabel, startLabel);
     final nowMs = DateTime.now().millisecondsSinceEpoch;
 
-    final venueName = booking.venueName.isNotEmpty ? booking.venueName : 'BookMySpace Venue';
+    final venueName =
+        booking.venueName.isNotEmpty ? booking.venueName : 'BookMySpace Venue';
     final slotLabel = booking.slotLabel.isNotEmpty
         ? booking.slotLabel
         : '${booking.startTime} - ${booking.endTime}'.trim().isNotEmpty
             ? '${booking.startTime} - ${booking.endTime}'
             : 'Reserved Slot';
-    final qrToken = booking.qrCodeToken.isNotEmpty
-        ? booking.qrCodeToken
-        : 'BMS-PASS-${booking.id.length > 6 ? booking.id.substring(booking.id.length - 6).toUpperCase() : booking.id.toUpperCase()}';
+    final qrToken =
+        'BMS-PASS-${booking.id.length > 6 ? booking.id.substring(booking.id.length - 6).toUpperCase() : booking.id.toUpperCase()}';
 
     final info = ScheduledReminderInfo(
       bookingId: booking.id,
@@ -370,7 +391,8 @@ class PushNotificationService {
           await _apnsChannel.invokeMethod('showNotification', {
             'id': 'reminder_${booking.id}',
             'title': '⏰ Booking Starts in 1 Hour: $venueName',
-            'body': 'Reminder: Your slot ($slotLabel) begins in 1 hour. Tap to view your check-in pass.',
+            'body':
+                'Reminder: Your slot ($slotLabel) begins in 1 hour. Tap to view your check-in pass.',
             'categoryIdentifier': '1_HOUR_REMINDER',
             'delaySeconds': (delayMs / 1000).clamp(1, 31536000),
             'data': {
@@ -483,27 +505,34 @@ class PushNotificationService {
     final target = booking ??
         Booking(
           id: 'bk_live_${(1000 + DateTime.now().millisecond % 9000)}',
-          userId: 'user_live',
+          bookingRef: 'BMS-LIVE',
           venueId: 'v1',
-          date: 'Today',
+          slotId: 'slot_live',
+          bookDate: DateTime.now(),
           startTime: '11:00 AM',
           endTime: '12:00 PM',
           slotLabel: '11:00 AM - 12:00 PM',
+          amount: 1200,
+          taxAmount: 0,
           totalAmount: 1200,
-          status: 'confirmed',
+          status: BookingStatus.confirmed,
           venueName: 'Smash Arena International',
-          bookingDate: 'Today',
-          qrCodeToken: 'BMS-PASS-LIVE-88',
         );
 
     await show1HourReminderNotification(
       bookingId: target.id,
-      venueName: target.venueName.isNotEmpty ? target.venueName : 'Smash Arena International',
-      slotTime: target.slotLabel.isNotEmpty ? target.slotLabel : '11:00 AM - 12:00 PM',
-      bookingDate: target.bookingDate.isNotEmpty ? target.bookingDate : 'Today',
-      qrCodeToken: target.qrCodeToken.isNotEmpty ? target.qrCodeToken : 'BMS-PASS-LIVE-88',
-      customTitle: '⏰ Booking Starts in 1 Hour: ${target.venueName.isNotEmpty ? target.venueName : 'Smash Arena'}',
-      customBody: 'Reminder: Your slot (${target.slotLabel}) begins in 60 minutes. Your QR pass is ready for check-in.',
+      venueName: target.venueName.isNotEmpty
+          ? target.venueName
+          : 'Smash Arena International',
+      slotTime: target.slotLabel.isNotEmpty
+          ? target.slotLabel
+          : '11:00 AM - 12:00 PM',
+      bookingDate: target.bookDate.toIso8601String().split('T').first,
+      qrCodeToken: 'BMS-PASS-${target.id.toUpperCase()}',
+      customTitle:
+          '⏰ Booking Starts in 1 Hour: ${target.venueName.isNotEmpty ? target.venueName : 'Smash Arena'}',
+      customBody:
+          'Reminder: Your slot (${target.slotLabel}) begins in 60 minutes. Your QR pass is ready for check-in.',
     );
   }
 
@@ -668,10 +697,14 @@ class PushNotificationService {
     if (navContext == null) return;
 
     final targetAction = action ?? data['action'] as String?;
-    final reminderType = data['type'] as String? ?? data['reminder_type'] as String? ?? '';
-    final bookingId = data['booking_id'] as String? ?? data['bookingId'] as String?;
+    final reminderType =
+        data['type'] as String? ?? data['reminder_type'] as String? ?? '';
+    final bookingId =
+        data['booking_id'] as String? ?? data['bookingId'] as String?;
     final venueId = data['venue_id'] as String? ?? data['venueId'] as String?;
-    final courseId = data['course_id'] as String? ?? data['courseId'] as String? ?? data['class_id'] as String?;
+    final courseId = data['course_id'] as String? ??
+        data['courseId'] as String? ??
+        data['class_id'] as String?;
 
     // 1. Directions action: open venue map
     if (targetAction == 'directions') {
@@ -684,7 +717,9 @@ class PushNotificationService {
     }
 
     // 2. View Pass or 1-Hour pre-booking reminder: open bookings tab with QR pass
-    if (targetAction == 'view_pass' || reminderType == '1_hour_reminder' || (bookingId != null && bookingId.isNotEmpty)) {
+    if (targetAction == 'view_pass' ||
+        reminderType == '1_hour_reminder' ||
+        (bookingId != null && bookingId.isNotEmpty)) {
       navContext.go(AppRoutes.bookings);
       return;
     }
@@ -711,7 +746,8 @@ class PushNotificationService {
 
   Future<void> set1HourReminderEnabled(bool enabled) async {
     _is1HourReminderEnabled = enabled;
-    await _storage.write(key: 'pref_1_hour_reminders', value: enabled ? 'true' : 'false');
+    await _storage.write(
+        key: 'pref_1_hour_reminders', value: enabled ? 'true' : 'false');
     if (!enabled) {
       // Cancel all active scheduled reminders
       for (final id in _scheduledReminders.keys.toList()) {

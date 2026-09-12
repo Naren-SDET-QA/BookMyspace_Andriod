@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../booking/domain/booking.dart';
 import '../../../booking/presentation/booking_providers.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
@@ -15,15 +13,8 @@ import '../payment_providers.dart';
 
 /// Payment checkout screen matching the Android native Razorpay payment experience.
 ///
-/// Features:
-/// - Order creation and authoritative price breakdown (Base + GST Tax)
-/// - Wallet balance deduction toggle
-/// - Configurable payment methods (Razorpay standard, UPI/GPay, Cards, Netbanking, Pay at Venue, Split Advance)
-/// - Native Razorpay SDK invocation for iOS & Android
-/// - Web compatibility for browser clients
-/// - Real-time signature verification and booking status update
-/// - Self-healing autonomous error recovery preventing stuck slot holds
-/// - Rich post-payment confirmation screen with entry token and check-in QR details
+/// The payment UI reflects the deployed Razorpay order + webhook flow. The
+/// payable amount is always the booking total returned by the server order.
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key, required this.booking});
 
@@ -35,12 +26,9 @@ class PaymentScreen extends ConsumerStatefulWidget {
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   PaymentMethodType _selectedMethod = PaymentMethodType.razorpayCheckout;
-  bool _useWallet = false;
-  final double _availableWalletBalance = 500.0;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final booking = widget.booking;
     final paymentState = ref.watch(paymentNotifierProvider);
@@ -49,40 +37,21 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final fullTotal = booking.totalAmount > 0
         ? booking.totalAmount
         : (booking.amount + booking.taxAmount);
-    final walletDeduct = _useWallet
-        ? _availableWalletBalance.clamp(0.0, fullTotal)
-        : 0.0;
-    final netAfterWallet = (fullTotal - walletDeduct).clamp(0.0, double.infinity);
-
-    double payableAmount;
-    double remainingDueAtVenue;
-
-    if (_selectedMethod == PaymentMethodType.payAtVenue) {
-      payableAmount = 0.0;
-      remainingDueAtVenue = fullTotal;
-    } else if (_selectedMethod == PaymentMethodType.splitAdvanceToken) {
-      final advance = (fullTotal * 0.20).clamp(100.0, fullTotal);
-      final walletPart = _useWallet
-          ? _availableWalletBalance.clamp(0.0, advance)
-          : 0.0;
-      payableAmount = (advance - walletPart).clamp(0.0, double.infinity);
-      remainingDueAtVenue = (fullTotal - payableAmount - walletPart).clamp(0.0, double.infinity);
-    } else {
-      payableAmount = netAfterWallet;
-      remainingDueAtVenue = 0.0;
-    }
+    final payableAmount = fullTotal;
+    // Razorpay Checkout collects the full booking total; remaining venue due
+    // is whatever of that total is not included in the payable amount.
+    final remainingDue =
+        (fullTotal - payableAmount).clamp(0.0, fullTotal).toDouble();
 
     if (paymentState.isSuccess) {
       return Scaffold(
         body: SafeArea(
           child: _PaymentSuccessView(
             booking: booking,
-            paymentId: paymentState.paymentId ?? 'pay_rzp_confirmed',
-            orderId: paymentState.orderId ?? 'order_confirmed',
+            paymentId: paymentState.paymentId,
+            orderId: paymentState.orderId,
             note: paymentState.note,
             selectedMethod: _selectedMethod,
-            amountPaid: payableAmount,
-            remainingDue: remainingDueAtVenue,
           ),
         ),
       );
@@ -98,46 +67,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Text(
-                  'Secure Checkout 🔒',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Self-Healing Shield',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const Text(
+              'Secure Checkout 🔒',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              '256-Bit SSL Encrypted & Auto-Reconciled',
+              '256-Bit SSL Encrypted',
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -152,11 +87,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Error banner if any
-            if (paymentState.errorMessage != null) ...[
+            if (paymentState.isAwaitingConfirmation) ...[
+              _PendingConfirmationCard(
+                message: paymentState.note ??
+                    'Payment was submitted. Waiting for confirmation.',
+                onRefresh: _refreshPaymentStatus,
+              ),
+              const SizedBox(height: 16),
+            ] else if (paymentState.errorMessage != null) ...[
               _ErrorRecoveryCard(
                 message: paymentState.errorMessage!,
-                onRetry: () => _executePayment(payableAmount, remainingDueAtVenue),
-                onSelfHeal: () => _executeSelfHealing(payableAmount, remainingDueAtVenue),
+                onRetry: () => _executePayment(payableAmount, remainingDue),
               ),
               const SizedBox(height: 16),
             ],
@@ -168,33 +109,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             // Price breakdown card
             _PriceBreakdownCard(
               booking: booking,
-              walletDeduction: walletDeduct,
               totalAmount: fullTotal,
-              netAmount: netAfterWallet,
             ),
             const SizedBox(height: 16),
-
-            // Wallet balance deduction toggle
-            _WalletCard(
-              availableBalance: _availableWalletBalance,
-              useWallet: _useWallet,
-              onChanged: (val) => setState(() => _useWallet = val),
-            ),
-            const SizedBox(height: 20),
-
-            // Payment Methods Section
-            Text(
-              'Select Payment Option',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...PaymentMethodType.values.map(
-              (method) => _PaymentMethodTile(
-                method: method,
-                isSelected: _selectedMethod == method,
-                onSelected: () => setState(() => _selectedMethod = method),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.account_balance_wallet_outlined,
+                    color: theme.colorScheme.primary),
+                title: const Text('Pay securely with Razorpay'),
+                subtitle: const Text(
+                  'Choose UPI, cards or net banking in the secure checkout sheet.',
+                ),
               ),
             ),
             const SizedBox(height: 80), // bottom bar spacing
@@ -202,11 +127,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         ),
       ),
       bottomNavigationBar: _BottomPayBar(
-        selectedMethod: _selectedMethod,
         payableAmount: payableAmount,
-        remainingDue: remainingDueAtVenue,
         isLoading: paymentState.isLoading,
-        onPayPressed: () => _executePayment(payableAmount, remainingDueAtVenue),
+        isAwaitingConfirmation: paymentState.isAwaitingConfirmation,
+        onPayPressed: () => _executePayment(payableAmount, remainingDue),
       ),
     );
   }
@@ -225,15 +149,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  Future<void> _executeSelfHealing(double payable, double remainingDue) async {
-    final notifier = ref.read(paymentNotifierProvider.notifier);
-    await notifier.processPayment(
-      booking: widget.booking,
-      selectedMethod: PaymentMethodType.payAtVenue,
-      payableAmount: 0.0,
-      remainingDueAtVenue: widget.booking.totalAmount,
-    );
-    ref.invalidate(myBookingsProvider);
+  Future<void> _refreshPaymentStatus() async {
+    final success = await ref
+        .read(paymentNotifierProvider.notifier)
+        .refreshPaymentStatus(bookingId: widget.booking.id);
+    if (success && mounted) {
+      ref.invalidate(myBookingsProvider);
+    }
   }
 }
 
@@ -245,14 +167,13 @@ class _BookingSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final venueTitle = booking.venueName.isNotEmpty
-        ? booking.venueName
-        : 'Space Reservation';
+    final venueTitle =
+        booking.venueName.isNotEmpty ? booking.venueName : 'Space Reservation';
 
     return Card(
       elevation: 0,
       shape: RoundedCornerShape(12),
-      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -260,7 +181,8 @@ class _BookingSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.location_on, size: 18, color: theme.colorScheme.primary),
+                Icon(Icons.location_on,
+                    size: 18, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -273,13 +195,16 @@ class _BookingSummaryCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    booking.bookingRef.isNotEmpty ? booking.bookingRef : 'PENDING',
+                    booking.bookingRef.isNotEmpty
+                        ? booking.bookingRef
+                        : 'PENDING',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -292,18 +217,21 @@ class _BookingSummaryCard extends StatelessWidget {
             const Divider(height: 18),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                Icon(Icons.calendar_today,
+                    size: 14, color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   DateFormat.yMMMd().format(booking.bookDate),
                   style: theme.textTheme.bodySmall,
                 ),
                 const Spacer(),
-                Icon(Icons.access_time, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                Icon(Icons.access_time,
+                    size: 14, color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   '${booking.displayStart} – ${booking.displayEnd}',
-                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -317,15 +245,11 @@ class _BookingSummaryCard extends StatelessWidget {
 class _PriceBreakdownCard extends StatelessWidget {
   const _PriceBreakdownCard({
     required this.booking,
-    required this.walletDeduction,
     required this.totalAmount,
-    required this.netAmount,
   });
 
   final Booking booking;
-  final double walletDeduction;
   final double totalAmount;
-  final double netAmount;
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +266,8 @@ class _PriceBreakdownCard extends StatelessWidget {
           children: [
             Text(
               'Pricing Summary',
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             _RowText(
@@ -354,14 +279,6 @@ class _PriceBreakdownCard extends StatelessWidget {
               label: 'GST & Platform Fee (18%)',
               value: formatInr(booking.taxAmount),
             ),
-            if (walletDeduction > 0) ...[
-              const SizedBox(height: 6),
-              _RowText(
-                label: 'Wallet Credits Applied',
-                value: '- ${formatInr(walletDeduction)}',
-                textColor: const Color(0xFF2E7D32),
-              ),
-            ],
             const Divider(height: 18),
             _RowText(
               label: 'Total Full Amount',
@@ -380,13 +297,11 @@ class _RowText extends StatelessWidget {
     required this.label,
     required this.value,
     this.isBold = false,
-    this.textColor,
   });
 
   final String label;
   final String value;
   final bool isBold;
-  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +319,7 @@ class _RowText extends StatelessWidget {
           value,
           style: theme.textTheme.bodySmall?.copyWith(
             fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-            color: textColor ?? (isBold ? theme.colorScheme.primary : null),
+            color: isBold ? theme.colorScheme.primary : null,
           ),
         ),
       ],
@@ -412,145 +327,24 @@ class _RowText extends StatelessWidget {
   }
 }
 
-class _WalletCard extends StatelessWidget {
-  const _WalletCard({
-    required this.availableBalance,
-    required this.useWallet,
-    required this.onChanged,
-  });
-
-  final double availableBalance;
-  final bool useWallet;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      elevation: 0,
-      shape: RoundedCornerShape(12),
-      color: theme.colorScheme.tertiaryContainer.withOpacity(0.3),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Row(
-          children: [
-            Icon(Icons.account_balance_wallet, color: theme.colorScheme.tertiary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'BookMySpace Wallet',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Available Credits: ${formatInr(availableBalance)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              key: const Key('use_wallet_toggle'),
-              value: useWallet,
-              onChanged: onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PaymentMethodTile extends StatelessWidget {
-  const _PaymentMethodTile({
-    required this.method,
-    required this.isSelected,
-    required this.onSelected,
-  });
-
-  final PaymentMethodType method;
-  final bool isSelected;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? theme.colorScheme.primaryContainer.withOpacity(0.35)
-            : theme.colorScheme.surface,
-        border: Border.all(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outlineVariant.withOpacity(0.6),
-          width: isSelected ? 1.5 : 1.0,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        onTap: onSelected,
-        shape: RoundedCornerShape(12),
-        leading: Radio<PaymentMethodType>(
-          value: method,
-          groupValue: isSelected ? method : null,
-          onChanged: (_) => onSelected(),
-        ),
-        title: Text(
-          method.title,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-          ),
-        ),
-        subtitle: Text(
-          method.subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _BottomPayBar extends StatelessWidget {
   const _BottomPayBar({
-    required this.selectedMethod,
     required this.payableAmount,
-    required this.remainingDue,
     required this.isLoading,
+    required this.isAwaitingConfirmation,
     required this.onPayPressed,
   });
 
-  final PaymentMethodType selectedMethod;
   final double payableAmount;
-  final double remainingDue;
   final bool isLoading;
+  final bool isAwaitingConfirmation;
   final VoidCallback onPayPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    String label;
-    if (selectedMethod == PaymentMethodType.payAtVenue) {
-      label = 'Pay on Arrival';
-    } else if (selectedMethod == PaymentMethodType.splitAdvanceToken) {
-      label = 'Pay Advance Token';
-    } else {
-      label = 'Total Payable';
-    }
-
-    return Surface(
+    return Material(
       color: theme.colorScheme.surface,
       elevation: 8,
       child: SafeArea(
@@ -564,7 +358,7 @@ class _BottomPayBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      label,
+                      'Total Payable',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -576,15 +370,6 @@ class _BottomPayBar extends StatelessWidget {
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                    if (remainingDue > 0)
-                      Text(
-                        '${formatInr(remainingDue)} due on arrival',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFFF9800),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -594,7 +379,8 @@ class _BottomPayBar extends StatelessWidget {
                   minimumSize: const Size(160, 50),
                   shape: RoundedCornerShape(12),
                 ),
-                onPressed: isLoading ? null : onPayPressed,
+                onPressed:
+                    isLoading || isAwaitingConfirmation ? null : onPayPressed,
                 icon: isLoading
                     ? const SizedBox(
                         width: 18,
@@ -608,9 +394,9 @@ class _BottomPayBar extends StatelessWidget {
                 label: Text(
                   isLoading
                       ? 'Verifying Securely...'
-                      : (selectedMethod == PaymentMethodType.payAtVenue
-                          ? 'Confirm Reservation'
-                          : 'Pay Securely'),
+                      : isAwaitingConfirmation
+                          ? 'Awaiting Confirmation'
+                          : 'Pay Securely',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -622,25 +408,73 @@ class _BottomPayBar extends StatelessWidget {
   }
 }
 
+class _PendingConfirmationCard extends StatelessWidget {
+  const _PendingConfirmationCard({
+    required this.message,
+    required this.onRefresh,
+  });
+
+  final String message;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.hourglass_top_rounded,
+                  color: theme.colorScheme.primary, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Waiting for confirmation',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(message, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: onRefresh,
+            child: const Text('Refresh status'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ErrorRecoveryCard extends StatelessWidget {
   const _ErrorRecoveryCard({
     required this.message,
     required this.onRetry,
-    required this.onSelfHeal,
   });
 
   final String message;
   final VoidCallback onRetry;
-  final VoidCallback onSelfHeal;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.08),
+        color: Colors.red.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -670,11 +504,6 @@ class _ErrorRecoveryCard extends StatelessWidget {
                 onPressed: onRetry,
                 child: const Text('Try Again'),
               ),
-              const SizedBox(width: 8),
-              FilledButton.tonal(
-                onPressed: onSelfHeal,
-                child: const Text('Self-Healing Recovery'),
-              ),
             ],
           ),
         ],
@@ -690,17 +519,13 @@ class _PaymentSuccessView extends StatelessWidget {
     required this.orderId,
     this.note,
     required this.selectedMethod,
-    required this.amountPaid,
-    required this.remainingDue,
   });
 
   final Booking booking;
-  final String paymentId;
-  final String orderId;
+  final String? paymentId;
+  final String? orderId;
   final String? note;
   final PaymentMethodType selectedMethod;
-  final double amountPaid;
-  final double remainingDue;
 
   @override
   Widget build(BuildContext context) {
@@ -716,7 +541,7 @@ class _PaymentSuccessView extends StatelessWidget {
             width: 84,
             height: 84,
             decoration: BoxDecoration(
-              color: const Color(0xFF4CAF50).withOpacity(0.12),
+              color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -734,7 +559,8 @@ class _PaymentSuccessView extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            note ?? 'Your space booking is secured and reconciled with the venue.',
+            note ??
+                'Your space booking is secured and reconciled with the venue.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -746,7 +572,8 @@ class _PaymentSuccessView extends StatelessWidget {
           Card(
             elevation: 0,
             shape: RoundedCornerShape(16),
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainerHighest
+                .withValues(alpha: 0.5),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -763,9 +590,11 @@ class _PaymentSuccessView extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withOpacity(0.15),
+                          color:
+                              const Color(0xFF4CAF50).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
@@ -816,28 +645,28 @@ class _PaymentSuccessView extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               child: Column(
                 children: [
-                  _RowText(
-                    label: 'Transaction ID',
-                    value: paymentId.length > 18 ? '${paymentId.substring(0, 18)}...' : paymentId,
-                  ),
-                  const SizedBox(height: 6),
-                  _RowText(
-                    label: 'Order ID',
-                    value: orderId.length > 18 ? '${orderId.substring(0, 18)}...' : orderId,
-                  ),
-                  const SizedBox(height: 6),
+                  if (paymentId != null && paymentId!.isNotEmpty) ...[
+                    _RowText(
+                      label: 'Transaction ID',
+                      value: paymentId!.length > 18
+                          ? '${paymentId!.substring(0, 18)}...'
+                          : paymentId!,
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  if (orderId != null && orderId!.isNotEmpty) ...[
+                    _RowText(
+                      label: 'Order ID',
+                      value: orderId!.length > 18
+                          ? '${orderId!.substring(0, 18)}...'
+                          : orderId!,
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                   _RowText(
                     label: 'Payment Method',
                     value: selectedMethod.title.split(' ').take(3).join(' '),
                   ),
-                  if (remainingDue > 0) ...[
-                    const SizedBox(height: 6),
-                    _RowText(
-                      label: 'Remaining Due on Arrival',
-                      value: formatInr(remainingDue),
-                      textColor: const Color(0xFFFF9800),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -872,6 +701,5 @@ class _PaymentSuccessView extends StatelessWidget {
   }
 }
 
-ShapeBorder RoundedCornerShape(double radius) =>
+OutlinedBorder RoundedCornerShape(double radius) =>
     RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
-

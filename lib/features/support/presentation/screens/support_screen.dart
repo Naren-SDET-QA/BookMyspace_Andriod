@@ -82,9 +82,11 @@ class SupportTicketsScreen extends ConsumerWidget {
                 DropdownButtonFormField<TicketPriority>(
                   initialValue: priority,
                   items: TicketPriority.values
-                      .map((p) => DropdownMenuItem(value: p, child: Text(p.name)))
+                      .map((p) =>
+                          DropdownMenuItem(value: p, child: Text(p.name)))
                       .toList(),
-                  onChanged: (v) => setState(() => priority = v ?? TicketPriority.medium),
+                  onChanged: (v) =>
+                      setState(() => priority = v ?? TicketPriority.medium),
                   decoration: const InputDecoration(labelText: 'Priority'),
                 ),
               ],
@@ -143,7 +145,8 @@ class _TicketTile extends ConsumerWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: ticket.isResolved
                         ? AppTheme.brand.withValues(alpha: 0.12)
@@ -153,7 +156,8 @@ class _TicketTile extends ConsumerWidget {
                   child: Text(
                     ticket.isResolved ? 'Resolved' : ticket.status.dbValue,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: ticket.isResolved ? AppTheme.brand : AppTheme.accent,
+                      color:
+                          ticket.isResolved ? AppTheme.brand : AppTheme.accent,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

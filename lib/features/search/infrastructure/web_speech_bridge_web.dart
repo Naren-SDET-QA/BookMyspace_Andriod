@@ -35,7 +35,8 @@ class WebSpeechBridge {
   static void Function(Map<String, dynamic> event)? _onEventCallback;
   static bool _listenerRegistered = false;
 
-  static void registerEventListener(void Function(Map<String, dynamic> event) onEvent) {
+  static void registerEventListener(
+      void Function(Map<String, dynamic> event) onEvent) {
     _onEventCallback = onEvent;
     if (_listenerRegistered) return;
     try {

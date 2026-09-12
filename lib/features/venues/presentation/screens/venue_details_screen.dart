@@ -5,9 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/category_accent.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/glassmorphic_card.dart';
+import '../../../../core/widgets/staggered_entrance.dart';
+import '../../../auth/presentation/auth_providers.dart';
+import '../../../reviews/presentation/widgets/venue_reviews_section.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
 import '../widgets/venue_badges.dart';
@@ -49,6 +56,7 @@ class _VenueDetailsBody extends ConsumerWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
+    final accent = categoryAccentColor(venue.category?.parentSection);
 
     return CustomScrollView(
       slivers: [
@@ -69,14 +77,8 @@ class _VenueDetailsBody extends ConsumerWidget {
                   )
                 else
                   const ColoredBox(
-                    color: AppTheme.brandLight,
-                    child: Center(
-                      child: Icon(
-                        Icons.apartment_rounded,
-                        size: 64,
-                        color: Colors.white,
-                      ),
-                    ),
+                    color: AppTheme.darkCanvas,
+                    child: Center(child: BookMySpaceMark(size: 80)),
                   ),
                 if (venue.images.length > 1)
                   Positioned(
@@ -103,20 +105,25 @@ class _VenueDetailsBody extends ConsumerWidget {
           actions: [
             favorite.when(
               data: (isFav) => IconButton(
-                onPressed: () =>
-                    ref.read(toggleFavoriteProvider(venue.id).future),
+                onPressed: () async {
+                  if (ref.read(currentUserProvider) == null) {
+                    context.push(AppRoutes.login);
+                    return;
+                  }
+                  await ref.read(favoriteControllerProvider).toggle(venue.id);
+                },
                 icon: Icon(
-                  isFav ?? false
+                  isFav
                       ? Icons.favorite_rounded
                       : Icons.favorite_outline_rounded,
-                  color: isFav ?? false ? AppTheme.accent : null,
+                  color: isFav ? AppTheme.accent : null,
                 ),
               ),
               loading: () => const IconButton(
                 onPressed: null,
                 icon: Icon(Icons.favorite_outline_rounded),
               ),
-              error: (_, _) => const IconButton(
+              error: (_, __) => const IconButton(
                 onPressed: null,
                 icon: Icon(Icons.favorite_outline_rounded),
               ),
@@ -130,18 +137,21 @@ class _VenueDetailsBody extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        venue.name,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+                StaggeredFadeSlideIn(
+                  index: 0,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          venue.name,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
-                    if (venue.isVerified) const VerifiedBadge(),
-                  ],
+                      if (venue.isVerified) const VerifiedBadge(),
+                    ],
+                  ),
                 ),
                 if (venue.ratingCount > 0) ...[
                   const SizedBox(height: 6),
@@ -151,94 +161,135 @@ class _VenueDetailsBody extends ConsumerWidget {
                   ),
                 ],
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 16,
-                      color: AppTheme.brand,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        venue.address,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                StaggeredFadeSlideIn(
+                  index: 1,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: accent,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          venue.address,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (venue.description.isNotEmpty) ...[
-                  Text(l10n.aboutThisVenue, style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 6),
-                  Text(
-                    venue.description,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  StaggeredFadeSlideIn(
+                    index: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.aboutThisVenue,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          venue.description,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
                 ],
-                _PricingCard(venue: venue),
+                StaggeredFadeSlideIn(
+                  index: 3,
+                  child: _PricingCard(venue: venue),
+                ),
                 const SizedBox(height: 20),
                 if (venue.facilities.isNotEmpty) ...[
                   Text(l10n.amenities, style: theme.textTheme.titleMedium),
                   const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: venue.facilities
-                        .map(
-                          (f) => Chip(
-                            avatar: const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 18,
-                              color: AppTheme.brand,
+                  StaggeredFadeSlideIn(
+                    index: 4,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: venue.facilities
+                          .map(
+                            (f) => Chip(
+                              avatar: Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 18,
+                                color: accent,
+                              ),
+                              label: Text(f.facility),
                             ),
-                            label: Text(f.facility),
-                          ),
-                        )
-                        .toList(),
+                          )
+                          .toList(),
+                    ),
                   ),
                   const SizedBox(height: 20),
                 ],
                 if (venue.operatingHours.isNotEmpty) ...[
                   Text(l10n.operatingHours, style: theme.textTheme.titleMedium),
                   const SizedBox(height: 10),
-                  _HoursList(hours: venue.operatingHours),
+                  StaggeredFadeSlideIn(
+                    index: 5,
+                    child: _HoursList(hours: venue.operatingHours),
+                  ),
                   const SizedBox(height: 20),
                 ],
                 if (venue.foodOptions.isNotEmpty ||
                     venue.parkingCapacity > 0) ...[
                   Text(l10n.details, style: theme.textTheme.titleMedium),
                   const SizedBox(height: 10),
-                  _DetailRow(
-                    icon: Icons.restaurant_rounded,
-                    label: l10n.foodOptions,
-                    value: venue.foodOptions.isEmpty ? '—' : venue.foodOptions,
-                  ),
-                  _DetailRow(
-                    icon: Icons.local_parking_rounded,
-                    label: l10n.parking,
-                    value: venue.parkingCapacity > 0
-                        ? '${venue.parkingCapacity} vehicles'
-                        : '—',
-                  ),
-                  _DetailRow(
-                    icon: Icons.receipt_long_rounded,
-                    label: l10n.taxRate,
-                    value: '${venue.taxRate.toStringAsFixed(0)}%',
+                  StaggeredFadeSlideIn(
+                    index: 6,
+                    child: Column(
+                      children: [
+                        _DetailRow(
+                          icon: Icons.restaurant_rounded,
+                          label: l10n.foodOptions,
+                          value: venue.foodOptions.isEmpty
+                              ? '—'
+                              : venue.foodOptions,
+                        ),
+                        _DetailRow(
+                          icon: Icons.local_parking_rounded,
+                          label: l10n.parking,
+                          value: venue.parkingCapacity > 0
+                              ? '${venue.parkingCapacity} vehicles'
+                              : '—',
+                        ),
+                        _DetailRow(
+                          icon: Icons.receipt_long_rounded,
+                          label: l10n.taxRate,
+                          value: '${venue.taxRate.toStringAsFixed(0)}%',
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                 ],
+                StaggeredFadeSlideIn(
+                  index: 7,
+                  child: VenueReviewsSection(venueId: venue.id),
+                ),
+                const SizedBox(height: 20),
                 Text(l10n.address, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 10),
-                _VenueMap(
-                  latitude: venue.latitude,
-                  longitude: venue.longitude,
-                  name: venue.name,
+                StaggeredFadeSlideIn(
+                  index: 8,
+                  child: _VenueMap(
+                    latitude: venue.latitude,
+                    longitude: venue.longitude,
+                    name: venue.name,
+                    accent: accent,
+                  ),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -259,54 +310,56 @@ class _PricingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Card(
-      color: AppTheme.brand.withValues(alpha: 0.06),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.basePrice,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+    final accent = categoryAccentColor(venue.category?.parentSection);
+    final accentGradient =
+        categoryAccentGradient(venue.category?.parentSection);
+    return GlassmorphicCard(
+      borderRadius: 16,
+      accentGradient: accentGradient,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.basePrice,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formatInr(venue.price),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: AppTheme.brand,
-                      fontWeight: FontWeight.w700,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatInr(venue.price),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            if (venue.capacity > 0)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    l10n.capacity,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+          ),
+          if (venue.capacity > 0)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  l10n.capacity,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${venue.capacity}',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${venue.capacity}',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
-          ],
-        ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -388,11 +441,13 @@ class _VenueMap extends StatelessWidget {
     required this.latitude,
     required this.longitude,
     required this.name,
+    this.accent = AppTheme.brand,
   });
 
   final double latitude;
   final double longitude;
   final String name;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -406,8 +461,7 @@ class _VenueMap extends StatelessWidget {
             initialCenter: point,
             initialZoom: 14,
             interactionOptions: const InteractionOptions(
-              flags:
-                  InteractiveFlag.drag |
+              flags: InteractiveFlag.drag |
                   InteractiveFlag.pinchZoom |
                   InteractiveFlag.doubleTapZoom,
             ),
@@ -423,9 +477,9 @@ class _VenueMap extends StatelessWidget {
                   point: point,
                   width: 40,
                   height: 40,
-                  child: const Icon(
+                  child: Icon(
                     Icons.location_pin,
-                    color: AppTheme.brand,
+                    color: accent,
                     size: 40,
                   ),
                 ),

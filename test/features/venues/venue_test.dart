@@ -93,6 +93,15 @@ void main() {
       expect(cleared.categorySlug, isNull);
       expect(cleared.query, 'x');
     });
+
+    test('equality is value-based for family providers', () {
+      const a = VenueSearchQuery(query: 'hall', categorySlug: 'pg_hostels');
+      const b = VenueSearchQuery(query: 'hall', categorySlug: 'pg_hostels');
+      const c = VenueSearchQuery(query: 'hall', categorySlug: 'function_hall');
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      expect(a == c, isFalse);
+    });
   });
 
   group('MockVenueRepository', () {

@@ -3,12 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../booking/domain/booking.dart';
-import '../../../booking/presentation/booking_providers.dart';
-import '../domain/qr_check_in.dart';
-import '../presentation/qr_checkin_providers.dart';
+import '../../domain/qr_check_in.dart';
+import '../qr_checkin_providers.dart';
 import '../widgets/qr_code_pass_widget.dart';
 
 /// Screen providing CameraX-style QR scanning and digital entry pass display.
@@ -24,15 +22,19 @@ class QrCheckInScannerScreen extends ConsumerStatefulWidget {
 }
 
 class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   int _selectedTab = 0; // 0: Scan QR Code, 1: My Entry Pass QR
   final TextEditingController _manualInputController = TextEditingController();
+  late final TabController _tabController;
   late AnimationController _scanLineController;
   late Animation<double> _scanLineAnimation;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChanged);
+
     _scanLineController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
@@ -43,8 +45,16 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
     );
   }
 
+  void _handleTabChanged() {
+    if (!mounted || _selectedTab == _tabController.index) return;
+    setState(() => _selectedTab = _tabController.index);
+  }
+
   @override
   void dispose() {
+    _tabController
+      ..removeListener(_handleTabChanged)
+      ..dispose();
     _scanLineController.dispose();
     _manualInputController.dispose();
     super.dispose();
@@ -119,25 +129,15 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
           Container(
             color: theme.colorScheme.surface,
             child: TabBar(
-              controller: TabController(
-                length: 2,
-                vsync: this,
-                initialIndex: _selectedTab,
-              )..addListener(() {
-                  if (mounted) {
-                    setState(() {
-                      // tab changed
-                    });
-                  }
-                }),
-              onTap: (index) => setState(() => _selectedTab = index),
+              controller: _tabController,
               tabs: const [
                 Tab(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('📷 ', style: TextStyle(fontSize: 14)),
-                      Text('Scan QR Code', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Scan QR Code',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -146,7 +146,8 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('🎫 ', style: TextStyle(fontSize: 14)),
-                      Text('My Entry Pass QR', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('My Entry Pass QR',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -204,9 +205,10 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                   Positioned(
                     top: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -229,7 +231,9 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _ScannerCircleButton(
-                          icon: qrState.isTorchOn ? Icons.flash_on : Icons.flash_off,
+                          icon: qrState.isTorchOn
+                              ? Icons.flash_on
+                              : Icons.flash_off,
                           label: 'Torch',
                           isActive: qrState.isTorchOn,
                           onTap: () => ref
@@ -317,6 +321,10 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                               },
                         style: FilledButton.styleFrom(
                           shape: RoundedCornerShape(10),
+                          // This button shares a Row with the Expanded
+                          // input. The app-wide fromHeight style otherwise
+                          // contributes an infinite minimum width here.
+                          minimumSize: const Size(0, 52),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
@@ -395,7 +403,8 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
             ),
           )
         else
-          ...confirmedBookings.map((booking) => _buildQrPassCard(theme, booking)),
+          ...confirmedBookings
+              .map((booking) => _buildQrPassCard(theme, booking)),
       ],
     );
   }
@@ -443,7 +452,8 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isCheckedIn
                         ? const Color(0xFFE8F5E9)
@@ -497,13 +507,15 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Invoice & QR pass ready for #${booking.bookingRef}'),
+                          content: Text(
+                              'Invoice & QR pass ready for #${booking.bookingRef}'),
                           duration: const Duration(seconds: 2),
                         ),
                       );
                     },
                     icon: const Icon(Icons.download, size: 16),
-                    label: const Text('Pass Info', style: TextStyle(fontSize: 12)),
+                    label:
+                        const Text('Pass Info', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       shape: RoundedCornerShape(10),
                     ),
@@ -512,13 +524,13 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: isCheckedIn
-                        ? null
-                        : () => _performCheckIn(booking.id),
+                    onPressed:
+                        isCheckedIn ? null : () => _performCheckIn(booking.id),
                     icon: const Icon(Icons.how_to_reg, size: 16),
                     label: Text(
                       isCheckedIn ? 'Verified' : 'Check In Now',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(
                       shape: RoundedCornerShape(10),
@@ -570,10 +582,10 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withOpacity(0.08),
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFF2E7D32).withOpacity(0.3),
+                    color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
@@ -652,7 +664,7 @@ class _ScannerCircleButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: isActive
                   ? AppTheme.brand
-                  : Colors.black.withOpacity(0.6),
+                  : Colors.black.withValues(alpha: 0.6),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white30, width: 1),
             ),
@@ -685,12 +697,10 @@ class _ViewfinderReticlePainter extends CustomPainter {
     final reticleSize = (w < h ? w : h) * 0.65;
     final left = (w - reticleSize) / 2;
     final top = (h - reticleSize) / 2;
-    final rect = Rect.fromLTWH(left, top, reticleSize, reticleSize);
-
     // Torch glow background simulation
     if (isTorchOn) {
       final torchPaint = Paint()
-        ..color = Colors.amber.withOpacity(0.08)
+        ..color = Colors.amber.withValues(alpha: 0.08)
         ..style = PaintingStyle.fill;
       canvas.drawRect(Rect.fromLTWH(0, 0, w, h), torchPaint);
     }
@@ -705,20 +715,32 @@ class _ViewfinderReticlePainter extends CustomPainter {
     const cornerLen = 28.0;
 
     // Top-Left
-    canvas.drawLine(Offset(left, top), Offset(left + cornerLen, top), bracketPaint);
-    canvas.drawLine(Offset(left, top), Offset(left, top + cornerLen), bracketPaint);
+    canvas.drawLine(
+        Offset(left, top), Offset(left + cornerLen, top), bracketPaint);
+    canvas.drawLine(
+        Offset(left, top), Offset(left, top + cornerLen), bracketPaint);
 
     // Top-Right
-    canvas.drawLine(Offset(left + reticleSize, top), Offset(left + reticleSize - cornerLen, top), bracketPaint);
-    canvas.drawLine(Offset(left + reticleSize, top), Offset(left + reticleSize, top + cornerLen), bracketPaint);
+    canvas.drawLine(Offset(left + reticleSize, top),
+        Offset(left + reticleSize - cornerLen, top), bracketPaint);
+    canvas.drawLine(Offset(left + reticleSize, top),
+        Offset(left + reticleSize, top + cornerLen), bracketPaint);
 
     // Bottom-Left
-    canvas.drawLine(Offset(left, top + reticleSize), Offset(left + cornerLen, top + reticleSize), bracketPaint);
-    canvas.drawLine(Offset(left, top + reticleSize), Offset(left, top + reticleSize - cornerLen), bracketPaint);
+    canvas.drawLine(Offset(left, top + reticleSize),
+        Offset(left + cornerLen, top + reticleSize), bracketPaint);
+    canvas.drawLine(Offset(left, top + reticleSize),
+        Offset(left, top + reticleSize - cornerLen), bracketPaint);
 
     // Bottom-Right
-    canvas.drawLine(Offset(left + reticleSize, top + reticleSize), Offset(left + reticleSize - cornerLen, top + reticleSize), bracketPaint);
-    canvas.drawLine(Offset(left + reticleSize, top + reticleSize), Offset(left + reticleSize, top + reticleSize - cornerLen), bracketPaint);
+    canvas.drawLine(
+        Offset(left + reticleSize, top + reticleSize),
+        Offset(left + reticleSize - cornerLen, top + reticleSize),
+        bracketPaint);
+    canvas.drawLine(
+        Offset(left + reticleSize, top + reticleSize),
+        Offset(left + reticleSize, top + reticleSize - cornerLen),
+        bracketPaint);
 
     // Laser scanning line
     final scanY = top + (reticleSize * progress);
@@ -739,8 +761,8 @@ class _ViewfinderReticlePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF00E676).withOpacity(0.25),
-          const Color(0xFF00E676).withOpacity(0.0),
+          const Color(0xFF00E676).withValues(alpha: 0.25),
+          const Color(0xFF00E676).withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(left + 8, scanY - 20, reticleSize - 16, 20));
 
@@ -752,10 +774,10 @@ class _ViewfinderReticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ViewfinderReticlePainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.isTorchOn != isTorchOn;
+    return oldDelegate.progress != progress ||
+        oldDelegate.isTorchOn != isTorchOn;
   }
 }
 
-ShapeBorder RoundedCornerShape(double radius) =>
+OutlinedBorder RoundedCornerShape(double radius) =>
     RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
-

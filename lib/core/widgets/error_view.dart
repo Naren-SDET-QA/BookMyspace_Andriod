@@ -15,29 +15,35 @@ class ErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 24),
-              FilledButton.tonalIcon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(l10n.tryAgain),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
               ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 24),
+                FilledButton.tonalIcon(
+                  onPressed: onRetry,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(l10n.tryAgain),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

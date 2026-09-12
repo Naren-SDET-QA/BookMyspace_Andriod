@@ -57,7 +57,8 @@ class AppLocalizations {
   String get priceHighToLow => 'Price: High to Low';
   String get topRated => 'Top Rated';
   String get noResults => 'No results found';
-  String get noResultsMessage => 'Try a different keyword, category or price range.';
+  String get noResultsMessage =>
+      'Try a different keyword, category or price range.';
   String get tryAgain => 'Try Again';
   String get loading => 'Loading...';
   String get cancel => 'Cancel';
@@ -74,28 +75,44 @@ class AppLocalizations {
   String get noSlotsForDate => 'No slots available for this date';
   String get confirmBooking => 'Confirm Booking';
   String get cancelBooking => 'Cancel Booking';
-  String get cancelBookingConfirm => 'Are you sure you want to cancel this booking?';
+  String get cancelBookingConfirm =>
+      'Are you sure you want to cancel this booking?';
   String get myBookings => 'My Bookings';
   String get noBookings => 'No bookings yet';
-  String get noBookingsMessage => 'Your booked venues and passes will appear here.';
+  String get noBookingsMessage =>
+      'Your booked venues and passes will appear here.';
   String get requestRefund => 'Request Refund';
-  String get requestRefundConfirm => 'Are you sure you want to request a refund?';
+  String get requestRefundConfirm =>
+      'Are you sure you want to request a refund?';
   String get refundRequested => 'Refund request submitted successfully';
   String get savedVenues => 'Saved Venues';
   String get upcomingEvents => 'Upcoming Events';
   String get noUpcomingEvents => 'No upcoming events';
-  String get noUpcomingEventsMessage => 'Check back later for new workshops and events.';
+  String get noUpcomingEventsMessage =>
+      'Check back later for new workshops and events.';
   String get freeEvent => 'Free';
   String get seatsLeft => '{count} seats left';
   String get soldOut => 'Sold Out';
   String get registered => 'Registered';
   String get registerNow => 'Register Now';
   String get cancelRegistration => 'Cancel Registration';
-  String get cancelRegistrationConfirm => 'Are you sure you want to cancel your event registration?';
+  String get cancelRegistrationConfirm =>
+      'Are you sure you want to cancel your event registration?';
   String get registrationCancelled => 'Registration cancelled successfully';
   String get noCourses => 'No courses available';
   String get noCoursesMessage => 'Explore new courses and batches coming soon.';
   String get courseFee => 'Course Fee';
+  String get durationWeeks => '{weeks} weeks';
+  String get instructor => 'Instructor';
+  String get enrollInCourse => 'Choose a batch';
+  String get enrollNow => 'Enroll Now';
+  String get enrolled => 'Enrolled';
+  String get dropEnrollment => 'Drop';
+  String get dropEnrollmentConfirm =>
+      'Drop this batch? Your seat will be released.';
+  String get enrollmentDropped => 'Enrollment dropped';
+  String get batchStartsOn => 'Starts';
+  String get signInToEnroll => 'Sign in to enroll';
   String get modeOnline => 'Online';
   String get modeOffline => 'Offline';
   String get modeHybrid => 'Hybrid';
@@ -114,14 +131,18 @@ class AppLocalizations {
   String get priority => 'Priority';
   String get about => 'About';
   String get auditLog => 'Audit Log';
+  String get analyticsLabel => 'Analytics';
   String get ownerDashboard => 'Owner Dashboard';
   String get myVenues => 'My Venues';
   String get onboardingTitle1 => 'Find Your Perfect Space';
-  String get onboardingSubtitle1 => 'Discover convention halls, party venues, sports grounds, and classrooms near you.';
+  String get onboardingSubtitle1 =>
+      'Discover convention halls, party venues, sports grounds, and classrooms near you.';
   String get onboardingTitle2 => 'Real-Time Availability';
-  String get onboardingSubtitle2 => 'Check open slots, transparent pricing, and instant booking confirmations.';
+  String get onboardingSubtitle2 =>
+      'Check open slots, transparent pricing, and instant booking confirmations.';
   String get onboardingTitle3 => 'Seamless & Secure';
-  String get onboardingSubtitle3 => 'Pay securely with instant tax invoices and easy booking management.';
+  String get onboardingSubtitle3 =>
+      'Pay securely with instant tax invoices and easy booking management.';
 }
 
 class _AppLocalizationsDelegate
@@ -129,8 +150,9 @@ class _AppLocalizationsDelegate
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) =>
-      AppLocalizations.supportedLocales.map((l) => l.languageCode).contains(locale.languageCode);
+  bool isSupported(Locale locale) => AppLocalizations.supportedLocales
+      .map((l) => l.languageCode)
+      .contains(locale.languageCode);
 
   @override
   Future<AppLocalizations> load(Locale locale) =>

@@ -182,14 +182,15 @@ class Refund {
       };
 }
 
-/// Payment method options matching Android's configurable methods.
+/// Payment method supported by the currently deployed payment flow.
+///
+/// Razorpay Checkout itself provides the available UPI, card and net-banking
+/// choices. Keeping one client method prevents unsupported client-only
+/// payment promises from being shown as completed bookings.
 enum PaymentMethodType {
-  razorpayCheckout('⚡ Razorpay Standard Checkout', 'All cards, UPI, net banking, wallets'),
-  upiGpay('📱 UPI (Google Pay, PhonePe, Paytm)', 'Instant approval via UPI apps'),
-  creditDebitCard('💳 Credit / Debit Card', 'Visa, Mastercard, RuPay & Amex'),
-  netBanking('🏦 Net Banking', 'All major Indian banks supported'),
-  payAtVenue('🏢 Pay at Venue / Desk', 'Zero upfront payment, pay on arrival'),
-  splitAdvanceToken('🪙 Split Advance Token (20%)', 'Pay 20% advance now, remaining at venue');
+  razorpayCheckout(
+      '⚡ Razorpay Standard Checkout', 'All cards, UPI, net banking, wallets'),
+  ;
 
   const PaymentMethodType(this.title, this.subtitle);
 

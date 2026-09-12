@@ -9,10 +9,12 @@ class OwnerRegistrationScreen extends ConsumerStatefulWidget {
   const OwnerRegistrationScreen({super.key});
 
   @override
-  ConsumerState<OwnerRegistrationScreen> createState() => _OwnerRegistrationScreenState();
+  ConsumerState<OwnerRegistrationScreen> createState() =>
+      _OwnerRegistrationScreenState();
 }
 
-class _OwnerRegistrationScreenState extends ConsumerState<OwnerRegistrationScreen> {
+class _OwnerRegistrationScreenState
+    extends ConsumerState<OwnerRegistrationScreen> {
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -94,8 +96,11 @@ class _OwnerRegistrationScreenState extends ConsumerState<OwnerRegistrationScree
                 labelText: l10n.password,
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
             ),

@@ -15,7 +15,8 @@ external JSString? _jsGetPermissionStatus();
 external JSPromise<JSString>? _jsGetSubscriptionJson();
 
 @JS('bookMySpaceWebPush.showNotificationJson')
-external JSPromise<JSBoolean>? _jsShowNotificationJson(JSString title, JSString optionsJson);
+external JSPromise<JSBoolean>? _jsShowNotificationJson(
+    JSString title, JSString optionsJson);
 
 @JS('bookMySpaceWebPush.unsubscribe')
 external JSPromise<JSBoolean>? _jsUnsubscribe();
@@ -28,7 +29,8 @@ class WebPushBridge {
   static bool get isSupported => _webPush != null;
 
   static void Function(Map<String, dynamic> data)? _onMessageCallback;
-  static void Function(Map<String, dynamic> data, String? action)? _onClickCallback;
+  static void Function(Map<String, dynamic> data, String? action)?
+      _onClickCallback;
   static bool _listenerRegistered = false;
 
   static Future<String> requestPermission() async {
@@ -94,12 +96,14 @@ class WebPushBridge {
     }
   }
 
-  static void registerMessageListener(void Function(Map<String, dynamic> data) onMessage) {
+  static void registerMessageListener(
+      void Function(Map<String, dynamic> data) onMessage) {
     _onMessageCallback = onMessage;
     _ensureListener();
   }
 
-  static void registerClickListener(void Function(Map<String, dynamic> data, String? action) onClick) {
+  static void registerClickListener(
+      void Function(Map<String, dynamic> data, String? action) onClick) {
     _onClickCallback = onClick;
     _ensureListener();
   }
@@ -113,7 +117,9 @@ class WebPushBridge {
         final rawStr = eventJson.toDart;
         final map = Map<String, dynamic>.from(jsonDecode(rawStr) as Map);
         final eventType = map['eventType'] as String? ?? 'message';
-        final payload = map['data'] is Map ? Map<String, dynamic>.from(map['data'] as Map) : map;
+        final payload = map['data'] is Map
+            ? Map<String, dynamic>.from(map['data'] as Map)
+            : map;
 
         if (eventType == 'click') {
           final action = map['action'] as String?;

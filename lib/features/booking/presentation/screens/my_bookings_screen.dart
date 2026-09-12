@@ -141,12 +141,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                           list[i].status == BookingStatus.completed)
                       ? () => _showEntryPass(list[i])
                       : null,
-                  onCancel: list[i].canCancel
-                      ? () => _cancelBooking(list[i])
-                      : null,
-                  onRefund: list[i].canRefund
-                      ? () => _requestRefund(list[i])
-                      : null,
+                  onCancel:
+                      list[i].canCancel ? () => _cancelBooking(list[i]) : null,
+                  onRefund:
+                      list[i].canRefund ? () => _requestRefund(list[i]) : null,
                 ),
               ),
             ),
@@ -166,7 +164,8 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
       builder: (dialogCtx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.qr_code_2_rounded, color: AppTheme.brand, size: 28),
+            const Icon(Icons.qr_code_2_rounded,
+                color: AppTheme.brand, size: 28),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -232,7 +231,8 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
 
               // Status badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isCheckedIn
                       ? const Color(0xFFE8F5E9)
@@ -240,7 +240,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isCheckedIn ? '✓ CHECKED IN & VERIFIED' : 'READY TO SCAN AT DESK',
+                  isCheckedIn
+                      ? '✓ CHECKED IN & VERIFIED'
+                      : 'READY TO SCAN AT DESK',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -313,17 +315,19 @@ class _BookingCard extends StatelessWidget {
     final name = booking.venueName.isEmpty ? l10n.venues : booking.venueName;
 
     final statusGradient = switch (booking.status) {
-      BookingStatus.confirmed || BookingStatus.completed => const LinearGradient(
+      BookingStatus.confirmed ||
+      BookingStatus.completed =>
+        const LinearGradient(
           colors: [Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399)],
         ),
       BookingStatus.pending => const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFFF7043), Color(0xFFFB923C)],
+          colors: [AppTheme.accent, Color(0xFFFBBF24), Color(0xFFF59E0B)],
         ),
       BookingStatus.cancelled => const LinearGradient(
           colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
         ),
       _ => const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFFF7043)],
+          colors: [AppTheme.brand, AppTheme.action, AppTheme.accent],
         ),
     };
 
@@ -334,109 +338,109 @@ class _BookingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                      if (booking.slotLabel.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          booking.slotLabel,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (booking.slotLabel.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        booking.slotLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                      ],
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-                _StatusBadge(status: booking.status),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _InfoChip(
-                  icon: Icons.calendar_today_rounded,
-                  label: DateFormat.yMMMd().format(booking.bookDate),
+              ),
+              _StatusBadge(status: booking.status),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _InfoChip(
+                icon: Icons.calendar_today_rounded,
+                label: DateFormat.yMMMd().format(booking.bookDate),
+              ),
+              const SizedBox(width: 12),
+              _InfoChip(
+                icon: Icons.schedule_rounded,
+                label: '${booking.displayStart} – ${booking.displayEnd}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(
+                booking.bookingRef,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 12),
-                _InfoChip(
-                  icon: Icons.schedule_rounded,
-                  label: '${booking.displayStart} – ${booking.displayEnd}',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  booking.bookingRef,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  formatInr(booking.totalAmount),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            if (onShowPass != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonalIcon(
-                  onPressed: onShowPass,
-                  icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                  label: const Text('View Entry Pass / QR'),
+              ),
+              const Spacer(),
+              Text(
+                formatInr(booking.totalAmount),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: AppTheme.brand,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
-            if (onCancel != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onCancel,
-                  icon: const Icon(Icons.cancel_outlined, size: 18),
-                  label: Text(l10n.cancelBooking),
-                ),
+          ),
+          if (onShowPass != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: onShowPass,
+                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                label: const Text('View Entry Pass / QR'),
               ),
-            ],
-            if (onRefund != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onRefund,
-                  icon: const Icon(Icons.currency_rupee_rounded, size: 18),
-                  label: Text(l10n.requestRefund),
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
-      );
-    }
+          if (onCancel != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onCancel,
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: Text(l10n.cancelBooking),
+              ),
+            ),
+          ],
+          if (onRefund != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onRefund,
+                icon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                label: Text(l10n.requestRefund),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
+}
 
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});

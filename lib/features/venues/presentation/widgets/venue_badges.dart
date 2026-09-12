@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_theme.dart';
-
 /// Formats Indian Rupee values with comma grouping.
 String formatInr(num amount) {
   final str = amount.round().toString();

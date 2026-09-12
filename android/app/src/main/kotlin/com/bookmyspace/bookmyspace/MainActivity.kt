@@ -19,7 +19,7 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "openCheckout") {
-                val keyId = call.argument<String>("keyId") ?: "rzp_test_bookmyspace"
+                val keyId = call.argument<String>("keyId") ?: ""
                 val orderId = call.argument<String>("orderId") ?: ""
                 val amount = call.argument<Double>("amount") ?: 0.0
                 val amountInPaise = call.argument<Number>("amountInPaise")?.toLong() ?: (amount * 100).toLong()
@@ -29,7 +29,7 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
                 val customerEmail = call.argument<String>("customerEmail") ?: ""
                 val customerPhone = call.argument<String>("customerPhone") ?: ""
                 val customerName = call.argument<String>("customerName") ?: ""
-                val themeColor = call.argument<String>("themeColor") ?: "#0D47A1"
+                val themeColor = call.argument<String>("themeColor") ?: "#00BFA5"
                 val notesMap = call.argument<Map<String, Any>>("notes") ?: emptyMap()
 
                 pendingResult = result

@@ -4,9 +4,13 @@ import GoogleMaps
 import UserNotifications
 import Speech
 import AVFoundation
+import Razorpay
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, RazorpayPaymentCompletionProtocolWithData {
+
+  private var razorpay: RazorpayCheckout?
+  private var razorpayResult: FlutterResult?
 
   private var apnsPushChannel: FlutterMethodChannel?
   private var apnsDeviceToken: String?
@@ -30,30 +34,15 @@ import AVFoundation
 
     let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
 
-    // Setup Razorpay Method Channel
     let paymentChannel = FlutterMethodChannel(
       name: "com.bookmyspace.bookmyspace/razorpay_native",
       binaryMessenger: controller.binaryMessenger
     )
 
-    paymentChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
+    paymentChannel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      guard let self = self else { return }
       if call.method == "openCheckout" {
-        guard let args = call.arguments as? [String: Any] else {
-          result(FlutterError(code: "INVALID_ARGS", message: "Missing arguments", details: nil))
-          return
-        }
-
-        let orderId = args["orderId"] as? String ?? ""
-        let paymentId = "pay_rzp_ios_\(UUID().uuidString.prefix(10).lowercased())"
-        let signature = "sig_ios_\(UUID().uuidString.prefix(12).lowercased())"
-
-        let response: [String: Any] = [
-          "status": "success",
-          "paymentId": paymentId,
-          "orderId": orderId,
-          "signature": signature
-        ]
-        result(response)
+        self.openRazorpayCheckout(call: call, result: result, host: controller)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -93,6 +82,98 @@ import AVFoundation
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // MARK: - Razorpay Standard Checkout
+
+  private func openRazorpayCheckout(
+    call: FlutterMethodCall,
+    result: @escaping FlutterResult,
+    host: UIViewController
+  ) {
+    guard let args = call.arguments as? [String: Any] else {
+      result(FlutterError(code: "INVALID_ARGS", message: "Missing arguments", details: nil))
+      return
+    }
+
+    let keyId = args["keyId"] as? String ?? ""
+    if keyId.isEmpty || keyId.contains("PLACEHOLDER") {
+      result(FlutterError(
+        code: "RAZORPAY_NOT_CONFIGURED",
+        message: "Razorpay checkout is not configured for this build.",
+        details: nil
+      ))
+      return
+    }
+
+    let orderId = args["orderId"] as? String ?? ""
+    let amount = args["amount"] as? Double ?? 0
+    let amountInPaise = (args["amountInPaise"] as? NSNumber)?.intValue
+      ?? Int((amount * 100).rounded())
+    let currency = args["currency"] as? String ?? "INR"
+    let name = args["name"] as? String ?? "BookMySpace"
+    let description = args["description"] as? String ?? "Space Booking Reservation"
+    let themeColor = args["themeColor"] as? String ?? "#00C9A7"
+    let customerEmail = args["customerEmail"] as? String ?? ""
+    let customerPhone = args["customerPhone"] as? String ?? ""
+    let customerName = args["customerName"] as? String ?? ""
+    let notes = args["notes"] as? [String: Any] ?? [:]
+
+    razorpayResult = result
+    razorpay = RazorpayCheckout.initWithKey(keyId, andDelegateWithData: self)
+
+    var options: [String: Any] = [
+      "name": name,
+      "description": description,
+      "currency": currency,
+      "amount": amountInPaise,
+      "theme": ["color": themeColor],
+      "prefill": [
+        "email": customerEmail,
+        "contact": customerPhone,
+        "name": customerName,
+      ],
+      "notes": notes,
+    ]
+    if !orderId.isEmpty {
+      options["order_id"] = orderId
+    }
+
+    DispatchQueue.main.async {
+      self.razorpay?.open(options, displayController: host)
+    }
+  }
+
+  public func onPaymentSuccess(_ payment_id: String, andData response: [AnyHashable: Any]?) {
+    let orderId = (response?["razorpay_order_id"] as? String)
+      ?? (response?["order_id"] as? String)
+      ?? ""
+    let signature = (response?["razorpay_signature"] as? String)
+      ?? (response?["signature"] as? String)
+      ?? ""
+    razorpayResult?([
+      "status": "success",
+      "paymentId": payment_id,
+      "orderId": orderId,
+      "signature": signature,
+    ])
+    razorpayResult = nil
+  }
+
+  public func onPaymentError(_ code: Int32, description str: String, andData response: [AnyHashable: Any]?) {
+    if code == 2 {
+      razorpayResult?([
+        "status": "cancelled",
+        "message": str.isEmpty ? "Payment was cancelled by user" : str,
+      ])
+    } else {
+      razorpayResult?([
+        "status": "failed",
+        "errorCode": "\(code)",
+        "message": str.isEmpty ? "Payment failed" : str,
+      ])
+    }
+    razorpayResult = nil
   }
 
   // MARK: - Notification Categories Setup

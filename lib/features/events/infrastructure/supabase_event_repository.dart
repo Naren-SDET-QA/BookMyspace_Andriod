@@ -37,12 +37,10 @@ class SupabaseEventRepository implements EventRepository {
   @override
   Future<Event> eventDetail(String eventId) async {
     try {
-      final row = await _client
-          .rpc<Map<String, dynamic>>(
-            'event_detail',
-            params: {'p_event_id': eventId, 'p_user_id': _userId},
-          )
-          .single();
+      final row = await _client.rpc<Map<String, dynamic>>(
+        'event_detail',
+        params: {'p_event_id': eventId, 'p_user_id': _userId},
+      ).single();
       return Event.fromJson(row);
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST116') {

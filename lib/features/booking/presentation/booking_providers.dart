@@ -14,10 +14,10 @@ final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
 /// Availability of the venue's slots for a given (venueId, date) pair.
 final slotAvailabilityProvider = FutureProvider.autoDispose
     .family<List<SlotAvailability>, SlotAvailabilityQuery>((ref, query) {
-      return ref
-          .watch(bookingRepositoryProvider)
-          .availableTimeSlots(venueId: query.venueId, date: query.date);
-    });
+  return ref
+      .watch(bookingRepositoryProvider)
+      .availableTimeSlots(venueId: query.venueId, date: query.date);
+});
 
 /// The signed-in user's bookings, newest first.
 final myBookingsProvider = FutureProvider<List<Booking>>((ref) {

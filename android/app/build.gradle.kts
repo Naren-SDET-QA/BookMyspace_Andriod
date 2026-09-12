@@ -44,6 +44,7 @@ flutter {
 }
 
 dependencies {
-    implementation(libs.razorpay)
+    // Keep the native checkout dependency explicit because this Flutter
+    // module does not import the repository-level Android version catalog.
+    implementation("com.razorpay:checkout:1.6.40")
 }
-

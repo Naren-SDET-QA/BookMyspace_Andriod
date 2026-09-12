@@ -17,14 +17,14 @@ major_version = 15
 enabled = true
 port = 54323
 
-[inbucket]
-enabled = true
-port = 54324
-
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["http://127.0.0.1:8080"]
+additional_redirect_urls = [
+  "http://127.0.0.1:8080",
+  "bookmyspace://login-callback/",
+  "bookmyspace://login-callback",
+]
 jwt_expiry = 3600
 enable_signup = true
 
@@ -41,20 +41,44 @@ content_path = "./supabase/templates/invite.html"
 subject = "Confirm your BookMySpace signup"
 content_path = "./supabase/templates/confirmation.html"
 
+# Provider credentials are supplied via the hosted Supabase dashboard (or
+# local env), never committed. Empty values keep the local config honest.
+# Disabled locally so the CLI can parse this file. Hosted Google/Apple Auth is
+# configured in the Supabase dashboard and is never pushed by function deploy.
 [auth.external.google]
-enabled = true
+enabled = false
 client_id = ""
 secret = ""
 redirect_uri = ""
 
 [auth.external.apple]
-enabled = true
+enabled = false
 client_id = ""
 secret = ""
 
 [edge_runtime]
 enabled = true
 policy = "oneshot"
+verify_jwt = true
+
+# Auth Send SMS hooks authenticate with the Standard Webhooks signature rather
+# than a user JWT. The function verifies that signature itself.
+[functions.send-sms-hook]
+verify_jwt = false
+
+# Razorpay signs the raw body with HMAC-SHA256. It does not send a Supabase JWT.
+[functions.razorpay-webhook]
+verify_jwt = false
+
+# User-authenticated order creation. Secrets stay in Edge Function env:
+# RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET.
+[functions.create-payment-order]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.lookup-pincode]
 verify_jwt = true
 
 [analytics]

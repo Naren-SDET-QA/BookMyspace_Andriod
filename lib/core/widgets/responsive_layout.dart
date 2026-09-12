@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Screen width breakpoints based on Material 3 specifications.
 enum ResponsiveWindowSizeClass {
-  compact,   // < 600dp (standard portrait phones)
-  medium,    // 600dp - 839dp (foldables, small tablets, portrait tablets)
-  expanded,  // 840dp - 1199dp (medium/large tablets, desktop)
+  compact, // < 600dp (standard portrait phones)
+  medium, // 600dp - 839dp (foldables, small tablets, portrait tablets)
+  expanded, // 840dp - 1199dp (medium/large tablets, desktop)
   extraWide, // >= 1200dp (extra-wide tablet landscape, large monitors)
 }
 
@@ -138,7 +138,8 @@ class ResponsiveLayoutBuilder extends StatelessWidget {
     required this.builder,
   });
 
-  final Widget Function(BuildContext context, ResponsiveInfo responsive) builder;
+  final Widget Function(BuildContext context, ResponsiveInfo responsive)
+      builder;
 
   @override
   Widget build(BuildContext context) {

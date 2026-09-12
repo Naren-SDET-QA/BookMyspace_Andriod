@@ -15,4 +15,6 @@ abstract interface class SupportTicketRepository {
     String? category,
     TicketPriority? priority,
   });
+
+  Future<SupportTicket> resolveTicket(String ticketId);
 }

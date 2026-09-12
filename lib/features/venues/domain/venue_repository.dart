@@ -20,6 +20,9 @@ abstract class VenueRepository {
   /// Sets category active status.
   Future<void> setCategoryActive(String categoryId, bool isActive);
 
+  /// Distinct venue cities from listings the caller can read.
+  Future<List<String>> listedCities();
+
   /// Fetches popular venues.
   Future<List<Venue>> popularVenues({int limit = 10});
 

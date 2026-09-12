@@ -20,7 +20,8 @@ class SupabaseNotificationRepository implements NotificationRepository {
       id: 'notif_1',
       userId: 'system',
       title: 'Booking Confirmed! 🎟️',
-      body: 'Your badminton court slot at Velocity Pro Sports Arena is confirmed for 20 Aug at 7:00 AM.',
+      body:
+          'Your badminton court slot at Velocity Pro Sports Arena is confirmed for 20 Aug at 7:00 AM.',
       type: 'booking',
       read: false,
       data: {
@@ -35,7 +36,8 @@ class SupabaseNotificationRepository implements NotificationRepository {
       id: 'notif_2',
       userId: 'system',
       title: '1-Hour Pre-Slot Reminder ⚡',
-      body: 'Your upcoming court booking starts in 1 hour. Tap to view and scan your check-in pass.',
+      body:
+          'Your upcoming court booking starts in 1 hour. Tap to view and scan your check-in pass.',
       type: '1_hour_reminder',
       read: false,
       data: {
@@ -50,7 +52,8 @@ class SupabaseNotificationRepository implements NotificationRepository {
       id: 'notif_3',
       userId: 'system',
       title: 'Referral Bonus Added! 💰',
-      body: 'Sneha signed up using your link. ₹500 referral credit will unlock after their first booking.',
+      body:
+          'Sneha signed up using your link. ₹500 referral credit will unlock after their first booking.',
       type: 'general',
       read: false,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
@@ -61,7 +64,7 @@ class SupabaseNotificationRepository implements NotificationRepository {
   Future<List<Notification>> myNotifications() async {
     final userId = _userId;
     if (userId == null) {
-      return List.unmodifiable(_localNotifications);
+      return const [];
     }
 
     try {
@@ -71,14 +74,9 @@ class SupabaseNotificationRepository implements NotificationRepository {
           .eq('user_id', userId)
           .order('created_at', ascending: false)
           .limit(100);
-      final remoteList = rows.map((r) => Notification.fromJson(r)).toList();
-      if (remoteList.isEmpty) {
-        return List.unmodifiable(_localNotifications);
-      }
-      return remoteList;
-    } catch (_) {
-      // Fallback to local notifications
-      return List.unmodifiable(_localNotifications);
+      return rows.map((r) => Notification.fromJson(r)).toList();
+    } catch (e) {
+      throw app_errors.mapError(e);
     }
   }
 
@@ -120,10 +118,10 @@ class SupabaseNotificationRepository implements NotificationRepository {
     if (userId == null) return;
 
     try {
-      await _client
-          .from('notifications')
-          .update({'read': true, 'read_at': DateTime.now().toIso8601String()})
-          .eq('user_id', userId);
+      await _client.from('notifications').update({
+        'read': true,
+        'read_at': DateTime.now().toIso8601String()
+      }).eq('user_id', userId);
     } catch (e) {
       // Soft-fail
     }
@@ -133,7 +131,7 @@ class SupabaseNotificationRepository implements NotificationRepository {
   Future<int> unreadCount() async {
     final userId = _userId;
     if (userId == null) {
-      return _localNotifications.where((n) => !n.read).length;
+      return 0;
     }
 
     try {
@@ -143,8 +141,8 @@ class SupabaseNotificationRepository implements NotificationRepository {
           .eq('user_id', userId)
           .eq('read', false);
       return rows.length;
-    } catch (_) {
-      return _localNotifications.where((n) => !n.read).length;
+    } catch (e) {
+      throw app_errors.mapError(e);
     }
   }
 
@@ -189,7 +187,10 @@ class SupabaseNotificationRepository implements NotificationRepository {
         // Fallback: try update user profile column if device_tokens table doesn't exist
         try {
           await _client.from('users').update({
-            if (platform == 'ios') 'apns_token': token else 'web_push_token': token,
+            if (platform == 'ios')
+              'apns_token': token
+            else
+              'web_push_token': token,
             'push_platform': platform,
             'updated_at': DateTime.now().toIso8601String(),
           }).eq('id', userId);

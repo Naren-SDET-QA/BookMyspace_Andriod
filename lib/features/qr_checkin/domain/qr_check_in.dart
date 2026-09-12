@@ -1,5 +1,5 @@
 import 'dart:convert';
-import '../../../booking/domain/booking.dart';
+import '../../booking/domain/booking.dart';
 
 /// Outcome of attempting to validate a QR pass at venue check-in.
 class CheckInResult {
@@ -52,35 +52,41 @@ class BookingCheckInPayload {
   factory BookingCheckInPayload.fromBooking(Booking booking) {
     return BookingCheckInPayload(
       bookingId: booking.id,
-      bookingRef: booking.bookingRef.isNotEmpty ? booking.bookingRef : 'BMS-${booking.id}',
+      bookingRef: booking.bookingRef.isNotEmpty
+          ? booking.bookingRef
+          : 'BMS-${booking.id}',
       venueId: booking.venueId,
-      venueName: booking.venueName.isNotEmpty ? booking.venueName : 'Space Reservation',
+      venueName: booking.venueName.isNotEmpty
+          ? booking.venueName
+          : 'Space Reservation',
       slotId: booking.slotId,
-      slotLabel: booking.slotLabel.isNotEmpty ? booking.slotLabel : 'Standard Slot',
+      slotLabel:
+          booking.slotLabel.isNotEmpty ? booking.slotLabel : 'Standard Slot',
       bookDate: booking.bookDate.toIso8601String().split('T').first,
       startTime: booking.displayStart,
       endTime: booking.displayEnd,
       status: booking.status.dbValue,
-      token: 'BMS-PASS-${booking.id.replaceAll('-', '').takeLast(6).toUpperCase()}',
+      token:
+          'BMS-PASS-${booking.id.replaceAll('-', '').takeLast(6).toUpperCase()}',
       issuedAt: DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'type': 'BOOKING_CHECK_IN',
-    'booking_id': bookingId,
-    'booking_ref': bookingRef,
-    'venue_id': venueId,
-    'venue_name': venueName,
-    'slot_id': slotId,
-    'slot_label': slotLabel,
-    'book_date': bookDate,
-    'start_time': startTime,
-    'end_time': endTime,
-    'status': status,
-    'token': token,
-    'issued_at': issuedAt?.toIso8601String(),
-  };
+        'type': 'BOOKING_CHECK_IN',
+        'booking_id': bookingId,
+        'booking_ref': bookingRef,
+        'venue_id': venueId,
+        'venue_name': venueName,
+        'slot_id': slotId,
+        'slot_label': slotLabel,
+        'book_date': bookDate,
+        'start_time': startTime,
+        'end_time': endTime,
+        'status': status,
+        'token': token,
+        'issued_at': issuedAt?.toIso8601String(),
+      };
 
   String toJsonString() => jsonEncode(toJson());
 

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart'
     show NotFoundException, mapError;
+import '../../../core/firebase/error_logger.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
 
@@ -22,32 +23,95 @@ class SupabaseVenueRepository implements VenueRepository {
 
   // In-memory cache & fallback for offline/development resilience
   static final List<VenueCategory> _fallbackCategories = [
-    const VenueCategory(id: 'cat_all', slug: 'all', name: 'All Spaces', icon: '✨', isActive: true, parentSection: 'general'),
-    const VenueCategory(id: 'cat_photo', slug: 'photography_studio', name: 'Photography Studio', icon: '📸', isActive: true, parentSection: 'general'),
-    const VenueCategory(id: 'cat_function', slug: 'function_hall', name: 'Function Halls', icon: '🏛️', isActive: true, parentSection: 'venues'),
-    const VenueCategory(id: 'cat_marriage', slug: 'marriage_hall', name: 'Marriage Halls', icon: '💒', isActive: true, parentSection: 'venues'),
-    const VenueCategory(id: 'cat_convention', slug: 'convention_center', name: 'Convention Centers', icon: '🏢', isActive: true, parentSection: 'venues'),
-    const VenueCategory(id: 'cat_meeting', slug: 'meeting_room', name: 'Meeting Rooms', icon: '💼', isActive: true, parentSection: 'venues'),
-    const VenueCategory(id: 'cat_party', slug: 'party_hall', name: 'Party Halls', icon: '🎉', isActive: true, parentSection: 'venues'),
-    const VenueCategory(id: 'cat_sports', slug: 'sports_ground', name: 'Sports Grounds', icon: '🏸', isActive: true, parentSection: 'classes'),
-    const VenueCategory(id: 'cat_coworking', slug: 'coworking_space', name: 'Coworking Spaces', icon: '💻', isActive: true, parentSection: 'general'),
-    const VenueCategory(id: 'cat_hotel', slug: 'hotel_stay', name: 'Hotels & Suites', icon: '🏨', isActive: true, parentSection: 'hotels'),
-    const VenueCategory(id: 'cat_pg', slug: 'pg_hostel', name: 'PG & Hostels', icon: '🏠', isActive: true, parentSection: 'pgs'),
+    const VenueCategory(
+        id: 'cat_all',
+        slug: 'all',
+        name: 'All Spaces',
+        icon: '✨',
+        isActive: true,
+        parentSection: 'general'),
+    const VenueCategory(
+        id: 'cat_photo',
+        slug: 'photography_studio',
+        name: 'Photography Studio',
+        icon: '📸',
+        isActive: true,
+        parentSection: 'general'),
+    const VenueCategory(
+        id: 'cat_function',
+        slug: 'function_hall',
+        name: 'Function Halls',
+        icon: '🏛️',
+        isActive: true,
+        parentSection: 'venues'),
+    const VenueCategory(
+        id: 'cat_marriage',
+        slug: 'marriage_hall',
+        name: 'Marriage Halls',
+        icon: '💒',
+        isActive: true,
+        parentSection: 'venues'),
+    const VenueCategory(
+        id: 'cat_convention',
+        slug: 'convention_center',
+        name: 'Convention Centers',
+        icon: '🏢',
+        isActive: true,
+        parentSection: 'venues'),
+    const VenueCategory(
+        id: 'cat_meeting',
+        slug: 'meeting_room',
+        name: 'Meeting Rooms',
+        icon: '💼',
+        isActive: true,
+        parentSection: 'venues'),
+    const VenueCategory(
+        id: 'cat_party',
+        slug: 'party_hall',
+        name: 'Party Halls',
+        icon: '🎉',
+        isActive: true,
+        parentSection: 'venues'),
+    const VenueCategory(
+        id: 'cat_sports',
+        slug: 'sports_ground',
+        name: 'Sports Grounds',
+        icon: '🏸',
+        isActive: true,
+        parentSection: 'classes'),
+    const VenueCategory(
+        id: 'cat_coworking',
+        slug: 'coworking_space',
+        name: 'Coworking Spaces',
+        icon: '💻',
+        isActive: true,
+        parentSection: 'general'),
+    const VenueCategory(
+        id: 'cat_hotel',
+        slug: 'hotel_stay',
+        name: 'Hotels & Suites',
+        icon: '🏨',
+        isActive: true,
+        parentSection: 'hotels'),
+    const VenueCategory(
+        id: 'cat_pg',
+        slug: 'pg_hostel',
+        name: 'PG & Hostels',
+        icon: '🏠',
+        isActive: true,
+        parentSection: 'pgs'),
   ];
 
   @override
   Future<List<VenueCategory>> categories({bool activeOnly = false}) async {
     try {
       var query = _client.from('venue_categories').select('*');
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
       final rows = await query.order('name');
-      final fetched = rows.map((r) => VenueCategory.fromJson(r as Map<String, dynamic>)).toList();
+      final fetched = rows.map((r) => VenueCategory.fromJson(r)).toList();
       if (fetched.isNotEmpty) {
-        // Update fallback cache with fetched categories while preserving unique custom ones
         for (final cat in fetched) {
-          final idx = _fallbackCategories.indexWhere((c) => c.slug == cat.slug || c.id == cat.id);
+          final idx = _fallbackCategories
+              .indexWhere((c) => c.slug == cat.slug || c.id == cat.id);
           if (idx >= 0) {
             _fallbackCategories[idx] = cat;
           } else {
@@ -56,12 +120,10 @@ class SupabaseVenueRepository implements VenueRepository {
         }
         return activeOnly ? fetched.where((c) => c.isActive).toList() : fetched;
       }
-    } catch (_) {
-      // Fallback gracefully on local cache if network/offline
+      return const [];
+    } catch (e) {
+      throw mapError(e);
     }
-    return activeOnly
-        ? _fallbackCategories.where((c) => c.isActive).toList()
-        : List.unmodifiable(_fallbackCategories);
   }
 
   @override
@@ -72,75 +134,105 @@ class SupabaseVenueRepository implements VenueRepository {
     String? parentSection,
     bool isActive = true,
   }) async {
-    final newCat = VenueCategory(
-      id: 'cat_${slug.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')}_${DateTime.now().millisecondsSinceEpoch % 10000}',
-      slug: slug,
-      name: name,
-      icon: icon ?? '🏷️',
-      isActive: isActive,
-      parentSection: parentSection ?? 'general',
-    );
-
     try {
-      final row = await _client.from('venue_categories').insert({
-        'name': name,
-        'slug': slug,
-        'icon': icon ?? '🏷️',
-        'is_active': isActive,
-        'parent_section': parentSection ?? 'general',
-      }).select().single();
+      final row = await _client
+          .from('venue_categories')
+          .insert({
+            'name': name,
+            'slug': slug,
+            'icon': icon ?? '🏷️',
+            'metadata': {
+              'active': isActive,
+              'parent_section': parentSection ?? 'general',
+            },
+          })
+          .select()
+          .single();
       final created = VenueCategory.fromJson(row);
-      _fallbackCategories.removeWhere((c) => c.slug == created.slug || c.id == created.id);
+      _fallbackCategories
+          .removeWhere((c) => c.slug == created.slug || c.id == created.id);
       _fallbackCategories.add(created);
       return created;
-    } catch (_) {
-      // Fallback: save locally
-      _fallbackCategories.removeWhere((c) => c.slug == newCat.slug || c.id == newCat.id);
-      _fallbackCategories.add(newCat);
-      return newCat;
+    } catch (e) {
+      throw mapError(e);
     }
   }
 
   @override
   Future<VenueCategory> updateCategory(VenueCategory category) async {
     try {
-      final row = await _client.from('venue_categories').update({
-        'name': category.name,
-        'slug': category.slug,
-        'icon': category.icon,
-        'is_active': category.isActive,
-        'parent_section': category.parentSection ?? 'general',
-      }).eq('id', category.id).select().single();
+      final row = await _client
+          .from('venue_categories')
+          .update({
+            'name': category.name,
+            'slug': category.slug,
+            'icon': category.icon,
+            'metadata': {
+              'active': category.isActive,
+              'parent_section': category.parentSection ?? 'general',
+            },
+          })
+          .eq('id', category.id)
+          .select()
+          .single();
       final updated = VenueCategory.fromJson(row);
-      final idx = _fallbackCategories.indexWhere((c) => c.id == category.id || c.slug == category.slug);
+      final idx = _fallbackCategories
+          .indexWhere((c) => c.id == category.id || c.slug == category.slug);
       if (idx >= 0) {
         _fallbackCategories[idx] = updated;
       } else {
         _fallbackCategories.add(updated);
       }
       return updated;
-    } catch (_) {
-      final idx = _fallbackCategories.indexWhere((c) => c.id == category.id || c.slug == category.slug);
-      if (idx >= 0) {
-        _fallbackCategories[idx] = category;
-      } else {
-        _fallbackCategories.add(category);
-      }
-      return category;
+    } catch (e) {
+      throw mapError(e);
     }
   }
 
   @override
   Future<void> setCategoryActive(String categoryId, bool isActive) async {
     try {
-      await _client.from('venue_categories').update({
-        'is_active': isActive,
-      }).eq('id', categoryId);
-    } catch (_) {}
+      final current = await _client
+          .from('venue_categories')
+          .select('metadata')
+          .eq('id', categoryId)
+          .single();
+      final metadata = current['metadata'] is Map
+          ? Map<String, dynamic>.from(current['metadata'] as Map)
+          : <String, dynamic>{};
+      metadata['active'] = isActive;
+      await _client
+          .from('venue_categories')
+          .update({'metadata': metadata}).eq('id', categoryId);
+    } catch (e) {
+      throw mapError(e);
+    }
 
     final idx = _fallbackCategories.indexWhere((c) => c.id == categoryId);
     if (idx >= 0) {
-      _fallbackCategories[idx] = _fallbackCategories[idx].copyWith(isActive: isActive);
+      _fallbackCategories[idx] =
+          _fallbackCategories[idx].copyWith(isActive: isActive);
+    }
+  }
+
+  @override
+  Future<List<String>> listedCities() async {
+    try {
+      final rows = await _client
+          .from('venues')
+          .select('city')
+          .eq('is_active', true)
+          .not('city', 'is', null)
+          .order('city');
+      final cities = <String>{};
+      for (final row in rows.whereType<Map<String, dynamic>>()) {
+        final city = (row['city'] as String? ?? '').trim();
+        if (city.isNotEmpty) cities.add(city);
+      }
+      final list = cities.toList()..sort();
+      return list;
+    } catch (e) {
+      throw mapError(e);
     }
   }
 
@@ -186,6 +278,38 @@ class SupabaseVenueRepository implements VenueRepository {
   @override
   Future<List<Venue>> search(VenueSearchQuery query) async {
     try {
+      if (query.hasCoordinates) {
+        final nearby = await nearbyVenues(
+          latitude: query.latitude!,
+          longitude: query.longitude!,
+          maxDistanceKm: (query.radiusKm ?? 10).toDouble(),
+          limit: 50,
+        );
+        return nearby.where((venue) {
+          if (query.categorySlug != null &&
+              query.categorySlug!.trim().isNotEmpty &&
+              venue.category?.slug != query.categorySlug) {
+            return false;
+          }
+          if (query.minPrice != null &&
+              venue.pricingBaseAmount < query.minPrice!) {
+            return false;
+          }
+          if (query.maxPrice != null &&
+              venue.pricingBaseAmount > query.maxPrice!) {
+            return false;
+          }
+          if (query.query.trim().isNotEmpty) {
+            final haystack =
+                '${venue.name} ${venue.city} ${venue.description}'.toLowerCase();
+            if (!haystack.contains(query.query.trim().toLowerCase())) {
+              return false;
+            }
+          }
+          return true;
+        }).toList();
+      }
+
       String? categoryId;
       if (query.categorySlug != null) {
         final catRow = await _client
@@ -205,10 +329,8 @@ class SupabaseVenueRepository implements VenueRepository {
           '''
           : _venueSelect;
 
-      var builder = _client
-          .from('venues')
-          .select(selectClause)
-          .eq('is_active', true);
+      var builder =
+          _client.from('venues').select(selectClause).eq('is_active', true);
 
       if (query.query.trim().isNotEmpty) {
         builder = builder.textSearch('search_document', query.query.trim());
@@ -217,7 +339,17 @@ class SupabaseVenueRepository implements VenueRepository {
         // Explicitly cast category_id UUID parameter for PostgREST
         builder = builder.filter('category_id', 'eq', categoryId);
       }
-      if (query.city != null && query.city!.trim().isNotEmpty) {
+      if (query.pincode != null && query.pincode!.trim().isNotEmpty) {
+        final pin = query.pincode!.trim();
+        final city = query.city?.trim();
+        if (city != null && city.isNotEmpty) {
+          builder = builder.or(
+            'postal_code.eq.$pin,city.ilike.%$city%',
+          );
+        } else {
+          builder = builder.eq('postal_code', pin);
+        }
+      } else if (query.city != null && query.city!.trim().isNotEmpty) {
         builder = builder.ilike('city', '%${query.city!.trim()}%');
       }
       if (query.minPrice != null) {
@@ -233,13 +365,16 @@ class SupabaseVenueRepository implements VenueRepository {
         VenueSortBy.rating => ('avg_rating', false),
         // Distance ordering is handled by the RPC path; fall back to
         // popularity for the REST query.
-        VenueSortBy.distance ||
-        VenueSortBy.relevance => ('rating_count', false),
+        VenueSortBy.distance || VenueSortBy.relevance => (
+            'rating_count',
+            false
+          ),
       };
 
       // Log exact SQL executed for function hall / category searches
       if (query.categorySlug != null) {
-        final executedSql = "SELECT $selectClause FROM venues WHERE is_active = true"
+        final executedSql =
+            "SELECT $selectClause FROM venues WHERE is_active = true"
             " AND category_id = '${categoryId ?? ''}'::uuid"
             "${query.query.trim().isNotEmpty ? " AND search_document @@ to_tsquery('${query.query.trim()}')" : ""}"
             "${query.city != null && query.city!.trim().isNotEmpty ? " AND city ILIKE '%${query.city!.trim()}%'" : ""}"
@@ -251,9 +386,8 @@ class SupabaseVenueRepository implements VenueRepository {
         );
       }
 
-      final rows = await builder
-          .order(orderColumn, ascending: ascending)
-          .limit(50);
+      final rows =
+          await builder.order(orderColumn, ascending: ascending).limit(50);
       return rows
           .whereType<Map<String, dynamic>>()
           .map(Venue.fromJson)

@@ -5,23 +5,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/router/app_router.dart';
+import '../../../../core/router/search_route.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/presentation/discovery_location.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
 import '../widgets/voice_search_bottom_sheet.dart';
 
 /// Search screen: text query + category chips + sort/filter sheet.
+///
+/// The working query is derived from the current route (query parameters,
+/// with `extra` as fallback). User actions write by replacing the route,
+/// never by mutating a shared provider during widget construction.
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key, this.initialCategory});
+  const SearchScreen({
+    super.key,
+    this.initialCategory,
+    this.initialQuery = '',
+    this.routeQuery,
+  });
 
   /// Preselected category slug (set when navigating from home chips).
   final String? initialCategory;
+
+  /// Preselected free-text query from the route.
+  final String initialQuery;
+
+  /// Full query parsed by the router. Preferred over the individual fields.
+  final VenueSearchQuery? routeQuery;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -31,17 +47,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   late final TextEditingController _controller;
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounce;
+  VenueSearchQuery? _detachedQuery;
+  String? _syncedRouteQueryText;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController();
-    if (widget.initialCategory != null) {
-      final current = ref.read(searchQueryProvider);
-      ref.read(searchQueryProvider.notifier).state = current.copyWith(
-        categorySlug: () => widget.initialCategory,
-      );
-    }
+    final initial = _constructorQuery();
+    _controller = TextEditingController(text: initial.query);
+    _syncedRouteQueryText = initial.query;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (GoRouter.maybeOf(context) == null) return;
+    final routeQuery =
+        SearchRouteParams.fromGoRouterState(GoRouterState.of(context))
+            .toQuery();
+    if (_syncedRouteQueryText == routeQuery.query) return;
+    _syncedRouteQueryText = routeQuery.query;
+    if (_controller.text == routeQuery.query) return;
+    _controller.value = TextEditingValue(
+      text: routeQuery.query,
+      selection: TextSelection.collapsed(offset: routeQuery.query.length),
+    );
   }
 
   @override
@@ -52,20 +82,46 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     super.dispose();
   }
 
+  VenueSearchQuery _constructorQuery() {
+    return widget.routeQuery ??
+        VenueSearchQuery(
+          query: widget.initialQuery,
+          categorySlug: widget.initialCategory,
+        );
+  }
+
+  VenueSearchQuery _effectiveQuery() {
+    final routeQuery = GoRouter.maybeOf(context) != null
+        ? SearchRouteParams.fromGoRouterState(GoRouterState.of(context))
+            .toQuery()
+        : _detachedQuery ?? _constructorQuery();
+    return ref.watch(discoveryLocationProvider).mergeInto(routeQuery);
+  }
+
+  void _commitQuery(VenueSearchQuery query) {
+    if (GoRouter.maybeOf(context) == null) {
+      if (_detachedQuery == query) return;
+      setState(() => _detachedQuery = query);
+      return;
+    }
+    final current =
+        SearchRouteParams.fromGoRouterState(GoRouterState.of(context))
+            .toQuery();
+    if (current == query) return;
+    context.go(SearchRouteParams.locationFor(query));
+  }
+
   void _onQueryChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
       if (!mounted) return;
-      final current = ref.read(searchQueryProvider);
-      ref.read(searchQueryProvider.notifier).state = current.copyWith(
-        query: value.trim(),
-      );
+      _commitQuery(_effectiveQuery().copyWith(query: value.trim()));
     });
   }
 
   void _clearFilters() {
-    ref.read(searchQueryProvider.notifier).state = const VenueSearchQuery();
     _controller.clear();
+    _commitQuery(const VenueSearchQuery());
   }
 
   void _openVoiceSearch() {
@@ -73,12 +129,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       context,
       onFilterApplied: (voiceResult) {
         final newQuery = voiceResult.toVenueSearchQuery();
-        ref.read(searchQueryProvider.notifier).state = newQuery;
         if (voiceResult.isClearCommand) {
           _controller.clear();
         } else if (voiceResult.cleanedSearchQuery.isNotEmpty) {
           _controller.text = voiceResult.cleanedSearchQuery;
         }
+        _commitQuery(newQuery);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -108,21 +164,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _FilterSheet(
-        initial: ref.read(searchQueryProvider),
-        categories: ref.read(venueCategoriesProvider).value ?? const [],
-        onApply: (updated) {
-          ref.read(searchQueryProvider.notifier).state = updated;
-        },
-      ),
+      useSafeArea: true,
+      builder: (sheetContext) {
+        final media = MediaQuery.of(sheetContext);
+        final bottomInset = media.viewInsets.bottom;
+        final maxHeight = media.size.height * 0.88;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
+            height: maxHeight,
+            child: _FilterSheet(
+              initial: _effectiveQuery(),
+              categories: ref.read(venueCategoriesProvider).value ?? const [],
+              onApply: _commitQuery,
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final query = ref.watch(searchQueryProvider);
-    final results = ref.watch(searchResultsProvider);
+    final query = _effectiveQuery();
+    final results = ref.watch(searchResultsProvider(query));
     final categories = ref.watch(venueCategoriesProvider);
 
     return Scaffold(
@@ -133,8 +199,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             icon: const Icon(Icons.map_rounded),
             tooltip: 'Live Map Discovery',
             onPressed: () => context.push(
-              AppRoutes.map,
-              extra: {'category': query.categorySlug},
+              SearchRouteParams.mapLocationFor(query),
             ),
           ),
         ],
@@ -164,7 +229,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               tooltip: 'Clear search',
                             ),
                           IconButton(
-                            icon: const Icon(Icons.mic_rounded, color: AppTheme.brand),
+                            icon: const Icon(Icons.mic_rounded,
+                                color: AppTheme.brand),
                             onPressed: _openVoiceSearch,
                             tooltip: 'Voice Search',
                           ),
@@ -185,6 +251,35 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
+          if (query.city != null ||
+              query.pincode != null ||
+              query.hasCoordinates)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Chip(
+                  avatar: Icon(
+                    query.hasCoordinates
+                        ? Icons.my_location_rounded
+                        : Icons.location_on_outlined,
+                    size: 18,
+                    color: AppTheme.brand,
+                  ),
+                  label: Text(
+                    [
+                      if (query.city != null && query.city!.trim().isNotEmpty)
+                        query.city!.trim(),
+                      if (query.pincode != null &&
+                          query.pincode!.trim().isNotEmpty)
+                        'PIN ${query.pincode!.trim()}',
+                      if (query.hasCoordinates)
+                        '${query.radiusKm ?? 10} km',
+                    ].join(' • '),
+                  ),
+                ),
+              ),
+            ),
           SizedBox(
             height: 48,
             child: ListView(
@@ -197,8 +292,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     label: l10n.allCategories,
                     selected: query.categorySlug == null,
                     onTap: () {
-                      ref.read(searchQueryProvider.notifier).state = query
-                          .copyWith(categorySlug: () => null);
+                      _commitQuery(query.copyWith(categorySlug: () => null));
                     },
                   ),
                 ),
@@ -210,8 +304,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       emoji: c.icon,
                       selected: query.categorySlug == c.slug,
                       onTap: () {
-                        ref.read(searchQueryProvider.notifier).state = query
-                            .copyWith(categorySlug: () => c.slug);
+                        _commitQuery(
+                          query.copyWith(categorySlug: () => c.slug),
+                        );
                       },
                     ),
                   );
@@ -233,14 +328,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: venues.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) => VenueCard(venue: venues[i]),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, i) =>
+                      VenueCard(venue: venues[i], entranceIndex: i),
                 );
               },
               loading: () => const ListSkeleton(),
               error: (e, _) => ErrorView(
                 message: e.toString(),
-                onRetry: () => ref.invalidate(searchResultsProvider),
+                onRetry: () => ref.invalidate(searchResultsProvider(query)),
               ),
             ),
           ),
@@ -292,6 +388,15 @@ class _FilterSheetState extends State<_FilterSheet> {
     super.dispose();
   }
 
+  void _close() {
+    FocusScope.of(context).unfocus();
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   void _apply() {
     final updated = widget.initial.copyWith(
       sortBy: _sortBy,
@@ -300,30 +405,36 @@ class _FilterSheetState extends State<_FilterSheet> {
       maxPrice: () => double.tryParse(_maxController.text),
     );
     widget.onApply(updated);
-    Navigator.of(context).pop();
+    _close();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
+    return Material(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  l10n.filters,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                IconButton(
+                  key: const Key('filters_back'),
+                  tooltip: 'Back',
+                  onPressed: _close,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    l10n.filters,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 TextButton(
+                  key: const Key('filters_clear'),
                   onPressed: () {
                     setState(() {
                       _sortBy = VenueSortBy.relevance;
@@ -336,85 +447,113 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(l10n.sortBy, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                _SortChip(
-                  label: l10n.relevance,
-                  selected: _sortBy == VenueSortBy.relevance,
-                  onTap: () => setState(() => _sortBy = VenueSortBy.relevance),
-                ),
-                _SortChip(
-                  label: l10n.priceLowToHigh,
-                  selected: _sortBy == VenueSortBy.priceAsc,
-                  onTap: () => setState(() => _sortBy = VenueSortBy.priceAsc),
-                ),
-                _SortChip(
-                  label: l10n.priceHighToLow,
-                  selected: _sortBy == VenueSortBy.priceDesc,
-                  onTap: () => setState(() => _sortBy = VenueSortBy.priceDesc),
-                ),
-                _SortChip(
-                  label: l10n.topRated,
-                  selected: _sortBy == VenueSortBy.rating,
-                  onTap: () => setState(() => _sortBy = VenueSortBy.rating),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(l10n.allCategories, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                AnimatedCategoryChip(
-                  label: l10n.allCategories,
-                  selected: _categorySlug == null,
-                  onTap: () => setState(() => _categorySlug = null),
-                ),
-                ...widget.categories.map(
-                  (c) => AnimatedCategoryChip(
-                    label: c.name,
-                    emoji: c.icon,
-                    selected: _categorySlug == c.slug,
-                    onTap: () => setState(() => _categorySlug = c.slug),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(l10n.pricing, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _minController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.minPrice,
-                      prefixText: '₹ ',
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text(l10n.sortBy, style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _SortChip(
+                          label: l10n.relevance,
+                          selected: _sortBy == VenueSortBy.relevance,
+                          onTap: () =>
+                              setState(() => _sortBy = VenueSortBy.relevance),
+                        ),
+                        _SortChip(
+                          label: l10n.priceLowToHigh,
+                          selected: _sortBy == VenueSortBy.priceAsc,
+                          onTap: () =>
+                              setState(() => _sortBy = VenueSortBy.priceAsc),
+                        ),
+                        _SortChip(
+                          label: l10n.priceHighToLow,
+                          selected: _sortBy == VenueSortBy.priceDesc,
+                          onTap: () =>
+                              setState(() => _sortBy = VenueSortBy.priceDesc),
+                        ),
+                        _SortChip(
+                          label: l10n.topRated,
+                          selected: _sortBy == VenueSortBy.rating,
+                          onTap: () =>
+                              setState(() => _sortBy = VenueSortBy.rating),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _maxController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.maxPrice,
-                      prefixText: '₹ ',
+                    const SizedBox(height: 20),
+                    Text(l10n.allCategories, style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        AnimatedCategoryChip(
+                          label: l10n.allCategories,
+                          selected: _categorySlug == null,
+                          onTap: () => setState(() => _categorySlug = null),
+                        ),
+                        ...widget.categories.map(
+                          (c) => AnimatedCategoryChip(
+                            label: c.name,
+                            emoji: c.icon,
+                            selected: _categorySlug == c.slug,
+                            onTap: () =>
+                                setState(() => _categorySlug = c.slug),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 20),
+                    Text(l10n.pricing, style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('filters_min_price'),
+                            controller: _minController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: l10n.minPrice,
+                              prefixText: '₹ ',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            key: const Key('filters_max_price'),
+                            controller: _maxController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: l10n.maxPrice,
+                              prefixText: '₹ ',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 24),
-            FilledButton(onPressed: _apply, child: Text(l10n.apply)),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const Key('filters_apply'),
+                onPressed: _apply,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                ),
+                child: Text(l10n.apply),
+              ),
+            ),
           ],
         ),
       ),

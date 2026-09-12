@@ -39,6 +39,10 @@ abstract interface class BookingRepository {
   /// Bookings for the signed-in user, newest first.
   Future<List<Booking>> myBookings();
 
+  /// Bookings visible to the signed-in venue owner through RLS
+  /// (their venues, not a client-side role bypass).
+  Future<List<Booking>> ownerVenueBookings();
+
   /// Cancels a booking still in `pending` status.
   Future<void> cancelBooking(String bookingId);
 

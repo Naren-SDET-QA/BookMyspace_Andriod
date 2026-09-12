@@ -48,8 +48,8 @@ class EmptyState extends StatelessWidget {
                 message!,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
               ),
             ],
             if (action != null) ...[const SizedBox(height: 24), action!],

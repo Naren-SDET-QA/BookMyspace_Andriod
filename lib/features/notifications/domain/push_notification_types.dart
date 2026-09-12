@@ -19,26 +19,27 @@ class PushTokenInfo {
 
   final String token;
   final String platform; // 'ios' | 'web' | 'android'
-  final Map<String, dynamic>? subscriptionData; // e.g. keys: {auth, p256dh} for Web Push
+  final Map<String, dynamic>?
+      subscriptionData; // e.g. keys: {auth, p256dh} for Web Push
   final DateTime updatedAt;
 
   Map<String, dynamic> toJson() => {
-    'token': token,
-    'platform': platform,
-    if (subscriptionData != null) 'subscription_data': subscriptionData,
-    'updated_at': updatedAt.toIso8601String(),
-  };
+        'token': token,
+        'platform': platform,
+        if (subscriptionData != null) 'subscription_data': subscriptionData,
+        'updated_at': updatedAt.toIso8601String(),
+      };
 
   factory PushTokenInfo.fromJson(Map<String, dynamic> json) => PushTokenInfo(
-    token: json['token'] as String? ?? '',
-    platform: json['platform'] as String? ?? 'web',
-    subscriptionData: json['subscription_data'] != null
-        ? Map<String, dynamic>.from(json['subscription_data'] as Map)
-        : null,
-    updatedAt: json['updated_at'] != null
-        ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
-        : DateTime.now(),
-  );
+        token: json['token'] as String? ?? '',
+        platform: json['platform'] as String? ?? 'web',
+        subscriptionData: json['subscription_data'] != null
+            ? Map<String, dynamic>.from(json['subscription_data'] as Map)
+            : null,
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
+            : DateTime.now(),
+      );
 }
 
 /// Payload received from incoming push notification or simulated payload.
@@ -46,7 +47,8 @@ class PushNotificationPayload {
   const PushNotificationPayload({
     required this.title,
     required this.body,
-    this.type = 'general', // '1_hour_reminder' | 'booking' | 'course_alert' | 'general'
+    this.type =
+        'general', // '1_hour_reminder' | 'booking' | 'course_alert' | 'general'
     this.bookingId,
     this.venueName,
     this.slotTime,
@@ -74,18 +76,30 @@ class PushNotificationPayload {
   final Map<String, dynamic>? data;
 
   factory PushNotificationPayload.fromMap(Map<String, dynamic> map) {
-    final dataMap = map['data'] is Map ? Map<String, dynamic>.from(map['data'] as Map) : map;
+    final dataMap = map['data'] is Map
+        ? Map<String, dynamic>.from(map['data'] as Map)
+        : map;
     return PushNotificationPayload(
-      title: map['title'] as String? ?? dataMap['title'] as String? ?? 'BookMySpace Alert',
+      title: map['title'] as String? ??
+          dataMap['title'] as String? ??
+          'BookMySpace Alert',
       body: map['body'] as String? ?? dataMap['body'] as String? ?? '',
-      type: dataMap['type'] as String? ?? dataMap['reminder_type'] as String? ?? 'general',
-      bookingId: dataMap['booking_id'] as String? ?? dataMap['bookingId'] as String?,
-      venueName: dataMap['venue_name'] as String? ?? dataMap['venueName'] as String?,
-      slotTime: dataMap['slot_time'] as String? ?? dataMap['slotTime'] as String?,
-      bookingDate: dataMap['booking_date'] as String? ?? dataMap['bookingDate'] as String?,
-      qrCodeToken: dataMap['qr_token'] as String? ?? dataMap['qrCodeToken'] as String?,
+      type: dataMap['type'] as String? ??
+          dataMap['reminder_type'] as String? ??
+          'general',
+      bookingId:
+          dataMap['booking_id'] as String? ?? dataMap['bookingId'] as String?,
+      venueName:
+          dataMap['venue_name'] as String? ?? dataMap['venueName'] as String?,
+      slotTime:
+          dataMap['slot_time'] as String? ?? dataMap['slotTime'] as String?,
+      bookingDate: dataMap['booking_date'] as String? ??
+          dataMap['bookingDate'] as String?,
+      qrCodeToken:
+          dataMap['qr_token'] as String? ?? dataMap['qrCodeToken'] as String?,
       venueId: dataMap['venue_id'] as String? ?? dataMap['venueId'] as String?,
-      courseId: dataMap['course_id'] as String? ?? dataMap['courseId'] as String?,
+      courseId:
+          dataMap['course_id'] as String? ?? dataMap['courseId'] as String?,
       classId: dataMap['class_id'] as String? ?? dataMap['classId'] as String?,
       action: map['action'] as String? ?? dataMap['action'] as String?,
       data: dataMap,
@@ -93,20 +107,20 @@ class PushNotificationPayload {
   }
 
   Map<String, dynamic> toMap() => {
-    'title': title,
-    'body': body,
-    'type': type,
-    if (bookingId != null) 'booking_id': bookingId,
-    if (venueName != null) 'venue_name': venueName,
-    if (slotTime != null) 'slot_time': slotTime,
-    if (bookingDate != null) 'booking_date': bookingDate,
-    if (qrCodeToken != null) 'qr_token': qrCodeToken,
-    if (venueId != null) 'venue_id': venueId,
-    if (courseId != null) 'course_id': courseId,
-    if (classId != null) 'class_id': classId,
-    if (action != null) 'action': action,
-    if (data != null) 'data': data,
-  };
+        'title': title,
+        'body': body,
+        'type': type,
+        if (bookingId != null) 'booking_id': bookingId,
+        if (venueName != null) 'venue_name': venueName,
+        if (slotTime != null) 'slot_time': slotTime,
+        if (bookingDate != null) 'booking_date': bookingDate,
+        if (qrCodeToken != null) 'qr_token': qrCodeToken,
+        if (venueId != null) 'venue_id': venueId,
+        if (courseId != null) 'course_id': courseId,
+        if (classId != null) 'class_id': classId,
+        if (action != null) 'action': action,
+        if (data != null) 'data': data,
+      };
 }
 
 /// Represents an active scheduled 1-hour pre-booking reminder.
@@ -130,7 +144,8 @@ class ScheduledReminderInfo {
   final bool isActive;
 
   String getTimeRemainingFormatted() {
-    final diffMs = scheduledTriggerEpochMs - DateTime.now().millisecondsSinceEpoch;
+    final diffMs =
+        scheduledTriggerEpochMs - DateTime.now().millisecondsSinceEpoch;
     if (diffMs <= 0) return 'Triggering soon / Active';
     final hours = diffMs ~/ (1000 * 60 * 60);
     final minutes = (diffMs % (1000 * 60 * 60)) ~/ (1000 * 60);

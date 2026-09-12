@@ -15,11 +15,14 @@ class WebPushBridge {
     String? badge,
     Map<String, dynamic>? data,
     List<Map<String, String>>? actions,
-  }) async => false;
+  }) async =>
+      false;
 
-  static void registerMessageListener(void Function(Map<String, dynamic> data) onMessage) {}
+  static void registerMessageListener(
+      void Function(Map<String, dynamic> data) onMessage) {}
 
-  static void registerClickListener(void Function(Map<String, dynamic> data, String? action) onClick) {}
+  static void registerClickListener(
+      void Function(Map<String, dynamic> data, String? action) onClick) {}
 
   static Future<bool> unsubscribe() async => false;
 }

@@ -25,12 +25,4 @@ abstract interface class PaymentRepository {
 
   /// Payments belonging to the signed-in user, newest first.
   Future<List<Payment>> myPayments();
-
-  /// Verifies a Razorpay payment signature and confirms the booking.
-  Future<bool> verifyPayment({
-    required String bookingId,
-    required String orderId,
-    required String paymentId,
-    required String signature,
-  });
 }

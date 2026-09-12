@@ -39,12 +39,12 @@ class QrCodePassWidget extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.25),
+              color: theme.colorScheme.primary.withValues(alpha: 0.25),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -227,7 +227,8 @@ class _QrMatrixPainter extends CustomPainter {
     }
   }
 
-  static void _drawAlignmentPattern(List<List<bool>> matrix, int top, int left) {
+  static void _drawAlignmentPattern(
+      List<List<bool>> matrix, int top, int left) {
     for (int r = 0; r < 5; r++) {
       for (int c = 0; c < 5; c++) {
         final isBorder = r == 0 || r == 4 || c == 0 || c == 4;
@@ -257,12 +258,18 @@ class _QrMatrixPainter extends CustomPainter {
     // Timing lines
     if (r == 6 || c == 6) return true;
     // Alignment pattern (5x5 around gridSize - 7)
-    if (r >= _gridSize - 9 && r <= _gridSize - 5 && c >= _gridSize - 9 && c <= _gridSize - 5) {
+    if (r >= _gridSize - 9 &&
+        r <= _gridSize - 5 &&
+        c >= _gridSize - 9 &&
+        c <= _gridSize - 5) {
       return true;
     }
     // Center badge
     final centerStart = (_gridSize ~/ 2) - 2;
-    if (r >= centerStart && r < centerStart + 5 && c >= centerStart && c < centerStart + 5) {
+    if (r >= centerStart &&
+        r < centerStart + 5 &&
+        c >= centerStart &&
+        c < centerStart + 5) {
       return true;
     }
     return false;

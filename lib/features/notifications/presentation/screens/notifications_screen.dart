@@ -20,7 +20,8 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
@@ -52,7 +53,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               onPressed: () {
                 ref.read(markAllNotificationsReadProvider);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('All notifications marked as read')),
+                  const SnackBar(
+                      content: Text('All notifications marked as read')),
                 );
               },
               child: const Text('Mark all read'),
@@ -88,10 +90,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   child: _PushControlCard(
                     platformName: platformName,
                     is1HourEnabled: is1HourEnabled,
-                    permissionStatus: permissionAsync.valueOrNull ?? pushService.permissionStatus,
+                    permissionStatus: permissionAsync.valueOrNull ??
+                        pushService.permissionStatus,
                     deviceToken: pushService.currentDeviceToken,
                     onToggle1Hour: (val) async {
-                      ref.read(is1HourReminderEnabledProvider.notifier).state = val;
+                      ref.read(is1HourReminderEnabledProvider.notifier).state =
+                          val;
                       await pushService.set1HourReminderEnabled(val);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +130,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       ref.invalidate(unreadNotificationsCountProvider);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Heads-Up Push Notification Sent! 🔔')),
+                          const SnackBar(
+                              content:
+                                  Text('Heads-Up Push Notification Sent! 🔔')),
                         );
                       }
                     },
@@ -137,7 +143,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Cloud Push Payload Received & Broadcasted! ☁️'),
+                            content: Text(
+                                'Cloud Push Payload Received & Broadcasted! ☁️'),
                           ),
                         );
                       }
@@ -149,7 +156,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               // 2. Filter tabs
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -163,19 +171,22 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         _FilterChip(
                           label: 'Unread ($unreadCount)',
                           selected: _selectedFilter == 'unread',
-                          onTap: () => setState(() => _selectedFilter = 'unread'),
+                          onTap: () =>
+                              setState(() => _selectedFilter = 'unread'),
                         ),
                         const SizedBox(width: 8),
                         _FilterChip(
                           label: '⚡ 1-Hour Reminders',
                           selected: _selectedFilter == '1_hour_reminder',
-                          onTap: () => setState(() => _selectedFilter = '1_hour_reminder'),
+                          onTap: () => setState(
+                              () => _selectedFilter = '1_hour_reminder'),
                         ),
                         const SizedBox(width: 8),
                         _FilterChip(
                           label: '🎟️ Bookings',
                           selected: _selectedFilter == 'booking',
-                          onTap: () => setState(() => _selectedFilter = 'booking'),
+                          onTap: () =>
+                              setState(() => _selectedFilter = 'booking'),
                         ),
                       ],
                     ),
@@ -190,7 +201,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   child: EmptyState(
                     icon: Icons.notifications_none_rounded,
                     title: 'No notifications',
-                    message: 'You will see notifications here when they arrive.',
+                    message:
+                        'You will see notifications here when they arrive.',
                   ),
                 )
               else
@@ -202,13 +214,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         notification: filteredItems[i],
                         onTap: () async {
                           await ref.read(
-                            markNotificationReadProvider(filteredItems[i].id).future,
+                            markNotificationReadProvider(filteredItems[i].id)
+                                .future,
                           );
                           if (context.mounted) {
                             final data = filteredItems[i].data;
                             if (data != null) {
                               pushService.handleNotificationRouting(data);
-                            } else if (filteredItems[i].type == '1_hour_reminder' ||
+                            } else if (filteredItems[i].type ==
+                                    '1_hour_reminder' ||
                                 filteredItems[i].type == 'booking') {
                               context.go(AppRoutes.bookings);
                             }
@@ -263,7 +277,8 @@ class _PushControlCard extends StatelessWidget {
       color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+        side: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.15)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -335,14 +350,17 @@ class _PushControlCard extends StatelessWidget {
                   ),
                   InkWell(
                     onTap: () {
-                      Clipboard.setData(ClipboardData(text: deviceToken ?? displayToken));
+                      Clipboard.setData(
+                          ClipboardData(text: deviceToken ?? displayToken));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('$platformName Token Copied! 📋')),
+                        SnackBar(
+                            content: Text('$platformName Token Copied! 📋')),
                       );
                     },
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       child: Text(
                         'Copy Token',
                         style: theme.textTheme.labelSmall?.copyWith(
@@ -364,7 +382,8 @@ class _PushControlCard extends StatelessWidget {
                 label: const Text('Enable System Push Notifications'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(40),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -376,9 +395,11 @@ class _PushControlCard extends StatelessWidget {
                   child: FilledButton(
                     onPressed: onTest1HourPush,
                     style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: const Text('⚡ Test 1-Hr Push', style: TextStyle(fontSize: 12)),
+                    child: const Text('⚡ Test 1-Hr Push',
+                        style: TextStyle(fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -386,9 +407,11 @@ class _PushControlCard extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onSimulateCloudPush,
                     style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: const Text('☁️ Simulate Cloud', style: TextStyle(fontSize: 12)),
+                    child: const Text('☁️ Simulate Cloud',
+                        style: TextStyle(fontSize: 12)),
                   ),
                 ),
               ],
@@ -415,7 +438,10 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ChoiceChip(
-      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+      label: Text(label,
+          style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
       selected: selected,
       onSelected: (_) => onTap(),
       selectedColor: theme.colorScheme.primaryContainer,
@@ -474,7 +500,7 @@ class _NotificationTile extends StatelessWidget {
                       : theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                alignment: Alignment.Center,
+                alignment: Alignment.center,
                 child: Text(typeIcon, style: const TextStyle(fontSize: 18)),
               ),
               const SizedBox(width: 12),
@@ -488,14 +514,16 @@ class _NotificationTile extends StatelessWidget {
                           child: Text(
                             notification.title,
                             style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                              fontWeight:
+                                  isUnread ? FontWeight.bold : FontWeight.w600,
                             ),
                           ),
                         ),
                         if (isUnread)
                           Container(
                             margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppTheme.brand,
                               borderRadius: BorderRadius.circular(6),
@@ -519,11 +547,13 @@ class _NotificationTile extends StatelessWidget {
                         height: 1.3,
                       ),
                     ),
-                    if (notification.type == '1_hour_reminder' || notification.type == 'booking') ...[
+                    if (notification.type == '1_hour_reminder' ||
+                        notification.type == 'booking') ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.qr_code_2_rounded, size: 14, color: AppTheme.brand),
+                          Icon(Icons.qr_code_2_rounded,
+                              size: 14, color: AppTheme.brand),
                           const SizedBox(width: 4),
                           Text(
                             'Tap to view check-in pass',

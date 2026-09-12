@@ -17,8 +17,9 @@ final myVenuesProvider = FutureProvider<List<Venue>>((ref) {
 });
 
 /// Create a venue and invalidate the list.
-final createVenueProvider = FutureProvider.autoDispose
-    .family<Venue, ({
+final createVenueProvider = FutureProvider.autoDispose.family<
+    Venue,
+    ({
       String name,
       String categoryId,
       String description,
@@ -58,8 +59,9 @@ final createVenueProvider = FutureProvider.autoDispose
 });
 
 /// Update an existing venue and invalidate the list.
-final updateVenueProvider = FutureProvider.autoDispose
-    .family<Venue, ({
+final updateVenueProvider = FutureProvider.autoDispose.family<
+    Venue,
+    ({
       String venueId,
       String? name,
       String? categoryId,
@@ -103,10 +105,23 @@ final updateVenueProvider = FutureProvider.autoDispose
 });
 
 /// Delete a venue and invalidate the list.
-final deleteVenueProvider = FutureProvider.autoDispose
-    .family<void, String>((ref, venueId) async {
+final deleteVenueProvider =
+    FutureProvider.autoDispose.family<void, String>((ref, venueId) async {
   final repo = ref.watch(ownerVenueRepositoryProvider);
   await repo.deleteVenue(venueId);
   ref.invalidate(myVenuesProvider);
 });
 
+final uploadOwnerVenueImageProvider = FutureProvider.autoDispose.family<
+    String,
+    ({
+      List<int> bytes,
+      String fileName,
+      String? contentType,
+    })>((ref, params) async {
+  return ref.watch(ownerVenueRepositoryProvider).uploadVenueImage(
+        bytes: params.bytes,
+        fileName: params.fileName,
+        contentType: params.contentType,
+      );
+});

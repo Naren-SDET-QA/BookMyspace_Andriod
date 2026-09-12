@@ -76,8 +76,7 @@ class _EventBody extends ConsumerWidget {
                 const SizedBox(height: 8),
                 _InfoRow(
                   icon: Icons.event_rounded,
-                  text:
-                      '${DateFormat.yMMMd().format(starts)} · '
+                  text: '${DateFormat.yMMMd().format(starts)} · '
                       '${DateFormat.jm().format(starts)} – ${DateFormat.jm().format(ends)}',
                 ),
                 if (event.venueName.isNotEmpty) ...[

@@ -29,8 +29,12 @@ class Notification {
       body: json['body'] as String? ?? json['message'] as String? ?? '',
       type: json['type'] as String? ?? 'general',
       read: json['read'] as bool? ?? json['is_read'] as bool? ?? false,
-      data: json['data'] != null ? Map<String, dynamic>.from(json['data'] as Map) : null,
-      readAt: json['read_at'] != null ? DateTime.tryParse(json['read_at'].toString()) : null,
+      data: json['data'] != null
+          ? Map<String, dynamic>.from(json['data'] as Map)
+          : null,
+      readAt: json['read_at'] != null
+          ? DateTime.tryParse(json['read_at'].toString())
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),

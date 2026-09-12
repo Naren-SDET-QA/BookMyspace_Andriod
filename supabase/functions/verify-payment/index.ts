@@ -13,7 +13,8 @@ const corsHeaders = {
 };
 
 function verifyRazorpaySignature(orderId: string, paymentId: string, signature: string): boolean {
-  if (!RAZORPAY_KEY_SECRET) return true; // dev/test mode bypass
+  // A missing secret is a configuration failure, never a valid signature.
+  if (!RAZORPAY_KEY_SECRET) return false;
   try {
     const expected = createHmac('sha256', RAZORPAY_KEY_SECRET)
       .update(`${orderId}|${paymentId}`)
@@ -57,14 +58,14 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { booking_id, order_id, payment_id, signature } = body;
 
-    if (!booking_id || !payment_id) {
+    if (!booking_id || !order_id || !payment_id || !signature) {
       return new Response(JSON.stringify({ error: 'missing_required_fields' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (order_id && signature && !verifyRazorpaySignature(order_id, payment_id, signature)) {
+    if (!verifyRazorpaySignature(order_id, payment_id, signature)) {
       return new Response(JSON.stringify({ error: 'invalid_signature' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -78,18 +79,30 @@ Deno.serve(async (req) => {
     });
 
     if (confirmError) {
-      console.warn('RPC confirm_booking note:', confirmError.message);
+      return new Response(JSON.stringify({ error: 'booking_confirmation_failed' }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Update payment record to captured
-    await supabase
+    const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .update({
         status: 'captured',
         provider_payment_id: payment_id,
         updated_at: new Date().toISOString(),
       })
-      .eq('booking_id', booking_id);
+      .eq('booking_id', booking_id)
+      .eq('provider_order_id', order_id)
+      .select('id')
+      .maybeSingle();
+    if (paymentError || !payment) {
+      return new Response(JSON.stringify({ error: 'payment_update_failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({
       success: true,

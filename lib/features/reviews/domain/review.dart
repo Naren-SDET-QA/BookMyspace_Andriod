@@ -12,6 +12,7 @@ class Review {
     this.createdAt,
     this.updatedAt,
     this.userName,
+    this.ownerReply,
   });
 
   final String id;
@@ -25,33 +26,55 @@ class Review {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? userName;
+  final String? ownerReply;
 
   factory Review.fromJson(Map<String, dynamic> json) => Review(
-    id: json['id'] as String? ?? '',
-    venueId: json['venue_id'] as String? ?? '',
-    userId: json['user_id'] as String? ?? '',
-    rating: json['rating'] as int? ?? 0,
-    bookingId: json['booking_id'] as String?,
-    title: json['title'] as String?,
-    body: json['body'] as String?,
-    isVerified: json['is_verified'] as bool? ?? false,
-    createdAt: json['created_at'] != null
-        ? DateTime.tryParse(json['created_at'] as String)
-        : null,
-    updatedAt: json['updated_at'] != null
-        ? DateTime.tryParse(json['updated_at'] as String)
-        : null,
-    userName: json['user_name'] as String?,
-  );
+        id: json['id'] as String? ?? '',
+        venueId: json['venue_id'] as String? ?? '',
+        userId: json['user_id'] as String? ?? '',
+        rating: (json['rating'] as num?)?.toInt() ?? 0,
+        bookingId: json['booking_id'] as String?,
+        title: json['title'] as String?,
+        body: json['body'] as String?,
+        isVerified: json['is_verified'] as bool? ?? false,
+        createdAt: json['created_at'] != null
+            ? DateTime.tryParse(json['created_at'] as String)
+            : null,
+        updatedAt: json['updated_at'] != null
+            ? DateTime.tryParse(json['updated_at'] as String)
+            : null,
+        userName: json['user_name'] as String? ?? json['reviewer_name'] as String?,
+        ownerReply: json['owner_reply'] as String?,
+      );
+
+  Review copyWith({
+    String? userName,
+    String? ownerReply,
+  }) {
+    return Review(
+      id: id,
+      venueId: venueId,
+      userId: userId,
+      rating: rating,
+      bookingId: bookingId,
+      title: title,
+      body: body,
+      isVerified: isVerified,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      userName: userName ?? this.userName,
+      ownerReply: ownerReply ?? this.ownerReply,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
-    'venue_id': venueId,
-    'user_id': userId,
-    'rating': rating,
-    'booking_id': bookingId,
-    'title': title,
-    'body': body,
-  };
+        'venue_id': venueId,
+        'user_id': userId,
+        'rating': rating,
+        'booking_id': bookingId,
+        'title': title,
+        'body': body,
+      };
 }
 
 /// Contract for review repository.

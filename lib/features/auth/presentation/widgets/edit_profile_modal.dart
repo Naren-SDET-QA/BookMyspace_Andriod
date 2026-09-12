@@ -235,7 +235,8 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.3),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -267,7 +268,9 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                       });
                     },
                     icon: Icon(
-                      _showCustomUrlInput ? Icons.grid_view_rounded : Icons.link_rounded,
+                      _showCustomUrlInput
+                          ? Icons.grid_view_rounded
+                          : Icons.link_rounded,
                       size: 16,
                     ),
                     label: Text(
@@ -354,7 +357,8 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),

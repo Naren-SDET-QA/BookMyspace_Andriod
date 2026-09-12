@@ -1,3 +1,4 @@
+import 'package:bookmyspace/core/errors/app_exceptions.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/payments/domain/checkout_service.dart';
 import 'package:bookmyspace/features/payments/domain/payment.dart';
@@ -8,6 +9,7 @@ class MockPaymentRepository implements PaymentRepository {
   MockPaymentRepository();
 
   bool failCreateOrder = false;
+  bool duplicateOrder = false;
   bool failRefund = false;
   bool failStatus = false;
 
@@ -32,20 +34,26 @@ class MockPaymentRepository implements PaymentRepository {
   ];
 
   static PaymentOrder sampleOrder({String orderId = 'order_1'}) =>
-      PaymentOrder(orderId: orderId, amount: 41300, currency: 'INR');
+      PaymentOrder(orderId: orderId, amount: 4720, currency: 'INR');
 
   static Refund sampleRefund() => const Refund(
-    id: 'r1',
-    paymentId: 'p1',
-    bookingId: 'b1',
-    amount: 41300,
-    status: 'processed',
-    reason: '',
-    providerRefundId: 'rfnd_1',
-  );
+        id: 'r1',
+        paymentId: 'p1',
+        bookingId: 'b1',
+        amount: 41300,
+        status: 'processed',
+        reason: '',
+        providerRefundId: 'rfnd_1',
+      );
 
   @override
   Future<PaymentOrder> createOrder({required String bookingId}) async {
+    if (duplicateOrder) {
+      throw const BusinessException(
+        'A payment for this booking already exists.',
+        code: 'payment_duplicate',
+      );
+    }
     if (failCreateOrder) throw Exception('order creation failed');
     lastOrderBookingId = bookingId;
     return sampleOrder();
@@ -75,16 +83,6 @@ class MockPaymentRepository implements PaymentRepository {
   Future<List<Payment>> myPayments() async {
     return List.of(defaultPayments);
   }
-
-  @override
-  Future<bool> verifyPayment({
-    required String bookingId,
-    required String orderId,
-    required String paymentId,
-    required String signature,
-  }) async {
-    return true;
-  }
 }
 
 /// A checkout service that records the opened order and returns a fixed
@@ -93,10 +91,18 @@ class FakeCheckoutService implements CheckoutService {
   FakeCheckoutService([this.result = CheckoutResult.paid]);
 
   CheckoutResult result;
+  CheckoutResponse? get lastResponse => result == CheckoutResult.paid
+      ? CheckoutResponse(
+          result: result,
+          paymentId: 'pay_test',
+          orderId: lastOrderId,
+        )
+      : CheckoutResponse(result: result, orderId: lastOrderId);
   String? lastOrderId;
   double? lastAmount;
   String? lastCurrency;
   String? lastKeyId;
+  int checkoutCalls = 0;
 
   @override
   Future<CheckoutResult> openCheckout({
@@ -104,7 +110,14 @@ class FakeCheckoutService implements CheckoutService {
     required double amount,
     required String currency,
     required String keyId,
+    String? venueName,
+    String? bookingRef,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    Map<String, dynamic>? notes,
   }) async {
+    checkoutCalls++;
     lastOrderId = orderId;
     lastAmount = amount;
     lastCurrency = currency;

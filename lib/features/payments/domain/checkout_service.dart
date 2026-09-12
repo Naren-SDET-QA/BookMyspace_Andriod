@@ -30,17 +30,27 @@ class CheckoutResponse {
 
 /// Abstract contract for launching payment sheets across platforms.
 ///
-/// On iOS and Android, this is backed by the native Razorpay SDK via
-/// platform channels. On Web, it invokes the browser-compatible checkout.
+/// Android and iOS use the native Razorpay Standard Checkout SDK.
+/// Web uses Razorpay Checkout.js in the browser. The booking/payment
+/// state machine above this interface is shared.
 abstract interface class CheckoutService {
   /// Opens the checkout flow with the given Razorpay order parameters.
+  ///
+  /// [amount] is the server-authoritative order amount in major units
+  /// (INR rupees). Implementations convert to paise for Razorpay.
   Future<CheckoutResult> openCheckout({
     required String orderId,
     required double amount,
     required String currency,
     required String keyId,
+    String? venueName,
+    String? bookingRef,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    Map<String, dynamic>? notes,
   });
 
   /// The most recent detailed response from the checkout engine.
-  CheckoutResponse? get lastResponse => null;
+  CheckoutResponse? get lastResponse;
 }

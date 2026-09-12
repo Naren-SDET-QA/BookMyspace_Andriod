@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../domain/speech_recognition_state.dart';
-import '../domain/voice_filter_parser.dart';
-import '../infrastructure/speech_recognition_service.dart';
+import '../../domain/speech_recognition_state.dart';
+import '../../domain/voice_filter_parser.dart';
+import '../../infrastructure/speech_recognition_service.dart';
 import '../voice_search_providers.dart';
 
 /// Interactive Voice Search Modal Bottom Sheet for iOS, Web, and mobile.
@@ -36,7 +36,8 @@ class VoiceSearchBottomSheet extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<VoiceSearchBottomSheet> createState() => _VoiceSearchBottomSheetState();
+  ConsumerState<VoiceSearchBottomSheet> createState() =>
+      _VoiceSearchBottomSheetState();
 }
 
 class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
@@ -147,7 +148,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isListening = _state is SpeechRecognitionListening;
-    final soundLevel = isListening ? (_state as SpeechRecognitionListening).soundLevel : 0.0;
+    final soundLevel =
+        isListening ? (_state as SpeechRecognitionListening).soundLevel : 0.0;
     final isSuccess = _state is SpeechRecognitionSuccess;
     final isError = _state is SpeechRecognitionError;
     final errorObj = isError ? (_state as SpeechRecognitionError) : null;
@@ -196,7 +198,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                       color: AppTheme.brand.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.mic, color: AppTheme.brand, size: 20),
+                    child:
+                        const Icon(Icons.mic, color: AppTheme.brand, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -233,7 +236,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                         height: 120 * scale,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.brand.withValues(alpha: 0.15 * (1.0 - (scale - 1.0))),
+                          color: AppTheme.brand
+                              .withValues(alpha: 0.15 * (1.0 - (scale - 1.0))),
                         ),
                       );
                     },
@@ -255,7 +259,10 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
                         colors: isError
-                            ? [theme.colorScheme.error, theme.colorScheme.error.withValues(alpha: 0.8)]
+                            ? [
+                                theme.colorScheme.error,
+                                theme.colorScheme.error.withValues(alpha: 0.8)
+                              ]
                             : isSuccess
                                 ? [Colors.green, Colors.teal]
                                 : [AppTheme.brand, AppTheme.brandDark],
@@ -301,7 +308,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(7, (index) {
                   final offset = (index - 3).abs();
-                  final barHeight = (8 + ((soundLevel * 20) / (offset + 1))).clamp(6.0, 24.0);
+                  final barHeight =
+                      (8 + ((soundLevel * 20) / (offset + 1))).clamp(6.0, 24.0);
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 100),
                     margin: const EdgeInsets.symmetric(horizontal: 2.5),
@@ -323,14 +331,16 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSuccess
                     ? Colors.green.withValues(alpha: 0.4)
                     : isError
                         ? theme.colorScheme.error.withValues(alpha: 0.3)
-                        : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        : theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.4),
               ),
             ),
             child: Column(
@@ -344,11 +354,15 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                               ? errorObj?.message ?? 'Microphone error'
                               : 'Tap microphone and start speaking',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: _currentTranscript.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: _currentTranscript.isNotEmpty
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                     color: isError
                         ? theme.colorScheme.error
                         : theme.colorScheme.onSurface,
-                    fontStyle: _currentTranscript.isEmpty ? FontStyle.italic : FontStyle.normal,
+                    fontStyle: _currentTranscript.isEmpty
+                        ? FontStyle.italic
+                        : FontStyle.normal,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -378,9 +392,11 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                   avatar: Text(badge.iconEmoji),
                   label: Text(
                     '${badge.title}: ${badge.value}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600),
                   ),
-                  backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+                  backgroundColor:
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
                   side: BorderSide.none,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                 );
@@ -458,7 +474,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                 return ActionChip(
                   label: Text(prompt, style: const TextStyle(fontSize: 12)),
                   onPressed: () => _onSamplePromptTapped(prompt),
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
                 );
               },
             ),

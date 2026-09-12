@@ -8,5 +8,6 @@ class WebSpeechBridge {
 
   static Future<bool> abort() async => false;
 
-  static void registerEventListener(void Function(Map<String, dynamic> event) onEvent) {}
+  static void registerEventListener(
+      void Function(Map<String, dynamic> event) onEvent) {}
 }

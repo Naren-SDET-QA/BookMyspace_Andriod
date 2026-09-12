@@ -32,48 +32,130 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 title: 'Not an owner',
                 message: 'Register as an owner to access the dashboard.',
               )
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _OwnerCard(owner: ownerData),
-                  const SizedBox(height: 24),
-                  _QuickAction(
-                    icon: Icons.add_business_rounded,
-                    label: 'List New Space 🏛️',
-                    onTap: () => context.push(AppRoutes.ownerVenueCreate),
-                  ),
-                  _QuickAction(
-                    icon: Icons.category_rounded,
-                    label: 'Manage Space Categories 🏷️',
-                    onTap: () => context.push(AppRoutes.ownerCategories),
-                  ),
-                  _QuickAction(
-                    icon: Icons.storefront_rounded,
-                    label: l10n.myVenues,
-                    onTap: () => context.push(AppRoutes.ownerVenues),
-                  ),
-                  _QuickAction(
-                    icon: Icons.notifications_rounded,
-                    label: l10n.notifications,
-                    onTap: () => context.push(AppRoutes.notifications),
-                  ),
-                  _QuickAction(
-                    icon: Icons.analytics_rounded,
-                    label: l10n.analytics,
-                    onTap: () => context.push(AppRoutes.analytics),
-                  ),
-                  _QuickAction(
-                    icon: Icons.headset_mic_rounded,
-                    label: l10n.support,
-                    onTap: () => context.push(AppRoutes.support),
-                  ),
-                  _QuickAction(
-                    icon: Icons.history_rounded,
-                    label: l10n.auditLog,
-                    onTap: () => context.push(AppRoutes.adminAudit),
-                  ),
-                ],
+            : _OwnerDashboardBody(owner: ownerData, l10n: l10n),
+      ),
+    );
+  }
+}
+
+class _OwnerDashboardBody extends ConsumerWidget {
+  const _OwnerDashboardBody({required this.owner, required this.l10n});
+
+  final Owner owner;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final snapshot = ref.watch(ownerDashboardSnapshotProvider);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _OwnerCard(owner: owner),
+        const SizedBox(height: 16),
+        snapshot.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (error, _) => ErrorView(
+            message: error.toString(),
+            onRetry: () => ref.invalidate(ownerDashboardSnapshotProvider),
+          ),
+          data: (data) => Row(
+            children: [
+              Expanded(
+                child: _MetricTile(
+                  label: 'Venues',
+                  value: '${data.venueCount}',
+                ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MetricTile(
+                  label: 'Bookings',
+                  value: '${data.bookingCount}',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MetricTile(
+                  label: 'Pending',
+                  value: '${data.pendingCount}',
+                ),
+              ),
+            ],
+          ),
+        ),
+        snapshot.maybeWhen(
+          data: (data) => Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _MetricTile(
+              label: 'Confirmed booking total',
+              value: '₹${data.confirmedRevenue.toStringAsFixed(0)}',
+            ),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 24),
+        _QuickAction(
+          icon: Icons.add_business_rounded,
+          label: 'List New Space 🏛️',
+          onTap: () => context.push(AppRoutes.ownerVenueCreate),
+        ),
+        _QuickAction(
+          icon: Icons.category_rounded,
+          label: 'Manage Space Categories 🏷️',
+          onTap: () => context.push(AppRoutes.ownerCategories),
+        ),
+        _QuickAction(
+          icon: Icons.storefront_rounded,
+          label: l10n.myVenues,
+          onTap: () => context.push(AppRoutes.ownerVenues),
+        ),
+        _QuickAction(
+          icon: Icons.receipt_long_rounded,
+          label: 'Venue bookings',
+          onTap: () => context.push(AppRoutes.ownerBookings),
+        ),
+        _QuickAction(
+          icon: Icons.notifications_rounded,
+          label: l10n.notifications,
+          onTap: () => context.push(AppRoutes.notifications),
+        ),
+        _QuickAction(
+          icon: Icons.analytics_rounded,
+          label: l10n.analyticsLabel,
+          onTap: () => context.push(AppRoutes.analytics),
+        ),
+        _QuickAction(
+          icon: Icons.headset_mic_rounded,
+          label: l10n.support,
+          onTap: () => context.push(AppRoutes.support),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: Theme.of(context).textTheme.labelSmall),
+          ],
+        ),
       ),
     );
   }
@@ -95,7 +177,7 @@ class _OwnerCard extends StatelessWidget {
             CircleAvatar(
               radius: 28,
               backgroundColor: AppTheme.brand.withValues(alpha: 0.12),
-              child:               const Icon(Icons.person_rounded, color: AppTheme.brand),
+              child: const Icon(Icons.person_rounded, color: AppTheme.brand),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -157,7 +239,8 @@ class _QuickAction extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: theme.colorScheme.onSurfaceVariant),
             ],
           ),
         ),

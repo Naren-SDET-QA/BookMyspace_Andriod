@@ -17,6 +17,9 @@ abstract interface class AuthRepository {
   /// Verifies an email OTP token.
   Future<AuthUser> verifyEmailOtp(String email, String token);
 
+  /// Signs in with an email and password against the hosted Auth provider.
+  Future<AuthUser> signInWithEmailPassword(String email, String password);
+
   /// Signs in with a phone OTP.
   Future<void> signInWithPhoneOtp(String phone);
 

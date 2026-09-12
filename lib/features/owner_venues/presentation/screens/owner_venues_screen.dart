@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../../venues/domain/venue.dart';
 import '../providers/owner_venue_providers.dart';
 import 'create_venue_screen.dart';
@@ -21,8 +19,10 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 36),
-          title: const Text('Delete Space Listing?', style: TextStyle(fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.warning_amber_rounded,
+              color: Colors.red, size: 36),
+          title: const Text('Delete Space Listing?',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           content: Text(
             'Are you sure you want to remove "${venue.name}"? This action cannot be undone.',
           ),
@@ -150,18 +150,20 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                     Icon(
                       Icons.add_business_outlined,
                       size: 64,
-                      color: theme.colorScheme.primary.withOpacity(0.5),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No spaces listed yet',
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Add your banquet hall, conference room, lawn, or coworking space to start hosting bookings.',
-                      textAlign: TextAlign.Center,
-                      style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 24),
                     FilledButton.icon(
@@ -184,7 +186,11 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
           final totalActive = venues.where((v) => v.isActive).length;
           final avgPrice = venues.isEmpty
               ? 0
-              : (venues.map((v) => v.pricingBaseAmount).reduce((a, b) => a + b) / venues.length).toInt();
+              : (venues
+                          .map((v) => v.pricingBaseAmount)
+                          .reduce((a, b) => a + b) /
+                      venues.length)
+                  .toInt();
 
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(myVenuesProvider.future),
@@ -195,9 +201,12 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+                    color: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                    border: Border.all(
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -208,7 +217,10 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                         icon: Icons.stadium,
                         theme: theme,
                       ),
-                      Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
+                      Container(
+                          width: 1,
+                          height: 36,
+                          color: theme.colorScheme.outlineVariant),
                       _buildMetric(
                         label: 'Active Listings',
                         value: '$totalActive',
@@ -216,7 +228,10 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                         theme: theme,
                         valueColor: const Color(0xFF2E7D32),
                       ),
-                      Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
+                      Container(
+                          width: 1,
+                          height: 36,
+                          color: theme.colorScheme.outlineVariant),
                       _buildMetric(
                         label: 'Avg Base Rate',
                         value: '₹$avgPrice',
@@ -229,7 +244,8 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Your Properties (${venues.length})',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
                 ...venues.map((venue) => _buildVenueCard(venue, theme)),
@@ -275,7 +291,8 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
           children: [
             Icon(icon, size: 14, color: theme.colorScheme.primary),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(label,
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
           ],
         ),
         const SizedBox(height: 4),
@@ -316,7 +333,7 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: Colors.grey.shade200,
-                    alignment: Alignment.Center,
+                    alignment: Alignment.center,
                     child: const Icon(Icons.stadium),
                   ),
                 ),
@@ -333,13 +350,15 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                           Expanded(
                             child: Text(
                               venue.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14.5),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: venue.isActive
                                   ? const Color(0xFFE8F5E9)
@@ -352,8 +371,8 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: venue.isActive
-                                  ? const Color(0xFF2E7D32)
-                                  : const Color(0xFFC62828),
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFFC62828),
                               ),
                             ),
                           ),
@@ -362,7 +381,9 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '📍 ${venue.city}${venue.state.isNotEmpty ? ', ${venue.state}' : ''}',
-                        style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: theme.colorScheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -378,7 +399,8 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                           const SizedBox(width: 8),
                           Text(
                             '•  Max ${venue.capacity} guests',
-                            style: const TextStyle(fontSize: 11.5, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 11.5, color: Colors.grey),
                           ),
                         ],
                       ),
@@ -397,7 +419,8 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
               children: [
                 TextButton.icon(
                   icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit Space', style: TextStyle(fontSize: 12.5)),
+                  label: const Text('Edit Space',
+                      style: TextStyle(fontSize: 12.5)),
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
@@ -414,12 +437,15 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                         venue.isActive ? 'Pause' : 'Activate',
                         style: TextStyle(
                           fontSize: 12,
-                          color: venue.isActive ? Colors.orange.shade800 : Colors.green.shade800,
+                          color: venue.isActive
+                              ? Colors.orange.shade800
+                              : Colors.green.shade800,
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                      icon: const Icon(Icons.delete_outline,
+                          color: Colors.red, size: 18),
                       tooltip: 'Delete Space',
                       onPressed: () => _confirmDelete(venue),
                     ),

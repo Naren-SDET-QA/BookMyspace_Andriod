@@ -13,7 +13,8 @@ class OwnerCategoriesScreen extends ConsumerStatefulWidget {
   const OwnerCategoriesScreen({super.key});
 
   @override
-  ConsumerState<OwnerCategoriesScreen> createState() => _OwnerCategoriesScreenState();
+  ConsumerState<OwnerCategoriesScreen> createState() =>
+      _OwnerCategoriesScreenState();
 }
 
 class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
@@ -82,13 +83,15 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear_rounded),
-                                onPressed: () => setState(() => _searchQuery = ''),
+                                onPressed: () =>
+                                    setState(() => _searchQuery = ''),
                               )
                             : null,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                       ),
                       onChanged: (val) => setState(() => _searchQuery = val),
                     ),
@@ -98,21 +101,26 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                         FilterChip(
                           selected: _filterMode == 'ALL',
                           label: Text('All (${categories.length})'),
-                          onSelected: (_) => setState(() => _filterMode = 'ALL'),
+                          onSelected: (_) =>
+                              setState(() => _filterMode = 'ALL'),
                         ),
                         const SizedBox(width: 8),
                         FilterChip(
                           selected: _filterMode == 'ACTIVE',
                           label: Text('Active ($activeCount)'),
-                          avatar: const Icon(Icons.check_circle_rounded, size: 16, color: Colors.green),
-                          onSelected: (_) => setState(() => _filterMode = 'ACTIVE'),
+                          avatar: const Icon(Icons.check_circle_rounded,
+                              size: 16, color: Colors.green),
+                          onSelected: (_) =>
+                              setState(() => _filterMode = 'ACTIVE'),
                         ),
                         const SizedBox(width: 8),
                         FilterChip(
                           selected: _filterMode == 'DISABLED',
                           label: Text('Disabled ($disabledCount)'),
-                          avatar: const Icon(Icons.cancel_rounded, size: 16, color: Colors.red),
-                          onSelected: (_) => setState(() => _filterMode = 'DISABLED'),
+                          avatar: const Icon(Icons.cancel_rounded,
+                              size: 16, color: Colors.red),
+                          onSelected: (_) =>
+                              setState(() => _filterMode = 'DISABLED'),
                         ),
                       ],
                     ),
@@ -127,7 +135,8 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                     ? const EmptyState(
                         icon: Icons.category_outlined,
                         title: 'No categories found',
-                        message: 'Try adjusting your search query or add a new category.',
+                        message:
+                            'Try adjusting your search query or add a new category.',
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
@@ -137,10 +146,11 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                           final cat = filtered[index];
                           return Card(
                             elevation: 0,
-                            shape: RoundedCornerShapeBorder(
+                            shape: RoundedRectangleBorder(
                               side: BorderSide(
                                 color: cat.isActive
-                                    ? theme.colorScheme.outlineVariant.withValues(alpha: 0.6)
+                                    ? theme.colorScheme.outlineVariant
+                                        .withValues(alpha: 0.6)
                                     : Colors.red.withValues(alpha: 0.3),
                               ),
                               borderRadius: BorderRadius.circular(12),
@@ -155,9 +165,11 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                                       : Colors.grey.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                alignment: Alignment.Center,
+                                alignment: Alignment.center,
                                 child: Text(
-                                  cat.icon?.isNotEmpty == true ? cat.icon! : '🏷️',
+                                  cat.icon?.isNotEmpty == true
+                                      ? cat.icon!
+                                      : '🏷️',
                                   style: const TextStyle(fontSize: 22),
                                 ),
                               ),
@@ -168,12 +180,14 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                                       cat.name,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: cat.isActive ? null : Colors.grey,
+                                        color:
+                                            cat.isActive ? null : Colors.grey,
                                       ),
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: cat.isActive
                                           ? Colors.green.withValues(alpha: 0.12)
@@ -185,7 +199,9 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: cat.isActive ? Colors.green[700] : Colors.red[700],
+                                        color: cat.isActive
+                                            ? Colors.green[700]
+                                            : Colors.red[700],
                                       ),
                                     ),
                                   ),
@@ -202,24 +218,44 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.edit_rounded, size: 20),
+                                    icon: const Icon(Icons.edit_rounded,
+                                        size: 20),
                                     tooltip: 'Edit Category',
-                                    onPressed: () => _showEditCategoryDialog(context, cat),
+                                    onPressed: () =>
+                                        _showEditCategoryDialog(context, cat),
                                   ),
                                   Switch(
                                     value: cat.isActive,
-                                    activeColor: AppTheme.brand,
+                                    activeThumbColor: AppTheme.brand,
                                     onChanged: (val) async {
-                                      await ref.read(venueRepositoryProvider).setCategoryActive(cat.id, val);
-                                      ref.invalidate(allVenueCategoriesProvider);
-                                      ref.invalidate(venueCategoriesProvider);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('${cat.name} is now ${val ? "Active" : "Disabled"}'),
-                                            duration: const Duration(seconds: 1),
-                                          ),
-                                        );
+                                      try {
+                                        await ref
+                                            .read(venueRepositoryProvider)
+                                            .setCategoryActive(cat.id, val);
+                                        ref.invalidate(
+                                            allVenueCategoriesProvider);
+                                        ref.invalidate(venueCategoriesProvider);
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  '${cat.name} is now ${val ? "Active" : "Disabled"}'),
+                                              duration:
+                                                  const Duration(seconds: 1),
+                                            ),
+                                          );
+                                        }
+                                      } catch (error) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  'Could not update category: $error'),
+                                            ),
+                                          );
+                                        }
                                       }
                                     },
                                   ),
@@ -263,8 +299,20 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                       ),
                       onChanged: (val) {
                         if (slugController.text.isEmpty ||
-                            slugController.text == val.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '').substring(0, (val.length - 1).clamp(0, val.length))) {
-                          slugController.text = val.trim().toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+                            slugController.text ==
+                                val
+                                    .toLowerCase()
+                                    .replaceAll(' ', '_')
+                                    .replaceAll(RegExp(r'[^a-z0-9_]'), '')
+                                    .substring(
+                                        0,
+                                        (val.length - 1)
+                                            .clamp(0, val.length))) {
+                          slugController.text = val
+                              .trim()
+                              .toLowerCase()
+                              .replaceAll(' ', '_')
+                              .replaceAll(RegExp(r'[^a-z0-9_]'), '');
                           setDialogState(() {});
                         }
                       },
@@ -287,17 +335,27 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedSection,
-                      decoration: const InputDecoration(labelText: 'Parent Section'),
+                      initialValue: selectedSection,
+                      decoration:
+                          const InputDecoration(labelText: 'Parent Section'),
                       items: const [
-                        DropdownMenuItem(value: 'general', child: Text('General / Other Space')),
-                        DropdownMenuItem(value: 'venues', child: Text('Function Halls / Venues')),
-                        DropdownMenuItem(value: 'hotels', child: Text('Hotels & Rooms')),
-                        DropdownMenuItem(value: 'pgs', child: Text('PG & Hostels')),
-                        DropdownMenuItem(value: 'classes', child: Text('Institutes & Classes')),
+                        DropdownMenuItem(
+                            value: 'general',
+                            child: Text('General / Other Space')),
+                        DropdownMenuItem(
+                            value: 'venues',
+                            child: Text('Function Halls / Venues')),
+                        DropdownMenuItem(
+                            value: 'hotels', child: Text('Hotels & Rooms')),
+                        DropdownMenuItem(
+                            value: 'pgs', child: Text('PG & Hostels')),
+                        DropdownMenuItem(
+                            value: 'classes',
+                            child: Text('Institutes & Classes')),
                       ],
                       onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedSection = val);
+                        if (val != null)
+                          setDialogState(() => selectedSection = val);
                       },
                     ),
                     const SizedBox(height: 12),
@@ -318,24 +376,38 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                 FilledButton(
                   onPressed: () async {
                     final name = nameController.text.trim();
-                    final slug = slugController.text.trim().ifBlank(name.toLowerCase().replaceAll(' ', '_'));
+                    final slug = slugController.text
+                        .trim()
+                        .ifBlank(name.toLowerCase().replaceAll(' ', '_'));
                     if (name.isEmpty) return;
 
-                    await ref.read(venueRepositoryProvider).addCategory(
-                      name: name,
-                      slug: slug,
-                      icon: iconController.text.trim().ifBlank('🏷️'),
-                      parentSection: selectedSection,
-                      isActive: isActive,
-                    );
+                    try {
+                      await ref.read(venueRepositoryProvider).addCategory(
+                            name: name,
+                            slug: slug,
+                            icon: iconController.text.trim().ifBlank('🏷️'),
+                            parentSection: selectedSection,
+                            isActive: isActive,
+                          );
 
-                    ref.invalidate(allVenueCategoriesProvider);
-                    ref.invalidate(venueCategoriesProvider);
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Category "$name" created successfully!')),
-                      );
+                      ref.invalidate(allVenueCategoriesProvider);
+                      ref.invalidate(venueCategoriesProvider);
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  'Category "$name" created successfully!')),
+                        );
+                      }
+                    } catch (error) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content:
+                                  Text('Could not create category: $error')),
+                        );
+                      }
                     }
                   },
                   child: const Text('Create'),
@@ -367,26 +439,38 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                   children: [
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Category Name'),
+                      decoration:
+                          const InputDecoration(labelText: 'Category Name'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: iconController,
-                      decoration: const InputDecoration(labelText: 'Icon / Emoji'),
+                      decoration:
+                          const InputDecoration(labelText: 'Icon / Emoji'),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedSection,
-                      decoration: const InputDecoration(labelText: 'Parent Section'),
+                      initialValue: selectedSection,
+                      decoration:
+                          const InputDecoration(labelText: 'Parent Section'),
                       items: const [
-                        DropdownMenuItem(value: 'general', child: Text('General / Other Space')),
-                        DropdownMenuItem(value: 'venues', child: Text('Function Halls / Venues')),
-                        DropdownMenuItem(value: 'hotels', child: Text('Hotels & Rooms')),
-                        DropdownMenuItem(value: 'pgs', child: Text('PG & Hostels')),
-                        DropdownMenuItem(value: 'classes', child: Text('Institutes & Classes')),
+                        DropdownMenuItem(
+                            value: 'general',
+                            child: Text('General / Other Space')),
+                        DropdownMenuItem(
+                            value: 'venues',
+                            child: Text('Function Halls / Venues')),
+                        DropdownMenuItem(
+                            value: 'hotels', child: Text('Hotels & Rooms')),
+                        DropdownMenuItem(
+                            value: 'pgs', child: Text('PG & Hostels')),
+                        DropdownMenuItem(
+                            value: 'classes',
+                            child: Text('Institutes & Classes')),
                       ],
                       onChanged: (val) {
-                        if (val != null) setDialogState(() => selectedSection = val);
+                        if (val != null)
+                          setDialogState(() => selectedSection = val);
                       },
                     ),
                     const SizedBox(height: 12),
@@ -416,14 +500,28 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                       isActive: isActive,
                     );
 
-                    await ref.read(venueRepositoryProvider).updateCategory(updated);
-                    ref.invalidate(allVenueCategoriesProvider);
-                    ref.invalidate(venueCategoriesProvider);
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Category "${updated.name}" updated successfully!')),
-                      );
+                    try {
+                      await ref
+                          .read(venueRepositoryProvider)
+                          .updateCategory(updated);
+                      ref.invalidate(allVenueCategoriesProvider);
+                      ref.invalidate(venueCategoriesProvider);
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  'Category "${updated.name}" updated successfully!')),
+                        );
+                      }
+                    } catch (error) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content:
+                                  Text('Could not update category: $error')),
+                        );
+                      }
                     }
                   },
                   child: const Text('Save Changes'),

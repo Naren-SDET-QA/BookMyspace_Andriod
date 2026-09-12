@@ -1,39 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/skeleton.dart';
-import '../../auth/presentation/auth_providers.dart';
-import '../owner_providers.dart';
+import 'package:bookmyspace/core/localization/app_localizations.dart';
+import 'package:bookmyspace/features/owner/domain/owner.dart';
+import 'package:bookmyspace/features/owner/presentation/owner_providers.dart';
+import 'package:bookmyspace/features/owner/presentation/screens/owner_registration_screen.dart';
 
-class _FakeOwnerRepository {
-  Future<Owner> signInWithEmailPassword(String email, String password) async {
-    if (email == 'owner@demo.com' && password == 'password') {
-      return Owner(
+class _FakeOwnerRepository implements OwnerRepository {
+  Owner get _demoOwner => const Owner(
         id: '1',
         userId: '00000000-0000-0000-0000-000000000002',
         email: 'owner@demo.com',
         name: 'Demo Owner',
       );
+
+  @override
+  Future<Owner> signInWithEmailPassword(String email, String password) async {
+    if (email == 'owner@demo.com' && password == 'password') {
+      return _demoOwner;
     }
     throw Exception('Invalid credentials');
   }
 
+  @override
+  Future<Owner> createOwner({
+    required String email,
+    required String name,
+    required String password,
+  }) async =>
+      Owner(
+        id: '1',
+        userId: '00000000-0000-0000-0000-000000000002',
+        email: email,
+        name: name,
+      );
+
+  @override
+  Future<Owner?> currentOwner() async => _demoOwner;
+
+  @override
   Future<void> signOut() async {}
+
+  @override
+  Future<void> deleteOwner() async {}
 }
 
 Widget _ownerApp() {
   return ProviderScope(
     overrides: [
-      authRepositoryProvider.overrideWithValue(
-        MockAuthRepository(initialUser: const AuthUser(id: 'u1', email: 'owner@demo.com')),
-      ),
       ownerRepositoryProvider.overrideWithValue(_FakeOwnerRepository()),
     ],
-    child: const MaterialApp.router(
+    child: MaterialApp.router(
       routerConfig: GoRouter(
         routes: [
           GoRoute(

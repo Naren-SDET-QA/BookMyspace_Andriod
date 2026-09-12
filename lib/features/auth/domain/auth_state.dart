@@ -2,6 +2,8 @@ import 'auth_user.dart';
 
 sealed class AuthState {
   const AuthState();
+
+  AuthUser? get user => null;
 }
 
 class AuthUnauthenticated extends AuthState {
@@ -14,5 +16,6 @@ class AuthLoading extends AuthState {
 
 class AuthAuthenticated extends AuthState {
   const AuthAuthenticated({required this.user});
+  @override
   final AuthUser user;
 }

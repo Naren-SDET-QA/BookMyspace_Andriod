@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/responsive_layout.dart';
+import '../../../booking/presentation/booking_providers.dart';
+import '../../../venues/presentation/venue_providers.dart';
 import '../auth_providers.dart';
+import '../../domain/app_role.dart';
+import '../role_providers.dart';
 import '../widgets/edit_profile_modal.dart';
 
 /// Full-featured Profile Screen with instant Edit Profile modal support,
@@ -22,6 +25,11 @@ class ProfileScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
+    final roles = ref.watch(currentUserRolesProvider).valueOrNull ?? {};
+    final isVenueOwner = roles.canManageVenues;
+    final isAdmin = roles.canViewAdminTools;
+    final bookings = ref.watch(myBookingsProvider);
+    final saved = ref.watch(savedVenuesProvider);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -53,7 +61,8 @@ class ProfileScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                     side: BorderSide(
-                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.4),
                     ),
                   ),
                   child: Padding(
@@ -85,14 +94,17 @@ class ProfileScreen extends ConsumerWidget {
                                       : Center(
                                           child: Text(
                                             user?.fullName.isNotEmpty == true
-                                                ? user!.fullName[0].toUpperCase()
+                                                ? user!.fullName[0]
+                                                    .toUpperCase()
                                                 : user?.email.isNotEmpty == true
-                                                    ? user!.email[0].toUpperCase()
+                                                    ? user!.email[0]
+                                                        .toUpperCase()
                                                     : 'U',
                                             style: TextStyle(
                                               fontSize: 28,
                                               fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme.onPrimaryContainer,
+                                              color: theme.colorScheme
+                                                  .onPrimaryContainer,
                                             ),
                                           ),
                                         ),
@@ -125,57 +137,27 @@ class ProfileScreen extends ConsumerWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          user?.fullName.isNotEmpty == true
-                                              ? user!.fullName
-                                              : 'Guest User',
-                                          style: theme.textTheme.titleLarge?.copyWith(
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.3,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.shade100,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.verified,
-                                              size: 12,
-                                              color: Colors.green.shade800,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              'Verified',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green.shade800,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    user?.fullName.isNotEmpty == true
+                                        ? user!.fullName
+                                        : (user == null
+                                            ? 'Guest'
+                                            : 'Guest User'),
+                                    style:
+                                        theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     user?.email.isNotEmpty == true
                                         ? user!.email
-                                        : 'Signed in via Supabase',
+                                        : (user == null
+                                            ? 'Not signed in'
+                                            : 'Signed in via phone'),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
@@ -186,8 +168,10 @@ class ProfileScreen extends ConsumerWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       user!.phone,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],
@@ -219,14 +203,17 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Quick Activity Metrics
                 Row(
                   children: [
                     Expanded(
                       child: _MetricCard(
                         icon: Icons.receipt_long_rounded,
                         title: 'My Bookings',
-                        count: '3 Active',
+                        count: bookings.maybeWhen(
+                          data: (items) =>
+                              '${items.where((booking) => booking.isActive).length} active',
+                          orElse: () => '—',
+                        ),
                         color: Colors.blue,
                         onTap: () => context.push(AppRoutes.bookings),
                       ),
@@ -236,19 +223,12 @@ class ProfileScreen extends ConsumerWidget {
                       child: _MetricCard(
                         icon: Icons.favorite_rounded,
                         title: 'Saved Spaces',
-                        count: '8 Saved',
+                        count: saved.maybeWhen(
+                          data: (items) => '${items.length} saved',
+                          orElse: () => '—',
+                        ),
                         color: Colors.pink,
                         onTap: () => context.push(AppRoutes.saved),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _MetricCard(
-                        icon: Icons.account_balance_wallet_rounded,
-                        title: 'Wallet',
-                        count: '₹2,500',
-                        color: Colors.amber.shade800,
-                        onTap: () {},
                       ),
                     ),
                   ],
@@ -271,6 +251,18 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => EditProfileModal.show(context),
                 ),
                 _ProfileMenuTile(
+                  icon: Icons.event_available_outlined,
+                  title: 'Upcoming Events',
+                  subtitle: 'Workshops, concerts, and community events',
+                  onTap: () => context.push(AppRoutes.eventsList),
+                ),
+                _ProfileMenuTile(
+                  icon: Icons.school_outlined,
+                  title: 'Courses',
+                  subtitle: 'Institutes, batches, and enrollments',
+                  onTap: () => context.push(AppRoutes.coursesList),
+                ),
+                _ProfileMenuTile(
                   icon: Icons.notifications_none_rounded,
                   title: 'Notifications & Alerts',
                   subtitle: 'Booking updates, reminders, and offers',
@@ -284,10 +276,23 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 _ProfileMenuTile(
                   icon: Icons.storefront_outlined,
-                  title: 'Partner / Venue Owner Hub',
-                  subtitle: 'List your spaces, halls, and classes',
-                  onTap: () => context.push(AppRoutes.ownerDashboard),
+                  title: isVenueOwner
+                      ? 'Partner / Venue Owner Hub'
+                      : 'Become a Venue Partner',
+                  subtitle: isVenueOwner
+                      ? 'List your spaces, halls, and classes'
+                      : 'List your spaces, halls, and classes',
+                  onTap: () => context.push(isVenueOwner
+                      ? AppRoutes.ownerDashboard
+                      : AppRoutes.ownerRegistration),
                 ),
+                if (isAdmin)
+                  _ProfileMenuTile(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'Admin console',
+                    subtitle: 'Users, owners, venues, support, and audit',
+                    onTap: () => context.push(AppRoutes.adminDashboard),
+                  ),
                 _ProfileMenuTile(
                   icon: Icons.headset_mic_outlined,
                   title: 'Support & Help Desk',
@@ -423,7 +428,8 @@ class _ProfileMenuTile extends StatelessWidget {
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant),
+          style: TextStyle(
+              fontSize: 11.5, color: theme.colorScheme.onSurfaceVariant),
         ),
         trailing: const Icon(Icons.chevron_right_rounded, size: 20),
         onTap: onTap,

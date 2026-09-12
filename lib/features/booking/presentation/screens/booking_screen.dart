@@ -244,11 +244,10 @@ class _DateStrip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         scrollDirection: Axis.horizontal,
         itemCount: dates.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final date = dates[i];
-          final isSelected =
-              date.year == selected.year &&
+          final isSelected = date.year == selected.year &&
               date.month == selected.month &&
               date.day == selected.day;
           return _DateChip(
@@ -290,9 +289,8 @@ class _DateChip extends StatelessWidget {
           color: isSelected ? AppTheme.brand : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? AppTheme.brand
-                : theme.colorScheme.outlineVariant,
+            color:
+                isSelected ? AppTheme.brand : theme.colorScheme.outlineVariant,
           ),
         ),
         child: Column(
@@ -531,15 +529,15 @@ class _ConfirmBar extends StatelessWidget {
                 Text(
                   l10n.total,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
                 Text(
                   formatInr(total),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w700,
-                  ),
+                        color: AppTheme.brand,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ],
             ),
@@ -583,19 +581,29 @@ class _SummaryRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: emphasize
-                  ? theme.colorScheme.onSurface
-                  : theme.colorScheme.onSurfaceVariant,
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: emphasize
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: emphasize ? AppTheme.brand : null,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: emphasize ? AppTheme.brand : null,
+              ),
             ),
           ),
         ],

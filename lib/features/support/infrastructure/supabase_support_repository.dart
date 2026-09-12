@@ -73,4 +73,27 @@ class SupabaseSupportRepository implements SupportTicketRepository {
       throw app_errors.mapError(e);
     }
   }
+
+  @override
+  Future<SupportTicket> resolveTicket(String ticketId) async {
+    try {
+      final row = await _client.rpc<dynamic>(
+        'mark_ticket_resolved',
+        params: {'p_ticket_id': ticketId},
+      );
+      if (row is Map<String, dynamic>) {
+        return SupportTicket.fromJson(row);
+      }
+      if (row is List && row.isNotEmpty && row.first is Map) {
+        return SupportTicket.fromJson(
+          Map<String, dynamic>.from(row.first as Map),
+        );
+      }
+      throw const app_errors.ServerException(
+        'Support ticket could not be resolved.',
+      );
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
 }

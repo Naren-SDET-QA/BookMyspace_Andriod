@@ -26,14 +26,14 @@ class TimeSlot {
       endTime.length >= 5 ? endTime.substring(0, 5) : endTime;
 
   factory TimeSlot.fromJson(Map<String, dynamic> json) => TimeSlot(
-    id: json['id'] as String? ?? '',
-    venueId: json['venue_id'] as String? ?? '',
-    label: json['label'] as String? ?? '',
-    startTime: json['start_time'] as String? ?? '',
-    endTime: json['end_time'] as String? ?? '',
-    priceAmount: (json['price_amount'] as num?)?.toDouble() ?? 0,
-    isActive: json['is_active'] as bool? ?? true,
-  );
+        id: json['id'] as String? ?? '',
+        venueId: json['venue_id'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        startTime: json['start_time'] as String? ?? '',
+        endTime: json['end_time'] as String? ?? '',
+        priceAmount: (json['price_amount'] as num?)?.toDouble() ?? 0,
+        isActive: json['is_active'] as bool? ?? true,
+      );
 }
 
 /// Availability of a single slot, returned by `available_time_slots`.
@@ -84,25 +84,25 @@ enum BookingStatus {
   noShow;
 
   static BookingStatus fromDb(String value) => switch (value) {
-    'held' => BookingStatus.held,
-    'pending' => BookingStatus.pending,
-    'confirmed' => BookingStatus.confirmed,
-    'completed' => BookingStatus.completed,
-    'cancelled' => BookingStatus.cancelled,
-    'refunded' => BookingStatus.refunded,
-    'no_show' => BookingStatus.noShow,
-    _ => BookingStatus.pending,
-  };
+        'held' => BookingStatus.held,
+        'pending' => BookingStatus.pending,
+        'confirmed' => BookingStatus.confirmed,
+        'completed' => BookingStatus.completed,
+        'cancelled' => BookingStatus.cancelled,
+        'refunded' => BookingStatus.refunded,
+        'no_show' => BookingStatus.noShow,
+        _ => BookingStatus.pending,
+      };
 
   String get dbValue => switch (this) {
-    BookingStatus.held => 'held',
-    BookingStatus.pending => 'pending',
-    BookingStatus.confirmed => 'confirmed',
-    BookingStatus.completed => 'completed',
-    BookingStatus.cancelled => 'cancelled',
-    BookingStatus.refunded => 'refunded',
-    BookingStatus.noShow => 'no_show',
-  };
+        BookingStatus.held => 'held',
+        BookingStatus.pending => 'pending',
+        BookingStatus.confirmed => 'confirmed',
+        BookingStatus.completed => 'completed',
+        BookingStatus.cancelled => 'cancelled',
+        BookingStatus.refunded => 'refunded',
+        BookingStatus.noShow => 'no_show',
+      };
 }
 
 /// A booking made by the user.
@@ -166,8 +166,7 @@ class Booking {
       bookingRef: json['booking_ref'] as String? ?? '',
       venueId: json['venue_id'] as String? ?? '',
       slotId: json['slot_id'] as String? ?? '',
-      bookDate:
-          DateTime.tryParse(json['book_date'] as String? ?? '') ??
+      bookDate: DateTime.tryParse(json['book_date'] as String? ?? '') ??
           DateTime(1970),
       startTime: json['start_time'] as String? ?? '',
       endTime: json['end_time'] as String? ?? '',

@@ -72,7 +72,9 @@ class VoiceCommandFilterParser {
         cleanedSearchQuery: '',
         isClearCommand: true,
         spokenFeedback: 'Cleared all filters. Showing all verified spaces.',
-        badges: const [VoiceFilterBadge(iconEmoji: '🔄', title: 'Filter', value: 'Reset All')],
+        badges: const [
+          VoiceFilterBadge(iconEmoji: '🔄', title: 'Filter', value: 'Reset All')
+        ],
       );
     }
 
@@ -84,38 +86,75 @@ class VoiceCommandFilterParser {
     final badges = <VoiceFilterBadge>[];
 
     // 2. Category Detection
-    if (_containsAny(lower, ['badminton', 'shuttle', 'wooden court', 'synthetic court'])) {
+    if (_containsAny(
+        lower, ['badminton', 'shuttle', 'wooden court', 'synthetic court'])) {
       categorySlug = 'sports_arena';
-      badges.add(const VoiceFilterBadge(iconEmoji: '🏸', title: 'Category', value: 'Badminton'));
-    } else if (_containsAny(lower, ['box cricket', 'cricket', 'pitch', 'nets'])) {
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🏸', title: 'Category', value: 'Badminton'));
+    } else if (_containsAny(
+        lower, ['box cricket', 'cricket', 'pitch', 'nets'])) {
       categorySlug = 'sports_arena';
-      badges.add(const VoiceFilterBadge(iconEmoji: '🏏', title: 'Category', value: 'Cricket'));
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🏏', title: 'Category', value: 'Cricket'));
     } else if (_containsAny(lower, ['football', 'turf', 'soccer', 'futsal'])) {
       categorySlug = 'sports_arena';
-      badges.add(const VoiceFilterBadge(iconEmoji: '⚽', title: 'Category', value: 'Football Turf'));
-    } else if (_containsAny(lower, ['marriage hall', 'wedding hall', 'kalyana mandapam', 'shadi mahal'])) {
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '⚽', title: 'Category', value: 'Football Turf'));
+    } else if (_containsAny(lower,
+        ['marriage hall', 'wedding hall', 'kalyana mandapam', 'shadi mahal'])) {
       categorySlug = 'function_halls';
-      badges.add(const VoiceFilterBadge(iconEmoji: '💍', title: 'Category', value: 'Marriage Hall'));
-    } else if (_containsAny(lower, ['function hall', 'banquet', 'convention', 'party hall', 'reception'])) {
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '💍', title: 'Category', value: 'Marriage Hall'));
+    } else if (_containsAny(lower, [
+      'function hall',
+      'banquet',
+      'convention',
+      'party hall',
+      'reception'
+    ])) {
       categorySlug = 'function_halls';
-      badges.add(const VoiceFilterBadge(iconEmoji: '🏛️', title: 'Category', value: 'Function Hall'));
-    } else if (_containsAny(lower, ['pg', 'hostel', 'paying guest', 'coliving', 'co-living', 'gents pg', 'ladies pg'])) {
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🏛️', title: 'Category', value: 'Function Hall'));
+    } else if (_containsAny(lower, [
+      'pg',
+      'hostel',
+      'paying guest',
+      'coliving',
+      'co-living',
+      'gents pg',
+      'ladies pg'
+    ])) {
       categorySlug = 'pg_hostels';
       final isGents = _containsAny(lower, ['gents', 'men', 'boys', 'male']);
-      final isLadies = _containsAny(lower, ['ladies', 'women', 'girls', 'female']);
+      final isLadies =
+          _containsAny(lower, ['ladies', 'women', 'girls', 'female']);
       if (isGents) {
-        badges.add(const VoiceFilterBadge(iconEmoji: '👨', title: 'Gender', value: 'Gents PG'));
+        badges.add(const VoiceFilterBadge(
+            iconEmoji: '👨', title: 'Gender', value: 'Gents PG'));
       } else if (isLadies) {
-        badges.add(const VoiceFilterBadge(iconEmoji: '👩', title: 'Gender', value: 'Ladies PG'));
+        badges.add(const VoiceFilterBadge(
+            iconEmoji: '👩', title: 'Gender', value: 'Ladies PG'));
       } else {
-        badges.add(const VoiceFilterBadge(iconEmoji: '🏠', title: 'Category', value: 'PG & Hostel'));
+        badges.add(const VoiceFilterBadge(
+            iconEmoji: '🏠', title: 'Category', value: 'PG & Hostel'));
       }
-    } else if (_containsAny(lower, ['hotel', 'lodge', 'resort', 'guest house', 'stay', 'room', 'rooms'])) {
+    } else if (_containsAny(lower,
+        ['hotel', 'lodge', 'resort', 'guest house', 'stay', 'room', 'rooms'])) {
       categorySlug = 'lodge_rooms';
-      badges.add(const VoiceFilterBadge(iconEmoji: '🏨', title: 'Category', value: 'Lodge / Rooms'));
-    } else if (_containsAny(lower, ['coaching', 'tuition', 'classes', 'dance class', 'music class', 'institute', 'academy'])) {
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🏨', title: 'Category', value: 'Lodge / Rooms'));
+    } else if (_containsAny(lower, [
+      'coaching',
+      'tuition',
+      'classes',
+      'dance class',
+      'music class',
+      'institute',
+      'academy'
+    ])) {
       categorySlug = 'institutes_classes';
-      badges.add(const VoiceFilterBadge(iconEmoji: '🎓', title: 'Category', value: 'Institutes / Classes'));
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🎓', title: 'Category', value: 'Institutes / Classes'));
     }
 
     // 3. Location / City Detection
@@ -153,7 +192,9 @@ class VoiceCommandFilterParser {
     }
 
     // 4. Price Detection (e.g. "under 2000", "below 50k", "less than 50,000", "above 1000")
-    final maxPriceRegex = RegExp(r'(?:under|below|less than|max|within|budget of?)\s*(?:rs\.?|inr|₹)?\s*(\d+[\d,]*\s*k?)', caseSensitive: false);
+    final maxPriceRegex = RegExp(
+        r'(?:under|below|less than|max|within|budget of?)\s*(?:rs\.?|inr|₹)?\s*(\d+[\d,]*\s*k?)',
+        caseSensitive: false);
     final maxMatch = maxPriceRegex.firstMatch(lower);
     if (maxMatch != null) {
       final parsed = _parsePriceString(maxMatch.group(1));
@@ -167,7 +208,9 @@ class VoiceCommandFilterParser {
       }
     }
 
-    final minPriceRegex = RegExp(r'(?:above|more than|min|at least|starting from?)\s*(?:rs\.?|inr|₹)?\s*(\d+[\d,]*\s*k?)', caseSensitive: false);
+    final minPriceRegex = RegExp(
+        r'(?:above|more than|min|at least|starting from?)\s*(?:rs\.?|inr|₹)?\s*(\d+[\d,]*\s*k?)',
+        caseSensitive: false);
     final minMatch = minPriceRegex.firstMatch(lower);
     if (minMatch != null) {
       final parsed = _parsePriceString(minMatch.group(1));
@@ -182,27 +225,57 @@ class VoiceCommandFilterParser {
     }
 
     // 5. Sort By Detection
-    if (_containsAny(lower, ['cheapest', 'low price', 'lowest price', 'affordable'])) {
-      sortBy = VenueSortBy.priceLowToHigh;
-      badges.add(const VoiceFilterBadge(iconEmoji: '🏷️', title: 'Sort', value: 'Price: Low to High'));
-    } else if (_containsAny(lower, ['best rated', 'top rated', 'highest rating', 'popular'])) {
+    if (_containsAny(
+        lower, ['cheapest', 'low price', 'lowest price', 'affordable'])) {
+      sortBy = VenueSortBy.priceAsc;
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🏷️', title: 'Sort', value: 'Price: Low to High'));
+    } else if (_containsAny(
+        lower, ['best rated', 'top rated', 'highest rating', 'popular'])) {
       sortBy = VenueSortBy.rating;
-      badges.add(const VoiceFilterBadge(iconEmoji: '⭐', title: 'Sort', value: 'Top Rated'));
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '⭐', title: 'Sort', value: 'Top Rated'));
     }
 
     // 6. Clean Query Extraction
     var cleaned = raw;
     final stopWords = [
-      'find me', 'show me', 'search for', 'looking for', 'i want', 'i need',
-      'book a', 'book an', 'near me', 'around me', 'available', 'spaces',
-      'venues', 'halls', 'places', 'please', 'can you', 'in', 'at', 'near',
-      'under', 'below', 'above', 'more than', 'less than', 'budget of',
-      'rs', 'inr', 'rupees', 'k',
+      'find me',
+      'show me',
+      'search for',
+      'looking for',
+      'i want',
+      'i need',
+      'book a',
+      'book an',
+      'near me',
+      'around me',
+      'available',
+      'spaces',
+      'venues',
+      'halls',
+      'places',
+      'please',
+      'can you',
+      'in',
+      'at',
+      'near',
+      'under',
+      'below',
+      'above',
+      'more than',
+      'less than',
+      'budget of',
+      'rs',
+      'inr',
+      'rupees',
+      'k',
     ];
 
     var lowerCleaned = cleaned.toLowerCase();
     for (final sw in stopWords) {
-      final pattern = RegExp(r'\b' + RegExp.escape(sw) + r'\b', caseSensitive: false);
+      final pattern =
+          RegExp(r'\b' + RegExp.escape(sw) + r'\b', caseSensitive: false);
       lowerCleaned = lowerCleaned.replaceAll(pattern, ' ');
     }
 
@@ -234,8 +307,15 @@ class VoiceCommandFilterParser {
 
   static bool _isResetQuery(String text) {
     return _containsAny(text, [
-      'reset', 'clear', 'clear all', 'remove filters', 'clear filters',
-      'show all', 'view all', 'start over', 'clean'
+      'reset',
+      'clear',
+      'clear all',
+      'remove filters',
+      'clear filters',
+      'show all',
+      'view all',
+      'start over',
+      'clean'
     ]);
   }
 

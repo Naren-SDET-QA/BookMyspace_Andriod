@@ -5,11 +5,11 @@ enum CourseMode {
   hybrid;
 
   static CourseMode fromDb(String value) => switch (value) {
-    'online' => CourseMode.online,
-    'offline' => CourseMode.offline,
-    'hybrid' => CourseMode.hybrid,
-    _ => CourseMode.offline,
-  };
+        'online' => CourseMode.online,
+        'offline' => CourseMode.offline,
+        'hybrid' => CourseMode.hybrid,
+        _ => CourseMode.offline,
+      };
 
   String get dbValue => name;
 }
@@ -33,13 +33,13 @@ class Institute {
   final bool isVerified;
 
   factory Institute.fromJson(Map<String, dynamic> json) => Institute(
-    id: json['id'] as String? ?? '',
-    orgId: json['org_id'] as String? ?? '',
-    name: json['name'] as String? ?? '',
-    description: json['description'] as String? ?? '',
-    logoImage: json['logo_image'] as String? ?? '',
-    isVerified: json['is_verified'] as bool? ?? false,
-  );
+        id: json['id'] as String? ?? '',
+        orgId: json['org_id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        logoImage: json['logo_image'] as String? ?? '',
+        isVerified: json['is_verified'] as bool? ?? false,
+      );
 }
 
 /// A published course (`courses`).
@@ -86,9 +86,9 @@ class Course {
     final batchesRaw = json['course_batches'];
     final batches = batchesRaw is List
         ? batchesRaw
-              .whereType<Map<String, dynamic>>()
-              .map(CourseBatch.fromJson)
-              .toList()
+            .whereType<Map<String, dynamic>>()
+            .map(CourseBatch.fromJson)
+            .toList()
         : const <CourseBatch>[];
     return Course(
       id: json['id'] as String? ?? '',
@@ -105,6 +105,29 @@ class Course {
       instituteName: institute['name'] as String? ?? '',
       instituteVerified: institute['is_verified'] as bool? ?? false,
       batches: batches,
+    );
+  }
+
+  Course copyWith({
+    List<CourseBatch>? batches,
+    String? instituteName,
+    bool? instituteVerified,
+  }) {
+    return Course(
+      id: id,
+      instituteId: instituteId,
+      title: title,
+      description: description,
+      mode: mode,
+      venueId: venueId,
+      durationWeeks: durationWeeks,
+      feeAmount: feeAmount,
+      instructorName: instructorName,
+      coverImage: coverImage,
+      status: status,
+      instituteName: instituteName ?? this.instituteName,
+      instituteVerified: instituteVerified ?? this.instituteVerified,
+      batches: batches ?? this.batches,
     );
   }
 }
@@ -139,14 +162,31 @@ class CourseBatch {
   bool get isFull => seatsLeft <= 0;
 
   factory CourseBatch.fromJson(Map<String, dynamic> json) => CourseBatch(
-    id: json['id'] as String? ?? '',
-    courseId: json['course_id'] as String? ?? '',
-    label: json['label'] as String? ?? '',
-    startsOn:
-        DateTime.tryParse(json['starts_on'] as String? ?? '') ?? DateTime(1970),
-    capacity: (json['capacity'] as num?)?.toInt() ?? 0,
-    enrolledCount: (json['enrolled_count'] as num?)?.toInt() ?? 0,
-    isActive: json['is_active'] as bool? ?? true,
-    userEnrolled: json['user_enrolled'] as bool? ?? false,
-  );
+        id: json['id'] as String? ?? '',
+        courseId: json['course_id'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        startsOn: DateTime.tryParse(json['starts_on'] as String? ?? '') ??
+            DateTime(1970),
+        capacity: (json['capacity'] as num?)?.toInt() ?? 0,
+        enrolledCount: (json['enrolled_count'] as num?)?.toInt() ?? 0,
+        isActive: json['is_active'] as bool? ?? true,
+        userEnrolled: json['user_enrolled'] as bool? ?? false,
+      );
+
+  CourseBatch copyWith({
+    int? enrolledCount,
+    bool? userEnrolled,
+    bool? isActive,
+  }) {
+    return CourseBatch(
+      id: id,
+      courseId: courseId,
+      label: label,
+      startsOn: startsOn,
+      capacity: capacity,
+      enrolledCount: enrolledCount ?? this.enrolledCount,
+      isActive: isActive ?? this.isActive,
+      userEnrolled: userEnrolled ?? this.userEnrolled,
+    );
+  }
 }

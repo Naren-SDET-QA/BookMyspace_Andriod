@@ -1,9 +1,13 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/errors/app_exceptions.dart' show mapError;
+import '../../../core/errors/app_exceptions.dart' as app_errors;
 import '../domain/owner.dart';
 
 /// Supabase implementation of [OwnerRepository].
+///
+/// Owner access is based on the deployed `owner_profiles` and
+/// `organizations` tables. It never treats a signed-in email or user metadata
+/// as proof of an owner role and never returns synthetic profiles.
 class SupabaseOwnerRepository implements OwnerRepository {
   SupabaseOwnerRepository(this._client);
 
@@ -17,73 +21,58 @@ class SupabaseOwnerRepository implements OwnerRepository {
   }) async {
     try {
       final authResponse = await _client.auth.signUp(
-        email: email,
+        email: email.trim(),
         password: password,
-        data: {'name': name, 'role': 'owner'},
+        data: {'name': name.trim()},
       );
-      final userId = authResponse.user?.id ?? '';
+      final user = authResponse.user;
+      if (user == null) {
+        throw const app_errors.AuthException(
+          'Owner registration did not create an authenticated user.',
+        );
+      }
+      if (authResponse.session == null) {
+        throw const app_errors.AuthException(
+          'Confirm your email, then sign in before creating an owner profile.',
+        );
+      }
 
-      final response = await _client
-          .from('owners')
-          .insert({
-            'user_id': userId,
-            'email': email,
-            'name': name,
-          })
-          .select()
+      // Role assignment is owned by the deployed SECURITY DEFINER function.
+      // Flutter must not write user_roles directly or infer authorization from
+      // auth metadata.
+      final ownerId = await _client.rpc<String>(
+        'complete_owner_registration',
+        params: {'p_name': name.trim()},
+      );
+
+      final profile = await _client
+          .from('owner_profiles')
+          .select('id, user_id, email, name')
+          .eq('id', ownerId)
           .single();
 
-      return Owner.fromJson(response);
-    } catch (e) {
-      // Fallback if table doesn't exist or user already exists
-      final currentUserId = _client.auth.currentUser?.id ?? 'mock_owner_id';
-      return Owner(
-        id: currentUserId,
-        userId: currentUserId,
-        email: email,
-        name: name,
-      );
+      await _ensureOrganization(user.id, name.trim());
+      return Owner.fromJson(profile);
+    } catch (error) {
+      if (error is app_errors.AppException) rethrow;
+      throw app_errors.mapError(error);
     }
   }
 
   @override
   Future<Owner?> currentOwner() async {
-    try {
-      final user = _client.auth.currentUser;
-      if (user == null) return null;
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
 
-      final response = await _client
-          .from('owners')
-          .select()
+    try {
+      final profile = await _client
+          .from('owner_profiles')
+          .select('id, user_id, email, name')
           .eq('user_id', user.id)
           .maybeSingle();
-
-      if (response != null) {
-        return Owner.fromJson(response);
-      }
-
-      // Check if user has owner role in metadata
-      final role = user.userMetadata?['role'] as String?;
-      if (role == 'owner' || user.email != null) {
-        return Owner(
-          id: user.id,
-          userId: user.id,
-          email: user.email ?? '',
-          name: (user.userMetadata?['name'] as String?) ?? user.email?.split('@').first ?? 'Space Partner',
-        );
-      }
-      return null;
-    } catch (e) {
-      final user = _client.auth.currentUser;
-      if (user != null) {
-        return Owner(
-          id: user.id,
-          userId: user.id,
-          email: user.email ?? '',
-          name: (user.userMetadata?['name'] as String?) ?? 'Space Partner',
-        );
-      }
-      return null;
+      return profile == null ? null : Owner.fromJson(profile);
+    } catch (error) {
+      throw app_errors.mapError(error);
     }
   }
 
@@ -91,29 +80,30 @@ class SupabaseOwnerRepository implements OwnerRepository {
   Future<Owner> signInWithEmailPassword(String email, String password) async {
     try {
       final authResponse = await _client.auth.signInWithPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
-      final userId = authResponse.user?.id ?? '';
-
-      final response = await _client
-          .from('owners')
-          .select()
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      if (response != null) {
-        return Owner.fromJson(response);
+      final user = authResponse.user;
+      if (user == null) {
+        throw const app_errors.AuthException('Sign-in returned no user.');
       }
 
-      return Owner(
-        id: userId,
-        userId: userId,
-        email: email,
-        name: (authResponse.user?.userMetadata?['name'] as String?) ?? 'Owner',
-      );
-    } catch (e) {
-      throw mapError(e);
+      final profile = await _client
+          .from('owner_profiles')
+          .select('id, user_id, email, name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (profile == null) {
+        // Do not leave a customer authenticated through an owner-only flow.
+        await _client.auth.signOut();
+        throw const app_errors.AuthException(
+          'This account is not registered as a BookMySpace owner.',
+        );
+      }
+      return Owner.fromJson(profile);
+    } catch (error) {
+      if (error is app_errors.AppException) rethrow;
+      throw app_errors.mapError(error);
     }
   }
 
@@ -121,20 +111,39 @@ class SupabaseOwnerRepository implements OwnerRepository {
   Future<void> signOut() async {
     try {
       await _client.auth.signOut();
-    } catch (e) {
-      throw mapError(e);
+    } catch (error) {
+      throw app_errors.mapError(error);
     }
   }
 
   @override
   Future<void> deleteOwner() async {
-    try {
-      final user = _client.auth.currentUser;
-      if (user != null) {
-        await _client.from('owners').delete().eq('user_id', user.id);
-      }
-    } catch (e) {
-      throw mapError(e);
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw const app_errors.AuthException('You must be signed in.');
     }
+
+    try {
+      await _client.from('owner_profiles').delete().eq('user_id', user.id);
+    } catch (error) {
+      throw app_errors.mapError(error);
+    }
+  }
+
+  Future<void> _ensureOrganization(String userId, String ownerName) async {
+    final existing = await _client
+        .from('organizations')
+        .select('id')
+        .eq('owner_user_id', userId)
+        .isFilter('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+    if (existing != null) return;
+
+    await _client.from('organizations').insert({
+      'owner_user_id': userId,
+      'org_type': 'venue_owner',
+      'name': '$ownerName Spaces',
+    });
   }
 }

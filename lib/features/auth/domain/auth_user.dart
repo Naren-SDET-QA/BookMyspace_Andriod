@@ -34,20 +34,20 @@ class AuthUser {
   }
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
-    id: json['id'] as String? ?? '',
-    email: json['email'] as String? ?? '',
-    phone: json['phone'] as String? ?? '',
-    fullName: json['full_name'] as String? ?? '',
-    avatarUrl: json['avatar_url'] as String? ?? '',
-  );
+        id: json['id'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        fullName: json['full_name'] as String? ?? '',
+        avatarUrl: json['avatar_url'] as String? ?? '',
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'email': email,
-    'phone': phone,
-    'full_name': fullName,
-    'avatar_url': avatarUrl,
-  };
+        'id': id,
+        'email': email,
+        'phone': phone,
+        'full_name': fullName,
+        'avatar_url': avatarUrl,
+      };
 
   @override
   bool operator ==(Object other) =>

@@ -42,9 +42,18 @@ class AuthException extends AppException {
   const AuthException(super.message, {super.code, super.statusCode});
 }
 
+/// The user dismissed an OAuth prompt without completing sign-in.
+class AuthCancelledException extends AppException {
+  const AuthCancelledException(super.message, {super.code = 'cancelled'});
+}
+
 /// Business rule violation (e.g. venue already booked).
 class BusinessException extends AppException {
   const BusinessException(super.message, {super.code, super.statusCode});
+}
+
+class ValidationException extends AppException {
+  const ValidationException(super.message, {super.code, super.statusCode});
 }
 
 /// A requested resource was not found.
@@ -73,8 +82,34 @@ AppException mapError(Object error) {
   if (error is ArgumentError) {
     return const BusinessException('Invalid argument passed to repository.');
   }
+  final text = error.toString().toLowerCase();
+  if (text.contains('socketexception') ||
+      text.contains('failed host lookup') ||
+      text.contains('connection refused') ||
+      text.contains('network is unreachable') ||
+      text.contains('clientexception') ||
+      text.contains('connection reset') ||
+      text.contains('nodename nor servname')) {
+    return const NetworkException(
+      'Unable to reach BookMySpace right now. Check your connection and try again.',
+      code: 'network',
+    );
+  }
+  if (text.contains('timeout') || text.contains('timed out')) {
+    return const TimeoutException(
+      'The request took too long. Please try again.',
+      code: 'timeout',
+    );
+  }
   if (kDebugMode) {
-    return AppError('Unexpected error: $error', code: 'unknown');
+    final compact = error.toString();
+    if (compact.length > 160) {
+      return const AppError(
+        'Something went wrong. Please try again.',
+        code: 'unknown',
+      );
+    }
+    return AppError('Unexpected error: $compact', code: 'unknown');
   }
   return const AppError('Something went wrong. Please try again.');
 }

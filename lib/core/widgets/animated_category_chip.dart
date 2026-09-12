@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_theme.dart';
+
 /// A responsive, glassmorphic category chip component featuring:
 /// - Subtle 3D depth and frosted glass highlights
 /// - Smooth mouse-hover lift and dynamic glow on desktop/web
@@ -88,19 +90,25 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
             transform: Matrix4.identity()
-              ..translate(
+              ..translateByDouble(
                 0.0,
                 _isPressed
                     ? 1.5
                     : (_isHovered ? -2.5 : (widget.selected ? -1.0 : 0.0)),
                 0.0,
+                1.0,
               )
-              ..scale(
+              ..scaleByDouble(
                 _isPressed
                     ? 0.96
-                    : (_isHovered
-                        ? 1.04
-                        : (widget.selected ? 1.03 : 1.0)),
+                    : (_isHovered ? 1.04 : (widget.selected ? 1.03 : 1.0)),
+                _isPressed
+                    ? 0.96
+                    : (_isHovered ? 1.04 : (widget.selected ? 1.03 : 1.0)),
+                _isPressed
+                    ? 0.96
+                    : (_isHovered ? 1.04 : (widget.selected ? 1.03 : 1.0)),
+                1.0,
               ),
             transformAlignment: Alignment.center,
             height: widget.height,
@@ -113,7 +121,7 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                         effectiveSelectedColor,
                         Color.lerp(
                           effectiveSelectedColor,
-                          const Color(0xFF6366F1),
+                          AppTheme.action,
                           0.25,
                         )!,
                       ],
@@ -134,7 +142,8 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                         ? effectiveSelectedColor.withValues(alpha: 0.45)
                         : (isDark
                             ? Colors.white.withValues(alpha: 0.15)
-                            : theme.colorScheme.outlineVariant.withValues(alpha: 0.6))),
+                            : theme.colorScheme.outlineVariant
+                                .withValues(alpha: 0.6))),
                 width: widget.selected || _isHovered ? 1.5 : 1.0,
               ),
               boxShadow: widget.selected
@@ -149,9 +158,10 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                   : [
                       BoxShadow(
                         color: isDark
-                            ? Colors.black.withValues(alpha: _isHovered ? 0.3 : 0.1)
-                            : const Color(0xFF0F172A).withValues(
-                                alpha: _isHovered ? 0.08 : 0.02),
+                            ? Colors.black
+                                .withValues(alpha: _isHovered ? 0.3 : 0.1)
+                            : const Color(0xFF0F172A)
+                                .withValues(alpha: _isHovered ? 0.08 : 0.02),
                         blurRadius: _isHovered ? 8 : 3,
                         offset: Offset(0, _isHovered ? 3 : 1),
                       ),

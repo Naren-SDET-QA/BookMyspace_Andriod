@@ -67,7 +67,8 @@ class SpeechRecognitionService {
           case 'error':
             _stopVolumeMetering();
             _cancelSilenceTimeout();
-            final errorMsg = event['error'] as String? ?? 'Speech recognition error';
+            final errorMsg =
+                event['error'] as String? ?? 'Speech recognition error';
             final code = event['code'] as String? ?? '';
             final isPermDenied = code == 'not-allowed';
             _setState(SpeechRecognitionError(
@@ -80,7 +81,8 @@ class SpeechRecognitionService {
             _stopVolumeMetering();
             _cancelSilenceTimeout();
             if (_currentState is SpeechRecognitionListening) {
-              final currentText = (_currentState as SpeechRecognitionListening).transcript;
+              final currentText =
+                  (_currentState as SpeechRecognitionListening).transcript;
               if (currentText.trim().isNotEmpty) {
                 _setState(SpeechRecognitionSuccess(
                   transcript: currentText.trim(),
@@ -119,17 +121,20 @@ class SpeechRecognitionService {
             _stopVolumeMetering();
             _cancelSilenceTimeout();
             final args = call.arguments as Map<dynamic, dynamic>? ?? {};
-            final error = args['error'] as String? ?? 'iOS Speech Recognition Error';
+            final error =
+                args['error'] as String? ?? 'iOS Speech Recognition Error';
             _setState(SpeechRecognitionError(
               message: error,
-              isPermissionDenied: error.toLowerCase().contains('denied') || error.toLowerCase().contains('permission'),
+              isPermissionDenied: error.toLowerCase().contains('denied') ||
+                  error.toLowerCase().contains('permission'),
             ));
             break;
           case 'onSpeechEnd':
             _stopVolumeMetering();
             _cancelSilenceTimeout();
             if (_currentState is SpeechRecognitionListening) {
-              final currentText = (_currentState as SpeechRecognitionListening).transcript;
+              final currentText =
+                  (_currentState as SpeechRecognitionListening).transcript;
               if (currentText.trim().isNotEmpty) {
                 _setState(SpeechRecognitionSuccess(
                   transcript: currentText.trim(),
@@ -152,7 +157,8 @@ class SpeechRecognitionService {
     }
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final result = await _iosSpeechChannel.invokeMapMethod<String, dynamic>('isAvailable');
+        final result = await _iosSpeechChannel
+            .invokeMapMethod<String, dynamic>('isAvailable');
         return result?['isAvailable'] as bool? ?? false;
       } catch (_) {
         return false;
@@ -169,7 +175,8 @@ class SpeechRecognitionService {
     }
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       try {
-        final result = await _iosSpeechChannel.invokeMapMethod<String, dynamic>('requestPermission');
+        final result = await _iosSpeechChannel
+            .invokeMapMethod<String, dynamic>('requestPermission');
         return result?['granted'] as bool? ?? false;
       } catch (_) {
         return false;
@@ -186,7 +193,8 @@ class SpeechRecognitionService {
       final supported = WebSpeechBridge.isSupported;
       if (!supported) {
         _setState(const SpeechRecognitionError(
-          message: 'Web Speech API is not supported in this browser. Please use Chrome, Edge, or Safari, or use keyboard search.',
+          message:
+              'Web Speech API is not supported in this browser. Please use Chrome, Edge, or Safari, or use keyboard search.',
           isNotSupported: true,
         ));
         return;
@@ -204,7 +212,8 @@ class SpeechRecognitionService {
         final permGranted = await requestPermission();
         if (!permGranted) {
           _setState(const SpeechRecognitionError(
-            message: 'Microphone and speech recognition permissions are required for voice search.',
+            message:
+                'Microphone and speech recognition permissions are required for voice search.',
             isPermissionDenied: true,
           ));
           return;
@@ -228,7 +237,8 @@ class SpeechRecognitionService {
 
     // Non-Web, Non-iOS fallback (e.g. desktop testing or unsupported VM)
     _setState(const SpeechRecognitionError(
-      message: 'Native voice recognition is supported on Android, iOS, and Web (Chrome/Edge/Safari).',
+      message:
+          'Native voice recognition is supported on Android, iOS, and Web (Chrome/Edge/Safari).',
       isNotSupported: true,
     ));
   }
@@ -274,10 +284,12 @@ class SpeechRecognitionService {
 
   void _startVolumeMetering() {
     _volumeSimulationTimer?.cancel();
-    _volumeSimulationTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
+    _volumeSimulationTimer =
+        Timer.periodic(const Duration(milliseconds: 120), (_) {
       if (_currentState is SpeechRecognitionListening) {
         final current = _currentState as SpeechRecognitionListening;
-        final newLevel = (0.15 + (_random.nextDouble() * 0.75)).clamp(0.05, 1.0);
+        final newLevel =
+            (0.15 + (_random.nextDouble() * 0.75)).clamp(0.05, 1.0);
         _setState(SpeechRecognitionListening(
           transcript: current.transcript,
           soundLevel: newLevel,

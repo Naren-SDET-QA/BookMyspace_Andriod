@@ -5,10 +5,11 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/course.dart';
 
-/// A tappable course card used in listings and the home screen.
+/// A tappable course card used in listings.
 class CourseCard extends StatelessWidget {
   const CourseCard({super.key, required this.course});
 
@@ -19,13 +20,12 @@ class CourseCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () =>
-            context.push(AppRoutes.courseDetails.replaceAll(':id', course.id)),
-        child: Column(
+    return GlassmorphicCard(
+      borderRadius: 18,
+      accentGradient: AppTheme.brandGradient,
+      onTap: () =>
+          context.push(AppRoutes.courseDetails.replaceAll(':id', course.id)),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
@@ -82,6 +82,16 @@ class CourseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
+                    l10n.durationWeeks.replaceAll(
+                      '{weeks}',
+                      '${course.durationWeeks}',
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
                     course.isFree
                         ? l10n.freeEvent
                         : '${l10n.courseFee} ${formatInr(course.feeAmount)}',
@@ -95,7 +105,6 @@ class CourseCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 

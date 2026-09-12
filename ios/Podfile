@@ -23,14 +23,17 @@ def flutter_root
   raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
 end
 
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root) if File.exist?(File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb'))
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
+  # Official Razorpay Standard Checkout for iOS (public key only).
+  pod 'razorpay-pod', '1.5.8'
+
   # Flutter Pods helper hook if available
-  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__)) if respond_to?(:flutter_install_all_ios_pods)
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
   # Target unit testing bundle
   target 'RunnerTests' do
@@ -40,7 +43,7 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    flutter_additional_ios_build_settings(target) if respond_to?(:flutter_additional_ios_build_settings)
+    flutter_additional_ios_build_settings(target)
     
     target.build_configurations.each do |config|
       # Modern iOS minimum deployment target

@@ -20,23 +20,24 @@ class MockEventRepository implements EventRepository {
     int capacity = 200,
     int registeredCount = 0,
     bool userRegistered = false,
-  }) => Event(
-    id: id,
-    orgId: 'o1',
-    title: title,
-    description: 'An evening of live music.',
-    startsAt: DateTime.now().add(const Duration(days: 14)),
-    endsAt: DateTime.now().add(const Duration(days: 14, hours: 4)),
-    category: EventCategory.cultural,
-    isFree: false,
-    venueName: 'Sunrise Function Hall',
-    capacity: capacity,
-    ticketPrice: 499,
-    coverImage: 'https://example.com/cover.jpg',
-    status: 'published',
-    registeredCount: registeredCount,
-    userRegistered: userRegistered,
-  );
+  }) =>
+      Event(
+        id: id,
+        orgId: 'o1',
+        title: title,
+        description: 'An evening of live music.',
+        startsAt: DateTime.now().add(const Duration(days: 14)),
+        endsAt: DateTime.now().add(const Duration(days: 14, hours: 4)),
+        category: EventCategory.cultural,
+        isFree: false,
+        venueName: 'Sunrise Function Hall',
+        capacity: capacity,
+        ticketPrice: 499,
+        coverImage: 'https://example.com/cover.jpg',
+        status: 'published',
+        registeredCount: registeredCount,
+        userRegistered: userRegistered,
+      );
 
   @override
   Future<List<Event>> upcomingEvents() async {
@@ -82,21 +83,21 @@ class MockEventRepository implements EventRepository {
   }
 
   Event _withUserRegistered(Event event, bool registered) => Event(
-    id: event.id,
-    orgId: event.orgId,
-    title: event.title,
-    description: event.description,
-    startsAt: event.startsAt,
-    endsAt: event.endsAt,
-    category: event.category,
-    isFree: event.isFree,
-    venueId: event.venueId,
-    venueName: event.venueName,
-    capacity: event.capacity,
-    ticketPrice: event.ticketPrice,
-    coverImage: event.coverImage,
-    status: event.status,
-    registeredCount: event.registeredCount,
-    userRegistered: registered,
-  );
+        id: event.id,
+        orgId: event.orgId,
+        title: event.title,
+        description: event.description,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        category: event.category,
+        isFree: event.isFree,
+        venueId: event.venueId,
+        venueName: event.venueName,
+        capacity: event.capacity,
+        ticketPrice: event.ticketPrice,
+        coverImage: event.coverImage,
+        status: event.status,
+        registeredCount: event.registeredCount,
+        userRegistered: registered,
+      );
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../auth/presentation/auth_providers.dart';
 
 /// Settings screen: theme, language and account management entry points.
 class SettingsScreen extends ConsumerWidget {
@@ -45,7 +46,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.support_agent_rounded),
             title: Text(l10n.support),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
+            onTap: () => context.push(AppRoutes.support),
           ),
           const Divider(),
           ListTile(
@@ -75,7 +76,7 @@ class SettingsScreen extends ConsumerWidget {
               l10n.deleteAccount,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-            onTap: () => _confirmDeleteAccount(context, l10n),
+            onTap: () => _confirmDeleteAccount(context, ref, l10n),
           ),
         ],
       ),
@@ -160,32 +161,93 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _confirmDeleteAccount(
     BuildContext context,
+    WidgetRef ref,
     AppLocalizations l10n,
   ) async {
+    final confirmation = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.deleteAccount),
-        content: const Text(
-          'This action cannot be undone. Your data will be permanently removed.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final typedDelete =
+                confirmation.text.trim().toUpperCase() == 'DELETE';
+            return AlertDialog(
+              title: Text(l10n.deleteAccount),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This permanently deletes your BookMySpace account and signed-in data. Type DELETE to confirm.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmation,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Type DELETE',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  onPressed: typedDelete
+                      ? () => Navigator.pop(dialogContext, true)
+                      : null,
+                  child: Text(l10n.delete),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
-    if (confirmed == true && context.mounted) {
-      context.go(AppRoutes.onboarding);
+    confirmation.dispose();
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      await ref.read(authNotifierProvider.notifier).deleteAccount();
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+    } catch (error) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        final retry = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(l10n.deleteAccount),
+            content: Text(error.toString()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        if (retry == true && context.mounted) {
+          await _confirmDeleteAccount(context, ref, l10n);
+        }
+      }
     }
   }
 }

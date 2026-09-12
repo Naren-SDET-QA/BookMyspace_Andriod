@@ -83,9 +83,8 @@ class QrCheckInNotifier extends StateNotifier<QrCheckInState> {
       // Refresh bookings so all screens reflect completed status
       ref.invalidate(myBookingsProvider);
 
-      final venueName = updated.venueName.isNotEmpty
-          ? updated.venueName
-          : 'the venue';
+      final venueName =
+          updated.venueName.isNotEmpty ? updated.venueName : 'the venue';
       final res = CheckInResult(
         success: true,
         message: 'Check-in verified! Welcome to $venueName.',
@@ -98,7 +97,8 @@ class QrCheckInNotifier extends StateNotifier<QrCheckInState> {
     } catch (e) {
       final res = CheckInResult(
         success: false,
-        message: 'Invalid QR code or booking reference. No active booking found.',
+        message:
+            'Invalid QR code or booking reference. No active booking found.',
       );
       state = state.copyWith(isLoading: false, result: res);
       return res;

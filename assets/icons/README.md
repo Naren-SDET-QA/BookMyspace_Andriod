@@ -1,9 +1,11 @@
 # App Icons & Splash Screen Assets
 
-## Placeholder SVGs
+## Canonical brand assets
 
-This directory contains SVG placeholders for app icons and splash screens.
-Replace these with actual PNG assets before generating final builds.
+`bookmyspace_logo.svg` is the Flutter source equivalent of the canonical
+Android `ic_bms_logo.xml` mark. `bookmyspace_logo.png` is its 1024px raster
+export used by Flutter and the iOS asset catalog. `splash_icon.svg` points to
+the same visual mark for any SVG-based splash tooling.
 
 ## Generating Icons & Splash Screens
 
@@ -43,27 +45,22 @@ This will generate:
 
 | Asset | Size | Format | Notes |
 |-------|------|--------|-------|
-| `app_icon.png` | 1024x1024 | PNG | Main app icon (no transparency for iOS) |
-| `adaptive_background.png` | 1024x1024 | PNG | Android adaptive icon background |
-| `adaptive_foreground.png` | 1024x1024 | PNG | Android adaptive icon foreground (with transparency) |
-| `splash_icon.png` | 1024x1024 | PNG | Splash screen icon (centered, transparent background) |
+| `bookmyspace_logo.png` | 1024x1024 | PNG | Shared Flutter/iOS brand mark |
+| `bookmyspace_logo.svg` | 120x120 viewBox | SVG | Source vector equivalent of Android `ic_bms_logo.xml` |
+| `splash_icon.svg` | 120x120 viewBox | SVG | Same canonical mark for splash tooling |
 
 ## Color Reference
 
-- Primary Brand: `#3F51B5` (RGB: 63, 81, 181)
-- Brand Light: `#757DE8` (RGB: 117, 125, 232)
-- Splash Background: `#3F51B5`
+- Primary Brand: `#00C9A7` (Electric Teal)
+- Primary Action: `#2979FF` (Royal Blue)
+- Dark Canvas: `#081A2B` (Deep Navy)
+- Logo Gradient: `#10B981` → `#38BDF8` → `#818CF8`
 
 ## Quick Start
 
-1. Create your 1024x1024 PNG assets (use the SVGs as reference)
-2. Place them in this directory:
-   - `app_icon.png`
-   - `adaptive_background.png` (solid brand color)
-   - `adaptive_foreground.png` (icon with transparency)
-   - `splash_icon.png` (icon with transparency)
-3. Run the generation commands above
-4. Verify on device/emulator
+1. Keep `bookmyspace_logo.svg` aligned with the Android source mark.
+2. Regenerate `bookmyspace_logo.png` and platform asset-catalog sizes from it.
+3. Verify the splash screen and launcher on device/emulator.
 
 ## Testing
 

@@ -107,7 +107,12 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (paymentError || !payment || payment.status !== 'captured') {
+    if (
+      paymentError ||
+      !payment ||
+      payment.status !== 'captured' ||
+      !payment.provider_payment_id
+    ) {
       return new Response(JSON.stringify({ error: 'no_captured_payment' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -132,7 +137,7 @@ Deno.serve(async (req) => {
       .select('id')
       .eq('payment_id', payment.id)
       .maybeSingle();
-    if (existingError && !existing) {
+    if (existingError) {
       return new Response(JSON.stringify({ error: 'refund_lookup_failed' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -172,14 +177,26 @@ Deno.serve(async (req) => {
     }
 
     // Move the booking + payment to their refunded states.
-    await supabase
+    const { error: bookingUpdateError } = await supabase
       .from('bookings')
       .update({ status: 'refunded' })
       .eq('id', booking.id);
-    await supabase
+    if (bookingUpdateError) {
+      return new Response(JSON.stringify({ error: 'booking_update_failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { error: paymentUpdateError } = await supabase
       .from('payments')
       .update({ status: 'refunded' })
       .eq('id', payment.id);
+    if (paymentUpdateError) {
+      return new Response(JSON.stringify({ error: 'payment_update_failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify(refundRow), {
       status: 200,

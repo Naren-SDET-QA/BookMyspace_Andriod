@@ -26,24 +26,34 @@ class VenueCategory {
   final String? parentSection;
 
   factory VenueCategory.fromJson(Map<String, dynamic> json) {
+    final metadata = json['metadata'] is Map
+        ? Map<String, dynamic>.from(json['metadata'] as Map)
+        : const <String, dynamic>{};
     return VenueCategory(
       id: json['id'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
       name: json['name'] as String? ?? '',
       icon: json['icon'] as String?,
-      isActive: json['is_active'] as bool? ?? true,
-      parentSection: json['parent_section'] as String? ?? 'general',
+      isActive: json['is_active'] as bool? ??
+          metadata['active'] as bool? ??
+          metadata['is_active'] as bool? ??
+          true,
+      parentSection: json['parent_section'] as String? ??
+          metadata['parent_section'] as String? ??
+          'general',
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'slug': slug,
-    'name': name,
-    if (icon != null) 'icon': icon,
-    'is_active': isActive,
-    if (parentSection != null) 'parent_section': parentSection,
-  };
+        'id': id,
+        'slug': slug,
+        'name': name,
+        if (icon != null) 'icon': icon,
+        'metadata': {
+          'active': isActive,
+          if (parentSection != null) 'parent_section': parentSection,
+        },
+      };
 
   VenueCategory copyWith({
     String? id,
@@ -94,13 +104,13 @@ class VenueImage {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'url': url,
-    if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
-    if (altText != null) 'alt_text': altText,
-    'is_cover': isCover,
-    'sort_order': sortOrder,
-  };
+        'id': id,
+        'url': url,
+        if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
+        if (altText != null) 'alt_text': altText,
+        'is_cover': isCover,
+        'sort_order': sortOrder,
+      };
 }
 
 /// Facility/amenity available at a venue.
@@ -121,9 +131,9 @@ class VenueFacility {
   }
 
   Map<String, dynamic> toJson() => {
-    'facility': facility,
-    'is_available': isAvailable,
-  };
+        'facility': facility,
+        'is_available': isAvailable,
+      };
 }
 
 /// Operating hours for a venue on a given day of the week.
@@ -150,11 +160,11 @@ class VenueOperatingHours {
   }
 
   Map<String, dynamic> toJson() => {
-    'day_of_week': dayOfWeek,
-    if (opensAt != null) 'opens_at': opensAt,
-    if (closesAt != null) 'closes_at': closesAt,
-    'is_closed': isClosed,
-  };
+        'day_of_week': dayOfWeek,
+        if (opensAt != null) 'opens_at': opensAt,
+        if (closesAt != null) 'closes_at': closesAt,
+        'is_closed': isClosed,
+      };
 }
 
 /// Main Venue domain model.
@@ -174,6 +184,8 @@ class Venue {
     this.pricingBaseAmount = 0.0,
     this.price = 0.0,
     this.taxRate = 18.0,
+    this.foodOptions = '',
+    this.parkingCapacity = 0,
     this.avgRating = 0.0,
     this.ratingCount = 0,
     this.isVerified = false,
@@ -199,6 +211,8 @@ class Venue {
   final double pricingBaseAmount;
   final double price;
   final double taxRate;
+  final String foodOptions;
+  final int parkingCapacity;
   final double avgRating;
   final int ratingCount;
   final bool isVerified;
@@ -227,7 +241,8 @@ class Venue {
     // Parse category
     VenueCategory? cat;
     if (json['venue_categories'] is Map<String, dynamic>) {
-      cat = VenueCategory.fromJson(json['venue_categories'] as Map<String, dynamic>);
+      cat = VenueCategory.fromJson(
+          json['venue_categories'] as Map<String, dynamic>);
     } else if (json['category'] is Map<String, dynamic>) {
       cat = VenueCategory.fromJson(json['category'] as Map<String, dynamic>);
     }
@@ -273,12 +288,13 @@ class Venue {
         0.0;
 
     // Build compound address if not explicitly present
-    String addr = json['address'] as String? ?? '';
+    String addr =
+        json['address'] as String? ?? json['address_line1'] as String? ?? '';
     if (addr.isEmpty) {
       final parts = [
         json['city'] as String?,
         json['state'] as String?,
-        json['pincode'] as String?,
+        (json['pincode'] ?? json['postal_code']) as String?,
       ].where((s) => s != null && s.trim().isNotEmpty).map((s) => s!.trim());
       addr = parts.join(', ');
     }
@@ -291,13 +307,15 @@ class Venue {
       address: addr,
       city: json['city'] as String? ?? '',
       state: json['state'] as String? ?? '',
-      pincode: json['pincode'] as String? ?? '',
+      pincode: (json['pincode'] ?? json['postal_code']) as String? ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
       capacity: json['capacity'] as int? ?? 0,
       pricingBaseAmount: pricingBase,
       price: pricingBase,
       taxRate: (json['tax_rate'] as num?)?.toDouble() ?? 18.0,
+      foodOptions: json['food_options'] as String? ?? '',
+      parkingCapacity: (json['parking_capacity'] as num?)?.toInt() ?? 0,
       avgRating: (json['avg_rating'] as num?)?.toDouble() ?? 0.0,
       ratingCount: json['rating_count'] as int? ?? 0,
       isVerified: json['is_verified'] as bool? ?? false,
@@ -372,6 +390,10 @@ class VenueSearchQuery {
     this.minPrice,
     this.maxPrice,
     this.sortBy = VenueSortBy.relevance,
+    this.latitude,
+    this.longitude,
+    this.radiusKm,
+    this.pincode,
   });
 
   final String query;
@@ -380,6 +402,12 @@ class VenueSearchQuery {
   final double? minPrice;
   final double? maxPrice;
   final VenueSortBy sortBy;
+  final double? latitude;
+  final double? longitude;
+  final int? radiusKm;
+  final String? pincode;
+
+  bool get hasCoordinates => latitude != null && longitude != null;
 
   bool get hasFilters =>
       query.isNotEmpty ||
@@ -387,7 +415,9 @@ class VenueSearchQuery {
       city != null ||
       minPrice != null ||
       maxPrice != null ||
-      sortBy != VenueSortBy.relevance;
+      sortBy != VenueSortBy.relevance ||
+      hasCoordinates ||
+      pincode != null;
 
   VenueSearchQuery copyWith({
     String? query,
@@ -396,6 +426,10 @@ class VenueSearchQuery {
     double? Function()? minPrice,
     double? Function()? maxPrice,
     VenueSortBy? sortBy,
+    double? Function()? latitude,
+    double? Function()? longitude,
+    int? Function()? radiusKm,
+    String? Function()? pincode,
   }) {
     return VenueSearchQuery(
       query: query ?? this.query,
@@ -404,6 +438,40 @@ class VenueSearchQuery {
       minPrice: minPrice != null ? minPrice() : this.minPrice,
       maxPrice: maxPrice != null ? maxPrice() : this.maxPrice,
       sortBy: sortBy ?? this.sortBy,
+      latitude: latitude != null ? latitude() : this.latitude,
+      longitude: longitude != null ? longitude() : this.longitude,
+      radiusKm: radiusKm != null ? radiusKm() : this.radiusKm,
+      pincode: pincode != null ? pincode() : this.pincode,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is VenueSearchQuery &&
+            query == other.query &&
+            categorySlug == other.categorySlug &&
+            city == other.city &&
+            minPrice == other.minPrice &&
+            maxPrice == other.maxPrice &&
+            sortBy == other.sortBy &&
+            latitude == other.latitude &&
+            longitude == other.longitude &&
+            radiusKm == other.radiusKm &&
+            pincode == other.pincode;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        query,
+        categorySlug,
+        city,
+        minPrice,
+        maxPrice,
+        sortBy,
+        latitude,
+        longitude,
+        radiusKm,
+        pincode,
+      );
 }

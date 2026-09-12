@@ -10,5 +10,10 @@
 	<!-- Apple Push Notification service (APNs) Environment -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Sign in with Apple. The capability must also be enabled on the App ID. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>
