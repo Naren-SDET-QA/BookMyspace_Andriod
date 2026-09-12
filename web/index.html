@@ -24,33 +24,20 @@
 
   <title>BookMySpace</title>
 
-  <!-- Firebase App & Performance Monitoring SDK (Loaded non-blocking) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js" async defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-performance-compat.js" async defer></script>
-
   <style>
     body {
       margin: 0;
       padding: 0;
       background: #0b0f19;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #ffffff;
       overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
-    body.app-loaded {
-      display: block !important;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
-      height: auto !important;
-      min-height: 100vh !important;
-      background: #0b0f19 !important;
-      -webkit-overflow-scrolling: touch !important;
-    }
-    /* Instant CSS elimination of loading overlay without timer/event dependency */
+    body.app-loaded,
     body:has(#bookmyspace-app) {
       display: block !important;
       overflow-y: auto !important;
@@ -59,9 +46,28 @@
       min-height: 100vh !important;
       background: #0b0f19 !important;
     }
-    body:has(#bookmyspace-app) #loading-wrapper,
+    .loading-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+      background: #0b0f19;
+      z-index: 99999;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    body.app-loaded .loading-wrapper,
     body:has(#bookmyspace-app) .loading-wrapper,
+    body.app-loaded #loading,
     body:has(#bookmyspace-app) #loading,
+    body.app-loaded #loading-timeout-view,
     body:has(#bookmyspace-app) #loading-timeout-view {
       display: none !important;
       visibility: hidden !important;
@@ -69,17 +75,6 @@
       pointer-events: none !important;
       height: 0 !important;
       overflow: hidden !important;
-    }
-    .loading-wrapper {
-      width: 100%;
-      max-width: 420px;
-      padding: 24px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
     }
     .loading-container {
       display: flex;
@@ -142,14 +137,26 @@
       position: relative;
       box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
     }
+    #loading-progress-fill,
     .progress-bar-fill {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #38bdf8, #818cf8, #ffffff);
-      background-size: 200% 100%;
+      background: linear-gradient(
+        90deg,
+        #0f766e 0%,
+        #0d9488 15%,
+        #06b6d4 32%,
+        #22d3ee 48%,
+        #a5f3fc 58%,
+        #2dd4bf 72%,
+        #14b8a6 88%,
+        #0f766e 100%
+      );
+      background-size: 260% 100%;
       border-radius: 999px;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.45), 0 0 18px rgba(45, 212, 191, 0.25);
       transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      animation: progress-shimmer 2s linear infinite;
+      animation: progress-shimmer 3.6s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
     }
     .progress-percentage {
       margin-top: 6px;
@@ -532,8 +539,12 @@
       to { transform: rotate(360deg); }
     }
     @keyframes progress-shimmer {
-      0% { background-position: 100% 0; }
-      100% { background-position: -100% 0; }
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -60% 0;
+      }
     }
     @keyframes pulse-badge {
       0%, 100% { transform: scale(1); }
@@ -1175,15 +1186,35 @@
           return;
         }
 
-        if (progress < 90) {
-          progress = Math.min(90, +(progress + 15).toFixed(1));
+        if (progress < 100) {
+          progress = Math.min(100, +(progress + 15).toFixed(1));
           if (fillElem) fillElem.style.width = progress + '%';
           if (pctElem) pctElem.textContent = Math.floor(progress) + '%';
           if (statusElem) {
-            statusElem.textContent = progress > 50 ? 'Preparing workspace...' : 'Connecting to service...';
+            if (progress >= 95) {
+              statusElem.textContent = 'Ready! Launching BookMySpace...';
+            } else if (progress > 65) {
+              statusElem.textContent = 'Rendering 3D glass matrix & spaces...';
+            } else if (progress > 30) {
+              statusElem.textContent = 'Loading category matrix & venues...';
+            } else {
+              statusElem.textContent = 'Connecting to service...';
+            }
+          }
+          if (progress >= 100) {
+            clearInterval(progressInterval);
+            onAppReady();
           }
         }
       }, 60);
+
+      // Failsafe auto-reveal: Ensure the app never hangs on loading screen
+      var failsafeAutoMountTimeout = setTimeout(function() {
+        if (!isLoaded) {
+          console.log('[BookMySpace] Failsafe timer fired, ensuring UI is visible');
+          onAppReady();
+        }
+      }, 1200);
 
       // Warning after 10 seconds of slow load if genuinely unmounted
       var slowTimeout = setTimeout(function() {
@@ -1473,10 +1504,19 @@
       // App Readiness Notification
       function onAppReady() {
         if (isLoaded) return;
+
+        // Ensure the app DOM container is mounted
+        if (!document.getElementById('bookmyspace-app')) {
+          if (typeof window._bmsForceMount === 'function') {
+            try { window._bmsForceMount(); } catch(e) { console.error('Force mount error:', e); }
+          }
+        }
+
         isLoaded = true;
         clearInterval(progressInterval);
         clearTimeout(slowTimeout);
         clearTimeout(failTimeout);
+        clearTimeout(failsafeAutoMountTimeout);
         if (fastCheckInterval) {
           clearInterval(fastCheckInterval);
           fastCheckInterval = null;
@@ -1499,13 +1539,19 @@
         document.body.style.display = 'block';
         document.body.style.overflowY = 'auto';
 
-        // Immediately hide and remove all loading/timeout wrappers so the app is instantly interactive
+        // Smooth transition: fade out then remove loading wrapper
         try {
           var wrappers = document.querySelectorAll('.loading-wrapper, #loading, #loading-timeout-view');
           wrappers.forEach(function(w) {
             if (w) {
-              w.style.display = 'none';
-              if (w.parentNode) w.parentNode.removeChild(w);
+              w.style.opacity = '0';
+              w.style.pointerEvents = 'none';
+              setTimeout(function() {
+                if (w) {
+                  w.style.display = 'none';
+                  if (w.parentNode) w.parentNode.removeChild(w);
+                }
+              }, 300);
             }
           });
         } catch(e) {}
@@ -1514,12 +1560,12 @@
       window._bmsInternalOnAppReady = onAppReady;
       window.addEventListener('flutter-first-frame', onAppReady);
 
-      // Fast detection: check every 20ms for instant mount
+      // Fast detection: check every 50ms for instant mount
       fastCheckInterval = setInterval(function() {
-        if (document.getElementById('bookmyspace-app') || window._bmsBootstrapLoaded || window._bmsEarlyReadyTriggered) {
+        if (document.getElementById('bookmyspace-app')) {
           onAppReady();
         }
-      }, 20);
+      }, 50);
 
       // Immediate DOM mutation detection (does not wait for window.onload)
       try {
@@ -1546,9 +1592,9 @@
   </script>
 
   <!-- Load critical application bootstrap bundle directly with cache buster -->
-  <script src="flutter_bootstrap.js?v=20260911_0110"></script>
+  <script src="flutter_bootstrap.js?v=20260911_fast3d"></script>
   <script>
-    // Failsafe auto-mount fallback: If applet hasn't mounted in 1200ms, force trigger bootstrap
+    // Failsafe auto-mount fallback: If applet hasn't mounted in 400ms, force trigger bootstrap
     setTimeout(function() {
       if (!window._bmsBootstrapLoaded && !document.getElementById('bookmyspace-app')) {
         console.warn('[BookMySpace] Bootstrap delay detected, force re-fetching flutter_bootstrap.js...');
@@ -1556,7 +1602,7 @@
         retryScript.src = 'flutter_bootstrap.js?smart_retry=' + Date.now();
         document.body.appendChild(retryScript);
       }
-    }, 1200);
+    }, 400);
   </script>
 </body>
 </html>

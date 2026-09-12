@@ -446,13 +446,13 @@ fun VenueCard(
         interactionSource = cardInteractionSource,
         modifier = modifier
             .fillMaxWidth()
-            .hoverable(interactionSource = cardInteractionSource)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .graphicsLayer {
-                scaleX = cardScale
-                scaleY = cardScale
-                translationY = cardLiftY
-            }
+            .interactive3dHover(
+                enabled = true,
+                shape = RoundedCornerShape(16.dp),
+                maxTiltDegrees = 13f,
+                scaleOnHover = 1.025f,
+                elevationOnHover = 12.dp
+            )
             .testTag("venue_card_${venue.id}"),
         shape = RoundedCornerShape(16.dp),
         border = if (isHovered) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)) else null,

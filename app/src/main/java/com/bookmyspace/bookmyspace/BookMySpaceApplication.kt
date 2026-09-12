@@ -1,6 +1,7 @@
 package com.bookmyspace.bookmyspace
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import com.bookmyspace.bookmyspace.data.editor.DynamicElementManager
 import com.bookmyspace.bookmyspace.data.email.InvoiceEmailService
@@ -28,6 +29,8 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
 
     companion object {
         const val TAG = "BookMySpaceApp"
+        var appContext: Context? = null
+            private set
         var isAppInitialized: Boolean = false
             private set
         var startupDurationMs: Long = 0L
@@ -43,11 +46,33 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
             }
             Log.i(TAG, entry)
         }
+
+        /**
+         * Validates whether an API key is a genuine, production Google Firebase API key.
+         * Explicitly rejects placeholder, fallback, mock, or default dummy keys to prevent
+         * Firebase Installations (FIS) and FCM from issuing failing API calls or causing UI hangs.
+         */
+        fun isGenuineFirebaseApiKey(apiKey: String?): Boolean {
+            if (apiKey.isNullOrBlank()) return false
+            val trimmed = apiKey.trim()
+            if (trimmed.contains("Fallback", ignoreCase = true) ||
+                trimmed.contains("Placeholder", ignoreCase = true) ||
+                trimmed.contains("Default", ignoreCase = true) ||
+                trimmed.contains("0123456789ABC", ignoreCase = true) ||
+                trimmed.contains("YOUR_", ignoreCase = true) ||
+                trimmed.contains("test", ignoreCase = true) ||
+                trimmed.contains("sample", ignoreCase = true)
+            ) {
+                return false
+            }
+            return trimmed.startsWith("AIzaSy") && trimmed.length >= 35 && Regex("^AIzaSy[a-zA-Z0-9_-]{33,}$").matches(trimmed)
+        }
     }
 
     override fun onCreate() {
         val startTime = System.currentTimeMillis()
         super.onCreate()
+        appContext = applicationContext
 
         // 0. Register cold-start tracking immediately
         com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.onApplicationCreateStarted(startTime)
@@ -141,10 +166,10 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
             val existingApps = FirebaseApp.getApps(this)
             if (existingApps.isEmpty()) {
                 val apiKey = getSafeFirebaseApiKey()
-                if (apiKey.isNotEmpty()) {
+                if (isGenuineFirebaseApiKey(apiKey)) {
                     val fallbackOptions = FirebaseOptions.Builder()
-                        .setApplicationId("1:186189980547:android:bookmyspace")
-                        .setProjectId("bookmyspace-app")
+                        .setApplicationId(BuildConfig.FIREBASE_APP_ID.ifBlank { "1:186189980547:android:bookmyspace" })
+                        .setProjectId(BuildConfig.FIREBASE_PROJECT_ID.ifBlank { "bookmyspace-app" })
                         .setApiKey(apiKey)
                         .build()
                     
@@ -161,7 +186,7 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
             } else {
                 try {
                     val app = FirebaseApp.getInstance()
-                    val isRealApiKey = app.options.apiKey.isNotEmpty() && !app.options.apiKey.contains("Fallback", ignoreCase = true)
+                    val isRealApiKey = isGenuineFirebaseApiKey(app.options.apiKey)
                     com.google.firebase.messaging.FirebaseMessaging.getInstance().isAutoInitEnabled = isRealApiKey
                 } catch (t: Throwable) {
                     Log.d(TAG, "FCM auto-init config: ${t.message}")
@@ -176,9 +201,7 @@ class BookMySpaceApplication : Application(), ImageLoaderFactory {
 
     private fun getSafeFirebaseApiKey(): String {
         val configuredKey = BuildConfig.FIREBASE_API_KEY
-        val isValidFormat = configuredKey.startsWith("A") && configuredKey.length == 39 &&
-            Regex("^A[a-zA-Z0-9_-]{38}$").matches(configuredKey)
-        return if (isValidFormat) configuredKey else ""
+        return if (isGenuineFirebaseApiKey(configuredKey)) configuredKey else ""
     }
 
     private suspend fun initializeCoreServicesAsync() {

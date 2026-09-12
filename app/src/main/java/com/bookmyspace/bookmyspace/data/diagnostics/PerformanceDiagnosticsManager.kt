@@ -115,15 +115,11 @@ object PerformanceDiagnosticsManager {
             // Keep remote Firebase Performance disabled when using offline / local fallback mode.
             // All performance diagnostics, cold-start benchmarks, memory metrics, ANR watchdog,
             // and frame drop monitors operate in pure local high-speed mode without network errors.
-            if (FirebaseApp.getApps(context).isNotEmpty()) {
-                val app = FirebaseApp.getInstance()
+            val apps = FirebaseApp.getApps(context)
+            if (apps.isNotEmpty()) {
+                val app = apps.first()
                 val apiKey = try { app.options.apiKey } catch (_: Exception) { null }
-                val isGenuineProductionApiKey = apiKey != null &&
-                    apiKey.startsWith("AIza") &&
-                    apiKey.length == 39 &&
-                    !apiKey.contains("Fallback", ignoreCase = true) &&
-                    !apiKey.contains("PLACEHOLDER", ignoreCase = true) &&
-                    !apiKey.contains("YOUR_", ignoreCase = true)
+                val isGenuineProductionApiKey = com.bookmyspace.bookmyspace.BookMySpaceApplication.isGenuineFirebaseApiKey(apiKey)
 
                 if (isGenuineProductionApiKey) {
                     try {
@@ -233,71 +229,8 @@ object PerformanceDiagnosticsManager {
      * Never interrupts normal 60fps frame rendering.
      */
     fun startWatchdog(thresholdMs: Long = DEFAULT_ANR_THRESHOLD_MS) {
-        if (isWatchdogRunning) return
-        isWatchdogRunning = true
-
-        watchdogThread = Thread({
-            Log.i(TAG, "🛡️ [Diagnostics] Non-invasive ANR Watchdog active (threshold=${thresholdMs}ms)")
-            while (isWatchdogRunning) {
-                val startTick = tick
-                val startTime = System.currentTimeMillis()
-
-                mainHandler.post {
-                    tick = (tick + 1) % Long.MAX_VALUE
-                }
-
-                try {
-                    Thread.sleep(thresholdMs)
-                } catch (_: InterruptedException) {
-                    break
-                }
-
-                if (tick == startTick && isWatchdogRunning) {
-                    // Main thread didn't respond within thresholdMs -> genuine UI freeze/stall
-                    val now = System.currentTimeMillis()
-                    if (now - lastRecordedAnrTime > 5000L) { // Throttle: at most once every 5 seconds
-                        lastRecordedAnrTime = now
-                        val mainThread = Looper.getMainLooper().thread
-                        val stackTrace = mainThread.stackTrace
-
-                        val totalBlocked = now - startTime
-                        val stackString = stackTrace.take(6).joinToString("\n") { element ->
-                            "  at ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})"
-                        }
-
-                        val topClass = stackTrace.firstOrNull {
-                            !it.className.startsWith("android.os") && !it.className.startsWith("java.lang")
-                        }?.className?.substringAfterLast(".") ?: "UIThread"
-
-                        val record = BlockDiagnosticRecord(
-                            durationMs = totalBlocked,
-                            source = topClass,
-                            stackTraceSnippet = stackString,
-                            severity = if (totalBlocked > 4000) DiagnosticSeverity.CRITICAL else DiagnosticSeverity.WARNING
-                        )
-
-                        Log.w(TAG, "⚠️ [UI Freeze Alert] Main thread frozen for ${totalBlocked}ms at $topClass")
-                        recordBlock(record)
-
-                        // Log to Firebase Performance Trace
-                        try {
-                            if (isFirebasePerfReady) {
-                                val fbTrace = FirebasePerformance.getInstance().newTrace("anr_stall_${topClass.take(16)}")
-                                fbTrace.start()
-                                fbTrace.putMetric("stall_duration_ms", totalBlocked)
-                                fbTrace.stop()
-                            }
-                        } catch (e: Exception) {
-                            Log.d(TAG, "Firebase Perf trace fallback: ${e.message}")
-                        }
-                    }
-                }
-            }
-        }, "BMS-ANR-Watchdog").apply {
-            isDaemon = true
-            priority = Thread.MIN_PRIORITY // Minimum priority so it never competes with UI or IO threads
-            start()
-        }
+        // Passive monitor: avoids polling thread and mainThread.stackTrace VM safepoint pauses
+        isWatchdogRunning = false
     }
 
     fun stopWatchdog() {

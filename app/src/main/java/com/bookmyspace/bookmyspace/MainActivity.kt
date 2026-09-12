@@ -54,9 +54,8 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
             isMainThread = true
         ) {
             super.onCreate(savedInstanceState)
-            // Initialize Firebase Performance Monitoring & Safe ANR Watchdog
             com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.initialize(this)
-            com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.startWatchdog(thresholdMs = 2500L)
+            com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.start(this)
             enableEdgeToEdge()
         }
 
@@ -160,6 +159,7 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
     }
 
     override fun onDestroy() {
+        com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.stop()
         com.bookmyspace.bookmyspace.data.diagnostics.PerformanceDiagnosticsManager.stopWatchdog()
         super.onDestroy()
         Log.i(TAG, "🛑 [Lifecycle] onDestroy() - Activity being destroyed")

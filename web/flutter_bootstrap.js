@@ -384,52 +384,40 @@
         }
       }
 
-      /* Base 3D Glass Card */
+      /* Base 3D Glass Card - Eye-Catching & Ultra-Smooth 60/120fps */
       .bms-3d-glass-card {
         position: relative;
         border-radius: 20px;
         padding: 16px 14px 14px 14px;
-        min-height: 172px;
+        min-height: 174px;
         cursor: pointer;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         transform-style: preserve-3d;
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
         overflow: hidden;
         will-change: transform, box-shadow;
-        transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
-        animation: bmsFloat3D 6s ease-in-out infinite;
-      }
-      .bms-3d-glass-card:nth-child(1) { animation-delay: 0s; }
-      .bms-3d-glass-card:nth-child(2) { animation-delay: 1.2s; }
-      .bms-3d-glass-card:nth-child(3) { animation-delay: 2.4s; }
-      .bms-3d-glass-card:nth-child(4) { animation-delay: 3.6s; }
-      .bms-3d-glass-card:nth-child(5) { animation-delay: 4.8s; }
-
-      /* Pause float when actively hovering/tilting */
-      .bms-3d-glass-card:hover, .bms-3d-glass-card.active {
-        animation-play-state: paused;
+        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.2s ease;
+        background: #0f172a;
       }
 
-      /* World-Class Holographic Specular Prism Glare Layer */
+      /* World-Class Specular Prismatic Sheen Layer */
       .bms-3d-card-glare {
         position: absolute;
         inset: 0;
         border-radius: inherit;
         pointer-events: none;
-        z-index: 6;
+        z-index: 4;
         opacity: 0;
-        background: radial-gradient(circle 240px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.65), rgba(56, 189, 248, 0.28) 32%, rgba(192, 132, 252, 0.15) 55%, transparent 75%);
-        transition: opacity 0.2s ease;
-        mix-blend-mode: color-dodge;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.04) 50%, transparent 80%);
+        transition: opacity 0.25s ease;
       }
-      .bms-3d-glass-card:hover .bms-3d-card-glare {
+      .bms-3d-glass-card:hover .bms-3d-card-glare,
+      .bms-3d-glass-card.active .bms-3d-card-glare {
         opacity: 1;
       }
 
-      /* Directional Specular Top-Edge Light Bar (Realistic 3D Refractive Light Source) */
+      /* Directional Specular Top-Edge Light Bar (Refractive Laser Light Source) */
       .bms-3d-card-top-light {
         position: absolute;
         top: 0;
@@ -439,10 +427,11 @@
         z-index: 5;
         border-radius: 18px 18px 0 0;
         pointer-events: none;
-        transition: height 0.2s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+        transition: height 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
       }
-      .bms-3d-glass-card:hover .bms-3d-card-top-light, .bms-3d-glass-card.active .bms-3d-card-top-light {
-        height: 5.5px;
+      .bms-3d-glass-card:hover .bms-3d-card-top-light,
+      .bms-3d-glass-card.active .bms-3d-card-top-light {
+        height: 5px;
       }
 
       /* Secondary Overhead Light-Source Glow for Realistic 3D Illumination */
@@ -451,38 +440,40 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 42px;
+        height: 48px;
         pointer-events: none;
         z-index: 2;
-        opacity: 0.4;
+        opacity: 0.45;
         transition: opacity 0.2s ease;
       }
-      .bms-3d-glass-card:hover .bms-3d-card-top-glow, .bms-3d-glass-card.active .bms-3d-card-top-glow {
-        opacity: 0.85;
+      .bms-3d-glass-card:hover .bms-3d-card-top-glow,
+      .bms-3d-glass-card.active .bms-3d-card-top-glow {
+        opacity: 0.9;
       }
 
       /* Ambient Radial Core Glow */
       .bms-3d-glass-card::after {
         content: '';
         position: absolute;
-        top: -30px;
-        right: -30px;
-        width: 100px;
-        height: 100px;
+        top: -24px;
+        right: -24px;
+        width: 110px;
+        height: 110px;
         border-radius: 50%;
         opacity: 0.25;
         transition: opacity 0.25s, transform 0.25s;
         pointer-events: none;
         z-index: 1;
       }
-      .bms-3d-glass-card:hover::after {
-        opacity: 0.75;
-        transform: scale(1.4);
+      .bms-3d-glass-card:hover::after,
+      .bms-3d-glass-card.active::after {
+        opacity: 0.8;
+        transform: scale(1.35);
       }
 
       /* Dynamic Theme 1: Function Halls (Imperial Royal Indigo & Violet) */
       .bms-3d-glass-card.theme-indigo {
-        background: linear-gradient(145deg, rgba(30, 27, 75, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        background: linear-gradient(145deg, rgba(30, 27, 75, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
         border: 1.5px solid rgba(129, 140, 248, 0.45);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       }
@@ -491,19 +482,19 @@
         box-shadow: 0 1px 16px rgba(129, 140, 248, 0.95), 0 0 26px rgba(192, 132, 252, 0.75);
       }
       .bms-3d-glass-card.theme-indigo .bms-3d-card-top-glow {
-        background: linear-gradient(180deg, rgba(129, 140, 248, 0.4) 0%, transparent 100%);
+        background: linear-gradient(180deg, rgba(129, 140, 248, 0.45) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-indigo::after {
         background: radial-gradient(circle, #818cf8 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-indigo:hover, .bms-3d-glass-card.theme-indigo.active {
         border-color: #a5b4fc;
-        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(99, 102, 241, 0.65), 0 0 35px rgba(129, 140, 248, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
+        box-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.85), 0 12px 28px -4px rgba(99, 102, 241, 0.65), 0 0 32px rgba(129, 140, 248, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
       /* Dynamic Theme 2: Lodge & Day Rooms (Molten Sunset Amber & Flame) */
       .bms-3d-glass-card.theme-amber {
-        background: linear-gradient(145deg, rgba(78, 29, 3, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        background: linear-gradient(145deg, rgba(78, 29, 3, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
         border: 1.5px solid rgba(251, 191, 36, 0.45);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(245, 158, 11, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       }
@@ -512,19 +503,19 @@
         box-shadow: 0 1px 16px rgba(245, 158, 11, 0.95), 0 0 26px rgba(251, 191, 36, 0.75);
       }
       .bms-3d-glass-card.theme-amber .bms-3d-card-top-glow {
-        background: linear-gradient(180deg, rgba(245, 158, 11, 0.4) 0%, transparent 100%);
+        background: linear-gradient(180deg, rgba(245, 158, 11, 0.45) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-amber::after {
         background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-amber:hover, .bms-3d-glass-card.theme-amber.active {
         border-color: #fde047;
-        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(245, 158, 11, 0.65), 0 0 35px rgba(251, 191, 36, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
+        box-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.85), 0 12px 28px -4px rgba(245, 158, 11, 0.65), 0 0 32px rgba(251, 191, 36, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
       /* Dynamic Theme 3: PG & Hostels (Hyper Mint Emerald & Aqua) */
       .bms-3d-glass-card.theme-emerald {
-        background: linear-gradient(145deg, rgba(6, 78, 59, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        background: linear-gradient(145deg, rgba(6, 78, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
         border: 1.5px solid rgba(52, 211, 153, 0.45);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       }
@@ -533,19 +524,19 @@
         box-shadow: 0 1px 16px rgba(16, 185, 129, 0.95), 0 0 26px rgba(52, 211, 153, 0.75);
       }
       .bms-3d-glass-card.theme-emerald .bms-3d-card-top-glow {
-        background: linear-gradient(180deg, rgba(16, 185, 129, 0.4) 0%, transparent 100%);
+        background: linear-gradient(180deg, rgba(16, 185, 129, 0.45) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-emerald::after {
         background: radial-gradient(circle, #10b981 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-emerald:hover, .bms-3d-glass-card.theme-emerald.active {
         border-color: #6ee7b7;
-        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(16, 185, 129, 0.65), 0 0 35px rgba(52, 211, 153, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
+        box-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.85), 0 12px 28px -4px rgba(16, 185, 129, 0.65), 0 0 32px rgba(52, 211, 153, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
       /* Dynamic Theme 4: Institutes & Classes (Cyber Sky Blue & Cobalt) */
       .bms-3d-glass-card.theme-sky {
-        background: linear-gradient(145deg, rgba(12, 74, 110, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        background: linear-gradient(145deg, rgba(12, 74, 110, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
         border: 1.5px solid rgba(56, 189, 248, 0.45);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(14, 165, 233, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       }
@@ -554,19 +545,19 @@
         box-shadow: 0 1px 16px rgba(14, 165, 233, 0.95), 0 0 26px rgba(56, 189, 248, 0.75);
       }
       .bms-3d-glass-card.theme-sky .bms-3d-card-top-glow {
-        background: linear-gradient(180deg, rgba(14, 165, 233, 0.4) 0%, transparent 100%);
+        background: linear-gradient(180deg, rgba(14, 165, 233, 0.45) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-sky::after {
         background: radial-gradient(circle, #38bdf8 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-sky:hover, .bms-3d-glass-card.theme-sky.active {
         border-color: #7dd3fc;
-        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(14, 165, 233, 0.65), 0 0 35px rgba(56, 189, 248, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
+        box-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.85), 0 12px 28px -4px rgba(14, 165, 233, 0.65), 0 0 32px rgba(56, 189, 248, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
       /* Dynamic Theme 5: Sports & Turfs (Electric Lime & Turf Green) */
       .bms-3d-glass-card.theme-lime {
-        background: linear-gradient(145deg, rgba(54, 83, 20, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%);
+        background: linear-gradient(145deg, rgba(54, 83, 20, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
         border: 1.5px solid rgba(163, 230, 53, 0.45);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(132, 204, 22, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       }
@@ -575,14 +566,14 @@
         box-shadow: 0 1px 16px rgba(132, 204, 22, 0.95), 0 0 26px rgba(163, 230, 53, 0.75);
       }
       .bms-3d-glass-card.theme-lime .bms-3d-card-top-glow {
-        background: linear-gradient(180deg, rgba(132, 204, 22, 0.4) 0%, transparent 100%);
+        background: linear-gradient(180deg, rgba(132, 204, 22, 0.45) 0%, transparent 100%);
       }
       .bms-3d-glass-card.theme-lime::after {
         background: radial-gradient(circle, #a3e635 0%, transparent 70%);
       }
       .bms-3d-glass-card.theme-lime:hover, .bms-3d-glass-card.theme-lime.active {
         border-color: #bef264;
-        box-shadow: 0 26px 52px -6px rgba(0, 0, 0, 0.85), 0 14px 28px -4px rgba(132, 204, 22, 0.65), 0 0 35px rgba(163, 230, 53, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
+        box-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.85), 0 12px 28px -4px rgba(132, 204, 22, 0.65), 0 0 32px rgba(163, 230, 53, 0.5), inset 0 1.5px 0 rgba(255, 255, 255, 0.5);
       }
 
       /* Parallax Inner Layers for High-End 3D Depth */
@@ -1794,12 +1785,12 @@
               <span>Lodge &amp; Rooms</span>
               <span class="bms-glass-pill-count">5</span>
             </button>
-            <button class="bms-glass-pill" data-cat="hostel_pg">
+            <button class="bms-glass-pill" data-cat="pg_hostels">
               <span class="bms-glass-pill-orb">🏡</span>
               <span>PG &amp; Hostels</span>
               <span class="bms-glass-pill-count">4</span>
             </button>
-            <button class="bms-glass-pill" data-cat="tuition_classes">
+            <button class="bms-glass-pill" data-cat="institutes_classes">
               <span class="bms-glass-pill-orb">📚</span>
               <span>Institutes &amp; Classes</span>
               <span class="bms-glass-pill-count">5</span>
@@ -2698,67 +2689,55 @@
       });
     });
 
-    // World-Class Ultra-Smooth 3D Magnetic Tilt & Specular Reflection Engine
+    // World-Class Ultra-Smooth, Non-Blocking 3D Magnetic Tilt Engine (Zero CPU Hang)
     function attach3DMagneticTilt(el, config) {
       if (!el) return;
       config = config || {};
-      var maxTilt = config.maxTilt || 10;
-      var scale = config.scale || 1.04;
-      var liftY = config.liftY || -8;
+      var maxTilt = config.maxTilt || 8;
+      var scale = config.scale || 1.03;
+      var liftY = config.liftY || -7;
       var perspective = config.perspective || 1000;
-      var isHovered = false;
-      var rafId = null;
-      var currX = 0, currY = 0;
-      var targX = 0, targY = 0;
-      var mousePxX = 0, mousePxY = 0;
+      var rafPending = false;
+      var targetTransform = '';
 
-      function renderLoop() {
-        if (!isHovered) return;
-        // Smooth physics-based dampening for buttery 60/120fps motion
-        currX += (targX - currX) * 0.22;
-        currY += (targY - currY) * 0.22;
-
-        el.style.setProperty('--mouse-x', mousePxX.toFixed(1) + 'px');
-        el.style.setProperty('--mouse-y', mousePxY.toFixed(1) + 'px');
-        el.style.transform = 'perspective(' + perspective + 'px) rotateX(' + currX.toFixed(2) + 'deg) rotateY(' + currY.toFixed(2) + 'deg) translateY(' + liftY + 'px) scale(' + scale + ')';
-
-        rafId = requestAnimationFrame(renderLoop);
-      }
-
-      el.addEventListener('mousemove', function(e) {
+      el.addEventListener('pointermove', function(e) {
         var rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
         var x = e.clientX - rect.left;
         var y = e.clientY - rect.top;
         var normX = (x / rect.width) * 2 - 1;
         var normY = (y / rect.height) * 2 - 1;
 
-        targX = -normY * maxTilt;
-        targY = normX * maxTilt;
-        mousePxX = x;
-        mousePxY = y;
+        var rotX = (-normY * maxTilt).toFixed(2);
+        var rotY = (normX * maxTilt).toFixed(2);
 
-        if (!isHovered) {
-          isHovered = true;
-          el.style.transition = 'none';
-          renderLoop();
+        targetTransform = 'perspective(' + perspective + 'px) rotateX(' + rotX + 'deg) rotateY(' + rotY + 'deg) translateY(' + liftY + 'px) scale(' + scale + ')';
+
+        if (!rafPending) {
+          rafPending = true;
+          requestAnimationFrame(function() {
+            el.style.transform = targetTransform;
+            rafPending = false;
+          });
         }
       }, { passive: true });
 
-      el.addEventListener('mouseleave', function() {
-        isHovered = false;
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-        el.style.transition = 'transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.2s ease';
-        el.style.removeProperty('--mouse-x');
-        el.style.removeProperty('--mouse-y');
+      el.addEventListener('pointerleave', function() {
+        rafPending = false;
+        el.style.transition = 'transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease';
         if (el.classList.contains('active')) {
-          el.style.transform = 'perspective(' + perspective + 'px) rotateX(-4deg) rotateY(3deg) translateY(-5px) scale(1.02)';
+          el.style.transform = 'perspective(' + perspective + 'px) rotateX(-3deg) rotateY(2deg) translateY(-4px) scale(1.02)';
         } else {
           el.style.transform = '';
         }
-      });
+        setTimeout(function() {
+          el.style.transition = '';
+        }, 300);
+      }, { passive: true });
+
+      el.addEventListener('pointerenter', function() {
+        el.style.transition = 'transform 0.1s ease-out';
+      }, { passive: true });
     }
 
     // Attach 3D tilt to spotlight showcase card
@@ -2766,12 +2745,9 @@
       attach3DMagneticTilt(spotlightCard, { maxTilt: 5, scale: 1.015, liftY: -4, perspective: 1200 });
     }
 
-    // Expose tilt attachment for dynamic venue cards
+    // Dynamic venue cards hardware hover
     window._bmsAttachVenueTilt = function() {
-      var venueCards = document.querySelectorAll('.bms-card');
-      venueCards.forEach(function(vc) {
-        attach3DMagneticTilt(vc, { maxTilt: 6.5, scale: 1.02, liftY: -6, perspective: 1100 });
-      });
+      // Hardware CSS acceleration provides instant 60/120fps response
     };
     window._bmsAttachVenueTilt();
 
@@ -2885,6 +2861,15 @@
   }
 
   // 8. Bootstrap Sequence: Mount UI and Notify Readiness to index.html
+  window._bmsForceMount = function() {
+    try {
+      injectStyles();
+      renderApp();
+    } catch(err) {
+      console.error('[BookMySpace Bootstrap] renderApp error:', err);
+    }
+  };
+
   window._bmsBootstrapLoaded = true;
   try {
     injectStyles();

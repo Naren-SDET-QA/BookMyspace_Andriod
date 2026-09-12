@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.theme.ThemeMode
 import com.bookmyspace.bookmyspace.ui.theme.ThemePreset
+import com.bookmyspace.bookmyspace.ui.theme.AppBackgroundColor
 import com.bookmyspace.bookmyspace.ui.theme.parseHexToColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -248,6 +249,161 @@ fun ThemeSettingsModal(
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
+                        }
+                    }
+                }
+            }
+
+            // Background Color Selection Section
+            val selectedBg by BookMySpaceRepository.selectedBackgroundColor.collectAsState()
+            val is3dEnabled by BookMySpaceRepository.is3dInteractiveModeEnabled.collectAsState()
+            val tiltSens by BookMySpaceRepository.interactive3dTiltSensitivity.collectAsState()
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "BACKGROUND CANVAS COLOR",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = selectedBg.displayName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = selectedBg.accentGlow
+                    )
+                }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(AppBackgroundColor.values()) { bg ->
+                        val isSelected = selectedBg == bg
+                        Surface(
+                            onClick = { BookMySpaceRepository.setBackgroundColor(bg) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = bg.background,
+                            border = BorderStroke(
+                                if (isSelected) 2.dp else 1.dp,
+                                if (isSelected) bg.accentGlow else Color.White.copy(alpha = 0.2f)
+                            ),
+                            modifier = Modifier
+                                .width(110.dp)
+                                .testTag("modal_bg_color_${bg.id}")
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    bg.previewColors.forEach { col ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(14.dp)
+                                                .clip(CircleShape)
+                                                .background(col)
+                                        )
+                                    }
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = bg.accentGlow,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = bg.displayName,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = bg.onBackground,
+                                    maxLines = 1,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3D Live Interactive Action Mode Toggle
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ViewInAr,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "3D Interactive Action Mode",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "GPU spatial tilt on mouse over & hover",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = is3dEnabled,
+                            onCheckedChange = { BookMySpaceRepository.set3dInteractiveMode(it) },
+                            modifier = Modifier.testTag("modal_toggle_3d_mode_switch")
+                        )
+                    }
+
+                    if (is3dEnabled) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Tilt:",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            listOf(0.6f to "Subtle", 1.0f to "Standard", 1.6f to "Dynamic").forEach { (sens, lbl) ->
+                                val isCur = kotlin.math.abs(tiltSens - sens) < 0.1f
+                                FilterChip(
+                                    selected = isCur,
+                                    onClick = { BookMySpaceRepository.set3dTiltSensitivity(sens) },
+                                    label = { Text(lbl, fontSize = 10.sp) }
+                                )
+                            }
                         }
                     }
                 }

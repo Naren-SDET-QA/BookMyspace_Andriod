@@ -22,6 +22,177 @@ enum class ThemeMode {
     HIGH_CONTRAST_GLASS
 }
 
+enum class AppBackgroundColor(
+    val id: String,
+    val displayName: String,
+    val subtitle: String,
+    val background: Color,
+    val surface: Color,
+    val surfaceVariant: Color,
+    val onBackground: Color,
+    val onSurface: Color,
+    val isDark: Boolean,
+    val accentGlow: Color,
+    val previewColors: List<Color>
+) {
+    MIDNIGHT_SPACE(
+        id = "midnight_space",
+        displayName = "Midnight Space",
+        subtitle = "Deep celestial dark slate",
+        background = Color(0xFF090E1A),
+        surface = Color(0xFF11192E),
+        surfaceVariant = Color(0xFF1B2640),
+        onBackground = Color(0xFFF1F5F9),
+        onSurface = Color(0xFFF1F5F9),
+        isDark = true,
+        accentGlow = Color(0xFF38BDF8),
+        previewColors = listOf(Color(0xFF090E1A), Color(0xFF11192E), Color(0xFF38BDF8))
+    ),
+    OBSIDIAN_OLED(
+        id = "obsidian_oled",
+        displayName = "Obsidian OLED",
+        subtitle = "Pure pitch black OLED contrast",
+        background = Color(0xFF000000),
+        surface = Color(0xFF0D0F14),
+        surfaceVariant = Color(0xFF1A1D24),
+        onBackground = Color(0xFFFAFAFA),
+        onSurface = Color(0xFFFAFAFA),
+        isDark = true,
+        accentGlow = Color(0xFF8B5CF6),
+        previewColors = listOf(Color(0xFF000000), Color(0xFF1A1D24), Color(0xFF8B5CF6))
+    ),
+    DEEP_NAVY(
+        id = "deep_navy",
+        displayName = "Deep Navy Abyss",
+        subtitle = "Classic BookMySpace night sky",
+        background = Color(0xFF081A2B),
+        surface = Color(0xFF102A43),
+        surfaceVariant = Color(0xFF1C3A5A),
+        onBackground = Color(0xFFF8FAFC),
+        onSurface = Color(0xFFF8FAFC),
+        isDark = true,
+        accentGlow = Color(0xFF00C9A7),
+        previewColors = listOf(Color(0xFF081A2B), Color(0xFF102A43), Color(0xFF00C9A7))
+    ),
+    EMERALD_FOREST(
+        id = "emerald_forest",
+        displayName = "Emerald Turf Dark",
+        subtitle = "Lush botanical green for sports & turfs",
+        background = Color(0xFF031912),
+        surface = Color(0xFF072E22),
+        surfaceVariant = Color(0xFF0F4232),
+        onBackground = Color(0xFFECFDF5),
+        onSurface = Color(0xFFECFDF5),
+        isDark = true,
+        accentGlow = Color(0xFF10B981),
+        previewColors = listOf(Color(0xFF031912), Color(0xFF072E22), Color(0xFF10B981))
+    ),
+    ROYAL_AMETHYST(
+        id = "royal_amethyst",
+        displayName = "Royal Amethyst",
+        subtitle = "Opulent purple banquet & luxury ambiance",
+        background = Color(0xFF120824),
+        surface = Color(0xFF22113F),
+        surfaceVariant = Color(0xFF331C5C),
+        onBackground = Color(0xFFFAF5FF),
+        onSurface = Color(0xFFFAF5FF),
+        isDark = true,
+        accentGlow = Color(0xFFA855F7),
+        previewColors = listOf(Color(0xFF120824), Color(0xFF22113F), Color(0xFFA855F7))
+    ),
+    CRIMSON_EMBER(
+        id = "crimson_ember",
+        displayName = "Crimson Ember Ruby",
+        subtitle = "Warm celebration ruby for grand halls",
+        background = Color(0xFF1A070D),
+        surface = Color(0xFF2E0F18),
+        surfaceVariant = Color(0xFF451925),
+        onBackground = Color(0xFFFFF1F2),
+        onSurface = Color(0xFFFFF1F2),
+        isDark = true,
+        accentGlow = Color(0xFFF43F5E),
+        previewColors = listOf(Color(0xFF1A070D), Color(0xFF2E0F18), Color(0xFFF43F5E))
+    ),
+    CYBERPUNK_3D(
+        id = "cyberpunk_3d",
+        displayName = "Cyberpunk 3D Neon",
+        subtitle = "Crystalline cyber glass with glowing cyan edges",
+        background = Color(0xFF040714),
+        surface = Color(0xFF0B1429),
+        surfaceVariant = Color(0xFF152445),
+        onBackground = Color(0xFFE0F2FE),
+        onSurface = Color(0xFFE0F2FE),
+        isDark = true,
+        accentGlow = Color(0xFF00F0FF),
+        previewColors = listOf(Color(0xFF040714), Color(0xFF0B1429), Color(0xFF00F0FF))
+    ),
+    TITANIUM_SLATE(
+        id = "titanium_slate",
+        displayName = "Titanium Slate",
+        subtitle = "Corporate neutral dark with sleek grey metal",
+        background = Color(0xFF181F2A),
+        surface = Color(0xFF242E3D),
+        surfaceVariant = Color(0xFF323F52),
+        onBackground = Color(0xFFF1F5F9),
+        onSurface = Color(0xFFF1F5F9),
+        isDark = true,
+        accentGlow = Color(0xFF94A3B8),
+        previewColors = listOf(Color(0xFF181F2A), Color(0xFF242E3D), Color(0xFF94A3B8))
+    ),
+    DAYLIGHT_WHITE(
+        id = "daylight_white",
+        displayName = "Pure Daylight White",
+        subtitle = "Crisp, airy high-clarity minimalist day layout",
+        background = Color(0xFFF8FAFC),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFF1F5F9),
+        onBackground = Color(0xFF0F172A),
+        onSurface = Color(0xFF0F172A),
+        isDark = false,
+        accentGlow = Color(0xFF673AB7),
+        previewColors = listOf(Color(0xFFF8FAFC), Color(0xFFFFFFFF), Color(0xFF673AB7))
+    ),
+    WARM_PEARL_SAND(
+        id = "warm_pearl_sand",
+        displayName = "Warm Pearl Cream",
+        subtitle = "Cozy editorial resort aesthetic with soft tint",
+        background = Color(0xFFFAF7F2),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFF4ECE1),
+        onBackground = Color(0xFF1C1917),
+        onSurface = Color(0xFF1C1917),
+        isDark = false,
+        accentGlow = Color(0xFFD97706),
+        previewColors = listOf(Color(0xFFFAF7F2), Color(0xFFF4ECE1), Color(0xFFD97706))
+    ),
+    MINT_BREEZE(
+        id = "mint_breeze",
+        displayName = "Mint Breeze Light",
+        subtitle = "Refreshing subtle light sage and mint",
+        background = Color(0xFFF0FDF4),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFDCFCE7),
+        onBackground = Color(0xFF064E3B),
+        onSurface = Color(0xFF064E3B),
+        isDark = false,
+        accentGlow = Color(0xFF059669),
+        previewColors = listOf(Color(0xFFF0FDF4), Color(0xFFFFFFFF), Color(0xFF059669))
+    ),
+    LILAC_MIST(
+        id = "lilac_mist",
+        displayName = "Soft Lilac Mist",
+        subtitle = "Gentle soft lilac and lavender daylight",
+        background = Color(0xFFFAF5FF),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFF3E8FF),
+        onBackground = Color(0xFF3B0764),
+        onSurface = Color(0xFF3B0764),
+        isDark = false,
+        accentGlow = Color(0xFF9333EA),
+        previewColors = listOf(Color(0xFFFAF5FF), Color(0xFFFFFFFF), Color(0xFF9333EA))
+    )
+}
+
 enum class ThemePreset(
     val id: String,
     val displayName: String,
@@ -182,9 +353,10 @@ fun BookMySpaceTheme(
     val themeMode by BookMySpaceRepository.themeMode.collectAsState()
     val selectedPreset by BookMySpaceRepository.selectedThemePreset.collectAsState()
     val customHex by BookMySpaceRepository.customPrimaryColorHex.collectAsState()
+    val selectedBg by BookMySpaceRepository.selectedBackgroundColor.collectAsState()
 
     val isDark = when (themeMode) {
-        ThemeMode.SYSTEM_DEFAULT -> isSystemInDarkTheme()
+        ThemeMode.SYSTEM_DEFAULT -> if (selectedBg.isDark) true else isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
         ThemeMode.DARK, ThemeMode.HIGH_CONTRAST_GLASS -> true
     }
@@ -196,8 +368,8 @@ fun BookMySpaceTheme(
     }
     val secondaryColor = selectedPreset.secondary
 
-    val colorScheme = when (themeMode) {
-        ThemeMode.HIGH_CONTRAST_GLASS -> {
+    val colorScheme = when {
+        themeMode == ThemeMode.HIGH_CONTRAST_GLASS -> {
             darkColorScheme(
                 primary = primaryColor,
                 onPrimary = Color.Black,
@@ -209,19 +381,20 @@ fun BookMySpaceTheme(
                 onSecondaryContainer = Color(0xFFFFFBEB),
                 tertiary = Color(0xFFFF4081),
                 onTertiary = Color.White,
-                background = Color(0xFF030712), // Deepest obsidian canvas
-                onBackground = Color(0xFFF8FAFC), // High contrast crisp white
-                surface = Color(0xFF0B1329), // Translucent high-contrast glass card base
-                onSurface = Color(0xFFF8FAFC),
-                surfaceVariant = Color(0xFF1E293B),
+                background = selectedBg.background,
+                onBackground = selectedBg.onBackground,
+                surface = selectedBg.surface,
+                onSurface = selectedBg.onSurface,
+                surfaceVariant = selectedBg.surfaceVariant,
                 onSurfaceVariant = Color(0xFFCBD5E1),
-                outline = Color(0xFF38BDF8), // Crisp glowing cyan border
+                outline = Color(0xFF38BDF8),
                 outlineVariant = Color(0xFF475569),
                 error = Color(0xFFFF5252),
                 onError = Color.Black
             )
         }
-        ThemeMode.DARK -> {
+        isDark -> {
+            val bgPalette = if (selectedBg.isDark) selectedBg else AppBackgroundColor.DEEP_NAVY
             darkColorScheme(
                 primary = primaryColor,
                 onPrimary = Color.White,
@@ -233,11 +406,11 @@ fun BookMySpaceTheme(
                 onSecondaryContainer = Color(0xFFF1F5F9),
                 tertiary = CoralAttention,
                 onTertiary = Color.White,
-                background = DeepNavy,
-                onBackground = OffWhite,
-                surface = NavyBlueCard,
-                onSurface = OffWhite,
-                surfaceVariant = Color(0xFF1E293B),
+                background = bgPalette.background,
+                onBackground = bgPalette.onBackground,
+                surface = bgPalette.surface,
+                onSurface = bgPalette.onSurface,
+                surfaceVariant = bgPalette.surfaceVariant,
                 onSurfaceVariant = Color(0xFF94A3B8),
                 outline = Color(0xFF475569),
                 outlineVariant = Color(0xFF334155),
@@ -245,54 +418,30 @@ fun BookMySpaceTheme(
                 onError = Color.White
             )
         }
-        ThemeMode.LIGHT, ThemeMode.SYSTEM_DEFAULT -> {
-            if (isDark) {
-                darkColorScheme(
-                    primary = primaryColor,
-                    onPrimary = Color.White,
-                    primaryContainer = primaryColor.copy(alpha = 0.3f),
-                    onPrimaryContainer = Color(0xFFE2E8F0),
-                    secondary = secondaryColor,
-                    onSecondary = Color.Black,
-                    secondaryContainer = secondaryColor.copy(alpha = 0.25f),
-                    onSecondaryContainer = Color(0xFFF1F5F9),
-                    tertiary = CoralAttention,
-                    onTertiary = Color.White,
-                    background = DeepNavy,
-                    onBackground = OffWhite,
-                    surface = NavyBlueCard,
-                    onSurface = OffWhite,
-                    surfaceVariant = Color(0xFF1E293B),
-                    onSurfaceVariant = Color(0xFF94A3B8),
-                    outline = Color(0xFF475569),
-                    outlineVariant = Color(0xFF334155),
-                    error = Color(0xFFEF4444),
-                    onError = Color.White
-                )
-            } else {
-                lightColorScheme(
-                    primary = primaryColor,
-                    onPrimary = Color.White,
-                    primaryContainer = primaryColor.copy(alpha = 0.12f),
-                    onPrimaryContainer = primaryColor,
-                    secondary = secondaryColor,
-                    onSecondary = Color.White,
-                    secondaryContainer = secondaryColor.copy(alpha = 0.12f),
-                    onSecondaryContainer = secondaryColor,
-                    tertiary = CoralAttention,
-                    onTertiary = Color.White,
-                    background = OffWhite,
-                    onBackground = Color(0xFF0F172A),
-                    surface = Color.White,
-                    onSurface = Color(0xFF0F172A),
-                    surfaceVariant = Color(0xFFF1F5F9),
-                    onSurfaceVariant = Color(0xFF64748B),
-                    outline = Color(0xFFCBD5E1),
-                    outlineVariant = Color(0xFFE2E8F0),
-                    error = Color(0xFFDC2626),
-                    onError = Color.White
-                )
-            }
+        else -> {
+            val bgPalette = if (!selectedBg.isDark) selectedBg else AppBackgroundColor.DAYLIGHT_WHITE
+            lightColorScheme(
+                primary = primaryColor,
+                onPrimary = Color.White,
+                primaryContainer = primaryColor.copy(alpha = 0.12f),
+                onPrimaryContainer = primaryColor,
+                secondary = secondaryColor,
+                onSecondary = Color.White,
+                secondaryContainer = secondaryColor.copy(alpha = 0.12f),
+                onSecondaryContainer = secondaryColor,
+                tertiary = CoralAttention,
+                onTertiary = Color.White,
+                background = bgPalette.background,
+                onBackground = bgPalette.onBackground,
+                surface = bgPalette.surface,
+                onSurface = bgPalette.onSurface,
+                surfaceVariant = bgPalette.surfaceVariant,
+                onSurfaceVariant = Color(0xFF64748B),
+                outline = Color(0xFFCBD5E1),
+                outlineVariant = Color(0xFFE2E8F0),
+                error = Color(0xFFDC2626),
+                onError = Color.White
+            )
         }
     }
 
@@ -301,7 +450,7 @@ fun BookMySpaceTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = colorScheme.surface.toArgb()
+                window.statusBarColor = colorScheme.background.toArgb()
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
             }
         }

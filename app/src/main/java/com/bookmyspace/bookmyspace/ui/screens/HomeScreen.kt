@@ -11,6 +11,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -84,10 +85,14 @@ import com.bookmyspace.bookmyspace.ui.components.pulsingGlow
 import com.bookmyspace.bookmyspace.ui.components.CompactAdaptiveSearchHeader
 import com.bookmyspace.bookmyspace.ui.components.GuestAndRoomPickerDialog
 import com.bookmyspace.bookmyspace.ui.components.SimpleQuickDateDialog
+import com.bookmyspace.bookmyspace.ui.components.CategoryDiscovery3DGlassMatrix
+import com.bookmyspace.bookmyspace.data.repository.HomeCategoryDiscoveryStyle
 import com.bookmyspace.bookmyspace.data.network.NetworkRetryManager
 import com.bookmyspace.bookmyspace.data.network.NetworkSyncState
 import com.bookmyspace.bookmyspace.ui.components.NetworkErrorRetryCard
 import com.bookmyspace.bookmyspace.ui.components.NetworkSyncStatusBanner
+import com.bookmyspace.bookmyspace.ui.components.BackgroundColorSelectionBar
+import com.bookmyspace.bookmyspace.ui.components.interactive3dHover
 import com.bookmyspace.bookmyspace.ui.components.TopSpotlightSection
 import com.bookmyspace.bookmyspace.ui.components.Top3DGlassCategoriesStrip
 import com.bookmyspace.bookmyspace.util.LocalizedStrings
@@ -140,87 +145,89 @@ enum class MainHomeSection(
 ) {
     FUNCTION_HALLS(
         id = "function_halls",
-        title = "Function Halls",
-        subtitle = "Marriage, Convention, Party, Community & Govt Halls",
+        title = "Function Halls & Celebrations",
+        subtitle = "Marriage halls, banquets, convention centers, party halls, lawns and premium celebration spaces.",
         emoji = "🏛️",
         imageUrl = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "venues_function_halls",
-        displayTitle = "Function Halls & Event Spaces",
-        displaySubtitle = "Find AC banquet halls, royal marriage venues, convention centers and open party lawns with verified reviews & catering support.",
-        popularBadge = "# 1 MOST POPULAR",
+        displayTitle = "Function Halls & Celebrations",
+        displaySubtitle = "Marriage halls, banquets, convention centers, party halls, lawns and premium celebration spaces.",
+        popularBadge = "✦ VERIFIED VENUES",
         defaultCount = 120,
-        highlightBadge = "⚡ 10-Min Royal Hold",
+        highlightBadge = "⚡ Instant Hold",
         startsFromPrice = "₹25,000/day",
         subSections = listOf(
-            SubSectionItemModel("Marriage Hall", "💒", 34, "marriage_hall"),
-            SubSectionItemModel("Convention Hall", "🏛️", 18, "convention_center"),
-            SubSectionItemModel("Party / Banquet", "🍸", 28, "banquet_hall"),
-            SubSectionItemModel("Community Hall", "🤝", 15, "community_hall"),
-            SubSectionItemModel("Open Lawn", "🌳", 12, "party_lawn"),
-            SubSectionItemModel("Other Halls & Spaces", "✨", 13, "other_hall", isHighlight = true)
+            SubSectionItemModel("Marriage Halls", "💍", 0, "marriage_hall"),
+            SubSectionItemModel("Banquet Halls", "🎉", 0, "banquet_hall"),
+            SubSectionItemModel("Convention Halls", "🏢", 0, "convention_center"),
+            SubSectionItemModel("Party Halls & Lawns", "🎈", 0, "party_lawn"),
+            SubSectionItemModel("Engagement Halls", "🌸", 0, "engagement_hall"),
+            SubSectionItemModel("Reception Halls", "🥂", 0, "reception_hall"),
+            SubSectionItemModel("Premium / Luxury Halls", "👑", 0, "luxury_hall"),
+            SubSectionItemModel("Outdoor / Garden Venues", "🌿", 0, "outdoor_garden")
         ),
         categoryOptions = listOf(
-            MainSectionCategoryOption("all", "All Halls", "✨"),
-            MainSectionCategoryOption("marriage_hall", "Marriage Hall", "💒", "Weddings & Receptions"),
-            MainSectionCategoryOption("convention_center", "Convention Hall", "🏛️", "Summits & Conferences"),
-            MainSectionCategoryOption("banquet_hall", "Party Hall / Banquet", "🍸", "Birthdays & Dinners"),
-            MainSectionCategoryOption("community_hall", "Community Hall", "🤝", "Family & Society Meets"),
-            MainSectionCategoryOption("govt_hall", "Government Hall", "🏢", "Official & Public Town Halls"),
-            MainSectionCategoryOption("party_lawn", "Open Lawn Ground", "🌳", "Outdoor Weddings & Lawns"),
-            MainSectionCategoryOption("other_hall", "Other Event Spaces", "🎪", "Exhibitions, Open Lawns, Theatres & Custom Grounds")
+            MainSectionCategoryOption("all", "All Function Halls", "🏛️"),
+            MainSectionCategoryOption("marriage_hall", "Marriage Halls", "💍", "Weddings & Grand Receptions"),
+            MainSectionCategoryOption("banquet_hall", "Banquet Halls", "🎉", "Dinners & Private Celebrations"),
+            MainSectionCategoryOption("convention_center", "Convention Halls", "🏢", "Expos, Summits & Conferences"),
+            MainSectionCategoryOption("party_lawn", "Party Halls & Lawns", "🎈", "Open Grounds & Parties"),
+            MainSectionCategoryOption("engagement_hall", "Engagement Halls", "🌸", "Ring Ceremonies & Functions"),
+            MainSectionCategoryOption("reception_hall", "Reception Halls", "🥂", "Cocktails & Evening Receptions"),
+            MainSectionCategoryOption("luxury_hall", "Premium / Luxury Halls", "👑", "5-Star Palaces & Resorts"),
+            MainSectionCategoryOption("outdoor_garden", "Outdoor / Garden Venues", "🌿", "Lush Lawn & Garden Venues")
         )
     ),
-    LODGE_ROOMS(
-        id = "lodge_rooms",
-        title = "Lodge / Rooms",
-        subtitle = "Hotels, Lodges, Guest Houses & Day Rooms",
-        emoji = "🏨",
-        imageUrl = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80",
-        adminSectionKey = "hotels_rooms",
-        displayTitle = "Lodge, Hotels & Day Rooms",
-        displaySubtitle = "Book certified budget lodges, star luxury hotels, family guest houses, hourly day-stays and weekend leisure resorts.",
-        popularBadge = "✨ INSTANT STAY",
-        defaultCount = 95,
-        highlightBadge = "⚡ Zero Pre-Payment Required",
-        startsFromPrice = "₹599/night",
+    SPORTS_TURFS(
+        id = "sports_turfs",
+        title = "Sports & Recreation",
+        subtitle = "Box Cricket, Football Turfs, Gyms, Badminton Courts & Studios",
+        emoji = "⚽",
+        imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80",
+        adminSectionKey = "sports_turfs",
+        displayTitle = "Sports & Recreation",
+        displaySubtitle = "Book box cricket pitches, soccer turfs, badminton courts, gym passes and sports studios.",
+        popularBadge = "# FLOODLIT & 24/7",
+        defaultCount = 85,
+        highlightBadge = "⚡ Instant Pitch Confirmation",
+        startsFromPrice = "₹499/hr",
         subSections = listOf(
-            SubSectionItemModel("Star Hotel", "🏨", 28, "hotel"),
-            SubSectionItemModel("Budget Lodge", "🛏️", 22, "lodge"),
-            SubSectionItemModel("Guest House", "🏡", 14, "guest_house"),
-            SubSectionItemModel("Hourly Room", "⏱️", 12, "hourly_room"),
-            SubSectionItemModel("Nature Resort", "🌴", 9, "resort"),
-            SubSectionItemModel("Other Stays", "🏕️", 10, "other_stay", isHighlight = true)
+            SubSectionItemModel("Box Cricket", "🏏", 0, "sports"),
+            SubSectionItemModel("Football Turf", "⚽", 0, "football_turf"),
+            SubSectionItemModel("Badminton Courts", "🏸", 0, "badminton"),
+            SubSectionItemModel("Gym & Fitness", "🏋️", 0, "gym"),
+            SubSectionItemModel("Swimming Arena", "🏊", 0, "swimming_pool"),
+            SubSectionItemModel("Studios & Desks", "💼", 0, "coworking")
         ),
         categoryOptions = listOf(
-            MainSectionCategoryOption("all", "All Stays", "✨"),
-            MainSectionCategoryOption("hotel", "Hotel", "🏨", "Luxury & Star Stays"),
-            MainSectionCategoryOption("lodge", "Lodge", "🛏️", "Budget & Short-stay Lodges"),
-            MainSectionCategoryOption("guest_house", "Guest House", "🏡", "Quiet & Homely Guest Rooms"),
-            MainSectionCategoryOption("hourly_room", "Hourly / Day Room", "⏱️", "Short Stay & Day Use"),
-            MainSectionCategoryOption("resort", "Resort / Homestay", "🌴", "Getaways & Nature Stays"),
-            MainSectionCategoryOption("other_stay", "Other Accommodations", "🏕️", "Farmhouses, Cottages, Tents & Custom Stays")
+            MainSectionCategoryOption("all", "All Sports & Turfs", "🏆"),
+            MainSectionCategoryOption("sports", "Box Cricket & Turf", "⚽", "Floodlit Astro Turf"),
+            MainSectionCategoryOption("gym", "Gym & Fitness", "🏋️", "Daily Passes & Personal Training"),
+            MainSectionCategoryOption("coworking", "Co-Working Desks", "💼", "High-speed WiFi & Meeting Rooms"),
+            MainSectionCategoryOption("photography_studio", "Photo & Film Studios", "📸", "A/C Green Matte & Lighting"),
+            MainSectionCategoryOption("other", "Other Arenas", "✨", "Custom Gaming & Fitness Arenas")
         )
     ),
     PG_HOSTELS(
         id = "pg_hostels",
-        title = "PG / Hostels",
-        subtitle = "Gents PG, Ladies PG, Hostels & Co-living",
+        title = "PG & Hostels",
+        subtitle = "Gents PG, Ladies PG, Hostels, Single Rooms & Co-living",
         emoji = "🏠",
         imageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "pg_hostels",
-        displayTitle = "PG, Hostels & Co-Living",
-        displaySubtitle = "Discover verified student hostels, executive men's & women's PGs, single rooms and flexible co-living with food and WiFi.",
+        displayTitle = "PG & Hostels",
+        displaySubtitle = "Discover verified student hostels, executive men's & women's PGs, single rooms and flexible co-living.",
         popularBadge = "# ZERO BROKERAGE",
         defaultCount = 140,
         highlightBadge = "⚡ Direct Owner Deposit",
         startsFromPrice = "₹4,500/mo",
         subSections = listOf(
-            SubSectionItemModel("Gents PG", "👨", 42, "gents_pg"),
-            SubSectionItemModel("Ladies PG", "👩", 38, "ladies_pg"),
-            SubSectionItemModel("Student Hostel", "🎒", 24, "student_hostel"),
-            SubSectionItemModel("Co-Living", "🤝", 16, "co_living"),
-            SubSectionItemModel("Single Room", "🔑", 12, "single_room"),
-            SubSectionItemModel("Other Hostels", "🏡", 8, "other_pg", isHighlight = true)
+            SubSectionItemModel("Gents PG", "👨", 0, "gents_pg"),
+            SubSectionItemModel("Ladies PG", "👩", 0, "ladies_pg"),
+            SubSectionItemModel("Student Hostel", "🎒", 0, "student_hostel"),
+            SubSectionItemModel("Co-Living", "🤝", 0, "co_living"),
+            SubSectionItemModel("Single Room", "🔑", 0, "single_room"),
+            SubSectionItemModel("Executive Hostels", "🏡", 0, "other_pg")
         ),
         categoryOptions = listOf(
             MainSectionCategoryOption("all", "All PG & Hostels", "✨"),
@@ -234,24 +241,24 @@ enum class MainHomeSection(
     ),
     INSTITUTES_CLASSES(
         id = "institutes_classes",
-        title = "Institutes / Classes",
-        subtitle = "Coaching, Tuition, Computer, Dance, Music & Sports",
+        title = "Education & Institutes",
+        subtitle = "Coaching, Tuition, Computer, Dance, Music & Academy Classes",
         emoji = "🎓",
         imageUrl = "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80",
         adminSectionKey = "institutes_classes",
-        displayTitle = "Institutes, Coaching & Classes",
-        displaySubtitle = "Enroll in expert tuition centers, IT coding bootcamps, dance academies, singing classes, yoga studios & competitive exams.",
+        displayTitle = "Education & Institutes",
+        displaySubtitle = "Enroll in expert tuition centers, IT coding bootcamps, dance academies, singing classes & competitive exams.",
         popularBadge = "# FREE DEMO CLASS",
         defaultCount = 110,
         highlightBadge = "⚡ Verified Faculty Badges",
         startsFromPrice = "₹999/mo",
         subSections = listOf(
-            SubSectionItemModel("Coaching & Tuition", "📚", 32, "coaching"),
-            SubSectionItemModel("Computer & IT", "💻", 26, "computer_it"),
-            SubSectionItemModel("Dance Academy", "💃", 18, "dance_academy"),
-            SubSectionItemModel("Music Classes", "🎵", 14, "music_class"),
-            SubSectionItemModel("Sports Academy", "🏸", 12, "sports_academy"),
-            SubSectionItemModel("Other Classes", "🎨", 8, "other_class", isHighlight = true)
+            SubSectionItemModel("Coaching & Tuition", "📚", 0, "coaching"),
+            SubSectionItemModel("Computer & IT", "💻", 0, "computer_it"),
+            SubSectionItemModel("Dance Academy", "💃", 0, "dance_academy"),
+            SubSectionItemModel("Music Classes", "🎵", 0, "music_class"),
+            SubSectionItemModel("Sports Academy", "🏸", 0, "sports_academy"),
+            SubSectionItemModel("Arts & Workshops", "🎨", 0, "other_class")
         ),
         categoryOptions = listOf(
             MainSectionCategoryOption("all", "All Classes", "✨"),
@@ -263,34 +270,62 @@ enum class MainHomeSection(
             MainSectionCategoryOption("other_class", "Other Classes & Studios", "🎨", "Art, Yoga, Martial Arts, Cooking & Workshops")
         )
     ),
-    SPORTS_TURFS(
-        id = "sports_turfs",
-        title = "Sports & Turfs",
-        subtitle = "Box Cricket, Football Turfs, Gyms & Studios",
-        emoji = "⚽",
-        imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80",
-        adminSectionKey = "sports_turfs",
-        displayTitle = "Sports, Turfs & Studios",
-        displaySubtitle = "Book box cricket pitches, soccer turfs, badminton courts, gym passes, music studios & coworking desks with instant booking.",
-        popularBadge = "# FLOODLIT & 24/7",
-        defaultCount = 85,
-        highlightBadge = "⚡ Instant Pitch Confirmation",
-        startsFromPrice = "₹499/hr",
+    LODGE_ROOMS(
+        id = "lodge_rooms",
+        title = "Lodges & Stays",
+        subtitle = "Hotels, Lodges, Guest Houses, Hourly Rooms & Resorts",
+        emoji = "🏨",
+        imageUrl = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80",
+        adminSectionKey = "hotels_rooms",
+        displayTitle = "Lodges & Stays",
+        displaySubtitle = "Book certified budget lodges, star luxury hotels, family guest houses, hourly day-stays and weekend leisure resorts.",
+        popularBadge = "✨ INSTANT STAY",
+        defaultCount = 95,
+        highlightBadge = "⚡ Zero Pre-Payment Required",
+        startsFromPrice = "₹599/night",
         subSections = listOf(
-            SubSectionItemModel("Box Cricket", "🏏", 24, "sports"),
-            SubSectionItemModel("Football Turf", "⚽", 18, "sports"),
-            SubSectionItemModel("Badminton", "🏸", 14, "sports"),
-            SubSectionItemModel("Gym Passes", "🏋️", 12, "gym"),
-            SubSectionItemModel("Coworking", "💼", 10, "coworking"),
-            SubSectionItemModel("Other Studios", "✨", 7, "other", isHighlight = true)
+            SubSectionItemModel("Star Hotel", "🏨", 0, "hotel"),
+            SubSectionItemModel("Budget Lodge", "🛏️", 0, "lodge"),
+            SubSectionItemModel("Guest House", "🏡", 0, "guest_house"),
+            SubSectionItemModel("Hourly Room", "⏱️", 0, "hourly_room"),
+            SubSectionItemModel("Nature Resort", "🌴", 0, "resort"),
+            SubSectionItemModel("Homestays & Stays", "🏕️", 0, "other_stay")
         ),
         categoryOptions = listOf(
-            MainSectionCategoryOption("all", "All Turfs & Desks", "🏆"),
-            MainSectionCategoryOption("sports", "Box Cricket & Turf", "⚽", "Floodlit Astro Turf"),
-            MainSectionCategoryOption("gym", "Gym & Fitness", "🏋️", "Daily Passes & Personal Training"),
-            MainSectionCategoryOption("coworking", "Co-Working Desks", "💼", "High-speed WiFi & Meeting Rooms"),
-            MainSectionCategoryOption("photography_studio", "Photo & Film Studios", "📸", "A/C Green Matte & Lighting"),
-            MainSectionCategoryOption("other", "Other Turfs & Desks", "✨", "Custom Gaming & Fitness Arenas")
+            MainSectionCategoryOption("all", "All Stays", "✨"),
+            MainSectionCategoryOption("hotel", "Hotel", "🏨", "Luxury & Star Stays"),
+            MainSectionCategoryOption("lodge", "Lodge", "🛏️", "Budget & Short-stay Lodges"),
+            MainSectionCategoryOption("guest_house", "Guest House", "🏡", "Quiet & Homely Guest Rooms"),
+            MainSectionCategoryOption("hourly_room", "Hourly / Day Room", "⏱️", "Short Stay & Day Use"),
+            MainSectionCategoryOption("resort", "Resort / Homestay", "🌴", "Getaways & Nature Stays"),
+            MainSectionCategoryOption("other_stay", "Other Accommodations", "🏕️", "Farmhouses, Cottages, Tents & Custom Stays")
+        )
+    ),
+    OTHER_ADD(
+        id = "other_add",
+        title = "Other Add",
+        subtitle = "Custom Venues & New Space Categories",
+        emoji = "➕",
+        imageUrl = "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&auto=format&fit=crop&q=80",
+        adminSectionKey = "other_add",
+        displayTitle = "Other Add / Custom Spaces",
+        displaySubtitle = "List your own space, create a custom category or browse unique creative spots.",
+        popularBadge = "+ NEW CATEGORY",
+        defaultCount = 0,
+        highlightBadge = "✨ Instant Listing",
+        startsFromPrice = "Flexible",
+        subSections = listOf(
+            SubSectionItemModel("Add Your Space", "➕", 0, "add_space"),
+            SubSectionItemModel("Custom Category", "✨", 0, "custom_category"),
+            SubSectionItemModel("Photography Studios", "📸", 0, "photography_studio"),
+            SubSectionItemModel("Exhibition Grounds", "🎪", 0, "exhibition_ground")
+        ),
+        categoryOptions = listOf(
+            MainSectionCategoryOption("all", "All Custom Spaces", "✨"),
+            MainSectionCategoryOption("add_space", "Add Space", "➕", "List Venue on BookMySpace"),
+            MainSectionCategoryOption("custom_category", "Custom Category", "✨", "Create New Category"),
+            MainSectionCategoryOption("photography_studio", "Photo Studio", "📸", "A/C Green Matte & Cameras"),
+            MainSectionCategoryOption("exhibition_ground", "Exhibitions", "🎪", "Fairs & Open Arenas")
         )
     )
 }
@@ -350,8 +385,9 @@ fun HomeScreen(
     val userLocationRadius by BookMySpaceRepository.userLocationRadius.collectAsState()
     val appSections by BookMySpaceRepository.appSections.collectAsState()
     val syncState by NetworkRetryManager.syncState.collectAsState()
+    val homeCategoryDiscoveryStyle by BookMySpaceRepository.homeCategoryDiscoveryStyle.collectAsState()
 
-    // Display ONLY the enabled 4 main section cards (governed by Admin feature toggles)
+    // Display enabled main section cards (governed by Admin feature toggles)
     val availableSections = remember(appSections) {
         MainHomeSection.values().filter { section ->
             BookMySpaceRepository.isSectionEnabled(section.adminSectionKey)
@@ -382,6 +418,7 @@ fun HomeScreen(
             MainHomeSection.PG_HOSTELS -> "PG"
             MainHomeSection.INSTITUTES_CLASSES -> "CLASS"
             MainHomeSection.SPORTS_TURFS -> "SPORTS"
+            MainHomeSection.OTHER_ADD -> "OTHER"
             null -> "ALL"
         }
     }
@@ -405,6 +442,7 @@ fun HomeScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAddCustomCategoryDialog by remember { mutableStateOf(false) }
     var customCategoryTargetSection by remember { mutableStateOf<String?>("general") }
+    var showBackgroundAnd3dStudioBar by remember { mutableStateOf(false) }
 
     // Subcategory Horizontal Strip Scroll & Snap State
     val subcategoryRowState = rememberLazyListState()
@@ -525,6 +563,10 @@ fun HomeScreen(
                                 slug.contains("studio") || name.contains("turf") || name.contains("cricket") ||
                                 name.contains("court") || name.contains("gym") || desc.contains("pitch")
                     }
+                    MainHomeSection.OTHER_ADD -> {
+                        slug.contains("other") || slug.contains("studio") || slug.contains("exhibition") ||
+                                name.contains("studio") || name.contains("space") || name.contains("custom")
+                    }
                     null -> true
                 }
 
@@ -541,6 +583,10 @@ fun HomeScreen(
                         "community_hall" -> slug.contains("community") || slug == "community_hall" || name.contains("community") || desc.contains("community")
                         "govt_hall" -> slug.contains("govt") || slug == "govt_hall" || name.contains("government") || name.contains("town hall") || desc.contains("government")
                         "party_lawn" -> slug.contains("lawn") || slug == "party_lawn" || name.contains("lawn") || desc.contains("lawn") || desc.contains("ground")
+                        "engagement_hall" -> slug.contains("engagement") || slug == "engagement_hall" || name.contains("engagement") || desc.contains("engagement")
+                        "reception_hall" -> slug.contains("reception") || slug == "reception_hall" || name.contains("reception") || desc.contains("reception")
+                        "luxury_hall" -> slug.contains("luxury") || slug.contains("palace") || name.contains("palace") || name.contains("luxury")
+                        "outdoor_garden" -> slug.contains("garden") || slug.contains("outdoor") || name.contains("garden") || desc.contains("garden")
                         "hotel", "hotel_stay" -> slug.contains("hotel") || slug == "hotel_stay" || name.contains("hotel") || v.hotelDetails != null
                         "lodge" -> slug.contains("lodge") || slug == "lodge" || name.contains("lodge")
                         "guest_house" -> slug.contains("guest") || slug == "guest_house" || name.contains("guest house") || desc.contains("guest house")
@@ -813,6 +859,57 @@ fun HomeScreen(
                         ) {
                             LanguageSelectorChip(onClick = { showLanguageDialog = true })
 
+                            // 🎨 Background Color & 3D Interactive Action Studio Quick Pill
+                            val currentBg by BookMySpaceRepository.selectedBackgroundColor.collectAsState()
+                            val is3dModeOn by BookMySpaceRepository.is3dInteractiveModeEnabled.collectAsState()
+
+                            Surface(
+                                onClick = { showBackgroundAnd3dStudioBar = !showBackgroundAnd3dStudioBar },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (showBackgroundAnd3dStudioBar) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(
+                                    1.2.dp,
+                                    if (showBackgroundAnd3dStudioBar) MaterialTheme.colorScheme.primary else currentBg.accentGlow.copy(alpha = 0.6f)
+                                ),
+                                modifier = Modifier
+                                    .defaultMinSize(minHeight = 44.dp)
+                                    .interactive3dHover(
+                                        enabled = true,
+                                        shape = RoundedCornerShape(20.dp),
+                                        maxTiltDegrees = 8f,
+                                        scaleOnHover = 1.05f
+                                    )
+                                    .testTag("home_topbar_bg_3d_studio_btn")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(currentBg.background)
+                                            .border(1.dp, currentBg.accentGlow, CircleShape)
+                                    )
+                                    Text(
+                                        text = "Colors & 3D",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (is3dModeOn) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF10B981))
+                                        )
+                                    }
+                                }
+                            }
+
                             if (user == null) {
                                 FilledTonalButton(
                                     onClick = onNavigateToLogin,
@@ -946,6 +1043,12 @@ fun HomeScreen(
                         },
                         modifier = Modifier.padding(top = 4.dp)
                     )
+
+                    // 🎨 Interactive Background Canvas & 3D Action Studio Bar
+                    BackgroundColorSelectionBar(
+                        isVisible = showBackgroundAnd3dStudioBar,
+                        onClose = { showBackgroundAnd3dStudioBar = false }
+                    )
                 }
             }
 
@@ -973,73 +1076,50 @@ fun HomeScreen(
                     )
                 }
 
-                // 3. 🌟 TOP 3D GLASS CATEGORIES ("catagerios" with 3D glass type)
-                item {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Top3DGlassCategoriesStrip(
-                        availableSections = availableSections,
-                        selectedSection = selectedMainSection,
-                        onSelectSection = { section ->
-                            if (section == MainHomeSection.INSTITUTES_CLASSES) {
-                                onNavigateToInstitutes()
-                            } else {
+                // 3. 🌟 CATEGORY DISCOVERY SECTION (Interactive 3D Glass Matrix / Carousel vs Classic Tactile Grid)
+                if (homeCategoryDiscoveryStyle == HomeCategoryDiscoveryStyle.STYLE_1_3D_GLASS_MATRIX ||
+                    homeCategoryDiscoveryStyle == HomeCategoryDiscoveryStyle.STYLE_3_COMPACT_CAROUSEL
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        CategoryDiscovery3DGlassMatrix(
+                            sections = if (availableSections.size >= 5) availableSections else MainHomeSection.values().toList(),
+                            selectedSection = selectedMainSection,
+                            onSectionSelected = { section ->
                                 selectedMainSection = section
                                 selectedCategorySlug = "all"
+                            },
+                            venues = venues,
+                            onSubSectionClick = { subSlug ->
+                                val parentSection = MainHomeSection.values().find { s ->
+                                    s.subSections.any { sub -> sub.slug.equals(subSlug, ignoreCase = true) } ||
+                                            s.categoryOptions.any { opt -> opt.id.equals(subSlug, ignoreCase = true) }
+                                }
+                                if (parentSection != null) {
+                                    selectedMainSection = parentSection
+                                    selectedCategorySlug = subSlug
+                                } else {
+                                    onNavigateToSearch(subSlug)
+                                }
+                            },
+                            onViewAllClick = { section ->
+                                selectedMainSection = section
+                                selectedCategorySlug = "all"
+                            },
+                            onCustomCategoryClick = {
+                                customCategoryTargetSection = selectedMainSection?.adminSectionKey ?: "venues_function_halls"
+                                showAddCustomCategoryDialog = true
                             }
-                        },
-                        onAddCustomCategory = {
-                            customCategoryTargetSection = "general"
-                            showAddCustomCategoryDialog = true
-                        },
-                        modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
-                    )
-                }
-
-                // 4. Explore Spaces by Category Section Header
-                item {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = responsiveInfo.horizontalPadding)
-                    ) {
-                        Text(
-                            text = "Explore Spaces by Category",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            letterSpacing = (-0.5).sp
-                        )
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(
-                            text = "Select a category with 1-click sub-section filters to find your ideal space:",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // 3. 3D Tactile Category Hero Cards Grid (Prominently visible directly on first screen)
-                if (isSimulatingLoading) {
-                    item {
-                        EyeCatchingCategoryChipsSkeleton(
-                            modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
                         )
                     }
                 } else {
-                    responsiveGridItems(
-                        items = availableSections,
-                        columns = responsiveInfo.categoryGridColumns,
-                        key = { it.id },
-                        horizontalSpacing = responsiveInfo.gridSpacing,
-                        verticalSpacing = 16.dp,
-                        contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
-                    ) { section, _ ->
-                        MainSectionBigHeroCard(
-                            section = section,
-                            cityName = userLocationHierarchy.cityName.ifBlank { "Hyderabad" },
-                            onClick = {
+                    // Style 2: Classic Tactile Hero Cards Grid
+                    item {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Top3DGlassCategoriesStrip(
+                            availableSections = availableSections,
+                            selectedSection = selectedMainSection,
+                            onSelectSection = { section ->
                                 if (section == MainHomeSection.INSTITUTES_CLASSES) {
                                     onNavigateToInstitutes()
                                 } else {
@@ -1047,21 +1127,81 @@ fun HomeScreen(
                                     selectedCategorySlug = "all"
                                 }
                             },
-                            onSubSectionClick = { subSlug ->
-                                if (section == MainHomeSection.INSTITUTES_CLASSES) {
-                                    onNavigateToInstitutes()
-                                } else {
-                                    selectedMainSection = section
-                                    selectedCategorySlug = subSlug
-                                }
-                            },
-                            onAddSubSectionClick = {
-                                customCategoryTargetSection = section.id
+                            onAddCustomCategory = {
+                                customCategoryTargetSection = "general"
                                 showAddCustomCategoryDialog = true
                             },
-                            isTabletOrWide = responsiveInfo.isTabletOrWide,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
                         )
+                    }
+
+                    // Explore Spaces by Category Section Header
+                    item {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = responsiveInfo.horizontalPadding)
+                        ) {
+                            Text(
+                                text = "Explore Spaces by Category",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                letterSpacing = (-0.5).sp
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "Select a category with 1-click sub-section filters to find your ideal space:",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    if (isSimulatingLoading) {
+                        item {
+                            EyeCatchingCategoryChipsSkeleton(
+                                modifier = Modifier.padding(horizontal = responsiveInfo.horizontalPadding)
+                            )
+                        }
+                    } else {
+                        responsiveGridItems(
+                            items = availableSections,
+                            columns = responsiveInfo.categoryGridColumns,
+                            key = { it.id },
+                            horizontalSpacing = responsiveInfo.gridSpacing,
+                            verticalSpacing = 16.dp,
+                            contentPadding = PaddingValues(horizontal = responsiveInfo.horizontalPadding)
+                        ) { section, _ ->
+                            MainSectionBigHeroCard(
+                                section = section,
+                                cityName = userLocationHierarchy.cityName.ifBlank { "Hyderabad" },
+                                onClick = {
+                                    if (section == MainHomeSection.INSTITUTES_CLASSES) {
+                                        onNavigateToInstitutes()
+                                    } else {
+                                        selectedMainSection = section
+                                        selectedCategorySlug = "all"
+                                    }
+                                },
+                                onSubSectionClick = { subSlug ->
+                                    if (section == MainHomeSection.INSTITUTES_CLASSES) {
+                                        onNavigateToInstitutes()
+                                    } else {
+                                        selectedMainSection = section
+                                        selectedCategorySlug = subSlug
+                                    }
+                                },
+                                onAddSubSectionClick = {
+                                    customCategoryTargetSection = section.id
+                                    showAddCustomCategoryDialog = true
+                                },
+                                isTabletOrWide = responsiveInfo.isTabletOrWide,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
 
@@ -1305,6 +1445,7 @@ fun HomeScreen(
                         MainHomeSection.PG_HOSTELS -> "PG"
                         MainHomeSection.INSTITUTES_CLASSES -> "CLASS"
                         MainHomeSection.SPORTS_TURFS -> "SPORTS"
+                        MainHomeSection.OTHER_ADD -> "OTHER"
                         null -> "HOTEL"
                     }
                     Box(
@@ -1974,17 +2115,39 @@ data class CategoryVisualTheme(
     val badgeBgColor: Color
 )
 
-fun getCategoryVisualTheme(section: MainHomeSection): CategoryVisualTheme {
+fun getCategoryVisualTheme(section: MainHomeSection?): CategoryVisualTheme {
+    if (section == null) {
+        return CategoryVisualTheme(
+            primaryColor = Color(0xFF0D9488), // Core Signature Teal
+            secondaryColor = Color(0xFF06B6D4), // Cyan Accent
+            gradientColors = listOf(Color(0xFF0F766E), Color(0xFF0D9488), Color(0xFF06B6D4)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFF0FDFA)),
+            rimBorderGradient = listOf(
+                Color(0xFF2DD4BF).copy(alpha = 0.90f),
+                Color(0xFF22D3EE).copy(alpha = 0.75f),
+                Color.White.copy(alpha = 0.65f),
+                Color(0xFF14B8A6).copy(alpha = 0.85f)
+            ),
+            glowColor = Color(0xFF06B6D4),
+            textBadgeColor = Color(0xFF0F766E),
+            badgeBgColor = Color(0xFFCCFBF1)
+        )
+    }
     return when (section) {
         MainHomeSection.FUNCTION_HALLS -> CategoryVisualTheme(
-            primaryColor = Color(0xFF6366F1),
-            secondaryColor = Color(0xFF9333EA),
-            gradientColors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFA855F7)),
-            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFF5F3FF)),
-            rimBorderGradient = listOf(Color(0xFF818CF8).copy(alpha = 0.85f), Color(0xFFC084FC).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
-            glowColor = Color(0xFF8B5CF6),
-            textBadgeColor = Color(0xFF4F46E5),
-            badgeBgColor = Color(0xFFEEF2FF)
+            primaryColor = Color(0xFF0D9488), // Core Signature Teal
+            secondaryColor = Color(0xFF06B6D4), // Cyan Accent
+            gradientColors = listOf(Color(0xFF0F766E), Color(0xFF0D9488), Color(0xFF06B6D4)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFF0FDFA)),
+            rimBorderGradient = listOf(
+                Color(0xFF2DD4BF).copy(alpha = 0.90f),
+                Color(0xFF22D3EE).copy(alpha = 0.75f),
+                Color.White.copy(alpha = 0.65f),
+                Color(0xFF14B8A6).copy(alpha = 0.85f)
+            ),
+            glowColor = Color(0xFF06B6D4), // Cyan depth glow
+            textBadgeColor = Color(0xFF0F766E),
+            badgeBgColor = Color(0xFFCCFBF1) // Frosted mint/cyan badge
         )
         MainHomeSection.LODGE_ROOMS -> CategoryVisualTheme(
             primaryColor = Color(0xFFF59E0B),
@@ -2025,6 +2188,16 @@ fun getCategoryVisualTheme(section: MainHomeSection): CategoryVisualTheme {
             glowColor = Color(0xFF84CC16),
             textBadgeColor = Color(0xFF3F6212),
             badgeBgColor = Color(0xFFECFCCB)
+        )
+        MainHomeSection.OTHER_ADD -> CategoryVisualTheme(
+            primaryColor = Color(0xFFEC4899),
+            secondaryColor = Color(0xFF8B5CF6),
+            gradientColors = listOf(Color(0xFFEC4899), Color(0xFFA855F7), Color(0xFF8B5CF6)),
+            glassSurfaceGradient = listOf(Color(0xFFFFFFFF), Color(0xFFFDF2F8)),
+            rimBorderGradient = listOf(Color(0xFFF472B6).copy(alpha = 0.85f), Color(0xFFC084FC).copy(alpha = 0.65f), Color.White.copy(alpha = 0.5f)),
+            glowColor = Color(0xFFEC4899),
+            textBadgeColor = Color(0xFF9D174D),
+            badgeBgColor = Color(0xFFFCE7F3)
         )
     }
 }
@@ -2112,14 +2285,13 @@ fun MainSectionBigHeroCard(
                 ambientColor = theme.glowColor.copy(alpha = if (isHovered) 0.50f else 0.20f),
                 spotColor = theme.primaryColor.copy(alpha = if (isHovered) 0.72f else 0.32f)
             )
-            .graphicsLayer {
-                rotationX = tiltX
-                rotationY = tiltY
-                translationY = liftY
-                scaleX = scale
-                scaleY = scale
-                cameraDistance = 16f * density
-            }
+            .interactive3dHover(
+                enabled = true,
+                shape = RoundedCornerShape(18.dp),
+                maxTiltDegrees = 14f,
+                scaleOnHover = 1.025f,
+                elevationOnHover = 18.dp
+            )
     ) {
         Box(
             modifier = Modifier

@@ -50,6 +50,10 @@ fun GlobalErrorBoundary(
     val healthReport by AppHealthManager.healthReport.collectAsState()
     val isAlertDismissed by AppHealthManager.criticalAlertDismissed.collectAsState()
 
+    val isUiHanging by com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.isUiHanging.collectAsState()
+    val hangHealingMessage by com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.lastHealingMessage.collectAsState()
+    val isSafePerfMode by com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.isSafePerformanceMode.collectAsState()
+
     if (hasError) {
         // Recovery Screen
         ErrorRecoveryScreen(
@@ -134,6 +138,90 @@ fun GlobalErrorBoundary(
                                 contentDescription = "Dismiss Banner",
                                 modifier = Modifier.size(16.dp)
                             )
+                        }
+                    }
+                }
+            }
+
+            // 🛡️ Real-Time Self-Healing & Anti-Hang Notification Pill
+            AnimatedVisibility(
+                visible = hangHealingMessage != null || isUiHanging,
+                enter = fadeIn() + slideInVertically { -it },
+                exit = fadeOut() + slideOutVertically { -it },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 16.dp, vertical = if (healthReport.alertBannerMessage != null && !isAlertDismissed) 92.dp else 40.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isUiHanging) Color(0xFF7F1D1D) else Color(0xFF064E3B),
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = if (isUiHanging) Color(0xFFEF4444) else Color(0xFF10B981)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = if (isUiHanging) "⚠️" else "🛡️",
+                            fontSize = 18.sp
+                        )
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isUiHanging) "UI Unresponsiveness Detected" else "Self-Healing Engine Active",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = Color.White
+                            )
+                            Text(
+                                text = if (isUiHanging) {
+                                    "Watchdog detected main thread stall. Initiating recovery..."
+                                } else {
+                                    hangHealingMessage ?: "Anti-hang protocols applied. Running 60fps Safe Mode."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+
+                        if (isUiHanging) {
+                            Button(
+                                onClick = {
+                                    com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.triggerEmergencySelfHeal("User unstick action")
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFEF4444),
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.defaultMinSize(minHeight = 32.dp)
+                            ) {
+                                Text("⚡ Unstick", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    com.bookmyspace.bookmyspace.data.healing.AppHangSelfHealingWatchdog.clearLastHealingMessage()
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss Self-Healing Notice",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }

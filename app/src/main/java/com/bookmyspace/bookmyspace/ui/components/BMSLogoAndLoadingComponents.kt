@@ -414,25 +414,30 @@ fun BMSLogoPulseLoader(
 
         if (showProgressBar) {
             Spacer(modifier = Modifier.height(16.dp))
-            // High-Tech Shimmering Linear Progress Bar
+            // High-Tech Shimmering Linear Progress Bar with Cyan/Teal Palette
             Box(
                 modifier = Modifier
-                    .width(180.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .width(190.dp)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                    .testTag("loading_progress_bar_container")
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .testTag("loading-progress-fill")
                         .shimmerLoading(
-                            durationMillis = 900,
+                            durationMillis = 2800, // Slower, more deliberate shimmer animation
                             shimmerColors = listOf(
-                                Color(0xFF10B981),
-                                Color(0xFF38BDF8),
-                                Color(0xFFFFFFFF),
-                                Color(0xFF38BDF8),
-                                Color(0xFF10B981)
+                                Color(0xFF0F766E), // Deep Teal
+                                Color(0xFF0D9488), // Teal
+                                Color(0xFF06B6D4), // Cyan
+                                Color(0xFF22D3EE), // Vivid Cyan
+                                Color(0xFFA5F3FC), // Luminous Shimmer Core
+                                Color(0xFF2DD4BF), // Bright Teal
+                                Color(0xFF14B8A6), // Teal Accent
+                                Color(0xFF0F766E)  // Deep Teal Loop
                             )
                         )
                 )
@@ -454,6 +459,7 @@ fun BMSFullPageLoadingScreen(
     val loadingSteps = remember {
         listOf(
             "Connecting to BookMySpace Cloud ⚡",
+            "Loading 3D glass matrix & spaces...",
             "Checking live turf & hall availability...",
             "Loading verified properties & deals...",
             "Ready for instant booking! 🚀"
