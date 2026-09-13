@@ -77,9 +77,8 @@ class VenueSectionType {
       icon: json['icon'] as String?,
       allowsMultiple: json['allows_multiple'] as bool? ?? false,
       availableSubsections: subsections,
-      editableFields: rawFields is Map
-          ? Map<String, dynamic>.from(rawFields)
-          : const {},
+      editableFields:
+          rawFields is Map ? Map<String, dynamic>.from(rawFields) : const {},
       isActive: json['is_active'] as bool? ?? true,
       displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
     );
@@ -140,16 +139,23 @@ class VenueSection {
     if (published == null) return true;
     return published['is_enabled'] != isEnabled ||
         (published['title'] as String? ?? '') != title ||
+        !_deepEquals(published['title_i18n'] ?? const {}, titleTranslations) ||
         (published['content'] as String? ?? '') != content ||
+        !_deepEquals(
+          published['content_i18n'] ?? const {},
+          contentTranslations,
+        ) ||
         (published['image_url'] as String? ?? '') != imageUrl ||
+        (published['icon'] as String?) != icon ||
         (published['display_order'] as num?)?.toInt() != displayOrder ||
-        !_listEquals(
+        !_orderedListEquals(
           (published['visible_subsections'] as List?)
                   ?.map((e) => e.toString())
                   .toList() ??
               const [],
           visibleSubsections,
-        );
+        ) ||
+        !_deepEquals(published['config'] ?? const {}, config);
   }
 
   factory VenueSection.fromJson(Map<String, dynamic> json) {
@@ -308,12 +314,28 @@ Map<String, String> _stringMap(dynamic value) {
   return const {};
 }
 
-bool _listEquals(List<String> a, List<String> b) {
+bool _orderedListEquals(List<String> a, List<String> b) {
   if (a.length != b.length) return false;
-  final sortedA = [...a]..sort();
-  final sortedB = [...b]..sort();
-  for (var i = 0; i < sortedA.length; i++) {
-    if (sortedA[i] != sortedB[i]) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
   }
   return true;
+}
+
+bool _deepEquals(dynamic a, dynamic b) {
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (!b.containsKey(key) || !_deepEquals(a[key], b[key])) return false;
+    }
+    return true;
+  }
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_deepEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  return a == b;
 }
