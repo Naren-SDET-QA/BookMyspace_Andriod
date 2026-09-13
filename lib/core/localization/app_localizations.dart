@@ -179,6 +179,59 @@ class AppLocalizations {
     'onboardingTitle3': 'Seamless & Secure',
     'onboardingSubtitle3':
         'Pay securely with instant tax invoices and easy booking management.',
+
+    // --- AI booking assistant ---
+    'aiAssistantTitle': 'AI booking assistant',
+    'aiAssistantSubtitle': 'Ask in your own words',
+    'aiInputHint': 'Try: badminton court in Hyderabad under 1000',
+    'aiSend': 'Ask',
+    'aiQuickTitle': 'Or tap a quick ask',
+    'aiOnDeviceNote':
+        'Understood on your device. Nothing is booked until you confirm.',
+    'aiQuick1': 'Badminton court in Hyderabad under 1000',
+    'aiQuick2': 'Marriage hall in Gachibowli under 50k',
+    'aiQuick3': 'Ladies PG near Hitec City',
+    'aiQuick4': 'Football turf with lights',
+    'aiQuick5': 'My bookings',
+    'aiQuick6': 'Clear filters',
+    'aiReplyGreeting':
+        'Hi! Tell me what you want to book — a sport, a hall, a PG or a class.',
+    'aiReplyDiscover':
+        'Here is what I understood. Tap Show results to see matching spaces.',
+    'aiReplyBookNow':
+        'Got it. Open the results, pick a space, then choose a date and slot.',
+    'aiReplyShowBookings': 'Opening your bookings.',
+    'aiReplyCancelBooking':
+        'Open the booking you want to cancel, then tap Cancel booking.',
+    'aiReplyClearFilters': 'Cleared everything. Showing all verified spaces.',
+    'aiReplyUnrecognised':
+        'I did not catch a space, city or budget. Try "function hall in Gachibowli under 50k".',
+    'aiShowResults': 'Show results',
+    'aiOpenBookings': 'Open my bookings',
+    'aiSlotCategory': 'Category',
+    'aiSlotLocation': 'Location',
+    'aiSlotBudget': 'Budget',
+    'aiSlotSort': 'Sort',
+    'aiSlotKeyword': 'Search',
+    'aiCatBadminton': 'Badminton',
+    'aiCatCricket': 'Cricket',
+    'aiCatFootball': 'Football turf',
+    'aiCatMarriageHall': 'Marriage hall',
+    'aiCatFunctionHall': 'Function hall',
+    'aiCatPg': 'PG & hostel',
+    'aiCatGentsPg': 'Gents PG',
+    'aiCatLadiesPg': 'Ladies PG',
+    'aiCatLodge': 'Lodge / rooms',
+    'aiCatClasses': 'Institutes / classes',
+    'aiSortPriceLowToHigh': 'Cheapest first',
+    'aiSortTopRated': 'Top rated',
+    'aiCityHyderabad': 'Hyderabad',
+    'aiCityBangalore': 'Bangalore',
+    'aiCityMumbai': 'Mumbai',
+    'aiCityDelhi': 'Delhi',
+    'aiCityChennai': 'Chennai',
+    'aiCityPune': 'Pune',
+    'aiCityKolkata': 'Kolkata',
   };
 
   static const Map<String, String> _te = {
@@ -327,6 +380,60 @@ class AppLocalizations {
     'onboardingTitle3': 'సురక్షితం మరియు సులభం',
     'onboardingSubtitle3':
         'సురక్షితంగా చెల్లించి టాక్స్ ఇన్‌వాయిస్‌లు మరియు బుకింగ్ నిర్వహణ పొందండి.',
+
+    // --- AI booking assistant ---
+    'aiAssistantTitle': 'AI బుకింగ్ సహాయకుడు',
+    'aiAssistantSubtitle': 'మీ మాటల్లోనే అడగండి',
+    'aiInputHint': 'ఉదా: హైదరాబాద్‌లో 1000 లోపు బ్యాడ్మింటన్ కోర్టు',
+    'aiSend': 'అడగండి',
+    'aiQuickTitle': 'లేదా త్వరిత ప్రశ్నను నొక్కండి',
+    'aiOnDeviceNote':
+        'మీ పరికరంలోనే అర్థం చేసుకున్నాం. మీరు నిర్ధారించే వరకు ఏదీ బుక్ కాదు.',
+    'aiQuick1': 'హైదరాబాద్‌లో 1000 లోపు బ్యాడ్మింటన్ కోర్టు',
+    'aiQuick2': 'గచ్చిబౌలిలో 50 వేల లోపు మ్యారేజ్ హాల్',
+    'aiQuick3': 'హైటెక్ సిటీ దగ్గర లేడీస్ పీజీ',
+    'aiQuick4': 'లైట్లు ఉన్న ఫుట్‌బాల్ టర్ఫ్',
+    'aiQuick5': 'నా బుకింగ్‌లు',
+    'aiQuick6': 'ఫిల్టర్లు తీసివేయి',
+    'aiReplyGreeting':
+        'నమస్తే! మీరు ఏమి బుక్ చేయాలనుకుంటున్నారో చెప్పండి — క్రీడ, హాల్, పీజీ లేదా క్లాస్.',
+    'aiReplyDiscover':
+        'నేను ఇలా అర్థం చేసుకున్నాను. సరిపోలే ప్రదేశాలు చూడటానికి ఫలితాలు చూడండి నొక్కండి.',
+    'aiReplyBookNow':
+        'సరే. ఫలితాలు తెరిచి, ప్రదేశం ఎంచుకుని, తేదీ మరియు స్లాట్ ఎంచుకోండి.',
+    'aiReplyShowBookings': 'మీ బుకింగ్‌లు తెరుస్తున్నాం.',
+    'aiReplyCancelBooking':
+        'రద్దు చేయాలనుకున్న బుకింగ్‌ను తెరిచి, బుకింగ్ రద్దు నొక్కండి.',
+    'aiReplyClearFilters':
+        'అన్నీ తీసివేశాం. ధృవీకరించిన ప్రదేశాలన్నీ చూపిస్తున్నాం.',
+    'aiReplyUnrecognised':
+        'ప్రదేశం, నగరం లేదా బడ్జెట్ అర్థం కాలేదు. "గచ్చిబౌలిలో 50 వేల లోపు ఫంక్షన్ హాల్" ప్రయత్నించండి.',
+    'aiShowResults': 'ఫలితాలు చూడండి',
+    'aiOpenBookings': 'నా బుకింగ్‌లు తెరవండి',
+    'aiSlotCategory': 'వర్గం',
+    'aiSlotLocation': 'ప్రదేశం',
+    'aiSlotBudget': 'బడ్జెట్',
+    'aiSlotSort': 'క్రమం',
+    'aiSlotKeyword': 'శోధన',
+    'aiCatBadminton': 'బ్యాడ్మింటన్',
+    'aiCatCricket': 'క్రికెట్',
+    'aiCatFootball': 'ఫుట్‌బాల్ టర్ఫ్',
+    'aiCatMarriageHall': 'మ్యారేజ్ హాల్',
+    'aiCatFunctionHall': 'ఫంక్షన్ హాల్',
+    'aiCatPg': 'పీజీ & హాస్టల్',
+    'aiCatGentsPg': 'జెంట్స్ పీజీ',
+    'aiCatLadiesPg': 'లేడీస్ పీజీ',
+    'aiCatLodge': 'లాడ్జ్ / గదులు',
+    'aiCatClasses': 'ఇన్‌స్టిట్యూట్ / క్లాసులు',
+    'aiSortPriceLowToHigh': 'చౌకైనవి ముందు',
+    'aiSortTopRated': 'అత్యుత్తమ రేటింగ్',
+    'aiCityHyderabad': 'హైదరాబాద్',
+    'aiCityBangalore': 'బెంగళూరు',
+    'aiCityMumbai': 'ముంబై',
+    'aiCityDelhi': 'ఢిల్లీ',
+    'aiCityChennai': 'చెన్నై',
+    'aiCityPune': 'పూనే',
+    'aiCityKolkata': 'కోల్‌కతా',
   };
 
   static const Map<String, String> _hi = {
@@ -475,6 +582,59 @@ class AppLocalizations {
     'onboardingTitle3': 'सरल और सुरक्षित',
     'onboardingSubtitle3':
         'सुरक्षित भुगतान, टैक्स इनवॉइस और आसान बुकिंग प्रबंधन.',
+
+    // --- AI booking assistant ---
+    'aiAssistantTitle': 'AI बुकिंग सहायक',
+    'aiAssistantSubtitle': 'अपने शब्दों में पूछें',
+    'aiInputHint': 'जैसे: हैदराबाद में 1000 से कम का बैडमिंटन कोर्ट',
+    'aiSend': 'पूछें',
+    'aiQuickTitle': 'या कोई जल्दी सवाल चुनें',
+    'aiOnDeviceNote':
+        'आपके डिवाइस पर ही समझा गया। पुष्टि से पहले कुछ भी बुक नहीं होता।',
+    'aiQuick1': 'हैदराबाद में 1000 से कम का बैडमिंटन कोर्ट',
+    'aiQuick2': 'गच्चीबोवली में 50 हज़ार से कम का मैरिज हॉल',
+    'aiQuick3': 'हाईटेक सिटी के पास लेडीज़ पीजी',
+    'aiQuick4': 'लाइट वाला फुटबॉल टर्फ',
+    'aiQuick5': 'मेरी बुकिंग',
+    'aiQuick6': 'फ़िल्टर हटाएँ',
+    'aiReplyGreeting':
+        'नमस्ते! बताइए आप क्या बुक करना चाहते हैं — खेल, हॉल, पीजी या क्लास।',
+    'aiReplyDiscover':
+        'मैंने यह समझा। मिलते-जुलते स्थान देखने के लिए परिणाम देखें दबाएँ।',
+    'aiReplyBookNow':
+        'ठीक है। परिणाम खोलें, स्थान चुनें, फिर तारीख और समय चुनें।',
+    'aiReplyShowBookings': 'आपकी बुकिंग खोल रहे हैं।',
+    'aiReplyCancelBooking':
+        'जिस बुकिंग को रद्द करना है उसे खोलें, फिर बुकिंग रद्द करें दबाएँ।',
+    'aiReplyClearFilters': 'सब कुछ हटा दिया। सभी सत्यापित स्थान दिखा रहे हैं।',
+    'aiReplyUnrecognised':
+        'मुझे स्थान, शहर या बजट समझ नहीं आया। "गच्चीबोवली में 50 हज़ार से कम का फंक्शन हॉल" आज़माएँ।',
+    'aiShowResults': 'परिणाम देखें',
+    'aiOpenBookings': 'मेरी बुकिंग खोलें',
+    'aiSlotCategory': 'श्रेणी',
+    'aiSlotLocation': 'स्थान',
+    'aiSlotBudget': 'बजट',
+    'aiSlotSort': 'क्रम',
+    'aiSlotKeyword': 'खोज',
+    'aiCatBadminton': 'बैडमिंटन',
+    'aiCatCricket': 'क्रिकेट',
+    'aiCatFootball': 'फुटबॉल टर्फ',
+    'aiCatMarriageHall': 'मैरिज हॉल',
+    'aiCatFunctionHall': 'फंक्शन हॉल',
+    'aiCatPg': 'पीजी और हॉस्टल',
+    'aiCatGentsPg': 'जेंट्स पीजी',
+    'aiCatLadiesPg': 'लेडीज़ पीजी',
+    'aiCatLodge': 'लॉज / कमरे',
+    'aiCatClasses': 'इंस्टीट्यूट / क्लास',
+    'aiSortPriceLowToHigh': 'सबसे सस्ता पहले',
+    'aiSortTopRated': 'उच्च रेटेड',
+    'aiCityHyderabad': 'हैदराबाद',
+    'aiCityBangalore': 'बेंगलुरु',
+    'aiCityMumbai': 'मुंबई',
+    'aiCityDelhi': 'दिल्ली',
+    'aiCityChennai': 'चेन्नई',
+    'aiCityPune': 'पुणे',
+    'aiCityKolkata': 'कोलकाता',
   };
 
   static const Map<String, String> _kn = {
@@ -623,6 +783,60 @@ class AppLocalizations {
     'onboardingTitle3': 'ಸುಲಭ ಮತ್ತು ಸುರಕ್ಷಿತ',
     'onboardingSubtitle3':
         'ಸುರಕ್ಷಿತ ಪಾವತಿ, ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಮತ್ತು ಸುಲಭ ಬುಕಿಂಗ್ ನಿರ್ವಹಣೆ.',
+
+    // --- AI booking assistant ---
+    'aiAssistantTitle': 'AI ಬುಕಿಂಗ್ ಸಹಾಯಕ',
+    'aiAssistantSubtitle': 'ನಿಮ್ಮ ಮಾತಿನಲ್ಲೇ ಕೇಳಿ',
+    'aiInputHint': 'ಉದಾ: ಹೈದರಾಬಾದ್‌ನಲ್ಲಿ 1000 ಒಳಗೆ ಬ್ಯಾಡ್ಮಿಂಟನ್ ಕೋರ್ಟ್',
+    'aiSend': 'ಕೇಳಿ',
+    'aiQuickTitle': 'ಅಥವಾ ತ್ವರಿತ ಪ್ರಶ್ನೆ ಒತ್ತಿ',
+    'aiOnDeviceNote':
+        'ನಿಮ್ಮ ಸಾಧನದಲ್ಲೇ ಅರ್ಥ ಮಾಡಿಕೊಳ್ಳಲಾಗಿದೆ. ನೀವು ದೃಢೀಕರಿಸುವವರೆಗೆ ಏನೂ ಬುಕ್ ಆಗುವುದಿಲ್ಲ.',
+    'aiQuick1': 'ಹೈದರಾಬಾದ್‌ನಲ್ಲಿ 1000 ಒಳಗೆ ಬ್ಯಾಡ್ಮಿಂಟನ್ ಕೋರ್ಟ್',
+    'aiQuick2': 'ಗಚ್ಚಿಬೌಳಿಯಲ್ಲಿ 50 ಸಾವಿರ ಒಳಗೆ ಮ್ಯಾರೇಜ್ ಹಾಲ್',
+    'aiQuick3': 'ಹೈಟೆಕ್ ಸಿಟಿ ಹತ್ತಿರ ಲೇಡೀಸ್ ಪಿಜಿ',
+    'aiQuick4': 'ಲೈಟ್ ಇರುವ ಫುಟ್‌ಬಾಲ್ ಟರ್ಫ್',
+    'aiQuick5': 'ನನ್ನ ಬುಕಿಂಗ್‌ಗಳು',
+    'aiQuick6': 'ಫಿಲ್ಟರ್ ತೆರವುಗೊಳಿಸಿ',
+    'aiReplyGreeting':
+        'ನಮಸ್ಕಾರ! ನೀವು ಏನು ಬುಕ್ ಮಾಡಬೇಕು ಎಂದು ಹೇಳಿ — ಕ್ರೀಡೆ, ಹಾಲ್, ಪಿಜಿ ಅಥವಾ ತರಗತಿ.',
+    'aiReplyDiscover':
+        'ನಾನು ಹೀಗೆ ಅರ್ಥ ಮಾಡಿಕೊಂಡೆ. ಹೊಂದುವ ಸ್ಥಳಗಳನ್ನು ನೋಡಲು ಫಲಿತಾಂಶ ನೋಡಿ ಒತ್ತಿ.',
+    'aiReplyBookNow':
+        'ಸರಿ. ಫಲಿತಾಂಶ ತೆರೆದು, ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ, ನಂತರ ದಿನಾಂಕ ಮತ್ತು ಸ್ಲಾಟ್ ಆಯ್ಕೆಮಾಡಿ.',
+    'aiReplyShowBookings': 'ನಿಮ್ಮ ಬುಕಿಂಗ್‌ಗಳನ್ನು ತೆರೆಯುತ್ತಿದ್ದೇವೆ.',
+    'aiReplyCancelBooking':
+        'ರದ್ದು ಮಾಡಬೇಕಾದ ಬುಕಿಂಗ್ ತೆರೆದು, ಬುಕಿಂಗ್ ರದ್ದು ಒತ್ತಿ.',
+    'aiReplyClearFilters':
+        'ಎಲ್ಲವನ್ನೂ ತೆರವುಗೊಳಿಸಲಾಗಿದೆ. ಪರಿಶೀಲಿತ ಸ್ಥಳಗಳೆಲ್ಲವನ್ನೂ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.',
+    'aiReplyUnrecognised':
+        'ಸ್ಥಳ, ನಗರ ಅಥವಾ ಬಜೆಟ್ ಅರ್ಥವಾಗಲಿಲ್ಲ. "ಗಚ್ಚಿಬೌಳಿಯಲ್ಲಿ 50 ಸಾವಿರ ಒಳಗೆ ಫಂಕ್ಷನ್ ಹಾಲ್" ಪ್ರಯತ್ನಿಸಿ.',
+    'aiShowResults': 'ಫಲಿತಾಂಶ ನೋಡಿ',
+    'aiOpenBookings': 'ನನ್ನ ಬುಕಿಂಗ್ ತೆರೆಯಿರಿ',
+    'aiSlotCategory': 'ವರ್ಗ',
+    'aiSlotLocation': 'ಸ್ಥಳ',
+    'aiSlotBudget': 'ಬಜೆಟ್',
+    'aiSlotSort': 'ವಿಂಗಡಣೆ',
+    'aiSlotKeyword': 'ಹುಡುಕು',
+    'aiCatBadminton': 'ಬ್ಯಾಡ್ಮಿಂಟನ್',
+    'aiCatCricket': 'ಕ್ರಿಕೆಟ್',
+    'aiCatFootball': 'ಫುಟ್‌ಬಾಲ್ ಟರ್ಫ್',
+    'aiCatMarriageHall': 'ಮ್ಯಾರೇಜ್ ಹಾಲ್',
+    'aiCatFunctionHall': 'ಫಂಕ್ಷನ್ ಹಾಲ್',
+    'aiCatPg': 'ಪಿಜಿ ಮತ್ತು ಹಾಸ್ಟೆಲ್',
+    'aiCatGentsPg': 'ಜೆಂಟ್ಸ್ ಪಿಜಿ',
+    'aiCatLadiesPg': 'ಲೇಡೀಸ್ ಪಿಜಿ',
+    'aiCatLodge': 'ಲಾಡ್ಜ್ / ಕೊಠಡಿ',
+    'aiCatClasses': 'ಸಂಸ್ಥೆ / ತರಗತಿ',
+    'aiSortPriceLowToHigh': 'ಅಗ್ಗದ್ದು ಮೊದಲು',
+    'aiSortTopRated': 'ಉನ್ನತ ರೇಟೆಡ್',
+    'aiCityHyderabad': 'ಹೈದರಾಬಾದ್',
+    'aiCityBangalore': 'ಬೆಂಗಳೂರು',
+    'aiCityMumbai': 'ಮುಂಬೈ',
+    'aiCityDelhi': 'ದೆಹಲಿ',
+    'aiCityChennai': 'ಚೆನ್ನೈ',
+    'aiCityPune': 'ಪುಣೆ',
+    'aiCityKolkata': 'ಕೋಲ್ಕತ್ತಾ',
   };
 
   static const Map<String, String> _ta = {
@@ -771,6 +985,60 @@ class AppLocalizations {
     'onboardingTitle3': 'எளிதானதும் பாதுகாப்பானதும்',
     'onboardingSubtitle3':
         'பாதுகாப்பான கட்டணம், வரி விலைப்பட்டியல் மற்றும் எளிய முன்பதிவு நிர்வாகம்.',
+
+    // --- AI booking assistant ---
+    'aiAssistantTitle': 'AI முன்பதிவு உதவியாளர்',
+    'aiAssistantSubtitle': 'உங்கள் வார்த்தைகளில் கேளுங்கள்',
+    'aiInputHint': 'எ.கா: ஹைதராபாத்தில் 1000க்கு உள்ளே பேட்மிண்டன் கோர்ட்',
+    'aiSend': 'கேள்',
+    'aiQuickTitle': 'அல்லது விரைவு கேள்வியைத் தட்டுங்கள்',
+    'aiOnDeviceNote':
+        'உங்கள் சாதனத்திலேயே புரிந்துகொள்ளப்பட்டது. நீங்கள் உறுதிப்படுத்தும் வரை எதுவும் முன்பதிவு ஆகாது.',
+    'aiQuick1': 'ஹைதராபாத்தில் 1000க்கு உள்ளே பேட்மிண்டன் கோர்ட்',
+    'aiQuick2': 'கச்சிபவுலியில் 50 ஆயிரத்திற்கு உள்ளே திருமண மண்டபம்',
+    'aiQuick3': 'ஹைடெக் சிட்டி அருகில் மகளிர் விடுதி',
+    'aiQuick4': 'விளக்குகளுடன் கால்பந்து மைதானம்',
+    'aiQuick5': 'என் முன்பதிவுகள்',
+    'aiQuick6': 'வடிகட்டிகளை அழி',
+    'aiReplyGreeting':
+        'வணக்கம்! நீங்கள் என்ன முன்பதிவு செய்ய விரும்புகிறீர்கள் — விளையாட்டு, மண்டபம், விடுதி அல்லது வகுப்பு.',
+    'aiReplyDiscover':
+        'நான் இப்படிப் புரிந்துகொண்டேன். பொருந்தும் இடங்களைப் பார்க்க முடிவுகளைப் பார் தட்டுங்கள்.',
+    'aiReplyBookNow':
+        'சரி. முடிவுகளைத் திறந்து, இடத்தைத் தேர்ந்தெடுத்து, பிறகு தேதி மற்றும் நேரத்தைத் தேர்ந்தெடுங்கள்.',
+    'aiReplyShowBookings': 'உங்கள் முன்பதிவுகளைத் திறக்கிறோம்.',
+    'aiReplyCancelBooking':
+        'ரத்து செய்ய வேண்டிய முன்பதிவைத் திறந்து, முன்பதிவை ரத்து செய் தட்டுங்கள்.',
+    'aiReplyClearFilters':
+        'எல்லாவற்றையும் அழித்துவிட்டோம். சரிபார்க்கப்பட்ட இடங்களைக் காட்டுகிறோம்.',
+    'aiReplyUnrecognised':
+        'இடம், நகரம் அல்லது பட்ஜெட் புரியவில்லை. "கச்சிபவுலியில் 50 ஆயிரத்திற்கு உள்ளே விழா மண்டபம்" முயற்சிக்கவும்.',
+    'aiShowResults': 'முடிவுகளைப் பார்',
+    'aiOpenBookings': 'என் முன்பதிவுகளைத் திற',
+    'aiSlotCategory': 'வகை',
+    'aiSlotLocation': 'இடம்',
+    'aiSlotBudget': 'பட்ஜெட்',
+    'aiSlotSort': 'வரிசை',
+    'aiSlotKeyword': 'தேடல்',
+    'aiCatBadminton': 'பேட்மிண்டன்',
+    'aiCatCricket': 'கிரிக்கெட்',
+    'aiCatFootball': 'கால்பந்து மைதானம்',
+    'aiCatMarriageHall': 'திருமண மண்டபம்',
+    'aiCatFunctionHall': 'விழா மண்டபம்',
+    'aiCatPg': 'விடுதி & தங்கும் விடுதி',
+    'aiCatGentsPg': 'ஆண்கள் விடுதி',
+    'aiCatLadiesPg': 'மகளிர் விடுதி',
+    'aiCatLodge': 'தங்கும் விடுதி / அறைகள்',
+    'aiCatClasses': 'நிறுவனம் / வகுப்புகள்',
+    'aiSortPriceLowToHigh': 'மலிவானது முதலில்',
+    'aiSortTopRated': 'சிறந்த மதிப்பீடு',
+    'aiCityHyderabad': 'ஹைதராபாத்',
+    'aiCityBangalore': 'பெங்களூரு',
+    'aiCityMumbai': 'மும்பை',
+    'aiCityDelhi': 'டெல்லி',
+    'aiCityChennai': 'சென்னை',
+    'aiCityPune': 'புனே',
+    'aiCityKolkata': 'கொல்கத்தா',
   };
 
   String _t(String key) {
@@ -917,6 +1185,35 @@ class AppLocalizations {
   String get onboardingSubtitle2 => _t('onboardingSubtitle2');
   String get onboardingTitle3 => _t('onboardingTitle3');
   String get onboardingSubtitle3 => _t('onboardingSubtitle3');
+
+  // --- AI booking assistant ---
+  String get aiAssistantTitle => _t('aiAssistantTitle');
+  String get aiAssistantSubtitle => _t('aiAssistantSubtitle');
+  String get aiInputHint => _t('aiInputHint');
+  String get aiSend => _t('aiSend');
+  String get aiQuickTitle => _t('aiQuickTitle');
+  String get aiOnDeviceNote => _t('aiOnDeviceNote');
+  String get aiReplyGreeting => _t('aiReplyGreeting');
+  String get aiShowResults => _t('aiShowResults');
+  String get aiOpenBookings => _t('aiOpenBookings');
+  String get aiSlotCategory => _t('aiSlotCategory');
+  String get aiSlotLocation => _t('aiSlotLocation');
+  String get aiSlotBudget => _t('aiSlotBudget');
+  String get aiSlotSort => _t('aiSlotSort');
+  String get aiSlotKeyword => _t('aiSlotKeyword');
+
+  /// Resolves an assistant reply, chip or suggestion key by name.
+  ///
+  /// The intent engine works in keys so it stays free of Flutter and of any
+  /// single language; the UI resolves them here.
+  String aiText(String key) => _t(key);
+
+  /// The canonical English text for a key.
+  ///
+  /// Assistant suggestion chips are *displayed* in the active language but must
+  /// be *submitted* in the vocabulary the deterministic parser understands, so
+  /// the visible label and the value sent back are looked up separately.
+  static String english(String key) => _en[key] ?? key;
 }
 
 class _AppLocalizationsDelegate

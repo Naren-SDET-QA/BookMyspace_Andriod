@@ -32,6 +32,7 @@ import '../home_appearance_providers.dart';
 import '../home_category_catalog.dart';
 import '../../domain/home_appearance.dart';
 import '../widgets/category_glass_matrix.dart';
+import '../widgets/home_ai_booking_card.dart';
 import '../widgets/home_feed_sections.dart';
 import '../widgets/home_offer_banner.dart';
 import '../widgets/location_picker_sheet.dart';
@@ -376,6 +377,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     cmsBanners: cmsBanners,
                     style: block.style,
                     images: block.images,
+                  ),
+                ),
+              ),
+            ),
+          );
+        case HomeBlockKind.aiBooking:
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 14),
+                child: RepaintBoundary(
+                  child: HomeAiBookingCard(
+                    title: block.title,
+                    subtitle: block.subtitle,
+                    style: block.style,
                   ),
                 ),
               ),

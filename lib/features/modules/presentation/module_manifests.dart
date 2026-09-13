@@ -85,6 +85,17 @@ const optionalModuleManifests = <ModuleManifest>[
         'artwork, background colours and borders.',
     // An empty config resolves to the shipped HomeAppearance.defaults.
   ),
+  ModuleManifest(
+    id: 'ai_booking',
+    name: 'AI booking assistant',
+    description:
+        'Plain-language booking assistant. Understands the customer on-device '
+        'and hands off to the real Search and Bookings screens; it never books '
+        'anything by itself.',
+    // The Home entry card is a separate switch: an admin can keep the
+    // assistant available without giving it a slot on Home.
+    defaultConfig: {'show_on_home': true},
+  ),
 ];
 
 ModuleManifest? moduleManifestFor(String id) {

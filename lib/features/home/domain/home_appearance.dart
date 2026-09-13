@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 /// like the shipped design instead of throwing.
 enum HomeBlockKind {
   offerBanner('offer_banner', 'Offer banner'),
+  aiBooking('ai_booking', 'AI booking assistant'),
   categoryMatrix('category_matrix', 'Category 3D matrix'),
   spotlight('spotlight', 'Spotlight carousel'),
   categoryChips('category_chips', 'Listed categories'),
@@ -222,6 +223,7 @@ class HomeAppearance {
   /// Shipped default: identical to the current production Home.
   static const HomeAppearance defaults = HomeAppearance([
     HomeBlockConfig(kind: HomeBlockKind.offerBanner, order: 10),
+    HomeBlockConfig(kind: HomeBlockKind.aiBooking, order: 15),
     HomeBlockConfig(kind: HomeBlockKind.categoryMatrix, order: 20),
     HomeBlockConfig(
       kind: HomeBlockKind.spotlight,
