@@ -77,6 +77,14 @@ const optionalModuleManifests = <ModuleManifest>[
     defaultEnabled: false,
     defaultConfig: {'reward_amount': 0, 'expiry_days': 30},
   ),
+  ModuleManifest(
+    id: 'home_appearance',
+    name: 'Home layout and theming',
+    description:
+        'Customer Home composition: which blocks appear, their order, titles, '
+        'artwork, background colours and borders.',
+    // An empty config resolves to the shipped HomeAppearance.defaults.
+  ),
 ];
 
 ModuleManifest? moduleManifestFor(String id) {

@@ -13,11 +13,14 @@ import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../booking/domain/booking.dart';
 import '../../../booking/presentation/booking_providers.dart';
 import '../../../courses/presentation/course_providers.dart';
 import '../../../events/presentation/event_providers.dart';
 import '../../../location/presentation/gps_session.dart';
+import '../../../cms/domain/cms_banner.dart';
 import '../../../cms/presentation/cms_providers.dart';
+import '../../../offers/domain/coupon.dart';
 import '../../../offers/presentation/coupon_providers.dart';
 import '../../../modules/presentation/module_providers.dart';
 import '../../../venues/domain/venue.dart';
@@ -25,7 +28,9 @@ import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../../search/presentation/widgets/voice_search_bottom_sheet.dart';
 import '../discovery_location.dart';
+import '../home_appearance_providers.dart';
 import '../home_category_catalog.dart';
+import '../../domain/home_appearance.dart';
 import '../widgets/category_glass_matrix.dart';
 import '../widgets/home_feed_sections.dart';
 import '../widgets/home_offer_banner.dart';
@@ -103,6 +108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cmsBanners =
         ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
     final myBookingsAsync = ref.watch(myBookingsProvider);
+    final visibleBlocks = ref.watch(homeVisibleBlocksProvider);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -164,66 +170,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        responsive.horizontalPadding,
-                        0,
-                        responsive.horizontalPadding,
-                        16,
-                      ),
-                      child: RepaintBoundary(
-                        child: HomeOfferBanner(
-                          coupons: offersEnabled
-                              ? couponsAsync.valueOrNull ?? const []
-                              : const [],
-                          cmsBanners: cmsBanners,
-                        ),
-                      ),
-                    ),
+                  ..._composedSlivers(
+                    responsive: responsive,
+                    blocks: visibleBlocks,
+                    dynamicCats: dynamicCats,
+                    dynamicSubsections: dynamicSubsections,
+                    liveVenues: liveVenues,
+                    ratedVenues: (popularVenuesAsync.valueOrNull ??
+                            const <Venue>[])
+                        .where((venue) => venue.ratingCount > 0)
+                        .toList()
+                      ..sort((a, b) => b.avgRating.compareTo(a.avgRating)),
+                    trending: trending,
+                    coupons: offersEnabled
+                        ? couponsAsync.valueOrNull ?? const []
+                        : const [],
+                    cmsBanners: cmsBanners,
+                    bookings: myBookingsAsync.valueOrNull ?? const [],
+                    theme: theme,
                   ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: responsive.horizontalPadding,
-                        vertical: 8,
-                      ),
-                      child: CategoryDiscoveryPanel(
-                        sections: MainHomeSection.discoveryOrder,
-                        selected: _selectedSection,
-                        pageController: _masterPageController,
-                        categories: dynamicCats,
-                        dynamicSubsections: dynamicSubsections,
-                        venues: liveVenues,
-                        onMasterChanged: (section) {
-                          setState(() => _selectedSection = section);
-                        },
-                        onMasterExplore: (section) =>
-                            _openMaster(section, dynamicCats),
-                        onSubSectionTap: (section, sub) =>
-                            _openSubSection(section, sub, dynamicCats),
-                      ),
-                    ),
-                  ),
-                  if ((popularVenuesAsync.valueOrNull ?? const <Venue>[])
-                      .where((venue) => venue.ratingCount > 0)
-                      .isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 8,
-                        ),
-                        child: HomeSpotlightRow(
-                          venues: (popularVenuesAsync.valueOrNull ??
-                                  const <Venue>[])
-                              .where((venue) => venue.ratingCount > 0)
-                              .toList()
-                            ..sort(
-                                (a, b) => b.avgRating.compareTo(a.avgRating)),
-                        ),
-                      ),
-                    ),
                   if (offersEnabled &&
                       (couponsAsync.valueOrNull ?? const []).isNotEmpty)
                     SliverToBoxAdapter(
@@ -259,51 +224,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         child: HomeHorizontalCourses(
                           courses: coursesAsync.valueOrNull ?? const [],
-                        ),
-                      ),
-                    ),
-                  if (trending.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 8,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Listed categories',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              height: 42,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: trending.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 8),
-                                itemBuilder: (context, index) {
-                                  final cat = trending[index];
-                                  return AnimatedCategoryChip(
-                                    selected: false,
-                                    label: cat.name,
-                                    emoji: cat.icon?.isNotEmpty == true
-                                        ? cat.icon!
-                                        : '🏷️',
-                                    height: 40,
-                                    onTap: () => _openSearch(
-                                      categorySlug: cat.slug,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
@@ -400,18 +320,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
-                  if ((myBookingsAsync.valueOrNull ?? const []).isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 8,
-                        ),
-                        child: HomeRecentBookings(
-                          bookings: myBookingsAsync.valueOrNull ?? const [],
-                        ),
-                      ),
-                    ),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -433,6 +341,145 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  /// Renders the admin-composed Home blocks in configured order.
+  ///
+  /// A block whose data is unavailable is skipped rather than rendered empty,
+  /// so disabling a module or having no data never leaves a gap on Home.
+  List<Widget> _composedSlivers({
+    required ResponsiveInfo responsive,
+    required List<HomeBlockConfig> blocks,
+    required List<VenueCategory> dynamicCats,
+    required List<VenueSubsection> dynamicSubsections,
+    required List<Venue> liveVenues,
+    required List<Venue> ratedVenues,
+    required List<VenueCategory> trending,
+    required List<Coupon> coupons,
+    required List<CmsBanner> cmsBanners,
+    required List<Booking> bookings,
+    required ThemeData theme,
+  }) {
+    final hPad = responsive.horizontalPadding;
+    final slivers = <Widget>[];
+
+    for (final block in blocks) {
+      switch (block.kind) {
+        case HomeBlockKind.offerBanner:
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 16),
+                child: RepaintBoundary(
+                  child: HomeOfferBanner(
+                    coupons: coupons,
+                    cmsBanners: cmsBanners,
+                    style: block.style,
+                    images: block.images,
+                  ),
+                ),
+              ),
+            ),
+          );
+        case HomeBlockKind.categoryMatrix:
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 8),
+                child: CategoryDiscoveryPanel(
+                  sections: MainHomeSection.discoveryOrder,
+                  selected: _selectedSection,
+                  pageController: _masterPageController,
+                  categories: dynamicCats,
+                  dynamicSubsections: dynamicSubsections,
+                  venues: liveVenues,
+                  onMasterChanged: (section) {
+                    setState(() => _selectedSection = section);
+                  },
+                  onMasterExplore: (section) =>
+                      _openMaster(section, dynamicCats),
+                  onSubSectionTap: (section, sub) =>
+                      _openSubSection(section, sub, dynamicCats),
+                ),
+              ),
+            ),
+          );
+        case HomeBlockKind.spotlight:
+          if (ratedVenues.isEmpty) break;
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 8),
+                child: HomeSpotlightRow(
+                  venues: ratedVenues,
+                  title:
+                      block.title.isEmpty ? 'Top-rated spaces' : block.title,
+                  subtitle: block.subtitle,
+                  style: block.style,
+                  images: block.images,
+                ),
+              ),
+            ),
+          );
+        case HomeBlockKind.categoryChips:
+          if (trending.isEmpty) break;
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      block.title.isEmpty ? 'Listed categories' : block.title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                        color: block.style.titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 42,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: trending.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final cat = trending[index];
+                          return AnimatedCategoryChip(
+                            selected: false,
+                            label: cat.name,
+                            emoji: cat.icon?.isNotEmpty == true
+                                ? cat.icon!
+                                : '🏷️',
+                            height: 40,
+                            onTap: () => _openSearch(categorySlug: cat.slug),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        case HomeBlockKind.recentBookings:
+          if (bookings.isEmpty) break;
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 8),
+                child: HomeRecentBookings(bookings: bookings),
+              ),
+            ),
+          );
+        case HomeBlockKind.liveRadar:
+          // Reserved: the Live Space Radar block ships with the map module.
+          break;
+      }
+    }
+    return slivers;
   }
 
   void _showLocationPickerModal() {

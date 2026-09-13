@@ -16,6 +16,7 @@ import '../../../offers/domain/coupon.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
+import '../../domain/home_appearance.dart';
 import '../discovery_location.dart';
 
 class HomeLocationHeader extends StatelessWidget {
@@ -187,35 +188,151 @@ class HomeSearchBar extends StatelessWidget {
   }
 }
 
-class HomeSpotlightRow extends StatelessWidget {
-  const HomeSpotlightRow({required this.venues});
+/// Colourful, dynamic spotlight carousel.
+///
+/// Admin config controls the title, artwork, accent rim and glow; the venue
+/// data itself always comes from live listings.
+class HomeSpotlightRow extends StatefulWidget {
+  const HomeSpotlightRow({
+    super.key,
+    required this.venues,
+    this.title = 'Top-rated spaces',
+    this.subtitle = '',
+    this.style = const HomeBlockStyle(),
+    this.images = const [],
+  });
 
   final List<Venue> venues;
+  final String title;
+  final String subtitle;
+  final HomeBlockStyle style;
+
+  /// Optional admin artwork, cycled across cards when shorter than the list.
+  final List<String> images;
+
+  @override
+  State<HomeSpotlightRow> createState() => _HomeSpotlightRowState();
+}
+
+class _HomeSpotlightRowState extends State<HomeSpotlightRow> {
+  static const _cardWidth = 236.0;
+  static const _gap = 12.0;
+
+  final ScrollController _controller = ScrollController();
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    if (!_controller.hasClients) return;
+    final next = ((_controller.offset + _cardWidth / 2) / (_cardWidth + _gap))
+        .floor()
+        .clamp(0, widget.venues.length - 1);
+    if (next != _index) setState(() => _index = next);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleScroll);
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final venues = widget.venues;
     if (venues.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
+    final style = widget.style;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Top-rated spaces',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-          ),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: AppTheme.brandGradient,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome, size: 11, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    'SPOTLIGHT',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.7,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: style.titleColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_index + 1}/${venues.length}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
+        if (widget.subtitle.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            widget.subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         SizedBox(
           height: 268,
           child: ListView.separated(
+            controller: _controller,
             scrollDirection: Axis.horizontal,
             itemCount: venues.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: _gap),
             itemBuilder: (context, index) {
               final venue = venues[index];
-              return _SpotlightCard(venue: venue);
+              return SizedBox(
+                width: _cardWidth,
+                child: _SpotlightCard(
+                  venue: venue,
+                  imageUrl: widget.images.isEmpty
+                      ? null
+                      : widget.images[index % widget.images.length],
+                  accentGradient: style.backgroundColors.isEmpty
+                      ? null
+                      : LinearGradient(colors: style.backgroundColors),
+                  glow: style.glow,
+                  borderWidth: style.borderWidth,
+                ),
+              );
             },
           ),
         ),
@@ -225,18 +342,41 @@ class HomeSpotlightRow extends StatelessWidget {
 }
 
 class _SpotlightCard extends ConsumerWidget {
-  const _SpotlightCard({required this.venue});
+  const _SpotlightCard({
+    required this.venue,
+    this.imageUrl,
+    this.accentGradient,
+    this.glow = false,
+    this.borderWidth = 1.2,
+  });
 
   final Venue venue;
+  final String? imageUrl;
+  final Gradient? accentGradient;
+  final bool glow;
+  final double borderWidth;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
-    return SizedBox(
-      width: 212,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: glow
+            ? [
+                BoxShadow(
+                  color: AppTheme.cyan.withValues(alpha: 0.28),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
+      ),
       child: GlassmorphicCard(
         borderRadius: 22,
+        borderWidth: borderWidth,
+        accentGradient: accentGradient,
         enableEntrance: false,
         onTap: () => context.push(
           AppRoutes.venueDetails.replaceAll(':id', venue.id),

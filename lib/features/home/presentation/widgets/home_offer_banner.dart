@@ -4,8 +4,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../offers/domain/coupon.dart';
+import '../../domain/home_appearance.dart';
 
 class _BannerSlide {
   const _BannerSlide({
@@ -25,15 +27,26 @@ class _BannerSlide {
 
 /// Premium promotional banner. Uses live coupon records when present;
 /// never invents discounts.
+///
+/// Admin config may repaint the banner (background colours, border, radius,
+/// glow) and supply artwork, without changing the copy rules above.
 class HomeOfferBanner extends StatefulWidget {
   const HomeOfferBanner({
     super.key,
     this.coupons = const [],
     this.cmsBanners = const [],
+    this.style = const HomeBlockStyle(),
+    this.images = const [],
   });
 
   final List<Coupon> coupons;
   final List<CmsBanner> cmsBanners;
+
+  /// Admin paint: background colours, border, radius and glow.
+  final HomeBlockStyle style;
+
+  /// Optional admin artwork. The first entry becomes the banner backdrop.
+  final List<String> images;
 
   @override
   State<HomeOfferBanner> createState() => _HomeOfferBannerState();
@@ -44,6 +57,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   late final AnimationController _drift;
   late final AnimationController _glow;
   late final AnimationController _arrow;
+  late final AnimationController _sheen;
   late final PageController _pageController;
   Timer? _autoPlay;
   int _index = 0;
@@ -96,6 +110,10 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
+    _sheen = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3600),
+    )..repeat();
     _pageController = PageController();
   }
 
@@ -133,11 +151,13 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       if (!_drift.isAnimating) _drift.repeat();
       if (!_glow.isAnimating) _glow.repeat(reverse: true);
       if (!_arrow.isAnimating) _arrow.repeat(reverse: true);
+      if (!_sheen.isAnimating) _sheen.repeat();
       _syncAutoPlay();
     } else {
       _drift.stop();
       _glow.stop();
       _arrow.stop();
+      _sheen.stop();
       _autoPlay?.cancel();
       _autoPlay = null;
     }
@@ -146,6 +166,43 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   bool get _isWidgetTest => WidgetsBinding.instance.runtimeType
       .toString()
       .contains('TestWidgetsFlutterBinding');
+
+  /// Admin colours win when set. With a photo backdrop the gradient becomes a
+  /// scrim so the copy stays legible.
+  List<Color> _backdropColors(
+    HomeBlockStyle style,
+    bool isDark,
+    bool hasImage,
+  ) {
+    if (style.backgroundColors.isNotEmpty) {
+      final base = style.backgroundColors.length == 1
+          ? [style.backgroundColors.first, style.backgroundColors.first]
+          : style.backgroundColors;
+      if (!hasImage) return base;
+      return [
+        for (final color in base) color.withValues(alpha: 0.82),
+      ];
+    }
+    if (hasImage) {
+      return [
+        Colors.black.withValues(alpha: 0.62),
+        Colors.black.withValues(alpha: 0.28),
+        Colors.black.withValues(alpha: 0.70),
+      ];
+    }
+    return isDark
+        ? const [
+            Color(0xFF075E54),
+            Color(0xFF0E7490),
+            Color(0xFF1E3A8A),
+          ]
+        : const [
+            Color(0xFF008F7A),
+            Color(0xFF14B8A6),
+            Color(0xFF38BDF8),
+            Color(0xFF818CF8),
+          ];
+  }
 
   void _syncAutoPlay() {
     _autoPlay?.cancel();
@@ -171,6 +228,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     _drift.dispose();
     _glow.dispose();
     _arrow.dispose();
+    _sheen.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -179,47 +237,74 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   Widget build(BuildContext context) {
     final slides = _slides;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final style = widget.style;
 
     return Semantics(
       label: slides[_index.clamp(0, slides.length - 1)].headline,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_drift, _glow, _arrow]),
+        animation: Listenable.merge([_drift, _glow, _arrow, _sheen]),
         builder: (context, _) {
           final glowT = Curves.easeInOut.transform(_glow.value);
+          final radius = BorderRadius.circular(style.radius);
+          final backdrop =
+              widget.images.isNotEmpty ? widget.images.first : null;
           return Container(
-            height: 156,
+            height: style.height ?? 156,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: radius,
+              border: style.borderColor != null && style.borderWidth > 0
+                  ? Border.all(
+                      color: style.borderColor!,
+                      width: style.borderWidth,
+                    )
+                  : null,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.brand.withValues(alpha: 0.18 + glowT * 0.12),
-                  blurRadius: 22 + glowT * 8,
+                  color: (style.glow ? AppTheme.cyan : AppTheme.brand)
+                      .withValues(
+                    alpha: (style.glow ? 0.26 : 0.18) + glowT * 0.12,
+                  ),
+                  blurRadius: (style.glow ? 30 : 22) + glowT * 8,
                   offset: const Offset(0, 10),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: radius,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
+                  if (backdrop != null)
+                    AppNetworkImage(url: backdrop, fit: BoxFit.cover),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment(-1 + _drift.value * 0.35, -1),
                         end: Alignment(1.2 - _drift.value * 0.25, 1.1),
-                        colors: isDark
-                            ? const [
-                                Color(0xFF075E54),
-                                Color(0xFF0E7490),
-                                Color(0xFF1E3A8A),
-                              ]
-                            : const [
-                                Color(0xFF008F7A),
-                                Color(0xFF14B8A6),
-                                Color(0xFF38BDF8),
-                                Color(0xFF818CF8),
+                        colors: _backdropColors(style, isDark, backdrop != null),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment(-1.7 + _sheen.value * 3.4, 0),
+                    child: IgnorePointer(
+                      child: Transform.rotate(
+                        angle: -0.42,
+                        child: Container(
+                          width: 68,
+                          height: (style.height ?? 156) * 1.8,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.0),
+                                Colors.white.withValues(alpha: 0.20),
+                                Colors.white.withValues(alpha: 0.0),
                               ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

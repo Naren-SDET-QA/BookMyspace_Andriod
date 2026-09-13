@@ -8,6 +8,7 @@ import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
 import '../../features/integrations/presentation/screens/admin_integrations_screen.dart';
 import '../../features/modules/presentation/screens/admin_modules_screen.dart';
+import '../../features/home/presentation/screens/admin_home_appearance_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/auth_user.dart';
@@ -87,6 +88,7 @@ abstract class AppRoutes {
   static const adminCms = '/admin/cms';
   static const adminIntegrations = '/admin/integrations';
   static const adminModules = '/admin/modules';
+  static const adminHomeLayout = '/admin/home-layout';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
   static const ownerCategories = '/owner/categories';
@@ -401,6 +403,14 @@ GoRouter createAppRouter({
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
           child: AdminModulesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminHomeLayout,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminHomeAppearanceScreen(),
         ),
       ),
       GoRoute(
