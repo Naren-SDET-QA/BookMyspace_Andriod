@@ -47,6 +47,15 @@ final venueSubsectionsCatalogProvider =
   return ref.watch(venueRepositoryProvider).subsectionCatalogStream();
 });
 
+/// Complete subsection catalogue for management dashboards and aggregate
+/// counts. Customer surfaces must continue using the active-only provider.
+final allVenueSubsectionsCatalogProvider =
+    StreamProvider<List<VenueSubsection>>((ref) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .subsectionCatalogStream(activeOnly: false);
+});
+
 /// Popular venues provider.
 final popularVenuesProvider = FutureProvider<List<Venue>>((ref) {
   return ref.watch(venueRepositoryProvider).popularVenues();
