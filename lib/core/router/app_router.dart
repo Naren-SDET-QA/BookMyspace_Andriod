@@ -40,6 +40,7 @@ import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
 import '../../features/payments/presentation/screens/payment_screen.dart';
 import '../../features/qr_checkin/presentation/screens/qr_check_in_scanner_screen.dart';
+import '../../features/receipts/presentation/screens/receipt_screen.dart';
 import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/settings/presentation/screens/features_hub_screen.dart';
@@ -71,6 +72,7 @@ abstract class AppRoutes {
   static const bookingFlow = '/venues/:id/book';
   static const paymentFlow = '/bookings/:id/pay';
   static const bookingSuccess = '/bookings/:id/success';
+  static const receipt = '/bookings/:id/receipt';
   static const eventsList = '/events';
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
@@ -506,6 +508,13 @@ GoRouter createAppRouter({
         path: AppRoutes.bookingSuccess,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => BookingSuccessScreen(
+          bookingId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.receipt,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => ReceiptScreen(
           bookingId: state.pathParameters['id'] ?? '',
         ),
       ),

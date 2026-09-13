@@ -201,6 +201,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                             extra: list[i],
                           )
                       : null,
+                  onReceipt: list[i].canViewReceipt
+                      ? () => context.push('/bookings/${list[i].id}/receipt')
+                      : null,
                 ),
               ),
             ),
@@ -358,6 +361,7 @@ class _BookingCard extends StatelessWidget {
     this.onCancel,
     this.onRefund,
     this.onPay,
+    this.onReceipt,
   });
 
   final Booking booking;
@@ -365,6 +369,7 @@ class _BookingCard extends StatelessWidget {
   final VoidCallback? onCancel;
   final VoidCallback? onRefund;
   final VoidCallback? onPay;
+  final VoidCallback? onReceipt;
 
   @override
   Widget build(BuildContext context) {

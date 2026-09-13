@@ -186,6 +186,17 @@ class Booking {
   /// Confirmed (captured) bookings can be refunded.
   bool get canRefund => status == BookingStatus.confirmed;
 
+  /// Bookings whose payment was captured can produce an itemized receipt.
+  ///
+  /// Mirrors the gate in `public.issue_booking_receipt`, which refuses every
+  /// other status on the grounds that a receipt is evidence of payment. Kept in
+  /// step with the migration deliberately: offering a button that always fails
+  /// server-side is worse than not offering it.
+  bool get canViewReceipt =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed ||
+      status == BookingStatus.refunded;
+
   String get displayStart =>
       startTime.length >= 5 ? startTime.substring(0, 5) : startTime;
   String get displayEnd =>
