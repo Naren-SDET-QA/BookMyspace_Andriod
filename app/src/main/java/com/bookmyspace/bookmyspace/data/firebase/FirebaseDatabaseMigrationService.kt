@@ -98,18 +98,24 @@ object FirebaseDatabaseMigrationService {
     fun initialize(context: Context) {
         appContext = context.applicationContext
         try {
-            val resId = context.resources.getIdentifier("firestore_database_id", "string", context.packageName)
-            val dbId = if (resId != 0) context.getString(resId) else "(default)"
-            firestoreDb = if (dbId.isNotEmpty() && dbId != "(default)") {
-                FirebaseFirestore.getInstance(dbId)
+            val apps = com.google.firebase.FirebaseApp.getApps(context)
+            if (apps.isNotEmpty()) {
+                val resId = context.resources.getIdentifier("firestore_database_id", "string", context.packageName)
+                val dbId = if (resId != 0) context.getString(resId) else "(default)"
+                firestoreDb = if (dbId.isNotEmpty() && dbId != "(default)") {
+                    FirebaseFirestore.getInstance(dbId)
+                } else {
+                    FirebaseFirestore.getInstance()
+                }
             } else {
-                FirebaseFirestore.getInstance()
+                Log.i(TAG, "FirebaseApp not initialized; operating Migration Service in offline-first mode.")
             }
             // Fast zero-IO startup: initialize stats from memory without blocking network calls
             initLocalStats()
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Firestore Migration Service: ${e.message}", e)
-            addLog("⚠️ Firestore Init Warning: ${e.message}")
+            Log.w(TAG, "Firestore Migration Service init note: ${e.message}")
+            addLog("ℹ️ Local Mode: ${e.message}")
+            initLocalStats()
         }
     }
 
@@ -141,7 +147,11 @@ object FirebaseDatabaseMigrationService {
             )
         }
         _collectionStatsList.value = stats
-        val currentUser = try { FirebaseAuth.getInstance().currentUser } catch (_: Exception) { null }
+        val currentUser = try {
+            val ctx = appContext
+            val apps = if (ctx != null) com.google.firebase.FirebaseApp.getApps(ctx) else emptyList()
+            if (apps.isNotEmpty()) FirebaseAuth.getInstance().currentUser else null
+        } catch (_: Exception) { null }
         _healthReport.value = CloudDatabaseHealthReport(
             isConnected = firestoreDb != null,
             projectId = "bookmyspace-app",
@@ -162,7 +172,14 @@ object FirebaseDatabaseMigrationService {
 
     fun getFirestore(): FirebaseFirestore? {
         if (firestoreDb == null && appContext != null) {
-            firestoreDb = FirebaseFirestore.getInstance()
+            try {
+                val apps = com.google.firebase.FirebaseApp.getApps(appContext!!)
+                if (apps.isNotEmpty()) {
+                    firestoreDb = FirebaseFirestore.getInstance()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not acquire Firestore instance: ${e.message}")
+            }
         }
         return firestoreDb
     }
@@ -239,7 +256,11 @@ object FirebaseDatabaseMigrationService {
             val stats = deferredStats.awaitAll()
             val totalCloudDocs = stats.sumOf { it.cloudCount }
             val latency = System.currentTimeMillis() - startTime
-            val currentUser = try { FirebaseAuth.getInstance().currentUser } catch (_: Exception) { null }
+            val currentUser = try {
+                val ctx = appContext
+                val apps = if (ctx != null) com.google.firebase.FirebaseApp.getApps(ctx) else emptyList()
+                if (apps.isNotEmpty()) FirebaseAuth.getInstance().currentUser else null
+            } catch (_: Exception) { null }
 
             _collectionStatsList.value = stats
             _healthReport.value = CloudDatabaseHealthReport(

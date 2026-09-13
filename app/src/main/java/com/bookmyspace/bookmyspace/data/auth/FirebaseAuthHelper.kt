@@ -67,19 +67,19 @@ object FirebaseAuthHelper {
      * Safely retrieves the FirebaseAuth instance if available.
      */
     fun getAuthInstance(): FirebaseAuth? {
+        val ctx = com.bookmyspace.bookmyspace.BookMySpaceApplication.appContext
         return try {
-            if (FirebaseApp.getApps(FirebaseApp.getInstance().applicationContext).isNotEmpty()) {
+            val apps = if (ctx != null) FirebaseApp.getApps(ctx) else emptyList()
+            val hasValidFirebase = apps.isNotEmpty() && com.bookmyspace.bookmyspace.BookMySpaceApplication.isGenuineFirebaseApiKey(
+                try { apps.first().options.apiKey } catch (_: Exception) { null }
+            )
+            if (hasValidFirebase) {
                 FirebaseAuth.getInstance()
             } else {
-                FirebaseAuth.getInstance()
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "FirebaseAuth instance retrieval fallback: ${e.message}")
-            try {
-                FirebaseAuth.getInstance()
-            } catch (_: Exception) {
                 null
             }
+        } catch (_: Exception) {
+            null
         }
     }
 

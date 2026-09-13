@@ -72,7 +72,7 @@ fun PeakHoursLineChartComponent(
 
     val quietestHour = remember(hourlyData) {
         // Find minimum during operating hours (e.g. 8 AM to 10 PM)
-        hourlyData.filter { it.hour24 in 8..22 }.minByOrNull { it.occupancyPercentage } ?: hourlyData.first()
+        hourlyData.filter { it.hour24 in 8..22 }.minByOrNull { it.occupancyPercentage } ?: hourlyData.firstOrNull()
     }
 
     Card(
@@ -327,15 +327,16 @@ fun PeakHoursLineChartComponent(
                     }
 
                     // Calculate X, Y coordinates for each hour data point
-                    val stepX = chartWidth / (hourlyData.size - 1)
-                    val points = hourlyData.mapIndexed { index, data ->
-                        val x = paddingLeft + index * stepX
-                        val y = paddingTop + chartHeight * (1f - (data.occupancyPercentage / 100f))
-                        Offset(x, y)
-                    }
+                    if (hourlyData.size >= 2) {
+                        val stepX = chartWidth / (hourlyData.size - 1)
+                        val points = hourlyData.mapIndexed { index, data ->
+                            val x = paddingLeft + index * stepX
+                            val y = paddingTop + chartHeight * (1f - (data.occupancyPercentage / 100f))
+                            Offset(x, y)
+                        }
 
-                    // Draw Gradient Area under Line Chart
-                    if (points.isNotEmpty()) {
+                        // Draw Gradient Area under Line Chart
+                        if (points.isNotEmpty()) {
                         val path = Path().apply {
                             moveTo(points.first().x, points.first().y)
                             for (i in 0 until points.size - 1) {
@@ -420,6 +421,7 @@ fun PeakHoursLineChartComponent(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }

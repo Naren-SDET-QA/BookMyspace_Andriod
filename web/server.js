@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+const PORT = parseInt(process.env.DEFAULT_APP_PORT || '3000', 10);
 const WEB_DIR = path.resolve(__dirname);
 
 const MIME_TYPES = {
@@ -44,7 +44,9 @@ const server = http.createServer((req, res) => {
       }
       res.writeHead(200, {
         'Content-Type': contentType,
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       });
       res.end(content);
     });

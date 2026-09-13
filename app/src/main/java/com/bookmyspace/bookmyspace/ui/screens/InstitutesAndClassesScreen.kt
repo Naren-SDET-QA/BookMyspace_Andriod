@@ -35,6 +35,7 @@ import com.bookmyspace.bookmyspace.ui.components.LocationHierarchyHeaderBar
 import com.bookmyspace.bookmyspace.ui.components.LocationHierarchySelectorDialog
 import kotlinx.coroutines.launch
 import java.util.UUID
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1817,8 +1818,8 @@ fun SingleTabClassBookingSheet(
                         venueId = classItem.instituteId,
                         venueName = "${classItem.instituteName} - ${classItem.title}",
                         venueImageUrl = classItem.coverImageUrl,
-                        date = "Today",
-                        bookingDate = "Today",
+                        date = LocalDate.now().toString(),
+                        bookingDate = LocalDate.now().toString(),
                         startTime = classItem.startTime,
                         endTime = classItem.endTime,
                         slotLabel = "${classItem.startTime} - ${classItem.endTime}",
@@ -1831,7 +1832,7 @@ fun SingleTabClassBookingSheet(
                         status = BookingStatus.CONFIRMED,
                         paymentStatus = "PAID"
                     )
-                    BookMySpaceRepository.addBooking(repoBooking)
+                    BookMySpaceRepository.addBooking(repoBooking, enforceFutureOnly = true)
 
                     onConfirmBooking(confirmed)
                 },

@@ -28,6 +28,7 @@ object DynamicElementManager {
     private const val KEY_ELEMENTS_JSON = "saved_custom_elements_json"
 
     private var sharedPreferences: SharedPreferences? = null
+    private var appContext: Context? = null
     private var firestoreDb: FirebaseFirestore? = null
     private var elementsListener: ListenerRegistration? = null
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -475,15 +476,22 @@ object DynamicElementManager {
      * Initializes persistence context from Application / Activity and attaches Firestore live listener.
      */
     fun initialize(context: Context) {
+        appContext = context.applicationContext
         if (sharedPreferences == null) {
             sharedPreferences = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             loadSavedConfigsFromDisk()
         }
         try {
-            if (firestoreDb == null) {
-                firestoreDb = FirebaseFirestore.getInstance()
+            val apps = com.google.firebase.FirebaseApp.getApps(context)
+            val hasValidFirebase = apps.isNotEmpty() && com.bookmyspace.bookmyspace.BookMySpaceApplication.isGenuineFirebaseApiKey(
+                try { apps.first().options.apiKey } catch (_: Exception) { null }
+            )
+            if (hasValidFirebase) {
+                if (firestoreDb == null) {
+                    firestoreDb = FirebaseFirestore.getInstance()
+                }
+                attachFirestoreLiveListener()
             }
-            attachFirestoreLiveListener()
         } catch (e: Exception) {
             Log.w(TAG, "DynamicElementManager Firestore init: ${e.message}")
         }
@@ -639,7 +647,12 @@ object DynamicElementManager {
         // Sync to Firestore
         scope.launch {
             try {
-                val db = firestoreDb ?: FirebaseFirestore.getInstance().also { firestoreDb = it }
+                val db = firestoreDb ?: run {
+                    val ctx = appContext
+                    if (ctx != null && com.google.firebase.FirebaseApp.getApps(ctx).isNotEmpty()) {
+                        FirebaseFirestore.getInstance().also { firestoreDb = it }
+                    } else null
+                } ?: return@launch
                 val docRef = db.collection("dynamic_elements").document(config.key)
                 val data = mapOf(
                     "key" to modifiedConfig.key,

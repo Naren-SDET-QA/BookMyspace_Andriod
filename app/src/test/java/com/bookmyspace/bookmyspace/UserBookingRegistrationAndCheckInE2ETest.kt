@@ -11,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -41,7 +42,7 @@ class UserBookingRegistrationAndCheckInE2ETest {
             assertNotNull("Target venue must be available", venue)
 
             // STEP 3: Slot selection & Price Calculations
-            val selectedDate = "2026-09-01"
+            val selectedDate = LocalDate.now().plusDays(2).toString()
             val selectedSlot = "06:00 PM - 07:00 PM"
             val basePrice = venue.pricingBaseAmount
             val taxAmount = basePrice * 0.18

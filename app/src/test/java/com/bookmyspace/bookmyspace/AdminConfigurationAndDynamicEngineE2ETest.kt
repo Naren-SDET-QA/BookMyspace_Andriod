@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -95,7 +96,7 @@ class AdminConfigurationAndDynamicEngineE2ETest {
                 id = "admin_b_${UUID.randomUUID().toString().take(6)}",
                 venueId = "venue_hyd_1",
                 venueName = "Royal Convention Centre",
-                bookingDate = "2026-08-30",
+                bookingDate = LocalDate.now().plusDays(2).toString(),
                 slotLabel = "09:00 AM - 05:00 PM",
                 totalAmount = 45000.0,
                 totalPrice = 45000.0,

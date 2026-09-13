@@ -261,22 +261,29 @@ fun BookingScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val venues by BookMySpaceRepository.venues.collectAsState()
-    val venue = venues.firstOrNull { it.id == venueId } ?: venues.first()
+    val venue = venues.firstOrNull { it.id == venueId } ?: venues.firstOrNull() ?: BookMySpaceRepository.sampleVenues.first()
     val user by BookMySpaceRepository.authUser.collectAsState()
     val bookings by BookMySpaceRepository.bookings.collectAsState()
 
-    var selectedDateStr by remember { mutableStateOf("2026-08-08") }
+    var selectedDateStr by remember { mutableStateOf(LocalDate.now().toString()) }
+    val isDateInPast = remember(selectedDateStr) {
+        BookMySpaceRepository.isDateInPast(selectedDateStr)
+    }
     
     val effectiveSlots = remember(venue) {
         if (venue.timeSlots.isNotEmpty()) venue.timeSlots else getCategoryAdaptiveTimeSlots(venue)
     }
 
     // Auto-select initial slot
-    var selectedSlot by remember(venue, selectedDateStr, effectiveSlots) {
-        val openSlots = effectiveSlots.filter { slot ->
-            !BookMySpaceRepository.isSlotAlreadyBooked(venue.id, selectedDateStr, slot.label)
+    var selectedSlot by remember(venue, selectedDateStr, effectiveSlots, isDateInPast) {
+        if (isDateInPast) {
+            mutableStateOf<TimeSlot?>(null)
+        } else {
+            val openSlots = effectiveSlots.filter { slot ->
+                !BookMySpaceRepository.isSlotAlreadyBooked(venue.id, selectedDateStr, slot.label)
+            }
+            mutableStateOf<TimeSlot?>(openSlots.firstOrNull() ?: effectiveSlots.firstOrNull())
         }
-        mutableStateOf<TimeSlot?>(openSlots.firstOrNull() ?: effectiveSlots.firstOrNull())
     }
 
     // Member count and attendee state
@@ -432,8 +439,8 @@ fun BookingScreen(
         BookMySpaceRepository.getDateAvailability(venue.id, selectedDateStr)
     }
 
-    val alternativeSlots: List<TimeSlot> = remember(venue.id, selectedDateStr, currentSlotLabel, isDuplicate, bookings) {
-        if (isDuplicate) {
+    val alternativeSlots: List<TimeSlot> = remember(venue.id, selectedDateStr, currentSlotLabel, isDuplicate, isDateInPast, bookings) {
+        if (isDuplicate && !isDateInPast) {
             BookMySpaceRepository.getAlternativeSlots(venue.id, selectedDateStr, currentSlotLabel)
         } else emptyList()
     }
@@ -541,6 +548,10 @@ fun BookingScreen(
                     if (!isRegistrationConfirmed) {
                         Button(
                             onClick = {
+                                if (isDateInPast) {
+                                    duplicateErrorMsg = "Selected date ($selectedDateStr) has already passed. Only future bookings are allowed."
+                                    return@Button
+                                }
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 val errors = validateRegistrationForm()
                                 registrationValidationErrors = errors
@@ -550,8 +561,9 @@ fun BookingScreen(
                             modifier = Modifier
                                 .height(48.dp)
                                 .testTag("register_and_unlock_payment_button"),
+                            enabled = !isDateInPast,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (areRequiredRegistrationFieldsFilled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                                containerColor = if (isDateInPast) MaterialTheme.colorScheme.surfaceVariant else if (areRequiredRegistrationFieldsFilled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -559,7 +571,7 @@ fun BookingScreen(
                                 Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (areRequiredRegistrationFieldsFilled) "Register & Pay 💳" else "Complete Registration",
+                                    text = if (isDateInPast) "Select Future Date" else if (areRequiredRegistrationFieldsFilled) "Register & Pay 💳" else "Complete Registration",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.5.sp
                                 )
@@ -572,6 +584,11 @@ fun BookingScreen(
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     
                                     // Real-time atomic recheck
+                                    if (isDateInPast || BookMySpaceRepository.isDateInPast(selectedDateStr)) {
+                                        duplicateErrorMsg = "Selected date ($selectedDateStr) is in the past. Only bookings for today or future dates are allowed."
+                                        return@traceBlock
+                                    }
+
                                     val freshDuplicate = BookMySpaceRepository.isSlotAlreadyBooked(venue.id, selectedDateStr, currentSlotLabel)
                                     if (freshDuplicate) {
                                         duplicateErrorMsg = "Slot '$currentSlotLabel' on $selectedDateStr was just booked by another customer! Double booking prevented."
@@ -636,14 +653,14 @@ fun BookingScreen(
                                         customerNotes = specialNotes,
                                         registrationDetails = fullRegDetails
                                     )
-                                    BookMySpaceRepository.addBooking(newBooking)
+                                    BookMySpaceRepository.addBooking(newBooking, enforceFutureOnly = true)
                                     onProceedToPayment(newBooking.id)
                                 }
                             },
                             modifier = Modifier
                                 .height(48.dp)
                                 .testTag("confirm_and_pay_button"),
-                            enabled = selectedSlot != null && !isDuplicate && dateAvailability.status != DateAvailabilityStatus.FULLY_BOOKED,
+                            enabled = !isDateInPast && selectedSlot != null && !isDuplicate && dateAvailability.status != DateAvailabilityStatus.FULLY_BOOKED && dateAvailability.status != DateAvailabilityStatus.SOLD_OUT && dateAvailability.status != DateAvailabilityStatus.PAST_DATE,
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -651,6 +668,7 @@ fun BookingScreen(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = when {
+                                        isDateInPast -> "Select Future Date"
                                         isDuplicate -> "Slot Unavailable"
                                         selectedPaymentMode == "VENUE" -> "Book & Pay at Venue"
                                         isAdvanceTokenSelected -> "⚡ Pay Advance ₹${advanceAmount.toInt()}"
@@ -780,7 +798,7 @@ fun BookingScreen(
                                 Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Selected Slot Unavailable!",
+                                    text = if (isDateInPast) "Past Date Not Allowed!" else "Selected Slot Unavailable!",
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
                                     fontSize = 14.sp
@@ -788,7 +806,7 @@ fun BookingScreen(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = duplicateErrorMsg ?: "Another user recently confirmed '$currentSlotLabel' on $selectedDateStr. Prevent duplicate double-booking by selecting an alternative below.",
+                                text = duplicateErrorMsg ?: if (isDateInPast) "Selected date ($selectedDateStr) is in the past. Only bookings for today or future dates are permitted." else "Another user recently confirmed '$currentSlotLabel' on $selectedDateStr. Prevent duplicate double-booking by selecting an alternative below.",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -862,20 +880,27 @@ fun BookingScreen(
 
             // Quick Shortcut Date Chips
             item {
-                val quickDates = listOf(
-                    "2026-08-08" to "Today, Aug 08",
-                    "2026-08-09" to "Tomorrow, Aug 09",
-                    "2026-08-10" to "Sun, Aug 10",
-                    "2026-08-11" to "Mon, Aug 11",
-                    "2026-08-15" to "Sat, Aug 15"
-                )
+                val today = remember { LocalDate.now() }
+                val dtfMonthDay = remember { DateTimeFormatter.ofPattern("MMM dd") }
+                val dtfDay = remember { DateTimeFormatter.ofPattern("EEE, MMM dd") }
+                val quickDates = remember(today) {
+                    listOf(
+                        today.toString() to "Today, ${today.format(dtfMonthDay)}",
+                        today.plusDays(1).toString() to "Tomorrow, ${today.plusDays(1).format(dtfMonthDay)}",
+                        today.plusDays(2).toString() to today.plusDays(2).format(dtfDay),
+                        today.plusDays(3).toString() to today.plusDays(3).format(dtfDay),
+                        today.plusDays(7).toString() to "Next Week, ${today.plusDays(7).format(dtfMonthDay)}"
+                    )
+                }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(quickDates) { (dateCode, label) ->
                         val isSelected = selectedDateStr == dateCode
                         val avail = BookMySpaceRepository.getDateAvailability(venue.id, dateCode)
                         val isBlocked = avail.status == DateAvailabilityStatus.FULLY_BOOKED ||
                                 avail.status == DateAvailabilityStatus.SOLD_OUT ||
-                                avail.status == DateAvailabilityStatus.MAINTENANCE_BLOCKED
+                                avail.status == DateAvailabilityStatus.MAINTENANCE_BLOCKED ||
+                                avail.status == DateAvailabilityStatus.PAST_DATE ||
+                                BookMySpaceRepository.isDateInPast(dateCode)
 
                         FilterChip(
                             selected = isSelected,
@@ -908,12 +933,16 @@ fun BookingScreen(
                     Column {
                         Text("Select Time Slot", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
-                            text = "Showing slots for $selectedDateStr (${dateAvailability.availableSlotsCount} available)",
+                            text = if (isDateInPast) "Selected date is in the past (Bookings disabled)" else "Showing slots for $selectedDateStr (${dateAvailability.availableSlotsCount} available)",
                             fontSize = 11.5.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isDateInPast) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    if (dateAvailability.status == DateAvailabilityStatus.FULLY_BOOKED || dateAvailability.status == DateAvailabilityStatus.SOLD_OUT) {
+                    if (isDateInPast || dateAvailability.status == DateAvailabilityStatus.PAST_DATE) {
+                        Badge(containerColor = MaterialTheme.colorScheme.errorContainer) {
+                            Text("PAST DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    } else if (dateAvailability.status == DateAvailabilityStatus.FULLY_BOOKED || dateAvailability.status == DateAvailabilityStatus.SOLD_OUT) {
                         Badge(containerColor = MaterialTheme.colorScheme.errorContainer) {
                             Text("FULLY BOOKED", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
@@ -921,14 +950,39 @@ fun BookingScreen(
                 }
             }
 
+            if (isDateInPast) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Past dates cannot be reserved. Please select today or an upcoming future date to proceed with booking.",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+
             items(effectiveSlots) { slot ->
                 val isSelected = selectedSlot?.id == slot.id
-                val isBooked = BookMySpaceRepository.isSlotAlreadyBooked(venue.id, selectedDateStr, slot.label)
+                val isBooked = isDateInPast || BookMySpaceRepository.isSlotAlreadyBooked(venue.id, selectedDateStr, slot.label)
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !isBooked) {
+                        .clickable(enabled = !isBooked && !isDateInPast) {
                             selectedSlot = slot
                             duplicateErrorMsg = null
                             BookMySpaceRepository.notifySlotInteraction()
@@ -936,6 +990,7 @@ fun BookingScreen(
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = when {
+                            isDateInPast -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                             isBooked -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             isSelected -> MaterialTheme.colorScheme.primaryContainer
                             else -> MaterialTheme.colorScheme.surface
@@ -951,7 +1006,9 @@ fun BookingScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isBooked) {
+                            if (isDateInPast) {
+                                Icon(Icons.Default.Block, contentDescription = "Past Date", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
+                            } else if (isBooked) {
                                 Icon(Icons.Default.Lock, contentDescription = "Booked", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                             } else if (isSelected) {
                                 Icon(Icons.Default.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -975,7 +1032,11 @@ fun BookingScreen(
                         }
 
                         Column(horizontalAlignment = Alignment.End) {
-                            if (isBooked) {
+                            if (isDateInPast) {
+                                Badge(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+                                    Text("PAST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            } else if (isBooked) {
                                 Badge(containerColor = MaterialTheme.colorScheme.errorContainer) {
                                     Text("RESERVED", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                                 }
@@ -990,7 +1051,7 @@ fun BookingScreen(
                                     "Available",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF2E7D32)
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                         }
@@ -2525,18 +2586,18 @@ fun VenueInteractiveCalendar(
     selectedDateStr: String,
     onDateSelected: (String) -> Unit
 ) {
+    val today = remember { LocalDate.now() }
     val initialDate = remember(selectedDateStr) {
         try {
-            LocalDate.parse(selectedDateStr)
+            val parsed = LocalDate.parse(selectedDateStr)
+            if (parsed.isBefore(today)) today else parsed
         } catch (e: Exception) {
-            LocalDate.of(2026, 8, 8)
+            today
         }
     }
 
     var currentYearMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
-    val today = remember {
-        try { LocalDate.of(2026, 8, 8) } catch (e: Exception) { LocalDate.now() }
-    }
+    val currentYearMonthToday = remember(today) { YearMonth.from(today) }
 
     Card(
         modifier = Modifier
@@ -2573,13 +2634,13 @@ fun VenueInteractiveCalendar(
                 Row {
                     IconButton(
                         onClick = { currentYearMonth = currentYearMonth.minusMonths(1) },
-                        enabled = currentYearMonth.isAfter(YearMonth.from(today).minusMonths(1))
+                        enabled = currentYearMonth.isAfter(currentYearMonthToday)
                     ) {
                         Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Month")
                     }
                     IconButton(
                         onClick = { currentYearMonth = currentYearMonth.plusMonths(1) },
-                        enabled = currentYearMonth.isBefore(YearMonth.from(today).plusMonths(6))
+                        enabled = currentYearMonth.isBefore(currentYearMonthToday.plusMonths(12))
                     ) {
                         Icon(Icons.Default.ChevronRight, contentDescription = "Next Month")
                     }
@@ -2648,21 +2709,29 @@ fun VenueInteractiveCalendar(
                                 val cellDate = currentYearMonth.atDay(dayNumber)
                                 val cellDateStr = cellDate.toString()
                                 val isToday = cellDate == today
+                                val isPast = cellDate.isBefore(today)
                                 val isSelected = cellDateStr == selectedDateStr
 
-                                val availabilityInfo = BookMySpaceRepository.getDateAvailability(venueId, cellDateStr)
+                                val availabilityInfo = if (isPast) {
+                                    DateAvailabilityInfo(cellDateStr, DateAvailabilityStatus.PAST_DATE, 0, 0)
+                                } else {
+                                    BookMySpaceRepository.getDateAvailability(venueId, cellDateStr)
+                                }
                                 val status = availabilityInfo.status
 
                                 CalendarDayCell(
                                     modifier = Modifier.weight(1f),
                                     dayNumber = dayNumber,
                                     isToday = isToday,
+                                    isPast = isPast,
                                     isSelected = isSelected,
                                     availabilityInfo = availabilityInfo,
                                     onClick = {
-                                        if (status != DateAvailabilityStatus.FULLY_BOOKED &&
+                                        if (!isPast &&
+                                            status != DateAvailabilityStatus.FULLY_BOOKED &&
                                             status != DateAvailabilityStatus.SOLD_OUT &&
-                                            status != DateAvailabilityStatus.MAINTENANCE_BLOCKED
+                                            status != DateAvailabilityStatus.MAINTENANCE_BLOCKED &&
+                                            status != DateAvailabilityStatus.PAST_DATE
                                         ) {
                                             onDateSelected(cellDateStr)
                                         }
@@ -2696,6 +2765,7 @@ private fun CalendarDayCell(
     modifier: Modifier,
     dayNumber: Int,
     isToday: Boolean,
+    isPast: Boolean,
     isSelected: Boolean,
     availabilityInfo: DateAvailabilityInfo,
     onClick: () -> Unit
@@ -2703,21 +2773,25 @@ private fun CalendarDayCell(
     val haptic = LocalHapticFeedback.current
     val status = availabilityInfo.status
 
-    val isClickable = status != DateAvailabilityStatus.FULLY_BOOKED &&
+    val isClickable = !isPast &&
+            status != DateAvailabilityStatus.FULLY_BOOKED &&
             status != DateAvailabilityStatus.SOLD_OUT &&
-            status != DateAvailabilityStatus.MAINTENANCE_BLOCKED
+            status != DateAvailabilityStatus.MAINTENANCE_BLOCKED &&
+            status != DateAvailabilityStatus.PAST_DATE
 
     val backgroundColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
+        isPast -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         status == DateAvailabilityStatus.AVAILABLE -> Color(0xFFE8F5E9)
         status == DateAvailabilityStatus.PARTIALLY_AVAILABLE || status == DateAvailabilityStatus.FILLING_FAST || status == DateAvailabilityStatus.LIMITED -> Color(0xFFFFF3E0)
         status == DateAvailabilityStatus.FULLY_BOOKED || status == DateAvailabilityStatus.SOLD_OUT -> Color(0xFFFFEBEE)
-        status == DateAvailabilityStatus.MAINTENANCE_BLOCKED -> Color(0xFFF5F5F5)
+        status == DateAvailabilityStatus.MAINTENANCE_BLOCKED || status == DateAvailabilityStatus.PAST_DATE -> Color(0xFFF5F5F5)
         else -> Color.Transparent
     }
 
     val textColor = when {
         isSelected -> MaterialTheme.colorScheme.onPrimary
+        isPast -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
         !isClickable -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         status == DateAvailabilityStatus.AVAILABLE -> Color(0xFF1B5E20)
         status == DateAvailabilityStatus.PARTIALLY_AVAILABLE || status == DateAvailabilityStatus.FILLING_FAST || status == DateAvailabilityStatus.LIMITED -> Color(0xFFE65100)
@@ -2766,7 +2840,9 @@ private fun CalendarDayCell(
                 color = textColor
             )
 
-            if (isSelected) {
+            if (isPast) {
+                Text("PAST", fontSize = 6.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f))
+            } else if (isSelected) {
                 Text("SELECTED", fontSize = 6.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
             } else if (isToday && isClickable) {
                 Text("TODAY", fontSize = 6.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)

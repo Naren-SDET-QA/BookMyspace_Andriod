@@ -1,6 +1,7 @@
 package com.bookmyspace.bookmyspace.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.bookmyspace.bookmyspace.data.health.AppHealthManager
 import com.bookmyspace.bookmyspace.data.model.UserRole
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
+import com.bookmyspace.bookmyspace.data.repository.HomeCategoryDiscoveryStyle
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.launch
@@ -349,6 +351,71 @@ fun AdminSettingsScreen(
                     )
                 }
 
+                // 5. Home Category Discovery UI Style Switcher (UI 1, 2, 3)
+                AdminSettingsSection(title = "Home Category Discovery Style", icon = Icons.Default.GridView) {
+                    Text(
+                        text = "Choose which UI layout customers see for Category Discovery on the Home screen:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val currentDiscoveryStyle by BookMySpaceRepository.homeCategoryDiscoveryStyle.collectAsState()
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HomeCategoryDiscoveryStyle.values().forEach { style ->
+                            val isSelected = style == currentDiscoveryStyle
+                            Surface(
+                                onClick = {
+                                    BookMySpaceRepository.setHomeCategoryDiscoveryStyle(style)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(
+                                    if (isSelected) 2.dp else 1.dp,
+                                    if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = isSelected,
+                                        onClick = {
+                                            BookMySpaceRepository.setHomeCategoryDiscoveryStyle(style)
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = when (style) {
+                                                HomeCategoryDiscoveryStyle.STYLE_1_3D_GLASS_MATRIX -> "UI Style 1: 3D Glass Matrix & Orbit"
+                                                HomeCategoryDiscoveryStyle.STYLE_2_TACTILE_GRID -> "UI Style 2: Classic Tactile Hero Grid"
+                                                HomeCategoryDiscoveryStyle.STYLE_3_COMPACT_CAROUSEL -> "UI Style 3: Compact Glass Carousel"
+                                            },
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = when (style) {
+                                                HomeCategoryDiscoveryStyle.STYLE_1_3D_GLASS_MATRIX -> "Interactive 3D glass cards, perspective rotation, rim highlights, and live venue counts."
+                                                HomeCategoryDiscoveryStyle.STYLE_2_TACTILE_GRID -> "Multi-column tactile hero cards with live statuses, sub-sections, and custom badges."
+                                                HomeCategoryDiscoveryStyle.STYLE_3_COMPACT_CAROUSEL -> "Horizontal sliding glass cards with quick filter chips and space counts."
+                                            },
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Primary Save Button
@@ -357,6 +424,12 @@ fun AdminSettingsScreen(
                         isSaving = true
                         scope.launch {
                             try {
+                                val apps = com.google.firebase.FirebaseApp.getApps(context)
+                                if (apps.isEmpty()) {
+                                    isSaving = false
+                                    snackbarHostState.showSnackbar("ℹ️ Settings saved locally (Offline mode)")
+                                    return@launch
+                                }
                                 val db = FirebaseFirestore.getInstance()
                                 val configData = mapOf(
                                     "appName" to appName,

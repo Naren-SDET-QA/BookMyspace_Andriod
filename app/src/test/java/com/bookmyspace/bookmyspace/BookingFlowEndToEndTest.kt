@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -80,8 +81,8 @@ class BookingFlowEndToEndTest {
                 userId = user?.id ?: "guest",
                 userName = user?.fullName ?: "Customer",
                 userPhone = user?.phone ?: "9876543210",
-                bookingDate = "2026-08-25",
-                date = "2026-08-25",
+                bookingDate = LocalDate.now().plusDays(2).toString(),
+                date = LocalDate.now().plusDays(2).toString(),
                 startTime = "06:00 PM",
                 endTime = "07:00 PM",
                 slotLabel = "06:00 PM - 07:00 PM",
@@ -160,8 +161,8 @@ class BookingFlowEndToEndTest {
                 userId = user?.id ?: "guest",
                 userName = user?.fullName ?: "Customer",
                 userPhone = user?.phone ?: "9876543210",
-                bookingDate = "2026-08-26",
-                date = "2026-08-26",
+                bookingDate = LocalDate.now().plusDays(3).toString(),
+                date = LocalDate.now().plusDays(3).toString(),
                 startTime = "07:00 AM",
                 endTime = "08:00 AM",
                 slotLabel = "07:00 AM - 08:00 AM",
@@ -222,8 +223,8 @@ class BookingFlowEndToEndTest {
                 userId = user?.id ?: "guest",
                 userName = "Test User",
                 userPhone = "9876543210",
-                bookingDate = "2026-08-27",
-                date = "2026-08-27",
+                bookingDate = LocalDate.now().plusDays(4).toString(),
+                date = LocalDate.now().plusDays(4).toString(),
                 startTime = "08:00 PM",
                 endTime = "09:00 PM",
                 slotLabel = "08:00 PM - 09:00 PM",

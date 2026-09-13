@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -188,7 +189,7 @@ class HierarchicalLocationAndPaymentE2ETest {
                 userName = user.fullName,
                 userPhone = user.phone,
                 userEmail = user.email,
-                bookingDate = "2026-09-10",
+                bookingDate = LocalDate.now().plusDays(2).toString(),
                 slotLabel = "05:00 PM - 07:00 PM",
                 baseAmount = baseRent,
                 taxAmount = taxAmount,

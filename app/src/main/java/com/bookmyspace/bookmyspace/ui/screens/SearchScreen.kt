@@ -1512,8 +1512,30 @@ fun SearchScreen(
                                 label = { Text("🍳 Free Breakfast") }
                             )
                         }
-                    } else if (selectedPropertyType == "VENUE" || selectedCategorySlug == "function_hall") {
-                        // Function hall specific filters
+                    } else if (selectedPropertyType == "VENUE" || selectedCategorySlug in listOf("function_hall", "marriage_hall", "banquet_hall", "convention_center", "party_lawn", "engagement_hall", "reception_hall", "luxury_hall", "outdoor_garden")) {
+                        // Function hall specific sub-sections & filters with Teal branding
+                        val venueSubSections = listOf(
+                            "marriage_hall" to "💍 Marriage Halls",
+                            "banquet_hall" to "🎉 Banquet Halls",
+                            "convention_center" to "🏢 Convention Halls",
+                            "party_lawn" to "🎈 Party Halls & Lawns",
+                            "engagement_hall" to "🌸 Engagement Halls",
+                            "reception_hall" to "🥂 Reception Halls",
+                            "luxury_hall" to "👑 Luxury Halls",
+                            "outdoor_garden" to "🌿 Outdoor Venues"
+                        )
+                        venueSubSections.forEach { (subSlug, subLabel) ->
+                            item {
+                                FilterChip(
+                                    selected = selectedCategorySlug == subSlug,
+                                    onClick = {
+                                        selectedCategorySlug = if (selectedCategorySlug == subSlug) "function_hall" else subSlug
+                                        selectedPropertyType = "VENUE"
+                                    },
+                                    label = { Text(subLabel) }
+                                )
+                            }
+                        }
                         item {
                             FilterChip(
                                 selected = minCapacity >= 200,

@@ -9,6 +9,7 @@ import com.bookmyspace.bookmyspace.data.model.*
 import com.bookmyspace.bookmyspace.data.payment.PaymentSignatureValidator
 import com.bookmyspace.bookmyspace.data.payment.SignatureValidationResult
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
+import java.time.LocalDate
 import java.util.UUID
 
 /**
@@ -328,8 +329,8 @@ object EndToEndFlowAutomationEngine {
                 userId = "user_auto_1",
                 userName = "E2E Test User",
                 userPhone = "9876543210",
-                bookingDate = "2026-09-05",
-                slotLabel = "06:00 PM - 07:00 PM",
+                bookingDate = LocalDate.now().plusDays(15).toString(),
+                slotLabel = "10:00 AM - 11:00 AM",
                 baseAmount = 4237.29,
                 taxAmount = 762.71,
                 totalAmount = totalAmount,
@@ -446,8 +447,8 @@ object EndToEndFlowAutomationEngine {
                 userId = "user_auto_1",
                 userName = "QR Attendee",
                 userPhone = "9876543210",
-                bookingDate = "2026-09-05",
-                slotLabel = "06:00 PM - 07:00 PM",
+                bookingDate = LocalDate.now().plusDays(16).toString(),
+                slotLabel = "11:00 AM - 12:00 PM",
                 totalAmount = 1500.0,
                 totalPrice = 1500.0,
                 status = BookingStatus.CONFIRMED,

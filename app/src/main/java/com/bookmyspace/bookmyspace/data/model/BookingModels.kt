@@ -38,7 +38,8 @@ enum class DateAvailabilityStatus(val label: String) {
     SOLD_OUT("Sold Out"),
     FULLY_BOOKED("Fully Booked"),
     MAINTENANCE_BLOCKED("Blocked / Maintenance"),
-    CLOSING_SOON("Closing Soon")
+    CLOSING_SOON("Closing Soon"),
+    PAST_DATE("Past Date")
 }
 
 data class DateAvailabilityInfo(
