@@ -5,6 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../../domain/support_ticket.dart';
 import '../support_providers.dart';
 
@@ -14,33 +15,44 @@ class SupportTicketsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final enabled = ref.watch(moduleEnabledProvider('support'));
     final tickets = ref.watch(myTicketsProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.support)),
-      body: tickets.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(myTicketsProvider),
-        ),
-        data: (items) => items.isEmpty
-            ? const EmptyState(
-                icon: Icons.headset_mic_rounded,
-                title: 'No support tickets',
-                message: 'Tap the button below to create a new ticket.',
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                itemBuilder: (context, i) => _TicketTile(ticket: items[i]),
+      body: !enabled
+          ? const EmptyState(
+              icon: Icons.support_agent_rounded,
+              title: 'Support is unavailable',
+              message:
+                  'This optional module is currently disabled by the administrator.',
+            )
+          : tickets.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => ErrorView(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(myTicketsProvider),
               ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateDialog(context, ref),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Ticket'),
-      ),
+              data: (items) => items.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.headset_mic_rounded,
+                      title: 'No support tickets',
+                      message: 'Tap the button below to create a new ticket.',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: items.length,
+                      itemBuilder: (context, i) =>
+                          _TicketTile(ticket: items[i]),
+                    ),
+            ),
+      floatingActionButton: enabled
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateDialog(context, ref),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New Ticket'),
+            )
+          : null,
     );
   }
 

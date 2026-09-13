@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
     const { data: booking, error: bookingError } = await userSupabase
       .from("bookings")
       .select(
-        "id, booking_ref, total_amount, amount, tax_amount, status, venue_id",
+        "id, booking_ref, total_amount, amount, tax_amount, status, venue_id, hold_id, approval_required, approved_at, approved_by, payment_expires_at",
       )
       .eq("id", booking_id)
       .eq("user_id", user.id)
@@ -133,6 +133,53 @@ Deno.serve(async (req) => {
 
     if (booking.status !== "pending") {
       return new Response(JSON.stringify({ error: "booking_not_payable" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Approve-first is enforced here as a second boundary. A caller cannot
+    // create a Razorpay order for an awaiting, rejected or expired request,
+    // even if it reaches this function with a guessed booking id.
+    if (!booking.approved_at || !booking.approved_by) {
+      return new Response(JSON.stringify({ error: "owner_approval_required" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (
+      booking.payment_expires_at &&
+      new Date(booking.payment_expires_at).getTime() <= Date.now()
+    ) {
+      return new Response(JSON.stringify({ error: "payment_window_expired" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Approval extends the same server-owned hold into the payment window.
+    // Refuse to create a provider order if that inventory lock is no longer
+    // active; confirmation also rechecks it inside the database transaction.
+    if (!booking.hold_id) {
+      return new Response(JSON.stringify({ error: "booking_hold_expired" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: hold, error: holdError } = await userSupabase
+      .from("booking_holds")
+      .select("status, expires_at")
+      .eq("id", booking.hold_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (
+      holdError ||
+      !hold ||
+      hold.status !== "active" ||
+      !hold.expires_at ||
+      new Date(hold.expires_at).getTime() <= Date.now()
+    ) {
+      return new Response(JSON.stringify({ error: "booking_hold_expired" }), {
         status: 409,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -18,6 +18,10 @@ import '../features/offers/mock_coupon_repository.dart';
 import '../features/venues/mock_venue_repository.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
 import 'package:bookmyspace/features/offers/presentation/coupon_providers.dart';
+import 'package:bookmyspace/features/notifications/domain/notification.dart'
+    as notification_domain;
+import 'package:bookmyspace/features/notifications/domain/notification_repository.dart';
+import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 
 Future<String> _redirectTo(
   WidgetTester tester, {
@@ -41,6 +45,9 @@ Future<String> _redirectTo(
         courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
         couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
         bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+        notificationRepositoryProvider.overrideWithValue(
+          _RouteTestNotificationRepository(),
+        ),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -59,6 +66,36 @@ Future<String> _redirectTo(
   await tester.pumpWidget(const SizedBox.shrink());
   router.dispose();
   return uri;
+}
+
+class _RouteTestNotificationRepository implements NotificationRepository {
+  @override
+  Future<List<notification_domain.Notification>> myNotifications() async =>
+      const [];
+
+  @override
+  Future<void> markRead(String notificationId) async {}
+
+  @override
+  Future<void> markAllRead() async {}
+
+  @override
+  Future<int> unreadCount() async => 0;
+
+  @override
+  Future<void> addNotification(
+    notification_domain.Notification notification,
+  ) async {}
+
+  @override
+  Future<void> registerPushToken(
+    String token,
+    String platform, {
+    Map<String, dynamic>? subscriptionData,
+  }) async {}
+
+  @override
+  Future<void> unregisterPushToken(String token) async {}
 }
 
 void main() {

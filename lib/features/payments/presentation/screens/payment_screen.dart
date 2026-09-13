@@ -43,6 +43,38 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final remainingDue =
         (fullTotal - payableAmount).clamp(0.0, fullTotal).toDouble();
 
+    // Deep links and stale navigation extras must not expose a payment
+    // surface for an approval request. The Edge Function is the authoritative
+    // boundary as well; this is only the matching UI guard.
+    if (!booking.canPay) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Payment unavailable')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_clock_outlined, size: 56),
+                const SizedBox(height: 16),
+                Text(
+                  booking.status == BookingStatus.awaitingOwnerApproval
+                      ? 'Payment becomes available after the venue owner accepts this request.'
+                      : 'This booking is not ready for payment.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.go(AppRoutes.bookings),
+                  child: const Text('Back to bookings'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (paymentState.isSuccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -525,14 +557,12 @@ class _PaymentSuccessView extends StatelessWidget {
     required this.booking,
     required this.paymentId,
     required this.orderId,
-    this.note,
     required this.selectedMethod,
   });
 
   final Booking booking;
   final String? paymentId;
   final String? orderId;
-  final String? note;
   final PaymentMethodType selectedMethod;
 
   @override
@@ -567,8 +597,7 @@ class _PaymentSuccessView extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            note ??
-                'Your space booking is secured and reconciled with the venue.',
+            'Your space booking is secured and reconciled with the venue.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

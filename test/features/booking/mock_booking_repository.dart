@@ -25,7 +25,34 @@ class MockBookingRepository implements BookingRepository {
     required double amount,
     int holdMinutes = 10,
   }) async =>
-      BookingHold(id: 'hold-1', expiresAt: DateTime.now().add(Duration(minutes: holdMinutes)));
+      BookingHold(
+          id: 'hold-1',
+          expiresAt: DateTime.now().add(Duration(minutes: holdMinutes)));
+
+  @override
+  Future<Booking> requestBooking({
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    int approvalMinutes = 120,
+  }) async {
+    return Booking(
+      id: 'b-request-1',
+      bookingRef: 'BMS-REQUEST-1',
+      venueId: venueId,
+      slotId: slotId,
+      bookDate: bookDate,
+      startTime: '09:00:00',
+      endTime: '12:00:00',
+      status: BookingStatus.awaitingOwnerApproval,
+      amount: amount,
+      taxAmount: 0,
+      totalAmount: amount,
+      approvalRequestedAt: DateTime.now(),
+      approvalExpiresAt: DateTime.now().add(Duration(minutes: approvalMinutes)),
+    );
+  }
 
   @override
   Future<Booking> createBooking({
@@ -49,6 +76,22 @@ class MockBookingRepository implements BookingRepository {
       amount: amount,
       taxAmount: taxAmount,
       totalAmount: totalAmount,
+    );
+  }
+
+  @override
+  Future<Booking> approveBooking(String bookingId) async {
+    return bookings.firstWhere(
+      (booking) => booking.id == bookingId,
+      orElse: () => throw StateError('booking not found'),
+    );
+  }
+
+  @override
+  Future<Booking> rejectBooking(String bookingId, {String? reason}) async {
+    return bookings.firstWhere(
+      (booking) => booking.id == bookingId,
+      orElse: () => throw StateError('booking not found'),
     );
   }
 

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
@@ -10,6 +13,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../payments/presentation/payment_providers.dart';
+import '../../../auth/presentation/auth_providers.dart';
 import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
@@ -25,6 +29,52 @@ class MyBookingsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
+  RealtimeChannel? _bookingChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToBookingUpdates();
+  }
+
+  void _subscribeToBookingUpdates() {
+    try {
+      final client = ref.read(supabaseProvider);
+      final user = client.auth.currentUser;
+      if (user == null) return;
+
+      _bookingChannel = client
+          .channel('customer-bookings-${user.id}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'bookings',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'user_id',
+              value: user.id,
+            ),
+            callback: (_) {
+              if (mounted) ref.invalidate(myBookingsProvider);
+            },
+          )
+          .subscribe();
+    } on AssertionError {
+      // Preview/router tests can render the shell before Supabase is
+      // initialized. Live sessions always initialize Supabase before this
+      // screen and still receive realtime booking updates.
+    }
+  }
+
+  @override
+  void dispose() {
+    final channel = _bookingChannel;
+    if (channel != null) {
+      unawaited(ref.read(supabaseProvider).removeChannel(channel));
+    }
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(myBookingsProvider);
     await ref.read(myBookingsProvider.future);
@@ -145,6 +195,12 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                       list[i].canCancel ? () => _cancelBooking(list[i]) : null,
                   onRefund:
                       list[i].canRefund ? () => _requestRefund(list[i]) : null,
+                  onPay: list[i].canPay
+                      ? () => context.push(
+                            '/bookings/${list[i].id}/pay',
+                            extra: list[i],
+                          )
+                      : null,
                 ),
               ),
             ),
@@ -301,12 +357,14 @@ class _BookingCard extends StatelessWidget {
     this.onShowPass,
     this.onCancel,
     this.onRefund,
+    this.onPay,
   });
 
   final Booking booking;
   final VoidCallback? onShowPass;
   final VoidCallback? onCancel;
   final VoidCallback? onRefund;
+  final VoidCallback? onPay;
 
   @override
   Widget build(BuildContext context) {
@@ -322,6 +380,14 @@ class _BookingCard extends StatelessWidget {
         ),
       BookingStatus.pending => const LinearGradient(
           colors: [AppTheme.accent, Color(0xFFFBBF24), Color(0xFFF59E0B)],
+        ),
+      BookingStatus.awaitingOwnerApproval => const LinearGradient(
+          colors: [AppTheme.brand, AppTheme.action, AppTheme.accent],
+        ),
+      BookingStatus.ownerRejected ||
+      BookingStatus.approvalExpired =>
+        const LinearGradient(
+          colors: [Color(0xFFB91C1C), Color(0xFFF87171)],
         ),
       BookingStatus.cancelled => const LinearGradient(
           colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
@@ -414,6 +480,17 @@ class _BookingCard extends StatelessWidget {
               ),
             ),
           ],
+          if (onPay != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onPay,
+                icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                label: const Text('Pay securely'),
+              ),
+            ),
+          ],
           if (onCancel != null) ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -452,11 +529,18 @@ class _StatusBadge extends StatelessWidget {
     final (label, color) = switch (status) {
       BookingStatus.held => ('Held', Colors.orange),
       BookingStatus.pending => ('Pending', Colors.orange),
+      BookingStatus.awaitingOwnerApproval => (
+          'Awaiting owner',
+          AppTheme.brand,
+        ),
+      BookingStatus.ownerRejected => ('Declined', Colors.red),
+      BookingStatus.approvalExpired => ('Request expired', Colors.red),
       BookingStatus.confirmed => ('Confirmed', Colors.green),
       BookingStatus.completed => ('Completed', Colors.blue),
       BookingStatus.cancelled => ('Cancelled', Colors.grey),
       BookingStatus.refunded => ('Refunded', Colors.teal),
       BookingStatus.noShow => ('No show', Colors.red),
+      BookingStatus.unknown => ('Status unavailable', Colors.grey),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

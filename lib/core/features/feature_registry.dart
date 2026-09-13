@@ -22,17 +22,39 @@ class FeatureModule {
     required this.id,
     required this.name,
     required this.enabled,
+    this.version = '1.0.0',
     this.routes = const [],
     this.capabilities = const [],
     this.requiredRoles = const [],
+    this.platformSupport = const {'android', 'ios', 'web'},
+    this.configuration = const {},
   });
 
   final String id;
   final String name;
   final bool enabled;
+  final String version;
   final List<String> routes;
   final List<FeatureCapability> capabilities;
   final List<String> requiredRoles;
+  final Set<String> platformSupport;
+  final Map<String, Object?> configuration;
+
+  bool supportsPlatform(String platform) => platformSupport.contains(platform);
+
+  FeatureModule copyWith(
+          {bool? enabled, Map<String, Object?>? configuration}) =>
+      FeatureModule(
+        id: id,
+        name: name,
+        enabled: enabled ?? this.enabled,
+        version: version,
+        routes: routes,
+        capabilities: capabilities,
+        requiredRoles: requiredRoles,
+        platformSupport: platformSupport,
+        configuration: configuration ?? this.configuration,
+      );
 }
 
 class FeatureRegistry {
@@ -56,7 +78,10 @@ class FeatureRegistry {
     FeatureModule(
         id: 'bookings', name: 'Bookings', enabled: true, routes: ['/bookings']),
     FeatureModule(
-        id: 'payments', name: 'Payments', enabled: true, routes: ['/bookings/:id/pay']),
+        id: 'payments',
+        name: 'Payments',
+        enabled: true,
+        routes: ['/bookings/:id/pay']),
     FeatureModule(
         id: 'courses', name: 'Courses', enabled: true, routes: ['/courses']),
     FeatureModule(
@@ -66,15 +91,23 @@ class FeatureRegistry {
     FeatureModule(
         id: 'admin', name: 'Admin', enabled: true, routes: ['/admin']),
     FeatureModule(
+      id: 'integrations',
+      name: 'Integrations',
+      enabled: true,
+      routes: ['/admin/integrations'],
+      requiredRoles: ['administrator', 'super_administrator'],
+    ),
+    FeatureModule(
         id: 'support', name: 'Support', enabled: true, routes: ['/support']),
     FeatureModule(
-        id: 'analytics', name: 'Analytics', enabled: true, routes: ['/analytics']),
-    FeatureModule(
-        id: 'reviews', name: 'Reviews', enabled: true),
+        id: 'analytics',
+        name: 'Analytics',
+        enabled: true,
+        routes: ['/analytics']),
+    FeatureModule(id: 'reviews', name: 'Reviews', enabled: true),
     FeatureModule(
         id: 'favorites', name: 'Favorites', enabled: true, routes: ['/saved']),
-    FeatureModule(
-        id: 'location', name: 'Location', enabled: true),
+    FeatureModule(id: 'location', name: 'Location', enabled: true),
     FeatureModule(
       id: 'referrals',
       name: 'Referrals',

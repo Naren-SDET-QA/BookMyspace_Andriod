@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../integrations/presentation/integration_providers.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../admin_providers.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
@@ -29,6 +31,8 @@ class AdminDashboardScreen extends ConsumerWidget {
           ref.invalidate(recentAuditLogsProvider);
           ref.invalidate(adminPublishedEventsProvider);
           ref.invalidate(adminPublishedCoursesProvider);
+          ref.invalidate(integrationHealthProvider);
+          ref.invalidate(featureFlagsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -93,6 +97,12 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminVenues),
             ),
             _AdminLink(
+              icon: Icons.category_outlined,
+              title: 'Categories',
+              subtitle: 'Create, edit, order, and archive catalogue categories',
+              onTap: () => context.push(AppRoutes.adminCategories),
+            ),
+            _AdminLink(
               icon: Icons.receipt_long_outlined,
               title: 'Bookings',
               subtitle: 'Platform-wide booking list is not granted by RLS',
@@ -139,6 +149,19 @@ class AdminDashboardScreen extends ConsumerWidget {
               title: 'Home banners',
               subtitle: 'CMS titles and subtitles shown on customer Home',
               onTap: () => context.push(AppRoutes.adminCms),
+            ),
+            _AdminLink(
+              icon: Icons.hub_outlined,
+              title: 'Integrations',
+              subtitle: 'Provider health and configuration state',
+              onTap: () => context.push(AppRoutes.adminIntegrations),
+            ),
+            _AdminLink(
+              icon: Icons.tune_rounded,
+              title: 'Optional modules',
+              subtitle:
+                  'Enable implemented modules and update validated configuration',
+              onTap: () => context.push(AppRoutes.adminModules),
             ),
             users.maybeWhen(
               error: (e, _) => Padding(

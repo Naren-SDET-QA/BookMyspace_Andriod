@@ -14,52 +14,6 @@ class SupabaseNotificationRepository implements NotificationRepository {
 
   String? get _userId => _client.auth.currentUser?.id;
 
-  // Local fallback notifications list matching Android BookMySpaceRepository sample data
-  final List<Notification> _localNotifications = [
-    Notification(
-      id: 'notif_1',
-      userId: 'system',
-      title: 'Booking Confirmed! 🎟️',
-      body:
-          'Your badminton court slot at Velocity Pro Sports Arena is confirmed for 20 Aug at 7:00 AM.',
-      type: 'booking',
-      read: false,
-      data: {
-        'booking_id': 'bk_demo_1',
-        'venue_name': 'Velocity Pro Sports Arena',
-        'slot_time': '07:00 AM - 08:00 AM',
-        'qr_token': 'BMS-PASS-DEMO1',
-      },
-      createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
-    ),
-    Notification(
-      id: 'notif_2',
-      userId: 'system',
-      title: '1-Hour Pre-Slot Reminder ⚡',
-      body:
-          'Your upcoming court booking starts in 1 hour. Tap to view and scan your check-in pass.',
-      type: '1_hour_reminder',
-      read: false,
-      data: {
-        'booking_id': 'bk_demo_2',
-        'venue_name': 'Velocity Pro Sports Arena',
-        'slot_time': '10:00 AM - 11:00 AM',
-        'qr_token': 'BMS-PASS-DEMO2',
-      },
-      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    Notification(
-      id: 'notif_3',
-      userId: 'system',
-      title: 'Referral Bonus Added! 💰',
-      body:
-          'Sneha signed up using your link. ₹500 referral credit will unlock after their first booking.',
-      type: 'general',
-      read: false,
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
-
   @override
   Future<List<Notification>> myNotifications() async {
     final userId = _userId;
@@ -82,15 +36,6 @@ class SupabaseNotificationRepository implements NotificationRepository {
 
   @override
   Future<void> markRead(String notificationId) async {
-    // Update local list
-    final idx = _localNotifications.indexWhere((n) => n.id == notificationId);
-    if (idx != -1) {
-      _localNotifications[idx] = _localNotifications[idx].copyWith(
-        read: true,
-        readAt: DateTime.now(),
-      );
-    }
-
     final userId = _userId;
     if (userId == null) return;
 
@@ -107,13 +52,6 @@ class SupabaseNotificationRepository implements NotificationRepository {
 
   @override
   Future<void> markAllRead() async {
-    for (int i = 0; i < _localNotifications.length; i++) {
-      _localNotifications[i] = _localNotifications[i].copyWith(
-        read: true,
-        readAt: DateTime.now(),
-      );
-    }
-
     final userId = _userId;
     if (userId == null) return;
 
@@ -148,16 +86,25 @@ class SupabaseNotificationRepository implements NotificationRepository {
 
   @override
   Future<void> addNotification(Notification notification) async {
-    // Prepend to local memory list so it is instantly reactive
-    _localNotifications.insert(0, notification);
-
     final userId = _userId;
     if (userId == null) return;
 
     try {
-      await _client.from('notifications').insert(notification.toJson());
+      // Let Postgres generate the UUID and bind the row to the current user.
+      // Push payloads are not trusted to choose an account or primary key.
+      await _client.from('notifications').insert({
+        'user_id': userId,
+        'title': notification.title,
+        'body': notification.body,
+        'type': notification.type,
+        'data': notification.data,
+        'read': notification.read,
+        if (notification.readAt != null)
+          'read_at': notification.readAt!.toIso8601String(),
+        'created_at': notification.createdAt.toIso8601String(),
+      });
     } catch (_) {
-      // Soft-fail if remote table unavailable
+      // Push delivery should not crash the app if in-app persistence is unavailable.
     }
   }
 

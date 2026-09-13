@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/errors/app_exceptions.dart';
+import '../../auth/presentation/auth_providers.dart';
 import '../../booking/domain/booking.dart';
 import '../domain/checkout_service.dart';
 import '../domain/payment.dart';
@@ -12,7 +12,7 @@ import '../infrastructure/supabase_payment_repository.dart';
 
 /// Provider for the [PaymentRepository].
 final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
-  return SupabasePaymentRepository(Supabase.instance.client);
+  return SupabasePaymentRepository(ref.watch(supabaseProvider));
 });
 
 /// Provider for the platform-aware [CheckoutService].
@@ -175,7 +175,9 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
       if (!confirmed) {
         final latest = await paymentRepository.bookingStatus(booking.id);
         if (latest == BookingStatus.cancelled ||
-            latest == BookingStatus.refunded) {
+            latest == BookingStatus.refunded ||
+            latest == BookingStatus.ownerRejected ||
+            latest == BookingStatus.approvalExpired) {
           state = state.copyWith(
             isLoading: false,
             isSuccess: false,
@@ -224,7 +226,9 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
       final status = await paymentRepository.bookingStatus(bookingId);
       if (status == BookingStatus.confirmed) return true;
       if (status == BookingStatus.cancelled ||
-          status == BookingStatus.refunded) {
+          status == BookingStatus.refunded ||
+          status == BookingStatus.ownerRejected ||
+          status == BookingStatus.approvalExpired) {
         return false;
       }
       if (attempt < confirmationAttempts - 1 &&
@@ -266,7 +270,9 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
 
       if (latest == BookingStatus.cancelled ||
           latest == BookingStatus.refunded ||
-          latest == BookingStatus.noShow) {
+          latest == BookingStatus.noShow ||
+          latest == BookingStatus.ownerRejected ||
+          latest == BookingStatus.approvalExpired) {
         state = state.copyWith(
           isLoading: false,
           isSuccess: false,

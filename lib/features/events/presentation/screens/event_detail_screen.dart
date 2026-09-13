@@ -6,6 +6,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/event.dart';
 import '../event_providers.dart';
@@ -18,21 +19,26 @@ class EventDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(moduleEnabledProvider('events'));
     final eventAsync = ref.watch(eventDetailProvider(eventId));
 
     return Scaffold(
-      body: eventAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(eventDetailProvider(eventId)),
-        ),
-        data: (event) => _EventBody(event: event),
-      ),
-      bottomNavigationBar: eventAsync.maybeWhen(
-        data: (event) => event.isPast ? null : _ActionBar(event: event),
-        orElse: () => null,
-      ),
+      body: !enabled
+          ? const Center(child: Text('Events are unavailable.'))
+          : eventAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => ErrorView(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(eventDetailProvider(eventId)),
+              ),
+              data: (event) => _EventBody(event: event),
+            ),
+      bottomNavigationBar: enabled
+          ? eventAsync.maybeWhen(
+              data: (event) => event.isPast ? null : _ActionBar(event: event),
+              orElse: () => null,
+            )
+          : null,
     );
   }
 }

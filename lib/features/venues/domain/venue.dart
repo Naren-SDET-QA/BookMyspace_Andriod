@@ -16,6 +16,13 @@ class VenueCategory {
     this.icon,
     this.isActive = true,
     this.parentSection = 'general',
+    this.description = '',
+    this.imageUrl = '',
+    this.imagePath = '',
+    this.displayOrder = 0,
+    this.supportedLanguages = const ['en'],
+    this.nameTranslations = const {},
+    this.descriptionTranslations = const {},
   });
 
   final String id;
@@ -24,6 +31,13 @@ class VenueCategory {
   final String? icon;
   final bool isActive;
   final String? parentSection;
+  final String description;
+  final String imageUrl;
+  final String imagePath;
+  final int displayOrder;
+  final List<String> supportedLanguages;
+  final Map<String, String> nameTranslations;
+  final Map<String, String> descriptionTranslations;
 
   factory VenueCategory.fromJson(Map<String, dynamic> json) {
     final metadata = json['metadata'] is Map
@@ -40,7 +54,20 @@ class VenueCategory {
           true,
       parentSection: json['parent_section'] as String? ??
           metadata['parent_section'] as String? ??
+          metadata['section'] as String? ??
           'general',
+      description: json['description'] as String? ?? '',
+      imageUrl: json['image_url'] as String? ?? '',
+      imagePath: json['image_path'] as String? ?? '',
+      displayOrder: (json['display_order'] as num?)?.toInt() ??
+          (metadata['section_sort_order'] as num?)?.toInt() ??
+          0,
+      supportedLanguages:
+          _stringList(json['supported_languages'], fallback: const ['en']),
+      nameTranslations: _stringMap(
+        json['name_i18n'] ?? metadata['localized_names'],
+      ),
+      descriptionTranslations: _stringMap(json['description_i18n']),
     );
   }
 
@@ -49,6 +76,15 @@ class VenueCategory {
         'slug': slug,
         'name': name,
         if (icon != null) 'icon': icon,
+        'is_active': isActive,
+        if (parentSection != null) 'parent_section': parentSection,
+        'description': description,
+        'image_url': imageUrl.isEmpty ? null : imageUrl,
+        'image_path': imagePath.isEmpty ? null : imagePath,
+        'display_order': displayOrder,
+        'supported_languages': supportedLanguages,
+        'name_i18n': nameTranslations,
+        'description_i18n': descriptionTranslations,
         'metadata': {
           'active': isActive,
           if (parentSection != null) 'parent_section': parentSection,
@@ -62,6 +98,15 @@ class VenueCategory {
     String? icon,
     bool? isActive,
     String? parentSection,
+    String? description,
+    String? imageUrl,
+    String? imagePath,
+    bool clearImage = false,
+    bool clearImagePath = false,
+    int? displayOrder,
+    List<String>? supportedLanguages,
+    Map<String, String>? nameTranslations,
+    Map<String, String>? descriptionTranslations,
   }) {
     return VenueCategory(
       id: id ?? this.id,
@@ -70,8 +115,135 @@ class VenueCategory {
       icon: icon ?? this.icon,
       isActive: isActive ?? this.isActive,
       parentSection: parentSection ?? this.parentSection,
+      description: description ?? this.description,
+      imageUrl: clearImage ? '' : imageUrl ?? this.imageUrl,
+      imagePath: clearImagePath ? '' : imagePath ?? this.imagePath,
+      displayOrder: displayOrder ?? this.displayOrder,
+      supportedLanguages: supportedLanguages ?? this.supportedLanguages,
+      nameTranslations: nameTranslations ?? this.nameTranslations,
+      descriptionTranslations:
+          descriptionTranslations ?? this.descriptionTranslations,
     );
   }
+}
+
+/// A second-level catalogue item managed beneath a [VenueCategory].
+class VenueSubsection {
+  const VenueSubsection({
+    required this.id,
+    required this.categoryId,
+    required this.slug,
+    required this.name,
+    this.icon,
+    this.description = '',
+    this.imageUrl = '',
+    this.imagePath = '',
+    this.isActive = true,
+    this.displayOrder = 0,
+    this.supportedLanguages = const ['en'],
+    this.nameTranslations = const {},
+    this.descriptionTranslations = const {},
+  });
+
+  final String id;
+  final String categoryId;
+  final String slug;
+  final String name;
+  final String? icon;
+  final String description;
+  final String imageUrl;
+  final String imagePath;
+  final bool isActive;
+  final int displayOrder;
+  final List<String> supportedLanguages;
+  final Map<String, String> nameTranslations;
+  final Map<String, String> descriptionTranslations;
+
+  factory VenueSubsection.fromJson(Map<String, dynamic> json) {
+    return VenueSubsection(
+      id: json['id'] as String? ?? '',
+      categoryId: json['category_id'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      icon: json['icon'] as String?,
+      description: json['description'] as String? ?? '',
+      imageUrl: json['image_url'] as String? ?? '',
+      imagePath: json['image_path'] as String? ?? '',
+      isActive: json['is_active'] as bool? ?? true,
+      displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
+      supportedLanguages:
+          _stringList(json['supported_languages'], fallback: const ['en']),
+      nameTranslations: _stringMap(json['name_i18n']),
+      descriptionTranslations: _stringMap(json['description_i18n']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'category_id': categoryId,
+        'slug': slug,
+        'name': name,
+        if (icon != null) 'icon': icon,
+        'description': description,
+        'image_url': imageUrl.isEmpty ? null : imageUrl,
+        'image_path': imagePath.isEmpty ? null : imagePath,
+        'is_active': isActive,
+        'display_order': displayOrder,
+        'supported_languages': supportedLanguages,
+        'name_i18n': nameTranslations,
+        'description_i18n': descriptionTranslations,
+      };
+
+  VenueSubsection copyWith({
+    String? categoryId,
+    String? slug,
+    String? name,
+    String? icon,
+    String? description,
+    String? imageUrl,
+    String? imagePath,
+    bool clearImage = false,
+    bool clearImagePath = false,
+    bool? isActive,
+    int? displayOrder,
+    List<String>? supportedLanguages,
+    Map<String, String>? nameTranslations,
+    Map<String, String>? descriptionTranslations,
+  }) {
+    return VenueSubsection(
+      id: id,
+      categoryId: categoryId ?? this.categoryId,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      description: description ?? this.description,
+      imageUrl: clearImage ? '' : imageUrl ?? this.imageUrl,
+      imagePath: clearImagePath ? '' : imagePath ?? this.imagePath,
+      isActive: isActive ?? this.isActive,
+      displayOrder: displayOrder ?? this.displayOrder,
+      supportedLanguages: supportedLanguages ?? this.supportedLanguages,
+      nameTranslations: nameTranslations ?? this.nameTranslations,
+      descriptionTranslations:
+          descriptionTranslations ?? this.descriptionTranslations,
+    );
+  }
+}
+
+List<String> _stringList(Object? value, {required List<String> fallback}) {
+  if (value is! List) return fallback;
+  final values = value
+      .whereType<String>()
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
+  return values.isEmpty ? fallback : List.unmodifiable(values);
+}
+
+Map<String, String> _stringMap(Object? value) {
+  if (value is! Map) return const {};
+  return Map.unmodifiable(
+    value.map((key, item) => MapEntry(key.toString(), item.toString())),
+  );
 }
 
 /// Image model associated with a venue.

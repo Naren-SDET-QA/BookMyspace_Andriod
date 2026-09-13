@@ -14,13 +14,37 @@ final venueRepositoryProvider = Provider<VenueRepository>((ref) {
 });
 
 /// Categories provider (active categories for discovery/browsing).
-final venueCategoriesProvider = FutureProvider<List<VenueCategory>>((ref) {
-  return ref.watch(venueRepositoryProvider).categories(activeOnly: true);
+///
+/// Supabase Realtime keeps customer discovery in sync with admin changes.
+final venueCategoriesProvider = StreamProvider<List<VenueCategory>>((ref) {
+  return ref.watch(venueRepositoryProvider).categoryStream(activeOnly: true);
 });
 
 /// All categories provider for management screens (including inactive ones).
-final allVenueCategoriesProvider = FutureProvider<List<VenueCategory>>((ref) {
-  return ref.watch(venueRepositoryProvider).categories(activeOnly: false);
+final allVenueCategoriesProvider = StreamProvider<List<VenueCategory>>((ref) {
+  return ref.watch(venueRepositoryProvider).categoryStream(activeOnly: false);
+});
+
+/// Active subsections for customer catalogue surfaces.
+final venueSubsectionsProvider = StreamProvider.autoDispose
+    .family<List<VenueSubsection>, String>((ref, categoryId) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .subsectionStream(categoryId, activeOnly: true);
+});
+
+/// All subsections for management screens, including disabled rows.
+final allVenueSubsectionsProvider = StreamProvider.autoDispose
+    .family<List<VenueSubsection>, String>((ref, categoryId) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .subsectionStream(categoryId, activeOnly: false);
+});
+
+/// Active subsection catalogue for customer discovery surfaces.
+final venueSubsectionsCatalogProvider =
+    StreamProvider<List<VenueSubsection>>((ref) {
+  return ref.watch(venueRepositoryProvider).subsectionCatalogStream();
 });
 
 /// Popular venues provider.

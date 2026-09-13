@@ -53,7 +53,7 @@ class SupabasePaymentRepository implements PaymentRepository {
           .eq('id', bookingId)
           .eq('user_id', user.id)
           .maybeSingle();
-      return BookingStatus.fromDb(row?['status'] as String? ?? 'pending');
+      return BookingStatus.fromDb(row?['status'] as String? ?? 'unknown');
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -138,6 +138,19 @@ class SupabasePaymentRepository implements PaymentRepository {
           'This booking is not awaiting payment.',
           code: error,
           statusCode: e.status,
+        ),
+      'owner_approval_required' => app_errors.BusinessException(
+          'The venue owner must approve this request before payment.',
+          code: error,
+          statusCode: e.status,
+        ),
+      'payment_window_expired' => app_errors.HoldExpiredException(
+          'The payment window expired. Please start a new booking request.',
+          code: error,
+        ),
+      'booking_hold_expired' => app_errors.HoldExpiredException(
+          'The booking hold expired before payment could begin. Please start a new booking request.',
+          code: error,
         ),
       'booking_expired' => app_errors.HoldExpiredException(
           'This booking hold has expired. Please start a new booking.',

@@ -20,7 +20,8 @@ class SupabaseBookingRepository implements BookingRepository {
   static const String _slotSelect = '''
     *,
     venues (id, name, city),
-    time_slots (id, label)
+    time_slots (id, label),
+    booking_receipts (receipt_number, issued_at)
   ''';
 
   @override
@@ -60,6 +61,7 @@ class SupabaseBookingRepository implements BookingRepository {
           'idempotency_key': _newUuid(),
           'amount': amount,
           'hold_minutes': holdMinutes,
+          'approval_minutes': holdMinutes,
         },
       );
       final data = response.data;
@@ -81,6 +83,12 @@ class SupabaseBookingRepository implements BookingRepository {
           code: 'slot_unavailable',
         );
       }
+      if (error == 'date_blocked') {
+        throw const app_errors.BookingConflictException(
+          'This venue is unavailable on the selected date.',
+          code: 'date_blocked',
+        );
+      }
       throw app_errors.ServerException(
         'Booking service error (${e.status}).',
         code: error,
@@ -89,6 +97,31 @@ class SupabaseBookingRepository implements BookingRepository {
     } catch (e) {
       throw app_errors.mapError(e);
     }
+  }
+
+  @override
+  Future<Booking> requestBooking({
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    int approvalMinutes = 120,
+  }) async {
+    final hold = await acquireHold(
+      venueId: venueId,
+      slotId: slotId,
+      bookDate: bookDate,
+      amount: amount,
+      holdMinutes: approvalMinutes,
+    );
+    final bookingId = hold.bookingId;
+    if (bookingId == null || bookingId.isEmpty) {
+      throw const app_errors.ServerException(
+        'Booking request did not return a server booking.',
+        code: 'missing_booking_id',
+      );
+    }
+    return _loadBooking(bookingId);
   }
 
   @override
@@ -101,55 +134,49 @@ class SupabaseBookingRepository implements BookingRepository {
     required double taxAmount,
     required double totalAmount,
   }) async {
+    // The hold endpoint now creates the booking request atomically. Retain
+    // this method for the existing repository contract, but never recreate a
+    // booking with a client-side insert (which could bypass approval/RLS).
+    final bookingId = hold.bookingId;
+    if (bookingId == null || bookingId.isEmpty) {
+      throw const app_errors.ServerException(
+        'The server did not return an approval request.',
+        code: 'missing_booking_id',
+      );
+    }
+    return _loadBooking(bookingId);
+  }
+
+  @override
+  Future<Booking> approveBooking(String bookingId) async {
     try {
-      final user = _client.auth.currentUser;
-      if (user == null) {
-        throw const app_errors.AuthException('You must be signed in to book.');
-      }
-
-      // Store the authoritative slot times rather than client defaults.
-      final slot = await _client
-          .from('time_slots')
-          .select('label, start_time, end_time')
-          .eq('id', slotId)
-          .maybeSingle();
-      if (slot == null) {
-        throw const app_errors.NotFoundException(
-          'The selected time slot no longer exists.',
-          code: 'slot_not_found',
-        );
-      }
-
-      final row = await _client
-          .from('bookings')
-          .insert({
-            'booking_ref': _bookingRef(),
-            'user_id': user.id,
-            'venue_id': venueId,
-            'slot_id': slotId,
-            'book_date': _formatDate(bookDate),
-            'start_time': slot['start_time'],
-            'end_time': slot['end_time'],
-            'hold_id': hold.id,
-            'status': 'pending',
-            'quantity': 1,
-            'amount': amount,
-            'tax_amount': taxAmount,
-            'total_amount': totalAmount,
-            'currency': 'INR',
-          })
-          .select(_slotSelect)
-          .single();
-      return Booking.fromJson(row);
-    } on PostgrestException catch (e) {
-      // 23P01 = the deployed bookings_no_overlap constraint.
-      if (e.code == '23P01') {
-        throw const app_errors.BookingConflictException(
-          'This slot is no longer available.',
-          code: 'slot_unavailable',
-        );
-      }
+      final response = await _client.rpc(
+        'approve_venue_booking',
+        params: {
+          'p_booking_id': bookingId,
+          'p_idempotency_key': _newUuid(),
+        },
+      );
+      _ensureRpcSuccess(response, fallbackCode: 'approval_failed');
+      return _loadBooking(bookingId);
+    } catch (e) {
       throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<Booking> rejectBooking(String bookingId, {String? reason}) async {
+    try {
+      final response = await _client.rpc(
+        'reject_venue_booking',
+        params: {
+          'p_booking_id': bookingId,
+          'p_idempotency_key': _newUuid(),
+          'p_reason': reason,
+        },
+      );
+      _ensureRpcSuccess(response, fallbackCode: 'rejection_failed');
+      return _loadBooking(bookingId);
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -203,54 +230,48 @@ class SupabaseBookingRepository implements BookingRepository {
           'You must be signed in to cancel.',
         );
       }
-      final booking = await _client
-          .from('bookings')
-          .select('hold_id')
-          .eq('id', bookingId)
-          .eq('user_id', user.id)
-          .eq('status', 'pending')
-          .maybeSingle();
-      if (booking == null) {
-        throw const app_errors.BookingConflictException(
-          'This booking can no longer be cancelled.',
-          code: 'cannot_cancel',
-        );
-      }
-      final result = await _client
-          .from('bookings')
-          .update({'status': 'cancelled'})
-          .eq('id', bookingId)
-          .eq('user_id', user.id)
-          .eq('status', 'pending')
-          .select('id');
-      if (result.isEmpty) {
-        throw const app_errors.BookingConflictException(
-          'This booking can no longer be cancelled.',
-          code: 'cannot_cancel',
-        );
-      }
-
-      // Release the active hold immediately. If the release call fails, the
-      // server-side expiry job still frees it; surface the partial failure so
-      // the UI never implies that every write completed successfully.
-      final holdId = booking['hold_id'] as String?;
-      if (holdId != null && holdId.isNotEmpty) {
-        try {
-          await _client.rpc(
-            'release_venue_hold',
-            params: {'p_hold_id': holdId, 'p_user_id': user.id},
-          );
-        } catch (_) {
-          throw app_errors.ServerException(
-            'Booking cancelled, but the slot release is still processing.',
-            code: 'hold_release_failed',
-          );
-        }
-      }
+      final response = await _client.rpc(
+        'cancel_venue_booking',
+        params: {'p_booking_id': bookingId},
+      );
+      _ensureRpcSuccess(response, fallbackCode: 'cannot_cancel');
     } catch (e) {
       if (e is app_errors.BookingConflictException) rethrow;
       throw app_errors.mapError(e);
     }
+  }
+
+  Future<Booking> _loadBooking(String bookingId) async {
+    final row = await _client
+        .from('bookings')
+        .select(_slotSelect)
+        .eq('id', bookingId)
+        .maybeSingle();
+    if (row == null) {
+      throw const app_errors.NotFoundException(
+        'The server booking could not be loaded.',
+        code: 'booking_not_found',
+      );
+    }
+    return Booking.fromJson(row);
+  }
+
+  static void _ensureRpcSuccess(
+    dynamic response, {
+    required String fallbackCode,
+  }) {
+    if (response is Map<String, dynamic> && response['success'] == true) {
+      return;
+    }
+    final code = response is Map<String, dynamic>
+        ? response['error_code']?.toString().toLowerCase()
+        : null;
+    throw app_errors.ServerException(
+      response is Map<String, dynamic> && response['message'] is String
+          ? response['message'] as String
+          : 'The server rejected this booking operation.',
+      code: code ?? fallbackCode,
+    );
   }
 
   @override
@@ -322,11 +343,6 @@ class SupabaseBookingRepository implements BookingRepository {
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
-  }
-
-  static String _bookingRef() {
-    final n = Random().nextInt(0xFFFFFF);
-    return 'BMS-${n.toRadixString(16).toUpperCase().padLeft(6, '0')}';
   }
 
   static String _newUuid() {

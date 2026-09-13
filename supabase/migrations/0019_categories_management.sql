@@ -4,37 +4,43 @@
 -- deactivation of categories across Android, iOS, and Web.
 -- ============================================================
 
--- 1. Add activation and parent section columns to venue_categories
+-- 1. Category state and parent section are stored in the existing metadata JSON.
+-- This keeps the migration compatible with the deployed schema, where
+-- venue_categories has id/slug/name/icon/metadata columns.
 alter table public.venue_categories
-  add column if not exists is_active boolean not null default true;
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
 
-alter table public.venue_categories
-  add column if not exists parent_section text default 'general';
-
--- 2. Indexes for active and section queries
-create index if not exists idx_venue_categories_active
-  on public.venue_categories(is_active);
-
-create index if not exists idx_venue_categories_parent_section
-  on public.venue_categories(parent_section);
-
--- 3. Row Level Security Policies for Owners & Administrators
--- Any authenticated user with an owner or administrator role can insert/update categories.
+-- 2. Row Level Security policies for owners and administrators.
+-- Never treat authentication alone as authorization.
+drop policy if exists "categories_owner_admin_insert" on public.venue_categories;
 create policy "categories_owner_admin_insert" on public.venue_categories
   for insert with check (
-    auth.role() = 'authenticated'
+    public.has_role(auth.uid(), 'venue_owner'::public.user_role)
+    or public.has_role(auth.uid(), 'administrator'::public.user_role)
+    or public.has_role(auth.uid(), 'super_administrator'::public.user_role)
   );
 
+drop policy if exists "categories_owner_admin_update" on public.venue_categories;
 create policy "categories_owner_admin_update" on public.venue_categories
   for update using (
-    auth.role() = 'authenticated'
+    public.has_role(auth.uid(), 'venue_owner'::public.user_role)
+    or public.has_role(auth.uid(), 'administrator'::public.user_role)
+    or public.has_role(auth.uid(), 'super_administrator'::public.user_role)
+  ) with check (
+    public.has_role(auth.uid(), 'venue_owner'::public.user_role)
+    or public.has_role(auth.uid(), 'administrator'::public.user_role)
+    or public.has_role(auth.uid(), 'super_administrator'::public.user_role)
   );
 
--- 4. Seed Photography Studio category
-insert into public.venue_categories (slug, name, icon, is_active, parent_section)
-values ('photography_studio', 'Photography Studio', '📸', true, 'general')
-on conflict (slug) do update set
-  name = excluded.name,
-  icon = excluded.icon,
-  is_active = excluded.is_active,
-  parent_section = excluded.parent_section;
+grant select on public.venue_categories to anon, authenticated;
+grant insert, update on public.venue_categories to authenticated;
+
+-- 3. Seed Photography Studio category without overwriting admin edits.
+insert into public.venue_categories (slug, name, icon, metadata)
+values (
+  'photography_studio',
+  'Photography Studio',
+  '📸',
+  '{"active": true, "parent_section": "general"}'::jsonb
+)
+on conflict (slug) do nothing;

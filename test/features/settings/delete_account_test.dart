@@ -28,7 +28,8 @@ void main() {
   });
 
   test('deleteAccount failure keeps the session and can be retried', () async {
-    final auth = MockAuthRepository(initialUser: user)..failDeleteAccount = true;
+    final auth = MockAuthRepository(initialUser: user)
+      ..failDeleteAccount = true;
     final container = ProviderContainer(
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
@@ -66,6 +67,11 @@ void main() {
     );
     await tester.pump();
 
+    await tester.scrollUntilVisible(
+      find.text('Delete Account'),
+      500,
+      scrollable: find.byType(Scrollable),
+    );
     await tester.tap(find.text('Delete Account'));
     await tester.pump();
     expect(find.textContaining('Type DELETE'), findsWidgets);

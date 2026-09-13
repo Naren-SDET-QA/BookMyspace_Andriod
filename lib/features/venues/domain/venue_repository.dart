@@ -20,6 +20,80 @@ abstract class VenueRepository {
   /// Sets category active status.
   Future<void> setCategoryActive(String categoryId, bool isActive);
 
+  /// Emits the catalogue whenever Supabase Realtime reports a change.
+  Stream<List<VenueCategory>> categoryStream({bool activeOnly = false});
+
+  /// Fetches the subsections belonging to a category.
+  Future<List<VenueSubsection>> subsections(
+    String categoryId, {
+    bool activeOnly = false,
+  });
+
+  /// Emits the subsections belonging to a category in display order.
+  Stream<List<VenueSubsection>> subsectionStream(
+    String categoryId, {
+    bool activeOnly = false,
+  });
+
+  /// Emits all active catalogue subsections for customer discovery surfaces.
+  Stream<List<VenueSubsection>> subsectionCatalogStream({
+    bool activeOnly = true,
+  });
+
+  /// Creates a second-level category.
+  Future<VenueSubsection> addSubsection({
+    required String categoryId,
+    required String name,
+    required String slug,
+    String? icon,
+    String description = '',
+    String? imageUrl,
+    String? imagePath,
+    bool isActive = true,
+    int displayOrder = 0,
+    List<String> supportedLanguages = const ['en'],
+    Map<String, String> nameTranslations = const {},
+    Map<String, String> descriptionTranslations = const {},
+  });
+
+  /// Updates a second-level category.
+  Future<VenueSubsection> updateSubsection(VenueSubsection subsection);
+
+  /// Deletes a category and its subsections after UI confirmation.
+  Future<void> deleteCategory(String categoryId);
+
+  /// Deletes a subsection after UI confirmation.
+  Future<void> deleteSubsection(String subsectionId);
+
+  /// Atomically persists category order.
+  Future<void> reorderCategories(List<String> categoryIds);
+
+  /// Atomically persists subsection order within a category.
+  Future<void> reorderSubsections(
+    String categoryId,
+    List<String> subsectionIds,
+  );
+
+  /// Uploads a category image into the shared media bucket.
+  Future<VenueCategory> uploadCategoryImage({
+    required VenueCategory category,
+    required List<int> bytes,
+    required String extension,
+  });
+
+  /// Removes category image metadata and its storage object.
+  Future<void> removeCategoryImage(VenueCategory category);
+
+  /// Uploads a subsection image into the shared media bucket.
+  Future<VenueSubsection> uploadSubsectionImage({
+    required VenueSubsection subsection,
+    required List<int> bytes,
+    required String extension,
+  });
+
+  /// Removes subsection image metadata and its storage object.
+  Future<void> removeSubsectionImage(VenueSubsection subsection);
+
   /// Distinct venue cities from listings the caller can read.
   Future<List<String>> listedCities();
 

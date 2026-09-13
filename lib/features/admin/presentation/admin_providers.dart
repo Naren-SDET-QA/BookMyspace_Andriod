@@ -44,13 +44,12 @@ final adminPublishedCoursesProvider = FutureProvider<List<Course>>((ref) {
   return ref.watch(adminDirectoryRepositoryProvider).listPublishedCourses();
 });
 
-final adminSupportTicketsProvider =
-    FutureProvider<List<SupportTicket>>((ref) {
+final adminSupportTicketsProvider = FutureProvider<List<SupportTicket>>((ref) {
   return ref.watch(adminDirectoryRepositoryProvider).listSupportTickets();
 });
 
-final resolveSupportTicketProvider =
-    FutureProvider.autoDispose.family<SupportTicket, String>((ref, ticketId) async {
+final resolveSupportTicketProvider = FutureProvider.autoDispose
+    .family<SupportTicket, String>((ref, ticketId) async {
   final ticket =
       await ref.watch(adminDirectoryRepositoryProvider).resolveTicket(ticketId);
   ref.invalidate(adminSupportTicketsProvider);

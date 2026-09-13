@@ -14,11 +14,13 @@ import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
 
-/// Booking flow: pick a date, pick an available slot, confirm the hold.
+/// Booking flow: pick a date, pick an available slot, and submit an owner
+/// approval request.
 ///
 /// The slot lock is acquired atomically on the server (via the
-/// `create-booking-hold` Edge Function) when the user confirms, then a
-/// `pending` booking row is created and the payment flow is entered.
+/// `create-booking-hold` Edge Function) when the user submits. The server
+/// returns an `awaiting_owner_approval` booking; payment is intentionally not
+/// available until the venue owner accepts it.
 class BookingScreen extends ConsumerStatefulWidget {
   const BookingScreen({super.key, required this.venue});
 
@@ -141,25 +143,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
     setState(() => _confirming = true);
     try {
-      final hold = await repo.acquireHold(
+      final booking = await repo.requestBooking(
         venueId: widget.venue.id,
         slotId: slot.slotId,
         bookDate: date,
         amount: amount,
-      );
-      final booking = await repo.createBooking(
-        hold: hold,
-        venueId: widget.venue.id,
-        slotId: slot.slotId,
-        bookDate: date,
-        amount: amount,
-        taxAmount: tax,
-        totalAmount: total,
       );
       ref.invalidate(myBookingsProvider);
       if (!mounted) return;
-      // Enter the payment flow with the freshly created pending booking.
-      unawaited(context.push('/bookings/${booking.id}/pay', extra: booking));
+      // This is a request acknowledgement, not a booking confirmation. The
+      // server status is rendered by the destination screen.
+      unawaited(context.push('/bookings/${booking.id}/success'));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

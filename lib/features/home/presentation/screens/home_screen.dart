@@ -19,6 +19,7 @@ import '../../../events/presentation/event_providers.dart';
 import '../../../location/presentation/gps_session.dart';
 import '../../../cms/presentation/cms_providers.dart';
 import '../../../offers/presentation/coupon_providers.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
@@ -94,10 +95,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = authState.user;
     final popularVenuesAsync = ref.watch(popularVenuesProvider);
     final location = ref.watch(discoveryLocationProvider);
+    final eventsEnabled = ref.watch(moduleEnabledProvider('events'));
+    final offersEnabled = ref.watch(moduleEnabledProvider('offers'));
     final eventsAsync = ref.watch(upcomingEventsProvider);
     final coursesAsync = ref.watch(publishedCoursesProvider);
     final couponsAsync = ref.watch(activeCouponsProvider);
-    final cmsBanners = ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
+    final cmsBanners =
+        ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
     final myBookingsAsync = ref.watch(myBookingsProvider);
 
     return Scaffold(
@@ -109,6 +113,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             final dynamicCats =
                 ref.watch(venueCategoriesProvider).valueOrNull ??
                     const <VenueCategory>[];
+            final dynamicSubsections =
+                ref.watch(venueSubsectionsCatalogProvider).valueOrNull ??
+                    const <VenueSubsection>[];
             final liveVenues =
                 popularVenuesAsync.valueOrNull ?? const <Venue>[];
             final trending = dynamicCats
@@ -167,7 +174,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       child: RepaintBoundary(
                         child: HomeOfferBanner(
-                          coupons: couponsAsync.valueOrNull ?? const [],
+                          coupons: offersEnabled
+                              ? couponsAsync.valueOrNull ?? const []
+                              : const [],
                           cmsBanners: cmsBanners,
                         ),
                       ),
@@ -184,6 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         selected: _selectedSection,
                         pageController: _masterPageController,
                         categories: dynamicCats,
+                        dynamicSubsections: dynamicSubsections,
                         venues: liveVenues,
                         onMasterChanged: (section) {
                           setState(() => _selectedSection = section);
@@ -214,7 +224,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
-                  if ((couponsAsync.valueOrNull ?? const []).isNotEmpty)
+                  if (offersEnabled &&
+                      (couponsAsync.valueOrNull ?? const []).isNotEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
@@ -226,7 +237,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
-                  if ((eventsAsync.valueOrNull ?? const []).isNotEmpty)
+                  if (eventsEnabled &&
+                      (eventsAsync.valueOrNull ?? const []).isNotEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.symmetric(

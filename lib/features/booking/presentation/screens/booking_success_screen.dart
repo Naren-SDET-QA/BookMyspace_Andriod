@@ -55,7 +55,51 @@ class _ConfirmedBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final confirmed = booking.status == BookingStatus.confirmed;
+    final (title, message, icon, color) = switch (booking.status) {
+      BookingStatus.confirmed => (
+          l10n.bookingConfirmed,
+          'Your space is reserved. A check-in pass is available from Bookings.',
+          Icons.check_circle_rounded,
+          AppTheme.success,
+        ),
+      BookingStatus.awaitingOwnerApproval => (
+          'Request sent to venue owner',
+          'The owner is reviewing your exact date and time. Payment will become available only after approval.',
+          Icons.hourglass_top_rounded,
+          theme.colorScheme.primary,
+        ),
+      BookingStatus.pending => (
+          'Payment available',
+          'The venue owner accepted your request. Complete payment before the payment window expires.',
+          Icons.payments_outlined,
+          theme.colorScheme.primary,
+        ),
+      BookingStatus.ownerRejected => (
+          'Request declined',
+          booking.rejectionReason ??
+              'The venue owner could not accept this request. No payment was taken.',
+          Icons.cancel_outlined,
+          theme.colorScheme.error,
+        ),
+      BookingStatus.approvalExpired => (
+          'Request expired',
+          'The owner approval window ended before a decision. The slot was released and no payment was taken.',
+          Icons.timer_off_outlined,
+          theme.colorScheme.error,
+        ),
+      BookingStatus.cancelled => (
+          'Booking cancelled',
+          'This booking is cancelled. It is not a confirmed reservation.',
+          Icons.cancel_outlined,
+          theme.colorScheme.onSurfaceVariant,
+        ),
+      _ => (
+          'Booking status unavailable',
+          'The server returned a status this app does not recognize. No confirmation is shown.',
+          Icons.help_outline_rounded,
+          theme.colorScheme.onSurfaceVariant,
+        ),
+    };
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -63,13 +107,13 @@ class _ConfirmedBody extends StatelessWidget {
           children: [
             const SizedBox(height: 12),
             Icon(
-              confirmed ? Icons.check_circle_rounded : Icons.hourglass_top,
+              icon,
               size: 64,
-              color: confirmed ? AppTheme.success : theme.colorScheme.primary,
+              color: color,
             ),
             const SizedBox(height: 16),
             Text(
-              confirmed ? l10n.bookingConfirmed : l10n.awaitingConfirmation,
+              title,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -77,9 +121,7 @@ class _ConfirmedBody extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              confirmed
-                  ? 'Your space is reserved. A check-in pass is available from Bookings.'
-                  : 'Payment is being confirmed by BookMySpace. This screen updates when the server records the booking.',
+              message,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -98,7 +140,31 @@ class _ConfirmedBody extends StatelessWidget {
                 ),
               ),
             ),
+            if (booking.receiptNumber != null) ...[
+              const SizedBox(height: 10),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.receipt_long_rounded),
+                  title: const Text('Receipt ready'),
+                  subtitle: Text(booking.receiptNumber!),
+                ),
+              ),
+            ],
             const Spacer(),
+            if (booking.canPay) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => context.push(
+                    '/bookings/${booking.id}/pay',
+                    extra: booking,
+                  ),
+                  icon: const Icon(Icons.lock_outline_rounded),
+                  label: const Text('Pay securely'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: FilledButton(

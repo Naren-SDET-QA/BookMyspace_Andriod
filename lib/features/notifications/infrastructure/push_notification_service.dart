@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/router/app_router.dart';
 import '../../booking/domain/booking.dart';
 import '../domain/notification.dart' as app_notif;
@@ -502,6 +503,8 @@ class PushNotificationService {
 
   /// Instantly triggers a test 1-Hour Pre-Booking Reminder notification.
   Future<void> trigger1HourReminderNow(Booking? booking) async {
+    if (!AppConfig.isDevelopment || !kDebugMode) return;
+
     final target = booking ??
         Booking(
           id: 'bk_live_${(1000 + DateTime.now().millisecond % 9000)}',
@@ -542,6 +545,8 @@ class PushNotificationService {
     String? customBody,
     Map<String, dynamic>? extraData,
   }) async {
+    if (!AppConfig.isDevelopment || !kDebugMode) return;
+
     final title = customTitle ?? '🚀 Cloud Push Alert: Slot in 1 Hour';
     final body = customBody ??
         'BookMySpace Cloud Notification Engine has delivered your 1-hour pre-booking alert for Nexus Workspaces.';

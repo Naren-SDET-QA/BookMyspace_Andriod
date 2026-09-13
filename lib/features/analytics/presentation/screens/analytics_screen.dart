@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../../domain/analytics_event.dart';
 import '../analytics_providers.dart';
 
@@ -13,32 +14,40 @@ class AnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final enabled = ref.watch(moduleEnabledProvider('analytics'));
     final events = ref.watch(recentAnalyticsEventsProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.analyticsLabel)),
-      body: events.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(recentAnalyticsEventsProvider),
-        ),
-        data: (items) => items.isEmpty
-            ? const EmptyState(
-                icon: Icons.analytics_rounded,
-                title: 'No analytics data',
-                message:
-                    'Analytics events will appear here as you use the app.',
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                itemBuilder: (context, i) {
-                  final event = items[i];
-                  return _AnalyticsTile(event: event);
-                },
+      body: !enabled
+          ? const EmptyState(
+              icon: Icons.analytics_outlined,
+              title: 'Analytics is unavailable',
+              message:
+                  'This optional module is currently disabled by the administrator.',
+            )
+          : events.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => ErrorView(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(recentAnalyticsEventsProvider),
               ),
-      ),
+              data: (items) => items.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.analytics_rounded,
+                      title: 'No analytics data',
+                      message:
+                          'Analytics events will appear here as you use the app.',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: items.length,
+                      itemBuilder: (context, i) {
+                        final event = items[i];
+                        return _AnalyticsTile(event: event);
+                      },
+                    ),
+            ),
     );
   }
 }

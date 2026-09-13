@@ -40,11 +40,21 @@ class Coupon {
         code: json['code'] as String? ?? '',
         discountType: json['discount_type'] as String? ?? 'fixed',
         discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0,
-        description: json['description'] as String? ?? '',
+        description: _normalizeDescription(json['description']),
         maxDiscountAmount: (json['max_discount_amount'] as num?)?.toDouble(),
         minBookingAmount: (json['min_booking_amount'] as num?)?.toDouble(),
         endsAt: DateTime.tryParse(json['ends_at'] as String? ?? ''),
       );
+
+  /// Repairs the one known legacy UTF-8/Windows-1252 mojibake sequence.
+  ///
+  /// This is intentionally narrow: it does not guess at arbitrary encoding
+  /// errors or invent copy when the backend description is absent. The
+  /// backend migration remains the source-of-truth repair for stored rows.
+  static String _normalizeDescription(Object? raw) {
+    final description = raw?.toString() ?? '';
+    return description.replaceAll('\u00e2\u201a\u00b9', '\u20b9');
+  }
 }
 
 abstract interface class CouponRepository {

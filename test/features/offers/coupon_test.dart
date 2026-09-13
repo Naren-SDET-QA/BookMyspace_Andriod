@@ -20,5 +20,17 @@ void main() {
       'discount_value': 500,
     });
     expect(fixed.valueLabel, '₹500 off');
+
+    final legacyDescription = Coupon.fromJson({
+      'id': 'c3',
+      'code': 'FESTIVE500',
+      'discount_type': 'fixed',
+      'discount_value': 500,
+      'description': 'Flat â‚¹500 off on bookings above â‚¹10,000',
+    });
+    expect(
+      legacyDescription.description,
+      'Flat ₹500 off on bookings above ₹10,000',
+    );
   });
 }

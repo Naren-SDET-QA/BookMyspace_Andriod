@@ -3,9 +3,10 @@ import '../domain/booking.dart';
 /// Contract for the booking flow.
 ///
 /// The implementation talks to Supabase (PostgREST + Edge Functions). The
-/// atomic slot lock lives server-side in `acquire_booking_hold`, which this
-/// repository invokes through the `create-booking-hold` Edge Function so the
-/// client never needs the service role.
+/// atomic slot lock and owner-approval transition live server-side in
+/// `request_venue_booking`, which this repository reaches through the
+/// backwards-compatible `create-booking-hold` Edge Function. The client never
+/// needs the service role.
 abstract interface class BookingRepository {
   /// Lists every active slot of [venueId] with availability for [date].
   Future<List<SlotAvailability>> availableTimeSlots({
@@ -25,7 +26,19 @@ abstract interface class BookingRepository {
     int holdMinutes = 10,
   });
 
-  /// Creates a pending booking tied to an acquired hold.
+  /// Creates the customer request after the server rechecks the exact venue,
+  /// date, slot and live inventory. The returned booking is never confirmed
+  /// at this point; it is awaiting the venue owner's decision.
+  Future<Booking> requestBooking({
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    int approvalMinutes = 120,
+  });
+
+  /// Compatibility wrapper for older callers. New rows are created atomically
+  /// by [acquireHold]/[requestBooking]; this method must never insert a row.
   Future<Booking> createBooking({
     required BookingHold hold,
     required String venueId,
@@ -35,6 +48,12 @@ abstract interface class BookingRepository {
     required double taxAmount,
     required double totalAmount,
   });
+
+  /// Accepts a request through the server-side owner authorization gate.
+  Future<Booking> approveBooking(String bookingId);
+
+  /// Rejects a request and releases its server-side hold.
+  Future<Booking> rejectBooking(String bookingId, {String? reason});
 
   /// Bookings for the signed-in user, newest first.
   Future<List<Booking>> myBookings();

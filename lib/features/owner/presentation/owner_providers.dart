@@ -68,11 +68,14 @@ final ownerDashboardSnapshotProvider =
   final venueIds = venues.map((Venue venue) => venue.id).toSet();
   final scoped = venueIds.isEmpty
       ? bookings
-      : bookings.where((booking) => venueIds.contains(booking.venueId)).toList();
+      : bookings
+          .where((booking) => venueIds.contains(booking.venueId))
+          .toList();
   final pending = scoped
       .where((booking) =>
           booking.status == BookingStatus.pending ||
-          booking.status == BookingStatus.held)
+          booking.status == BookingStatus.held ||
+          booking.status == BookingStatus.awaitingOwnerApproval)
       .length;
   final revenue = scoped
       .where((booking) => booking.status == BookingStatus.confirmed)

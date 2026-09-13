@@ -46,8 +46,9 @@ void main() {
       }
     });
 
-    test('unknown status falls back to pending', () {
-      expect(BookingStatus.fromDb('weird'), BookingStatus.pending);
+    test('unknown status is neutral instead of becoming pending', () {
+      expect(BookingStatus.fromDb('weird'), BookingStatus.unknown);
+      expect(Booking.fromJson({}).status, BookingStatus.unknown);
     });
   });
 
@@ -77,9 +78,38 @@ void main() {
       expect(booking.canCancel, isFalse);
     });
 
-    test('only pending bookings can be cancelled', () {
+    test('only live unpaid bookings can be cancelled', () {
       expect(Booking.fromJson({'status': 'pending'}).canCancel, isTrue);
+      expect(
+        Booking.fromJson({'status': 'awaiting_owner_approval'}).canCancel,
+        isTrue,
+      );
       expect(Booking.fromJson({'status': 'confirmed'}).canCancel, isFalse);
+    });
+
+    test('payment is available only after owner approval is present', () {
+      expect(
+        Booking.fromJson({'status': 'pending'}).canPay,
+        isFalse,
+      );
+      expect(
+        Booking.fromJson({
+          'status': 'pending',
+          'approved_at': '2026-09-12T10:00:00Z',
+        }).canPay,
+        isTrue,
+      );
+      expect(
+        Booking.fromJson({
+          'status': 'pending',
+          'approval_required': false,
+        }).canPay,
+        isFalse,
+      );
+      expect(
+        Booking.fromJson({'status': 'awaiting_owner_approval'}).canPay,
+        isFalse,
+      );
     });
   });
 

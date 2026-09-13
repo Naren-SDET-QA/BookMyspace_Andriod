@@ -67,7 +67,37 @@ class MockVenueRepository implements VenueRepository {
       VenueCategory(id: 'c2', slug: 'meeting_room', name: 'Meeting Room'),
       VenueCategory(id: 'c3', slug: 'party_hall', name: 'Party Hall'),
     ];
-    return activeOnly ? categories : categories;
+    return activeOnly
+        ? categories.where((category) => category.isActive).toList()
+        : categories;
+  }
+
+  @override
+  Stream<List<VenueCategory>> categoryStream({bool activeOnly = false}) async* {
+    yield await categories(activeOnly: activeOnly);
+  }
+
+  @override
+  Future<List<VenueSubsection>> subsections(
+    String categoryId, {
+    bool activeOnly = false,
+  }) async {
+    return const [];
+  }
+
+  @override
+  Stream<List<VenueSubsection>> subsectionStream(
+    String categoryId, {
+    bool activeOnly = false,
+  }) async* {
+    yield const [];
+  }
+
+  @override
+  Stream<List<VenueSubsection>> subsectionCatalogStream({
+    bool activeOnly = true,
+  }) async* {
+    yield const [];
   }
 
   @override
@@ -94,6 +124,79 @@ class MockVenueRepository implements VenueRepository {
 
   @override
   Future<void> setCategoryActive(String categoryId, bool isActive) async {}
+
+  @override
+  Future<VenueSubsection> addSubsection({
+    required String categoryId,
+    required String name,
+    required String slug,
+    String? icon,
+    String description = '',
+    String? imageUrl,
+    String? imagePath,
+    bool isActive = true,
+    int displayOrder = 0,
+    List<String> supportedLanguages = const ['en'],
+    Map<String, String> nameTranslations = const {},
+    Map<String, String> descriptionTranslations = const {},
+  }) async {
+    return VenueSubsection(
+      id: 'new',
+      categoryId: categoryId,
+      name: name,
+      slug: slug,
+      icon: icon,
+      description: description,
+      imageUrl: imageUrl ?? '',
+      imagePath: imagePath ?? '',
+      isActive: isActive,
+      displayOrder: displayOrder,
+      supportedLanguages: supportedLanguages,
+      nameTranslations: nameTranslations,
+      descriptionTranslations: descriptionTranslations,
+    );
+  }
+
+  @override
+  Future<VenueSubsection> updateSubsection(VenueSubsection subsection) async =>
+      subsection;
+
+  @override
+  Future<void> deleteCategory(String categoryId) async {}
+
+  @override
+  Future<void> deleteSubsection(String subsectionId) async {}
+
+  @override
+  Future<void> reorderCategories(List<String> categoryIds) async {}
+
+  @override
+  Future<void> reorderSubsections(
+    String categoryId,
+    List<String> subsectionIds,
+  ) async {}
+
+  @override
+  Future<VenueCategory> uploadCategoryImage({
+    required VenueCategory category,
+    required List<int> bytes,
+    required String extension,
+  }) async =>
+      category;
+
+  @override
+  Future<void> removeCategoryImage(VenueCategory category) async {}
+
+  @override
+  Future<VenueSubsection> uploadSubsectionImage({
+    required VenueSubsection subsection,
+    required List<int> bytes,
+    required String extension,
+  }) async =>
+      subsection;
+
+  @override
+  Future<void> removeSubsectionImage(VenueSubsection subsection) async {}
 
   @override
   Future<List<String>> listedCities() async {

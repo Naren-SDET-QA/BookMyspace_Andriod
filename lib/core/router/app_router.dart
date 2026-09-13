@@ -6,6 +6,8 @@ import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_cms_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
+import '../../features/integrations/presentation/screens/admin_integrations_screen.dart';
+import '../../features/modules/presentation/screens/admin_modules_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/auth_user.dart';
@@ -75,6 +77,7 @@ abstract class AppRoutes {
   static const adminUsers = '/admin/users';
   static const adminOwners = '/admin/owners';
   static const adminVenues = '/admin/venues';
+  static const adminCategories = '/admin/categories';
   static const adminBookings = '/admin/bookings';
   static const adminPayments = '/admin/payments';
   static const adminEvents = '/admin/events';
@@ -82,6 +85,8 @@ abstract class AppRoutes {
   static const adminSupport = '/admin/support';
   static const adminAudit = '/admin/audit';
   static const adminCms = '/admin/cms';
+  static const adminIntegrations = '/admin/integrations';
+  static const adminModules = '/admin/modules';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
   static const ownerCategories = '/owner/categories';
@@ -166,8 +171,7 @@ GoRouter createAppRouter({
         return user == null ? AppRoutes.login : AppRoutes.shell;
       }
       if (!ready) return null;
-      final isPublic =
-          path == AppRoutes.onboarding || path == AppRoutes.login;
+      final isPublic = path == AppRoutes.onboarding || path == AppRoutes.login;
       if (allowUnauthenticatedPreview) return null;
       if (user == null) {
         return isPublic ? null : AppRoutes.login;
@@ -190,18 +194,15 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: '/venue/:id',
-        redirect: (context, state) =>
-            '/venues/${state.pathParameters['id']}',
+        redirect: (context, state) => '/venues/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/course/:id',
-        redirect: (context, state) =>
-            '/courses/${state.pathParameters['id']}',
+        redirect: (context, state) => '/courses/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/event/:id',
-        redirect: (context, state) =>
-            '/events/${state.pathParameters['id']}',
+        redirect: (context, state) => '/events/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: AppRoutes.onboarding,
@@ -319,6 +320,14 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.adminCategories,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: OwnerCategoriesScreen(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.adminBookings,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
@@ -376,6 +385,22 @@ GoRouter createAppRouter({
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
           child: AdminCmsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminIntegrations,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminIntegrationsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminModules,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminModulesScreen(),
         ),
       ),
       GoRoute(

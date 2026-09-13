@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
@@ -60,6 +62,7 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
   late final AnimationController? _entranceController;
   late final Animation<double>? _fadeAnimation;
   late final Animation<Offset>? _slideAnimation;
+  Timer? _entranceDelayTimer;
 
   @override
   void initState() {
@@ -84,9 +87,12 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
       );
 
       if (widget.entranceDelayMs > 0) {
-        Future.delayed(Duration(milliseconds: widget.entranceDelayMs), () {
-          if (mounted) _entranceController.forward();
-        });
+        _entranceDelayTimer = Timer(
+          Duration(milliseconds: widget.entranceDelayMs),
+          () {
+            if (mounted) _entranceController.forward();
+          },
+        );
       } else {
         _entranceController.forward();
       }
@@ -99,6 +105,7 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
 
   @override
   void dispose() {
+    _entranceDelayTimer?.cancel();
     _entranceController?.dispose();
     super.dispose();
   }

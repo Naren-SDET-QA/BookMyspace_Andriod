@@ -1,7 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart'
-    show NotFoundException, mapError;
+    show BusinessException, NotFoundException, mapError;
 import '../../../core/firebase/error_logger.dart';
 import '../../../core/network/retry.dart';
 import '../domain/venue.dart';
@@ -22,106 +24,13 @@ class SupabaseVenueRepository implements VenueRepository {
     venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order)
   ''';
 
-  // In-memory cache & fallback for offline/development resilience
-  static final List<VenueCategory> _fallbackCategories = [
-    const VenueCategory(
-        id: 'cat_all',
-        slug: 'all',
-        name: 'All Spaces',
-        icon: '✨',
-        isActive: true,
-        parentSection: 'general'),
-    const VenueCategory(
-        id: 'cat_photo',
-        slug: 'photography_studio',
-        name: 'Photography Studio',
-        icon: '📸',
-        isActive: true,
-        parentSection: 'general'),
-    const VenueCategory(
-        id: 'cat_function',
-        slug: 'function_hall',
-        name: 'Function Halls',
-        icon: '🏛️',
-        isActive: true,
-        parentSection: 'venues'),
-    const VenueCategory(
-        id: 'cat_marriage',
-        slug: 'marriage_hall',
-        name: 'Marriage Halls',
-        icon: '💒',
-        isActive: true,
-        parentSection: 'venues'),
-    const VenueCategory(
-        id: 'cat_convention',
-        slug: 'convention_center',
-        name: 'Convention Centers',
-        icon: '🏢',
-        isActive: true,
-        parentSection: 'venues'),
-    const VenueCategory(
-        id: 'cat_meeting',
-        slug: 'meeting_room',
-        name: 'Meeting Rooms',
-        icon: '💼',
-        isActive: true,
-        parentSection: 'venues'),
-    const VenueCategory(
-        id: 'cat_party',
-        slug: 'party_hall',
-        name: 'Party Halls',
-        icon: '🎉',
-        isActive: true,
-        parentSection: 'venues'),
-    const VenueCategory(
-        id: 'cat_sports',
-        slug: 'sports_ground',
-        name: 'Sports Grounds',
-        icon: '🏸',
-        isActive: true,
-        parentSection: 'classes'),
-    const VenueCategory(
-        id: 'cat_coworking',
-        slug: 'coworking_space',
-        name: 'Coworking Spaces',
-        icon: '💻',
-        isActive: true,
-        parentSection: 'general'),
-    const VenueCategory(
-        id: 'cat_hotel',
-        slug: 'hotel_stay',
-        name: 'Hotels & Suites',
-        icon: '🏨',
-        isActive: true,
-        parentSection: 'hotels'),
-    const VenueCategory(
-        id: 'cat_pg',
-        slug: 'pg_hostel',
-        name: 'PG & Hostels',
-        icon: '🏠',
-        isActive: true,
-        parentSection: 'pgs'),
-  ];
-
   @override
   Future<List<VenueCategory>> categories({bool activeOnly = false}) async {
     try {
       var query = _client.from('venue_categories').select('*');
-      final rows = await query.order('name');
-      final fetched = rows.map((r) => VenueCategory.fromJson(r)).toList();
-      if (fetched.isNotEmpty) {
-        for (final cat in fetched) {
-          final idx = _fallbackCategories
-              .indexWhere((c) => c.slug == cat.slug || c.id == cat.id);
-          if (idx >= 0) {
-            _fallbackCategories[idx] = cat;
-          } else {
-            _fallbackCategories.add(cat);
-          }
-        }
-        return activeOnly ? fetched.where((c) => c.isActive).toList() : fetched;
-      }
-      return const [];
+      if (activeOnly) query = query.eq('is_active', true);
+      final rows = await query.order('display_order').order('name');
+      return rows.map(VenueCategory.fromJson).toList();
     } catch (e) {
       throw mapError(e);
     }
@@ -136,12 +45,16 @@ class SupabaseVenueRepository implements VenueRepository {
     bool isActive = true,
   }) async {
     try {
+      _validateNameAndSlug(name, slug);
       final row = await _client
           .from('venue_categories')
           .insert({
             'name': name,
-            'slug': slug,
+            'slug': slug.trim().toLowerCase(),
             'icon': icon ?? '🏷️',
+            'is_active': isActive,
+            'parent_section': parentSection ?? 'general',
+            'display_order': await _nextCategoryOrder(),
             'metadata': {
               'active': isActive,
               'parent_section': parentSection ?? 'general',
@@ -150,9 +63,6 @@ class SupabaseVenueRepository implements VenueRepository {
           .select()
           .single();
       final created = VenueCategory.fromJson(row);
-      _fallbackCategories
-          .removeWhere((c) => c.slug == created.slug || c.id == created.id);
-      _fallbackCategories.add(created);
       return created;
     } catch (e) {
       throw mapError(e);
@@ -162,28 +72,39 @@ class SupabaseVenueRepository implements VenueRepository {
   @override
   Future<VenueCategory> updateCategory(VenueCategory category) async {
     try {
+      _validateNameAndSlug(category.name, category.slug);
+      final existing = await _client
+          .from('venue_categories')
+          .select('metadata')
+          .eq('id', category.id)
+          .single();
+      final metadata = existing['metadata'] is Map
+          ? Map<String, dynamic>.from(existing['metadata'] as Map)
+          : <String, dynamic>{};
+      metadata['active'] = category.isActive;
+      metadata['parent_section'] = category.parentSection ?? 'general';
       final row = await _client
           .from('venue_categories')
           .update({
             'name': category.name,
-            'slug': category.slug,
+            'slug': category.slug.trim().toLowerCase(),
             'icon': category.icon,
-            'metadata': {
-              'active': category.isActive,
-              'parent_section': category.parentSection ?? 'general',
-            },
+            'is_active': category.isActive,
+            'parent_section': category.parentSection ?? 'general',
+            'description': category.description,
+            'image_url': category.imageUrl.isEmpty ? null : category.imageUrl,
+            'image_path':
+                category.imagePath.isEmpty ? null : category.imagePath,
+            'display_order': category.displayOrder,
+            'supported_languages': category.supportedLanguages,
+            'name_i18n': category.nameTranslations,
+            'description_i18n': category.descriptionTranslations,
+            'metadata': metadata,
           })
           .eq('id', category.id)
           .select()
           .single();
       final updated = VenueCategory.fromJson(row);
-      final idx = _fallbackCategories
-          .indexWhere((c) => c.id == category.id || c.slug == category.slug);
-      if (idx >= 0) {
-        _fallbackCategories[idx] = updated;
-      } else {
-        _fallbackCategories.add(updated);
-      }
       return updated;
     } catch (e) {
       throw mapError(e);
@@ -202,18 +123,360 @@ class SupabaseVenueRepository implements VenueRepository {
           ? Map<String, dynamic>.from(current['metadata'] as Map)
           : <String, dynamic>{};
       metadata['active'] = isActive;
-      await _client
-          .from('venue_categories')
-          .update({'metadata': metadata}).eq('id', categoryId);
+      await _client.from('venue_categories').update({
+        'is_active': isActive,
+        'metadata': metadata,
+      }).eq('id', categoryId);
     } catch (e) {
       throw mapError(e);
     }
+  }
 
-    final idx = _fallbackCategories.indexWhere((c) => c.id == categoryId);
-    if (idx >= 0) {
-      _fallbackCategories[idx] =
-          _fallbackCategories[idx].copyWith(isActive: isActive);
+  @override
+  Stream<List<VenueCategory>> categoryStream({bool activeOnly = false}) {
+    final filtered = activeOnly
+        ? _client
+            .from('venue_categories')
+            .stream(primaryKey: ['id']).eq('is_active', true)
+        : _client.from('venue_categories').stream(primaryKey: ['id']);
+    return filtered
+        .order('display_order', ascending: true)
+        .order('name', ascending: true)
+        .map(
+          (rows) => rows.map(VenueCategory.fromJson).toList(growable: false),
+        );
+  }
+
+  @override
+  Future<List<VenueSubsection>> subsections(
+    String categoryId, {
+    bool activeOnly = false,
+  }) async {
+    try {
+      var query = _client
+          .from('venue_subsections')
+          .select('*')
+          .eq('category_id', categoryId);
+      if (activeOnly) query = query.eq('is_active', true);
+      final rows = await query.order('display_order').order('name');
+      return rows.map(VenueSubsection.fromJson).toList();
+    } catch (e) {
+      throw mapError(e);
     }
+  }
+
+  @override
+  Stream<List<VenueSubsection>> subsectionStream(
+    String categoryId, {
+    bool activeOnly = false,
+  }) {
+    var filtered = _client
+        .from('venue_subsections')
+        .stream(primaryKey: ['id']).eq('category_id', categoryId);
+    if (activeOnly) filtered = filtered.eq('is_active', true);
+    return filtered
+        .order('display_order', ascending: true)
+        .order('name', ascending: true)
+        .map(
+          (rows) => rows.map(VenueSubsection.fromJson).toList(growable: false),
+        );
+  }
+
+  @override
+  Stream<List<VenueSubsection>> subsectionCatalogStream({
+    bool activeOnly = true,
+  }) {
+    var filtered = _client.from('venue_subsections').stream(primaryKey: ['id']);
+    if (activeOnly) filtered = filtered.eq('is_active', true);
+    return filtered
+        .order('display_order', ascending: true)
+        .order('name', ascending: true)
+        .map(
+          (rows) => rows.map(VenueSubsection.fromJson).toList(growable: false),
+        );
+  }
+
+  @override
+  Future<VenueSubsection> addSubsection({
+    required String categoryId,
+    required String name,
+    required String slug,
+    String? icon,
+    String description = '',
+    String? imageUrl,
+    String? imagePath,
+    bool isActive = true,
+    int displayOrder = 0,
+    List<String> supportedLanguages = const ['en'],
+    Map<String, String> nameTranslations = const {},
+    Map<String, String> descriptionTranslations = const {},
+  }) async {
+    try {
+      _validateNameAndSlug(name, slug);
+      final row = await _client
+          .from('venue_subsections')
+          .insert({
+            'category_id': categoryId,
+            'name': name.trim(),
+            'slug': slug.trim().toLowerCase(),
+            'icon': icon,
+            'description': description.trim(),
+            'image_url': imageUrl,
+            'image_path': imagePath,
+            'is_active': isActive,
+            'display_order': displayOrder == 0
+                ? await _nextSubsectionOrder(categoryId)
+                : displayOrder,
+            'supported_languages': supportedLanguages,
+            'name_i18n': nameTranslations,
+            'description_i18n': descriptionTranslations,
+          })
+          .select()
+          .single();
+      return VenueSubsection.fromJson(row);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<VenueSubsection> updateSubsection(VenueSubsection subsection) async {
+    try {
+      _validateNameAndSlug(subsection.name, subsection.slug);
+      final row = await _client
+          .from('venue_subsections')
+          .update({
+            'category_id': subsection.categoryId,
+            'name': subsection.name.trim(),
+            'slug': subsection.slug.trim().toLowerCase(),
+            'icon': subsection.icon,
+            'description': subsection.description,
+            'image_url':
+                subsection.imageUrl.isEmpty ? null : subsection.imageUrl,
+            'image_path':
+                subsection.imagePath.isEmpty ? null : subsection.imagePath,
+            'is_active': subsection.isActive,
+            'display_order': subsection.displayOrder,
+            'supported_languages': subsection.supportedLanguages,
+            'name_i18n': subsection.nameTranslations,
+            'description_i18n': subsection.descriptionTranslations,
+          })
+          .eq('id', subsection.id)
+          .select()
+          .single();
+      return VenueSubsection.fromJson(row);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> deleteCategory(String categoryId) async {
+    try {
+      final categoryRow = await _client
+          .from('venue_categories')
+          .select('image_path')
+          .eq('id', categoryId)
+          .maybeSingle();
+      final subsectionRows = await _client
+          .from('venue_subsections')
+          .select('image_path')
+          .eq('category_id', categoryId);
+      await _client.from('venue_categories').delete().eq('id', categoryId);
+      final paths = <String>[
+        if (categoryRow?['image_path'] is String)
+          categoryRow!['image_path'] as String,
+        ...subsectionRows.map((row) => row['image_path']).whereType<String>(),
+      ].where((path) => path.isNotEmpty).toList();
+      if (paths.isNotEmpty) {
+        await _client.storage.from('category-media').remove(paths);
+      }
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> deleteSubsection(String subsectionId) async {
+    try {
+      final row = await _client
+          .from('venue_subsections')
+          .select('image_path')
+          .eq('id', subsectionId)
+          .maybeSingle();
+      await _client.from('venue_subsections').delete().eq('id', subsectionId);
+      final path = row?['image_path'];
+      if (path is String && path.isNotEmpty) {
+        await _client.storage.from('category-media').remove([path]);
+      }
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> reorderCategories(List<String> categoryIds) async {
+    try {
+      await _client.rpc(
+        'reorder_category_catalog',
+        params: {'p_category_ids': categoryIds},
+      );
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> reorderSubsections(
+    String categoryId,
+    List<String> subsectionIds,
+  ) async {
+    try {
+      await _client.rpc(
+        'reorder_category_subsections',
+        params: {
+          'p_category_id': categoryId,
+          'p_subsection_ids': subsectionIds,
+        },
+      );
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<VenueCategory> uploadCategoryImage({
+    required VenueCategory category,
+    required List<int> bytes,
+    required String extension,
+  }) async {
+    try {
+      final path = _mediaPath('categories', category.id, extension);
+      await _client.storage.from('category-media').uploadBinary(
+            path,
+            Uint8List.fromList(bytes),
+            fileOptions: FileOptions(
+              contentType: _contentType(extension),
+              upsert: false,
+            ),
+          );
+      final updated = await updateCategory(
+        category.copyWith(
+          imageUrl: _client.storage.from('category-media').getPublicUrl(path),
+          imagePath: path,
+        ),
+      );
+      await _removeOldMedia(category.imagePath, except: path);
+      return updated;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> removeCategoryImage(VenueCategory category) async {
+    try {
+      await _removeOldMedia(category.imagePath);
+      await updateCategory(
+          category.copyWith(clearImage: true, clearImagePath: true));
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<VenueSubsection> uploadSubsectionImage({
+    required VenueSubsection subsection,
+    required List<int> bytes,
+    required String extension,
+  }) async {
+    try {
+      final path = _mediaPath('subsections', subsection.id, extension);
+      await _client.storage.from('category-media').uploadBinary(
+            path,
+            Uint8List.fromList(bytes),
+            fileOptions: FileOptions(
+              contentType: _contentType(extension),
+              upsert: false,
+            ),
+          );
+      final updated = await updateSubsection(
+        subsection.copyWith(
+          imageUrl: _client.storage.from('category-media').getPublicUrl(path),
+          imagePath: path,
+        ),
+      );
+      await _removeOldMedia(subsection.imagePath, except: path);
+      return updated;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> removeSubsectionImage(VenueSubsection subsection) async {
+    try {
+      await _removeOldMedia(subsection.imagePath);
+      await updateSubsection(
+          subsection.copyWith(clearImage: true, clearImagePath: true));
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  void _validateNameAndSlug(String name, String slug) {
+    if (name.trim().isEmpty || name.trim().length > 120) {
+      throw const BusinessException(
+          'Name must contain between 1 and 120 characters.');
+    }
+    if (!RegExp(r'^[a-z0-9]+(?:[-_][a-z0-9]+)*$')
+        .hasMatch(slug.trim().toLowerCase())) {
+      throw const BusinessException(
+          'SEO slug may contain lowercase letters, numbers, hyphens, and underscores.');
+    }
+  }
+
+  Future<int> _nextCategoryOrder() async {
+    final rows = await _client
+        .from('venue_categories')
+        .select('display_order')
+        .order('display_order', ascending: false)
+        .limit(1);
+    return rows.isEmpty
+        ? 0
+        : ((rows.first['display_order'] as num?)?.toInt() ?? -1) + 1;
+  }
+
+  Future<int> _nextSubsectionOrder(String categoryId) async {
+    final rows = await _client
+        .from('venue_subsections')
+        .select('display_order')
+        .eq('category_id', categoryId)
+        .order('display_order', ascending: false)
+        .limit(1);
+    return rows.isEmpty
+        ? 0
+        : ((rows.first['display_order'] as num?)?.toInt() ?? -1) + 1;
+  }
+
+  String _mediaPath(String folder, String entityId, String extension) {
+    final safeExtension =
+        extension.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return '$folder/$entityId/${DateTime.now().microsecondsSinceEpoch}.${safeExtension.isEmpty ? 'jpg' : safeExtension}';
+  }
+
+  String _contentType(String extension) {
+    return switch (extension.toLowerCase()) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      _ => 'image/jpeg',
+    };
+  }
+
+  Future<void> _removeOldMedia(String path, {String? except}) async {
+    if (path.isEmpty || path == except) return;
+    await _client.storage.from('category-media').remove([path]);
   }
 
   @override
@@ -310,8 +573,8 @@ class SupabaseVenueRepository implements VenueRepository {
             return false;
           }
           if (query.query.trim().isNotEmpty) {
-            final haystack =
-                '${venue.name} ${venue.city} ${venue.description}'.toLowerCase();
+            final haystack = '${venue.name} ${venue.city} ${venue.description}'
+                .toLowerCase();
             if (!haystack.contains(query.query.trim().toLowerCase())) {
               return false;
             }

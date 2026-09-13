@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/features/feature_registry.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_tokens.dart';
+import '../../../modules/presentation/module_manifests.dart';
+import '../../../modules/presentation/module_providers.dart';
 
 /// Catalog of independently described product modules.
 ///
 /// Enablement is configuration. It does not grant owner/admin privileges.
-class FeaturesHubScreen extends StatelessWidget {
+class FeaturesHubScreen extends ConsumerWidget {
   const FeaturesHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final modules = FeatureRegistry.product.modules;
+    final modules = FeatureRegistry.product.modules.map((module) {
+      final flagKey = module.id == 'location' ? 'gps' : module.id;
+      if (moduleManifestFor(flagKey) == null) return module;
+      return module.copyWith(
+        enabled: ref.watch(moduleEnabledProvider(flagKey)),
+        configuration: ref.watch(moduleFlagProvider(flagKey)).config,
+      );
+    }).toList();
     return Scaffold(
       appBar: AppBar(title: Text(l10n.featuresHub)),
       body: ListView(

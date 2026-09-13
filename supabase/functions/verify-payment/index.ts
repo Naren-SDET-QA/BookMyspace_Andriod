@@ -72,45 +72,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Confirm booking atomically via RPC
-    const { error: confirmError } = await supabase.rpc('confirm_booking', {
-      p_booking_id: booking_id,
-      p_payment_ref: payment_id,
-    });
-
-    if (confirmError) {
-      return new Response(JSON.stringify({ error: 'booking_confirmation_failed' }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Update payment record to captured
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .update({
-        status: 'captured',
-        provider_payment_id: payment_id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('booking_id', booking_id)
-      .eq('provider_order_id', order_id)
-      .select('id')
-      .maybeSingle();
-    if (paymentError || !payment) {
-      return new Response(JSON.stringify({ error: 'payment_update_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
+    // This legacy client callback is deliberately non-authoritative. The
+    // signed Razorpay `payment.captured` webhook is the only path allowed to
+    // mark the payment captured and call confirm_venue_booking, which checks
+    // owner approval, the captured payment row, the hold, and live inventory
+    // in one transaction.
     return new Response(JSON.stringify({
-      success: true,
+      accepted: true,
       booking_id,
-      payment_id,
-      status: 'confirmed',
+      status: 'payment_verification_pending',
     }), {
-      status: 200,
+      status: 202,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

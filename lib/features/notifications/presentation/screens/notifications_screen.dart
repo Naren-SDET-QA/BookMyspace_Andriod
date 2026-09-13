@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
@@ -43,6 +44,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             : 'Push';
 
     final unreadCount = unreadCountAsync.valueOrNull ?? 0;
+    final showDevelopmentPushControls = AppConfig.isDevelopment && kDebugMode;
 
     return Scaffold(
       appBar: AppBar(
@@ -93,6 +95,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     permissionStatus: permissionAsync.valueOrNull ??
                         pushService.permissionStatus,
                     deviceToken: pushService.currentDeviceToken,
+                    showDevelopmentPushControls: showDevelopmentPushControls,
                     onToggle1Hour: (val) async {
                       ref.read(is1HourReminderEnabledProvider.notifier).state =
                           val;
@@ -247,6 +250,7 @@ class _PushControlCard extends StatelessWidget {
     required this.is1HourEnabled,
     required this.permissionStatus,
     required this.deviceToken,
+    required this.showDevelopmentPushControls,
     required this.onToggle1Hour,
     required this.onRequestPermission,
     required this.onTest1HourPush,
@@ -257,6 +261,7 @@ class _PushControlCard extends StatelessWidget {
   final bool is1HourEnabled;
   final PushPermissionStatus permissionStatus;
   final String? deviceToken;
+  final bool showDevelopmentPushControls;
   final ValueChanged<bool> onToggle1Hour;
   final VoidCallback onRequestPermission;
   final VoidCallback onTest1HourPush;
@@ -270,7 +275,7 @@ class _PushControlCard extends StatelessWidget {
         ? (deviceToken!.length > 20
             ? '${deviceToken!.substring(0, 20)}...'
             : deviceToken!)
-        : 'token_bms_${platformName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}_live';
+        : 'Not registered';
 
     return Card(
       elevation: 0,
@@ -349,14 +354,17 @@ class _PushControlCard extends StatelessWidget {
                     ),
                   ),
                   InkWell(
-                    onTap: () {
-                      Clipboard.setData(
-                          ClipboardData(text: deviceToken ?? displayToken));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('$platformName Token Copied! 📋')),
-                      );
-                    },
+                    onTap: hasToken
+                        ? () {
+                            Clipboard.setData(ClipboardData(
+                                text: deviceToken ?? displayToken));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text('$platformName Token Copied! 📋')),
+                            );
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -388,34 +396,36 @@ class _PushControlCard extends StatelessWidget {
               ),
             ],
 
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: onTest1HourPush,
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+            if (showDevelopmentPushControls) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: onTest1HourPush,
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('⚡ Test 1-Hr Push',
+                          style: TextStyle(fontSize: 12)),
                     ),
-                    child: const Text('⚡ Test 1-Hr Push',
-                        style: TextStyle(fontSize: 12)),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: onSimulateCloudPush,
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onSimulateCloudPush,
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('☁️ Simulate Cloud',
+                          style: TextStyle(fontSize: 12)),
                     ),
-                    child: const Text('☁️ Simulate Cloud',
-                        style: TextStyle(fontSize: 12)),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

@@ -46,7 +46,8 @@ class AdminCmsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final banner = items[index];
               return ListTile(
-                tileColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                tileColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -70,6 +71,12 @@ class AdminCmsScreen extends ConsumerWidget {
   ) async {
     final title = TextEditingController(text: existing?.title ?? '');
     final subtitle = TextEditingController(text: existing?.subtitle ?? '');
+    final imageUrl = TextEditingController(text: existing?.imageUrl ?? '');
+    final ctaText = TextEditingController(text: existing?.ctaText ?? '');
+    final ctaRoute = TextEditingController(text: existing?.ctaRoute ?? '');
+    final sortOrder = TextEditingController(
+      text: (existing?.sortOrder ?? 0).toString(),
+    );
     var active = existing?.isActive ?? true;
     final saved = await showDialog<bool>(
       context: context,
@@ -89,6 +96,32 @@ class AdminCmsScreen extends ConsumerWidget {
                     TextField(
                       controller: subtitle,
                       decoration: const InputDecoration(labelText: 'Subtitle'),
+                    ),
+                    TextField(
+                      controller: imageUrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Image URL (optional)',
+                      ),
+                    ),
+                    TextField(
+                      controller: ctaText,
+                      decoration: const InputDecoration(
+                        labelText: 'CTA label (optional)',
+                      ),
+                    ),
+                    TextField(
+                      controller: ctaRoute,
+                      decoration: const InputDecoration(
+                        labelText: 'CTA route (optional)',
+                        hintText: '/search or /events',
+                      ),
+                    ),
+                    TextField(
+                      controller: sortOrder,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Display order',
+                      ),
                     ),
                     SwitchListTile(
                       title: const Text('Active'),
@@ -122,8 +155,13 @@ class AdminCmsScreen extends ConsumerWidget {
             id: existing?.id ?? '',
             title: title.text.trim(),
             subtitle: subtitle.text.trim(),
+            imageUrl:
+                imageUrl.text.trim().isEmpty ? null : imageUrl.text.trim(),
+            ctaText: ctaText.text.trim().isEmpty ? null : ctaText.text.trim(),
+            ctaRoute:
+                ctaRoute.text.trim().isEmpty ? null : ctaRoute.text.trim(),
             isActive: active,
-            sortOrder: existing?.sortOrder ?? 0,
+            sortOrder: int.tryParse(sortOrder.text.trim()) ?? 0,
           ),
         );
     ref.invalidate(adminCmsBannersProvider);
