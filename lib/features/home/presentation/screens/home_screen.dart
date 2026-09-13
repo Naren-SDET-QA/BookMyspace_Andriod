@@ -36,6 +36,7 @@ import '../widgets/category_glass_matrix.dart';
 import '../widgets/home_ai_booking_card.dart';
 import '../widgets/home_feed_sections.dart';
 import '../widgets/home_offer_banner.dart';
+import '../widgets/home_video_pill.dart';
 import '../widgets/location_picker_sheet.dart';
 
 /// Customer Home: 3D glass category discovery plus popular venues.
@@ -394,6 +395,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final slivers = <Widget>[];
 
     for (final block in blocks) {
+      // A block that actually rendered also gets its video affordance, placed
+      // just above it. Capturing the count first means a block that skipped
+      // itself for lack of data never leaves a dangling "Watch" chip behind.
+      final renderedBefore = slivers.length;
       switch (block.kind) {
         case HomeBlockKind.offerBanner:
           slivers.add(
@@ -534,6 +539,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           );
+      }
+      if (slivers.length > renderedBefore && block.videos.isNotEmpty) {
+        slivers.insert(
+          renderedBefore,
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 0),
+              child: HomeVideoPill(videos: block.videos),
+            ),
+          ),
+        );
       }
     }
     return slivers;

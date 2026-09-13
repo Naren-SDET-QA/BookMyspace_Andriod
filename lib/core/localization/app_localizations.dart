@@ -44,6 +44,8 @@ class AppLocalizations {
     'homeCategoriesTitle': 'Listed categories',
     'homeLiveRadarTitle': 'Nearest spaces',
     'homeRecentBookingsTitle': 'Your recent bookings',
+    'homeWatch': 'Watch',
+    'homeVideoUnavailable': 'This video could not be opened.',
     'notifications': 'Notifications',
     'courses': 'Courses',
     'venues': 'Venues',
@@ -251,6 +253,8 @@ class AppLocalizations {
     'homeCategoriesTitle': 'జాబితా చేసిన వర్గాలు',
     'homeLiveRadarTitle': 'సమీపంలోని స్థలాలు',
     'homeRecentBookingsTitle': 'మీ ఇటీవలి బుకింగ్‌లు',
+    'homeWatch': 'వీక్షించండి',
+    'homeVideoUnavailable': 'ఈ వీడియోను తెరవలేకపోయాం.',
     'notifications': 'నోటిఫికేషన్లు',
     'courses': 'కోర్సులు',
     'venues': 'వేదికలు',
@@ -458,6 +462,8 @@ class AppLocalizations {
     'homeCategoriesTitle': 'सूचीबद्ध श्रेणियाँ',
     'homeLiveRadarTitle': 'आस-पास की जगहें',
     'homeRecentBookingsTitle': 'आपकी हाल की बुकिंग',
+    'homeWatch': 'देखें',
+    'homeVideoUnavailable': 'यह वीडियो खोला नहीं जा सका।',
     'notifications': 'सूचनाएँ',
     'courses': 'कोर्स',
     'venues': 'स्थान',
@@ -664,6 +670,8 @@ class AppLocalizations {
     'homeCategoriesTitle': 'ಪಟ್ಟಿ ಮಾಡಿದ ವರ್ಗಗಳು',
     'homeLiveRadarTitle': 'ಹತ್ತಿರದ ಸ್ಥಳಗಳು',
     'homeRecentBookingsTitle': 'ನಿಮ್ಮ ಇತ್ತೀಚಿನ ಬುಕಿಂಗ್‌ಗಳು',
+    'homeWatch': 'ವೀಕ್ಷಿಸಿ',
+    'homeVideoUnavailable': 'ಈ ವೀಡಿಯೊವನ್ನು ತೆರೆಯಲಾಗಲಿಲ್ಲ.',
     'notifications': 'ಅಧಿಸೂಚನೆಗಳು',
     'courses': 'ಕೋರ್ಸ್‌ಗಳು',
     'venues': 'ಸ್ಥಳಗಳು',
@@ -871,6 +879,8 @@ class AppLocalizations {
     'homeCategoriesTitle': 'பட்டியலிடப்பட்ட பிரிவுகள்',
     'homeLiveRadarTitle': 'அருகிலுள்ள இடங்கள்',
     'homeRecentBookingsTitle': 'உங்கள் சமீபத்திய முன்பதிவுகள்',
+    'homeWatch': 'பார்க்க',
+    'homeVideoUnavailable': 'இந்த வீடியோவைத் திறக்க முடியவில்லை.',
     'notifications': 'அறிவிப்புகள்',
     'courses': 'பாடநெறிகள்',
     'venues': 'இடங்கள்',
@@ -1086,6 +1096,8 @@ class AppLocalizations {
   String get homeCategoriesTitle => _t('homeCategoriesTitle');
   String get homeLiveRadarTitle => _t('homeLiveRadarTitle');
   String get homeRecentBookingsTitle => _t('homeRecentBookingsTitle');
+  String get homeWatch => _t('homeWatch');
+  String get homeVideoUnavailable => _t('homeVideoUnavailable');
   String get notifications => _t('notifications');
   String get courses => _t('courses');
   String get venues => _t('venues');

@@ -354,6 +354,12 @@ class _BlockEditorState extends State<_BlockEditor> {
               onChanged: (images) =>
                   widget.onChanged(block.copyWith(images: images)),
             ),
+            const SizedBox(height: 12),
+            _VideoListEditor(
+              videos: block.videos,
+              onChanged: (videos) =>
+                  widget.onChanged(block.copyWith(videos: videos)),
+            ),
           ],
         ),
       ),
@@ -574,5 +580,110 @@ class _ImageListEditorState extends ConsumerState<_ImageListEditor> {
         ),
       ],
     );
+  }
+}
+
+/// Editor for the video links attached to a section.
+///
+/// Links only, deliberately. A clip is far larger than artwork and is almost
+/// always already hosted somewhere, so the admin pastes the URL and the
+/// customer's own device opens it in whichever player it trusts. That keeps the
+/// feed fast — nothing is decoded while the customer scrolls — and avoids
+/// shipping a decoder that could only handle a narrow set of formats.
+class _VideoListEditor extends StatefulWidget {
+  const _VideoListEditor({required this.videos, required this.onChanged});
+
+  final List<String> videos;
+  final ValueChanged<List<String>> onChanged;
+
+  @override
+  State<_VideoListEditor> createState() => _VideoListEditorState();
+}
+
+class _VideoListEditorState extends State<_VideoListEditor> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _add() {
+    final url = _controller.text.trim();
+    if (url.isEmpty) return;
+    widget.onChanged([...widget.videos, url]);
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Video links (${widget.videos.length})',
+            style: theme.textTheme.labelLarge),
+        const SizedBox(height: 6),
+        if (widget.videos.isNotEmpty)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (var i = 0; i < widget.videos.length; i++)
+                InputChip(
+                  avatar: const Icon(
+                    Icons.play_circle_outline_rounded,
+                    size: 16,
+                  ),
+                  label: Text(
+                    _label(widget.videos[i]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onDeleted: () {
+                    final next = [...widget.videos]..removeAt(i);
+                    widget.onChanged(next);
+                  },
+                ),
+            ],
+          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: 'https://…/tour.mp4 or a YouTube link',
+                  isDense: true,
+                ),
+                onSubmitted: (_) => _add(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: 'Add video link',
+              onPressed: _add,
+              icon: const Icon(Icons.add_link_rounded),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Opens in the device player. Only http and https links are accepted.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// A short, readable label for what is usually a very long URL.
+  static String _label(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return url;
+    final last = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+    return last.isEmpty ? uri.host : '${uri.host}/$last';
   }
 }

@@ -129,6 +129,7 @@ class HomeBlockConfig {
     this.titles = const {},
     this.subtitles = const {},
     this.images = const [],
+    this.videos = const [],
     this.style = const HomeBlockStyle(),
   });
 
@@ -148,6 +149,14 @@ class HomeBlockConfig {
 
   /// Admin-supplied artwork (4-6 per section). Empty means "use live data".
   final List<String> images;
+
+  /// Admin-supplied video links for this section.
+  ///
+  /// These are **links, not uploads**: a clip is far larger than artwork and is
+  /// usually already hosted. They open in the platform's own player, so any
+  /// source the device understands works — a direct file, YouTube, or a CDN.
+  final List<String> videos;
+
   final HomeBlockStyle style;
 
   /// The title to render for [languageCode].
@@ -172,6 +181,7 @@ class HomeBlockConfig {
     Map<String, String>? titles,
     Map<String, String>? subtitles,
     List<String>? images,
+    List<String>? videos,
     HomeBlockStyle? style,
   }) {
     return HomeBlockConfig(
@@ -183,6 +193,7 @@ class HomeBlockConfig {
       titles: titles ?? this.titles,
       subtitles: subtitles ?? this.subtitles,
       images: images ?? this.images,
+      videos: videos ?? this.videos,
       style: style ?? this.style,
     );
   }
@@ -214,7 +225,6 @@ class HomeBlockConfig {
 
   factory HomeBlockConfig.fromJson(Map json, HomeBlockKind fallbackKind) {
     final kind = HomeBlockKind.fromId(json['kind']) ?? fallbackKind;
-    final rawImages = json['images'];
     return HomeBlockConfig(
       kind: kind,
       enabled: json['enabled'] != false,
@@ -223,12 +233,8 @@ class HomeBlockConfig {
       subtitle: json['subtitle'] as String? ?? '',
       titles: _localizedMap(json['titles']),
       subtitles: _localizedMap(json['subtitles']),
-      images: rawImages is List
-          ? rawImages
-              .whereType<String>()
-              .where((url) => url.trim().isNotEmpty)
-              .toList(growable: false)
-          : const [],
+      images: _urlList(json['images']),
+      videos: _urlList(json['videos']),
       style: HomeBlockStyle.fromJson(json['style']),
     );
   }
@@ -242,8 +248,19 @@ class HomeBlockConfig {
         if (titles.isNotEmpty) 'titles': titles,
         if (subtitles.isNotEmpty) 'subtitles': subtitles,
         if (images.isNotEmpty) 'images': images,
+        if (videos.isNotEmpty) 'videos': videos,
         'style': style.toJson(),
       };
+
+  /// Reads a list of URLs, dropping blanks so a half-typed entry can never
+  /// become a broken media reference.
+  static List<String> _urlList(Object? value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<String>()
+        .where((url) => url.trim().isNotEmpty)
+        .toList(growable: false);
+  }
 
   /// Reads a `{language: text}` map, dropping blanks so a cleared field can
   /// never win over the base text.

@@ -28,6 +28,10 @@ dependencies:
   intl: ^0.20.2
   flutter_secure_storage: ^9.0.0
   http: ^1.2.2
+  # Promoted from a transitive dependency. Already resolved for every platform,
+  # and Home section videos open in the platform player rather than in-app, so
+  # no video decoding happens while the feed scrolls.
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
