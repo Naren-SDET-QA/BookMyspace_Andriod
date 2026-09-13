@@ -25,6 +25,7 @@ class MockAuthRepository implements AuthRepository {
   Completer<AuthUser>? delayedGoogle;
   Completer<AuthUser>? delayedApple;
   int signInCount = 0;
+  int authStateChangesCallCount = 0;
   int googleCount = 0;
   int appleCount = 0;
   int verifyCount = 0;
@@ -36,7 +37,10 @@ class MockAuthRepository implements AuthRepository {
   AuthUser? get currentUser => _user;
 
   @override
-  Stream<AuthUser?> authStateChanges() => _controller.stream;
+  Stream<AuthUser?> authStateChanges() {
+    authStateChangesCallCount++;
+    return _controller.stream;
+  }
 
   @override
   Future<AuthUser> signInWithApple() async {

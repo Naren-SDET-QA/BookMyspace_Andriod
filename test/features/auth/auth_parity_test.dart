@@ -1,8 +1,10 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/domain/auth_state.dart';
+import 'package:bookmyspace/features/auth/domain/app_role.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
+import 'package:bookmyspace/features/auth/presentation/role_providers.dart';
 import 'package:bookmyspace/features/auth/presentation/screens/login_screen.dart';
 import 'package:bookmyspace/features/cms/presentation/cms_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
@@ -153,6 +155,14 @@ void main() {
         activeCmsBannersProvider.overrideWith((ref) async => const []),
         moduleEnabledProvider('events').overrideWithValue(false),
         moduleEnabledProvider('offers').overrideWithValue(false),
+        currentUserRolesProvider.overrideWith((ref) async {
+          final user = ref.watch(currentUserProvider);
+          return user?.id == 'admin'
+              ? {AppRole.administrator}
+              : user == null
+                  ? <AppRole>{}
+                  : {AppRole.customer};
+        }),
       ],
     );
     final refresh = ValueNotifier(0);
@@ -183,12 +193,18 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
+    expect(
+      await container.read(currentUserRolesProvider.future),
+      {AppRole.administrator},
+    );
+    expect(repo.authStateChangesCallCount, 1);
     expect(tester.takeException(), isNull);
 
     final notifier = container.read(authNotifierProvider.notifier);
     await notifier.signOut();
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.login);
+    expect(await container.read(currentUserRolesProvider.future), isEmpty);
     expect(tester.takeException(), isNull);
 
     await notifier.signInWithEmailPassword(
@@ -198,6 +214,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
     expect(container.read(currentUserProvider)?.email, 'customer@test.com');
+    expect(
+      await container.read(currentUserRolesProvider.future),
+      {AppRole.customer},
+    );
     expect(tester.takeException(), isNull);
 
     repo.emitQueuedSignOutEvent();
