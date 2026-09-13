@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/settings_controller.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -37,11 +39,36 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
   String _filterMode = 'ALL';
   final Set<String> _expandedCategoryIds = <String>{};
   bool _isBusy = false;
+  String? _selectedDesktopCategoryId;
+  bool _desktopReorderMode = false;
 
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(allVenueCategoriesProvider);
+    final locale = ref.watch(localeProvider);
     final theme = Theme.of(context);
+
+    if (MediaQuery.sizeOf(context).width >= 1050) {
+      final allSubsectionsAsync = ref.watch(allVenueSubsectionsCatalogProvider);
+      return categoriesAsync.when(
+        loading: () => const _AdminDesktopLoading(),
+        error: (error, _) => Scaffold(
+          body: ErrorView(
+            message: error.toString(),
+            onRetry: () => ref.invalidate(allVenueCategoriesProvider),
+          ),
+        ),
+        data: (categories) => _buildDesktopConsole(
+          context,
+          theme,
+          categories,
+          allSubsectionsAsync.valueOrNull ?? const <VenueSubsection>[],
+          currentLocale: locale,
+          onLocaleChanged: (nextLocale) =>
+              ref.read(localeProvider.notifier).setLocale(nextLocale),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -71,6 +98,135 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
           onRetry: () => ref.invalidate(allVenueCategoriesProvider),
         ),
         data: (categories) => _buildCategoryBody(context, theme, categories),
+      ),
+    );
+  }
+
+  Widget _buildDesktopConsole(
+    BuildContext context,
+    ThemeData theme,
+    List<VenueCategory> categories,
+    List<VenueSubsection> allSubsections, {
+    required Locale currentLocale,
+    required ValueChanged<Locale> onLocaleChanged,
+  }) {
+    final selected = categories.isEmpty
+        ? null
+        : _selectedDesktopCategoryId == null
+            ? categories.first
+            : categories.firstWhere(
+                (category) => category.id == _selectedDesktopCategoryId,
+                orElse: () => categories.first,
+              );
+    final counts = <String, int>{};
+    for (final subsection in allSubsections) {
+      counts[subsection.categoryId] = (counts[subsection.categoryId] ?? 0) + 1;
+    }
+    final activeCategories = categories
+        .where((category) => category.isActive)
+        .toList(growable: false);
+    final activeSubsections = allSubsections
+        .where((subsection) => subsection.isActive)
+        .toList(growable: false);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F8FC),
+      body: SafeArea(
+        child: Row(
+          children: [
+            _AdminDesktopSidebar(
+              collapsed: false,
+              onNavigate: (route) => context.go(route),
+              onViewApp: () => context.go('/home'),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  _AdminDesktopTopBar(
+                    searchQuery: _searchQuery,
+                    onSearchChanged: (value) =>
+                        setState(() => _searchQuery = value),
+                    onMenu: () => _showMessage(
+                      'Use the sidebar to navigate the Admin Console.',
+                    ),
+                    onViewApp: () => context.go('/home'),
+                    currentLocale: currentLocale,
+                    onLocaleChanged: onLocaleChanged,
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(28, 18, 28, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _DesktopBreadcrumbHeader(
+                            onAddCategory: _isBusy
+                                ? null
+                                : () => _showAddCategoryDialog(context),
+                            onManageIcons: selected == null
+                                ? null
+                                : () => _showIconManager(selected),
+                            reorderMode: _desktopReorderMode,
+                            onReorder: () => setState(() {
+                              _desktopReorderMode = !_desktopReorderMode;
+                            }),
+                          ),
+                          const SizedBox(height: 18),
+                          _DesktopStatsRow(
+                            categoryCount: categories.length,
+                            subsectionCount: allSubsections.length,
+                            activeCount: activeCategories.length,
+                            languageCount: _supportedLanguageLabels.length,
+                          ),
+                          const SizedBox(height: 18),
+                          if (categories.isEmpty)
+                            const EmptyState(
+                              icon: Icons.category_outlined,
+                              title: 'No categories found',
+                              message:
+                                  'Create a category to start the live catalogue.',
+                            )
+                          else
+                            _DesktopManagementGrid(
+                              categories: categories,
+                              counts: counts,
+                              selected: selected!,
+                              activeSubsections: activeSubsections,
+                              reorderMode: _desktopReorderMode,
+                              isBusy: _isBusy,
+                              onSelect: (category) => setState(() {
+                                _selectedDesktopCategoryId = category.id;
+                              }),
+                              onSearchChanged: (value) =>
+                                  setState(() => _searchQuery = value),
+                              searchQuery: _searchQuery,
+                              onEdit: (category) =>
+                                  _showEditCategoryDialog(context, category),
+                              onToggle: _setCategoryActive,
+                              onDelete: _confirmDeleteCategory,
+                              onReorder: _reorderCategories,
+                              onRefresh: () {
+                                ref.invalidate(allVenueCategoriesProvider);
+                                ref.invalidate(venueCategoriesProvider);
+                                ref.invalidate(
+                                  allVenueSubsectionsCatalogProvider,
+                                );
+                              },
+                              onChangeIcon: _showIconManager,
+                              onChangeImage: _changeCategoryImage,
+                              onRemoveImage: _removeCategoryImage,
+                              onSaveDetails: (category) =>
+                                  _showEditCategoryDialog(context, category),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -726,6 +882,86 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
     ]);
   }
 
+  Future<void> _showIconManager(VenueCategory category) async {
+    const icons = <String>[
+      '🏛️',
+      '🏢',
+      '🏟️',
+      '🌳',
+      '🎓',
+      '🛕',
+      '📸',
+      '💼',
+      '🎉',
+      '🏷️',
+    ];
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Manage icon · ${category.name}'),
+        content: SizedBox(
+          width: 360,
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: icons
+                .map(
+                  (icon) => InkWell(
+                    onTap: () => Navigator.pop(dialogContext, icon),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: icon == category.icon
+                            ? AppTheme.brand.withValues(alpha: 0.14)
+                            : Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: icon == category.icon
+                              ? AppTheme.brand
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Text(icon, style: const TextStyle(fontSize: 26)),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ),
+      ),
+    );
+    if (selected == null || selected == category.icon) return;
+    await _runMutation(() async {
+      await ref.read(venueRepositoryProvider).updateCategory(
+            category.copyWith(icon: selected),
+          );
+    }, successMessage: 'Icon updated for ${category.name}');
+  }
+
+  Future<void> _changeCategoryImage(VenueCategory category) async {
+    final picked = await _pickImage();
+    if (picked == null) return;
+    await _runMutation(() async {
+      await ref.read(venueRepositoryProvider).uploadCategoryImage(
+            category: category,
+            bytes: picked.bytes,
+            extension: picked.extension,
+          );
+    }, successMessage: 'Image updated for ${category.name}');
+  }
+
+  Future<void> _removeCategoryImage(VenueCategory category) async {
+    if (category.imageUrl.isEmpty && category.imagePath.isEmpty) return;
+    await _runMutation(() async {
+      await ref.read(venueRepositoryProvider).removeCategoryImage(category);
+    }, successMessage: 'Image removed from ${category.name}');
+  }
+
   Future<void> _runMutation(
     Future<void> Function() mutation, {
     String? successMessage,
@@ -776,6 +1012,1314 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
         content: Text(message),
         backgroundColor: isError ? Colors.red[700] : null,
       ));
+  }
+}
+
+const _adminNavy = Color(0xFF071A33);
+const _adminBlue = Color(0xFF0B63CE);
+const _adminTeal = Color(0xFF07C7B7);
+const _adminBorder = Color(0xFFDCE6F2);
+
+class _AdminDesktopLoading extends StatelessWidget {
+  const _AdminDesktopLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFF5F8FC),
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _AdminDesktopSidebar extends StatelessWidget {
+  const _AdminDesktopSidebar({
+    required this.collapsed,
+    required this.onNavigate,
+    required this.onViewApp,
+  });
+
+  final bool collapsed;
+  final ValueChanged<String> onNavigate;
+  final VoidCallback onViewApp;
+
+  static const _items = <({IconData icon, String label, String? route})>[
+    (icon: Icons.dashboard_outlined, label: 'Dashboard', route: '/admin'),
+    (
+      icon: Icons.category_outlined,
+      label: 'Categories',
+      route: '/admin/categories'
+    ),
+    (icon: Icons.campaign_outlined, label: 'Banners', route: '/admin/cms'),
+    (
+      icon: Icons.view_quilt_outlined,
+      label: 'Home Sections',
+      route: '/admin/cms'
+    ),
+    (
+      icon: Icons.text_fields_outlined,
+      label: 'Text & Labels',
+      route: '/admin/cms'
+    ),
+    (
+      icon: Icons.perm_media_outlined,
+      label: 'Media Library',
+      route: '/admin/cms'
+    ),
+    (icon: Icons.palette_outlined, label: 'App Theme', route: '/features'),
+    (
+      icon: Icons.account_balance_outlined,
+      label: 'Venues',
+      route: '/admin/venues'
+    ),
+    (
+      icon: Icons.people_outline,
+      label: 'Users & Owners',
+      route: '/admin/users'
+    ),
+    (
+      icon: Icons.calendar_month_outlined,
+      label: 'Bookings',
+      route: '/admin/bookings'
+    ),
+    (
+      icon: Icons.account_balance_wallet_outlined,
+      label: 'Payments',
+      route: '/admin/payments'
+    ),
+    (icon: Icons.event_outlined, label: 'Events', route: '/admin/events'),
+    (icon: Icons.school_outlined, label: 'Courses', route: '/admin/courses'),
+    (
+      icon: Icons.bar_chart_outlined,
+      label: 'Reports & Analytics',
+      route: '/analytics'
+    ),
+    (icon: Icons.tune_outlined, label: 'Feature Hub', route: '/admin/modules'),
+    (
+      icon: Icons.integration_instructions_outlined,
+      label: 'Integrations',
+      route: '/admin/integrations'
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: collapsed ? 76 : 252,
+      color: _adminNavy,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: _adminTeal.withValues(alpha: 0.7)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.hub_outlined, color: _adminTeal),
+                ),
+                if (!collapsed) ...[
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'BookMySpace',
+                          style: TextStyle(
+                            color: _adminTeal,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Spaces for Every Moment',
+                          style: TextStyle(color: Colors.white70, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                for (final item in _items) ...[
+                  if (item.label == 'Categories')
+                    _AdminSidebarItem(
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Content Management',
+                      selected: true,
+                      collapsed: collapsed,
+                      onTap: () => onNavigate('/admin/categories'),
+                    ),
+                  _AdminSidebarItem(
+                    icon: item.icon,
+                    label: item.label,
+                    selected: item.route == '/admin/categories',
+                    collapsed: collapsed,
+                    onTap: item.route == null
+                        ? null
+                        : () => onNavigate(item.route!),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (!collapsed)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF5234F4), Color(0xFF126DE5)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.rocket_launch_outlined, color: Colors.white),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Your changes are live\nUpdates reflect immediately in the app',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ),
+                    Icon(Icons.check_circle, color: _adminTeal, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          if (!collapsed)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                'BookMySpace v1.0.0\nBuild for a Better Tomorrow',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54, fontSize: 10),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminSidebarItem extends StatelessWidget {
+  const _AdminSidebarItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.collapsed,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool collapsed;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        selected ? Colors.white : Colors.white.withValues(alpha: 0.82);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Tooltip(
+        message: collapsed ? label : '',
+        child: Material(
+          color: selected ? _adminBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: collapsed ? 0 : 12,
+                vertical: 11,
+              ),
+              child: Row(
+                mainAxisAlignment: collapsed
+                    ? MainAxisAlignment.center
+                    : MainAxisAlignment.start,
+                children: [
+                  Icon(icon, color: color, size: 20),
+                  if (!collapsed) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: color, fontSize: 13),
+                      ),
+                    ),
+                    if (label == 'Content Management')
+                      const Icon(Icons.expand_less, color: Colors.white70),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminDesktopTopBar extends StatefulWidget {
+  const _AdminDesktopTopBar({
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.onMenu,
+    required this.onViewApp,
+    required this.currentLocale,
+    required this.onLocaleChanged,
+  });
+
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onMenu;
+  final VoidCallback onViewApp;
+  final Locale currentLocale;
+  final ValueChanged<Locale> onLocaleChanged;
+
+  @override
+  State<_AdminDesktopTopBar> createState() => _AdminDesktopTopBarState();
+}
+
+class _AdminDesktopTopBarState extends State<_AdminDesktopTopBar> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: widget.searchQuery);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AdminDesktopTopBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchQuery != widget.searchQuery &&
+        _searchController.text != widget.searchQuery) {
+      _searchController.value = TextEditingValue(
+        text: widget.searchQuery,
+        selection: TextSelection.collapsed(offset: widget.searchQuery.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: _adminBorder)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+              onPressed: widget.onMenu, icon: const Icon(Icons.menu_rounded)),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 440,
+            child: TextField(
+              controller: _searchController,
+              onChanged: widget.onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Search anything...',
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: const Color(0xFFF0F4FA),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const Spacer(),
+          OutlinedButton.icon(
+            onPressed: widget.onViewApp,
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: const Text('View App'),
+          ),
+          const SizedBox(width: 12),
+          PopupMenuButton<String>(
+            tooltip: 'Language',
+            onSelected: (languageCode) =>
+                widget.onLocaleChanged(Locale(languageCode)),
+            itemBuilder: (_) => _supportedLanguageLabels.entries
+                .map((entry) => PopupMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ))
+                .toList(growable: false),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.language, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    _supportedLanguageLabels[
+                            widget.currentLocale.languageCode] ??
+                        'English',
+                  ),
+                  const Icon(Icons.keyboard_arrow_down, size: 18),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => context.go('/notifications'),
+            icon: const Badge(
+              label: Text('3'),
+              child: Icon(Icons.notifications_none_rounded),
+            ),
+          ),
+          const CircleAvatar(
+            radius: 17,
+            backgroundColor: Color(0xFFE1EBF7),
+            child: Icon(Icons.person_outline, color: _adminNavy),
+          ),
+          const SizedBox(width: 8),
+          const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Admin', style: TextStyle(fontWeight: FontWeight.w700)),
+              Text('Administrator',
+                  style: TextStyle(fontSize: 11, color: Colors.black54)),
+            ],
+          ),
+          const Icon(Icons.keyboard_arrow_down),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopBreadcrumbHeader extends StatelessWidget {
+  const _DesktopBreadcrumbHeader({
+    required this.onAddCategory,
+    required this.onManageIcons,
+    required this.reorderMode,
+    required this.onReorder,
+  });
+
+  final VoidCallback? onAddCategory;
+  final VoidCallback? onManageIcons;
+  final bool reorderMode;
+  final VoidCallback onReorder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.home_outlined, size: 15, color: Colors.black45),
+                  SizedBox(width: 8),
+                  Text('Content Management',
+                      style: TextStyle(color: Colors.black54, fontSize: 13)),
+                  Icon(Icons.chevron_right, color: Colors.black38, size: 18),
+                  Text('Categories',
+                      style: TextStyle(fontSize: 13, color: _adminNavy)),
+                ],
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Manage Categories',
+                style: TextStyle(
+                  color: _adminNavy,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Add, edit, and organize categories and subsections. Changes appear instantly in the app.',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ],
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: onManageIcons,
+          icon: const Icon(Icons.apps_outlined),
+          label: const Text('Manage Icons'),
+        ),
+        const SizedBox(width: 12),
+        OutlinedButton.icon(
+          onPressed: onReorder,
+          icon: const Icon(Icons.swap_vert_rounded),
+          label: Text(reorderMode ? 'Done Reordering' : 'Reorder'),
+        ),
+        const SizedBox(width: 12),
+        FilledButton.icon(
+          onPressed: onAddCategory,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Category'),
+          style: FilledButton.styleFrom(
+            backgroundColor: _adminTeal,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopStatsRow extends StatelessWidget {
+  const _DesktopStatsRow({
+    required this.categoryCount,
+    required this.subsectionCount,
+    required this.activeCount,
+    required this.languageCount,
+  });
+
+  final int categoryCount;
+  final int subsectionCount;
+  final int activeCount;
+  final int languageCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _DesktopStatCard(
+            icon: Icons.category_outlined,
+            value: '$categoryCount',
+            label: 'Main Categories',
+            color: const Color(0xFF6C3CF0),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _DesktopStatCard(
+            icon: Icons.account_tree_outlined,
+            value: '$subsectionCount',
+            label: 'Subsections',
+            color: const Color(0xFFFFB51B),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _DesktopStatCard(
+            icon: Icons.verified_outlined,
+            value: '$activeCount active',
+            label: 'Live Updates',
+            color: _adminTeal,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: _DesktopStatCard(
+            icon: Icons.language_outlined,
+            value: '$languageCount',
+            label: 'Supported Languages',
+            color: _adminBlue,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopStatCard extends StatelessWidget {
+  const _DesktopStatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 76,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _adminBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w800)),
+                Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.black54)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopManagementGrid extends StatelessWidget {
+  const _DesktopManagementGrid({
+    required this.categories,
+    required this.counts,
+    required this.selected,
+    required this.activeSubsections,
+    required this.reorderMode,
+    required this.isBusy,
+    required this.onSelect,
+    required this.onSearchChanged,
+    required this.searchQuery,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onReorder,
+    required this.onRefresh,
+    required this.onChangeIcon,
+    required this.onChangeImage,
+    required this.onRemoveImage,
+    required this.onSaveDetails,
+  });
+
+  final List<VenueCategory> categories;
+  final Map<String, int> counts;
+  final VenueCategory selected;
+  final List<VenueSubsection> activeSubsections;
+  final bool reorderMode;
+  final bool isBusy;
+  final ValueChanged<VenueCategory> onSelect;
+  final ValueChanged<String> onSearchChanged;
+  final String searchQuery;
+  final ValueChanged<VenueCategory> onEdit;
+  final Future<void> Function(VenueCategory, bool) onToggle;
+  final Future<void> Function(VenueCategory) onDelete;
+  final Future<void> Function(List<VenueCategory>, int, int) onReorder;
+  final VoidCallback onRefresh;
+  final Future<void> Function(VenueCategory) onChangeIcon;
+  final Future<void> Function(VenueCategory) onChangeImage;
+  final Future<void> Function(VenueCategory) onRemoveImage;
+  final ValueChanged<VenueCategory> onSaveDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    final query = searchQuery.trim().toLowerCase();
+    final filtered = categories
+        .where((category) =>
+            query.isEmpty ||
+            category.name.toLowerCase().contains(query) ||
+            category.slug.toLowerCase().contains(query))
+        .toList(growable: false);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: _DesktopCategoryListCard(
+            categories: filtered,
+            counts: counts,
+            selected: selected,
+            reorderMode: reorderMode && query.isEmpty,
+            isBusy: isBusy,
+            searchQuery: searchQuery,
+            onSearchChanged: onSearchChanged,
+            onSelect: onSelect,
+            onEdit: onEdit,
+            onToggle: onToggle,
+            onDelete: onDelete,
+            onReorder: onReorder,
+            onRefresh: onRefresh,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          flex: 4,
+          child: _DesktopCategoryDetailsCard(
+            category: selected,
+            isBusy: isBusy,
+            onDelete: onDelete,
+            onEdit: onEdit,
+            onToggle: onToggle,
+            onChangeIcon: onChangeIcon,
+            onChangeImage: onChangeImage,
+            onRemoveImage: onRemoveImage,
+            onSaveDetails: onSaveDetails,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          flex: 5,
+          child: Column(
+            children: [
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: _adminBorder),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _SubsectionsEditor(category: selected),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _DesktopLivePreviewCard(
+                categories: categories.where((c) => c.isActive).toList(),
+                activeSubsections: activeSubsections,
+                onRefresh: onRefresh,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopCategoryListCard extends StatelessWidget {
+  const _DesktopCategoryListCard({
+    required this.categories,
+    required this.counts,
+    required this.selected,
+    required this.reorderMode,
+    required this.isBusy,
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.onSelect,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onReorder,
+    required this.onRefresh,
+  });
+
+  final List<VenueCategory> categories;
+  final Map<String, int> counts;
+  final VenueCategory selected;
+  final bool reorderMode;
+  final bool isBusy;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<VenueCategory> onSelect;
+  final ValueChanged<VenueCategory> onEdit;
+  final Future<void> Function(VenueCategory, bool) onToggle;
+  final Future<void> Function(VenueCategory) onDelete;
+  final Future<void> Function(List<VenueCategory>, int, int) onReorder;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = reorderMode
+        ? ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: categories.length,
+            buildDefaultDragHandles: false,
+            onReorder: (oldIndex, newIndex) =>
+                onReorder(categories, oldIndex, newIndex),
+            itemBuilder: (context, index) => _DesktopCategoryRow(
+              key: ValueKey(categories[index].id),
+              category: categories[index],
+              count: counts[categories[index].id] ?? 0,
+              index: index,
+              selected: categories[index].id == selected.id,
+              showDragHandle: true,
+              isBusy: isBusy,
+              onSelect: onSelect,
+              onEdit: onEdit,
+              onToggle: onToggle,
+              onDelete: onDelete,
+            ),
+          )
+        : ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemBuilder: (context, index) => _DesktopCategoryRow(
+              category: categories[index],
+              count: counts[categories[index].id] ?? 0,
+              index: index,
+              selected: categories[index].id == selected.id,
+              showDragHandle: false,
+              isBusy: isBusy,
+              onSelect: onSelect,
+              onEdit: onEdit,
+              onToggle: onToggle,
+              onDelete: onDelete,
+            ),
+          );
+
+    return _DesktopPanel(
+      title: 'Categories',
+      trailing: IconButton(
+        onPressed: onRefresh,
+        tooltip: 'Refresh categories',
+        icon: const Icon(Icons.refresh_rounded, size: 19),
+      ),
+      child: Column(
+        children: [
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Search categories...',
+              prefixIcon: Icon(Icons.search_rounded, size: 19),
+              isDense: true,
+            ),
+            onChanged: onSearchChanged,
+          ),
+          const SizedBox(height: 12),
+          if (categories.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Text('No matching categories'),
+            )
+          else
+            child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopCategoryRow extends StatelessWidget {
+  const _DesktopCategoryRow({
+    super.key,
+    required this.category,
+    required this.count,
+    required this.index,
+    required this.selected,
+    required this.showDragHandle,
+    required this.isBusy,
+    required this.onSelect,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final VenueCategory category;
+  final int count;
+  final int index;
+  final bool selected;
+  final bool showDragHandle;
+  final bool isBusy;
+  final ValueChanged<VenueCategory> onSelect;
+  final ValueChanged<VenueCategory> onEdit;
+  final Future<void> Function(VenueCategory, bool) onToggle;
+  final Future<void> Function(VenueCategory) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: selected ? _adminBlue : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: selected ? _adminBlue : _adminBorder),
+      ),
+      child: Row(
+        children: [
+          if (showDragHandle)
+            ReorderableDragStartListener(
+              index: index,
+              child: Icon(Icons.drag_indicator,
+                  color: selected ? Colors.white70 : Colors.black38, size: 18),
+            ),
+          _CategoryThumbnail(category: category, size: 34),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? Colors.white : _adminNavy,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  '$count subsections',
+                  style: TextStyle(
+                    color: selected ? Colors.white70 : Colors.black54,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: category.isActive,
+            onChanged: isBusy ? null : (value) => onToggle(category, value),
+            activeTrackColor: _adminTeal.withValues(alpha: 0.35),
+            activeThumbColor: _adminTeal,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Category actions',
+            onSelected: (value) {
+              if (value == 'edit') onEdit(category);
+              if (value == 'delete') onDelete(category);
+            },
+            icon: Icon(Icons.more_vert,
+                color: selected ? Colors.white : Colors.black54, size: 18),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Edit category')),
+              PopupMenuItem(value: 'delete', child: Text('Delete category')),
+            ],
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: InkWell(
+        onTap: () => onSelect(category),
+        borderRadius: BorderRadius.circular(8),
+        child: content,
+      ),
+    );
+  }
+}
+
+class _DesktopCategoryDetailsCard extends StatelessWidget {
+  const _DesktopCategoryDetailsCard({
+    required this.category,
+    required this.isBusy,
+    required this.onDelete,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onChangeIcon,
+    required this.onChangeImage,
+    required this.onRemoveImage,
+    required this.onSaveDetails,
+  });
+
+  final VenueCategory category;
+  final bool isBusy;
+  final Future<void> Function(VenueCategory) onDelete;
+  final ValueChanged<VenueCategory> onEdit;
+  final Future<void> Function(VenueCategory, bool) onToggle;
+  final Future<void> Function(VenueCategory) onChangeIcon;
+  final Future<void> Function(VenueCategory) onChangeImage;
+  final Future<void> Function(VenueCategory) onRemoveImage;
+  final ValueChanged<VenueCategory> onSaveDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DesktopPanel(
+      title: 'Edit Category',
+      trailing: TextButton.icon(
+        onPressed: isBusy ? null : () => onDelete(category),
+        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+        label:
+            const Text('Delete Category', style: TextStyle(color: Colors.red)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _DesktopReadOnlyField(
+            label: 'Category Name',
+            value: category.name,
+            onTap: () => onEdit(category),
+          ),
+          const SizedBox(height: 12),
+          _DesktopReadOnlyField(
+            label: 'Description',
+            value: category.description.isEmpty
+                ? 'Add a customer-facing description'
+                : category.description,
+            maxLines: 2,
+            onTap: () => onEdit(category),
+          ),
+          const SizedBox(height: 14),
+          const Text('Icon',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECE5FF),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(category.icon ?? '🏷️',
+                    style: const TextStyle(fontSize: 25)),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : () => onChangeIcon(category),
+                icon: const Icon(Icons.image_outlined, size: 17),
+                label: const Text('Change Icon'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text('Category Image',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              _CategoryImagePreview(category: category),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : () => onChangeImage(category),
+                icon: const Icon(Icons.image_outlined, size: 17),
+                label: const Text('Change Image'),
+              ),
+              if (category.imageUrl.isNotEmpty || category.imagePath.isNotEmpty)
+                IconButton(
+                  tooltip: 'Remove image',
+                  onPressed: isBusy ? null : () => onRemoveImage(category),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Text('Status',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+              const SizedBox(width: 14),
+              Switch.adaptive(
+                value: category.isActive,
+                onChanged: isBusy ? null : (value) => onToggle(category, value),
+                activeTrackColor: _adminTeal.withValues(alpha: 0.35),
+                activeThumbColor: _adminTeal,
+              ),
+              Text(category.isActive ? 'Active' : 'Disabled'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _DesktopReadOnlyField(
+            label: 'Display Order',
+            value: '${category.displayOrder}',
+            onTap: () => onEdit(category),
+          ),
+          const SizedBox(height: 10),
+          _DesktopReadOnlyField(
+            label: 'SEO Slug',
+            value: '/${category.slug}',
+            onTap: () => onEdit(category),
+          ),
+          const SizedBox(height: 12),
+          const Text('Supported Languages',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: category.supportedLanguages
+                .map((language) => Chip(
+                      label:
+                          Text(_supportedLanguageLabels[language] ?? language),
+                      visualDensity: VisualDensity.compact,
+                    ))
+                .toList(growable: false),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton(
+                onPressed: () => onEdit(category),
+                child: const Text('Edit Details'),
+              ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: isBusy ? null : () => onSaveDetails(category),
+                style: FilledButton.styleFrom(backgroundColor: _adminTeal),
+                child: const Text('Save Changes'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopLivePreviewCard extends StatelessWidget {
+  const _DesktopLivePreviewCard({
+    required this.categories,
+    required this.activeSubsections,
+    required this.onRefresh,
+  });
+
+  final List<VenueCategory> categories;
+  final List<VenueSubsection> activeSubsections;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DesktopPanel(
+      title: 'Live Preview (App View)',
+      trailing: TextButton.icon(
+        onPressed: onRefresh,
+        icon: const Icon(Icons.refresh_rounded, size: 16),
+        label: const Text('Refresh Preview'),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+              gradient: LinearGradient(
+                colors: [Color(0xFF153C8E), Color(0xFF04C8B9)],
+              ),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Explore Verified Spaces',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800)),
+                SizedBox(height: 4),
+                Text('Find the perfect space for your special moments',
+                    style: TextStyle(color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: categories.take(6).map((category) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 104,
+                    child: Column(
+                      children: [
+                        _CategoryImagePreview(category: category, size: 76),
+                        const SizedBox(height: 5),
+                        Text(category.name,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(growable: false),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${categories.length} live categories · ${activeSubsections.length} active subsections',
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopPanel extends StatelessWidget {
+  const _DesktopPanel({
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
+
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _adminBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        color: _adminNavy,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800)),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopReadOnlyField extends StatelessWidget {
+  const _DesktopReadOnlyField({
+    required this.label,
+    required this.value,
+    this.maxLines = 1,
+    this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final int maxLines;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final field = InputDecorator(
+      decoration: InputDecoration(labelText: label, isDense: true),
+      child: Text(value, maxLines: maxLines, overflow: TextOverflow.ellipsis),
+    );
+    return onTap == null
+        ? field
+        : InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: field,
+          );
+  }
+}
+
+class _CategoryThumbnail extends StatelessWidget {
+  const _CategoryThumbnail({required this.category, this.size = 42});
+
+  final VenueCategory category;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _adminBlue.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: category.imageUrl.isEmpty
+          ? Text(category.icon ?? '🏷️',
+              style: TextStyle(fontSize: size * 0.45))
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                category.imageUrl,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Text(
+                  category.icon ?? '🏷️',
+                  style: TextStyle(fontSize: size * 0.45),
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+class _CategoryImagePreview extends StatelessWidget {
+  const _CategoryImagePreview({required this.category, this.size = 96});
+
+  final VenueCategory category;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: size,
+        height: size * 0.62,
+        color: const Color(0xFFE9F0F8),
+        alignment: Alignment.center,
+        child: category.imageUrl.isEmpty
+            ? Text(category.icon ?? '🏷️', style: const TextStyle(fontSize: 26))
+            : Image.network(
+                category.imageUrl,
+                width: size,
+                height: size * 0.62,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Text(
+                  category.icon ?? '🏷️',
+                  style: const TextStyle(fontSize: 26),
+                ),
+              ),
+      ),
+    );
   }
 }
 
@@ -864,9 +2408,16 @@ class _SubsectionListState extends ConsumerState<_SubsectionList> {
                 key: ValueKey(subsection.id),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                leading: ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(Icons.drag_handle_rounded),
+                leading: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle_rounded),
+                    ),
+                    const SizedBox(width: 6),
+                    _SubsectionThumbnail(subsection: subsection),
+                  ],
                 ),
                 title: Text(subsection.name),
                 subtitle: Text(
@@ -1300,6 +2851,40 @@ class _CategoryForm extends StatelessWidget {
           _CategoryPreview(category: preview!),
         ],
       ],
+    );
+  }
+}
+
+class _SubsectionThumbnail extends StatelessWidget {
+  const _SubsectionThumbnail({required this.subsection});
+
+  final VenueSubsection subsection;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _adminTeal.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: subsection.imageUrl.isEmpty
+          ? Text(subsection.icon ?? '◈', style: const TextStyle(fontSize: 17))
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.network(
+                subsection.imageUrl,
+                width: 38,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Text(
+                  subsection.icon ?? '◈',
+                  style: const TextStyle(fontSize: 17),
+                ),
+              ),
+            ),
     );
   }
 }
