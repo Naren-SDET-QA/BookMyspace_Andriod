@@ -1,7 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/home_appearance.dart';
+import '../../infrastructure/home_media_repository.dart';
 import '../home_appearance_providers.dart';
 
 /// Admin editor for the customer Home composition.
@@ -254,6 +256,7 @@ class _BlockEditor extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _ImageListEditor(
+              blockKindId: block.kind.id,
               images: block.images,
               onChanged: (images) => onChanged(block.copyWith(images: images)),
             ),
@@ -315,18 +318,25 @@ class _Swatch extends StatelessWidget {
   }
 }
 
-class _ImageListEditor extends StatefulWidget {
-  const _ImageListEditor({required this.images, required this.onChanged});
+class _ImageListEditor extends ConsumerStatefulWidget {
+  const _ImageListEditor({
+    required this.blockKindId,
+    required this.images,
+    required this.onChanged,
+  });
 
+  /// Namespaces uploaded objects, e.g. `home/spotlight/…`.
+  final String blockKindId;
   final List<String> images;
   final ValueChanged<List<String>> onChanged;
 
   @override
-  State<_ImageListEditor> createState() => _ImageListEditorState();
+  ConsumerState<_ImageListEditor> createState() => _ImageListEditorState();
 }
 
-class _ImageListEditorState extends State<_ImageListEditor> {
+class _ImageListEditorState extends ConsumerState<_ImageListEditor> {
   final _controller = TextEditingController();
+  bool _uploading = false;
 
   @override
   void dispose() {
@@ -339,6 +349,67 @@ class _ImageListEditorState extends State<_ImageListEditor> {
     if (url.isEmpty) return;
     widget.onChanged([...widget.images, url]);
     _controller.clear();
+  }
+
+  /// Picks one or more images and uploads each one that passes validation.
+  ///
+  /// A rejected file is reported by name and the rest still upload, so one bad
+  /// pick never discards a good batch.
+  Future<void> _upload() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: true,
+      withData: true,
+    );
+    final files = result?.files ?? const [];
+    if (files.isEmpty) return;
+
+    setState(() => _uploading = true);
+    final uploaded = <String>[];
+    try {
+      for (final file in files) {
+        final bytes = file.bytes;
+        final extension = (file.extension ?? '').toLowerCase();
+        if (bytes == null || bytes.isEmpty) {
+          _message('"${file.name}" could not be read.');
+          continue;
+        }
+        if (bytes.length > HomeMediaPath.maxBytes) {
+          _message('"${file.name}" is larger than 10 MB.');
+          continue;
+        }
+        if (!HomeMediaPath.isAllowedExtension(extension)) {
+          _message('"${file.name}" must be a JPG, PNG, WEBP or GIF.');
+          continue;
+        }
+        final url = await ref.read(homeMediaRepositoryProvider).uploadArtwork(
+              blockKindId: widget.blockKindId,
+              bytes: bytes,
+              extension: extension,
+            );
+        uploaded.add(url);
+      }
+
+      if (!mounted) return;
+      if (uploaded.isNotEmpty) {
+        widget.onChanged([...widget.images, ...uploaded]);
+        _message(
+          'Uploaded ${uploaded.length} image'
+          '${uploaded.length == 1 ? '' : 's'}. Publish to go live.',
+        );
+      }
+    } catch (error) {
+      _message('Upload failed: $error');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  void _message(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -358,6 +429,7 @@ class _ImageListEditorState extends State<_ImageListEditor> {
             children: [
               for (var i = 0; i < widget.images.length; i++)
                 InputChip(
+                  avatar: const Icon(Icons.image_outlined, size: 16),
                   label: Text(
                     widget.images[i].split('/').last,
                     overflow: TextOverflow.ellipsis,
@@ -384,10 +456,26 @@ class _ImageListEditorState extends State<_ImageListEditor> {
             ),
             const SizedBox(width: 8),
             IconButton.filledTonal(
-              tooltip: 'Add image',
-              onPressed: _add,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
+              tooltip: 'Add image by URL',
+              onPressed: _uploading ? null : _add,
+              icon: const Icon(Icons.add_link_rounded),
             ),
+            const SizedBox(width: 8),
+            if (_uploading)
+              const SizedBox(
+                width: 40,
+                height: 40,
+                child: Padding(
+                  padding: EdgeInsets.all(9),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              IconButton.filled(
+                tooltip: 'Upload images from this device',
+                onPressed: _upload,
+                icon: const Icon(Icons.upload_rounded),
+              ),
           ],
         ),
       ],

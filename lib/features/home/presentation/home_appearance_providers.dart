@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/presentation/auth_providers.dart';
 import '../../modules/presentation/module_providers.dart';
 import '../domain/home_appearance.dart';
+import '../infrastructure/home_media_repository.dart';
 
 /// Feature-flag key holding the admin Home composition.
 const homeAppearanceFlagKey = 'home_appearance';
@@ -47,3 +49,8 @@ class HomeAppearanceController {
 
 final homeAppearanceControllerProvider =
     Provider<HomeAppearanceController>(HomeAppearanceController.new);
+
+/// Admin upload path for Home block artwork.
+final homeMediaRepositoryProvider = Provider<HomeMediaRepository>((ref) {
+  return HomeMediaRepository(ref.watch(supabaseProvider));
+});
