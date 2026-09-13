@@ -55,31 +55,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   StreamSubscription<AuthUser?>? _authSubscription;
 
   void _init() {
-    final current = _repository.currentUser;
-    if (current != null) {
-      state = AuthAuthenticated(user: current);
-    } else {
-      state = const AuthUnauthenticated();
-    }
+    _publishAuthState(_repository.currentUser);
 
     _authSubscription = _repository.authStateChanges().listen(
-      (user) {
-        if (user != null) {
-          state = AuthAuthenticated(user: user);
-          // Sync push token with backend when authenticated
-          try {
-            final pushService = _ref.read(pushNotificationServiceProvider);
-            final token = pushService.currentDeviceToken;
-            if (token != null && token.isNotEmpty) {
-              _ref
-                  .read(notificationRepositoryProvider)
-                  .registerPushToken(token, 'auto');
-            }
-          } catch (_) {}
-        } else {
-          state = const AuthUnauthenticated();
-        }
-      },
+      _handleAuthEvent,
       onError: (Object _, StackTrace __) {
         // Keep the last known auth state when a transient auth-stream network
         // error occurs. The next Supabase auth event will reconcile it.
@@ -102,7 +81,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String password,
   }) async {
     final user = await _repository.signInWithEmailPassword(email, password);
-    state = AuthAuthenticated(user: user);
+    if (mounted) _publishAuthState(user);
     return user;
   }
 
@@ -135,7 +114,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       await _repository.signOut();
     } finally {
-      state = const AuthUnauthenticated();
+      if (mounted) _publishAuthState(_repository.currentUser);
     }
   }
 
@@ -145,6 +124,57 @@ class AuthNotifier extends StateNotifier<AuthState> {
       avatarUrl: avatarUrl,
     );
     state = AuthAuthenticated(user: updated);
+  }
+
+  /// Applies only events that still describe the repository's current session.
+  ///
+  /// Supabase can deliver an auth event after the operation that caused it has
+  /// completed. During a fast account switch, a queued SIGNED_OUT event can
+  /// otherwise overwrite the next user's authenticated state and make the
+  /// router tear down and rebuild the shell twice.
+  void _handleAuthEvent(AuthUser? eventUser) {
+    if (!_matchesCurrentSession(eventUser)) return;
+    _publishAuthState(eventUser);
+  }
+
+  bool _matchesCurrentSession(AuthUser? eventUser) {
+    final current = _repository.currentUser;
+    return eventUser?.id == current?.id;
+  }
+
+  void _publishAuthState(AuthUser? user) {
+    if (user == null) {
+      if (state is AuthUnauthenticated) return;
+      state = const AuthUnauthenticated();
+      return;
+    }
+
+    final previous = state;
+    if (previous is AuthAuthenticated &&
+        previous.user.id == user.id &&
+        previous.user.email == user.email &&
+        previous.user.phone == user.phone &&
+        previous.user.fullName == user.fullName &&
+        previous.user.avatarUrl == user.avatarUrl) {
+      return;
+    }
+
+    state = AuthAuthenticated(user: user);
+    _syncPushToken();
+  }
+
+  void _syncPushToken() {
+    try {
+      final pushService = _ref.read(pushNotificationServiceProvider);
+      final token = pushService.currentDeviceToken;
+      if (token == null || token.isEmpty) return;
+      unawaited(
+        _ref
+            .read(notificationRepositoryProvider)
+            .registerPushToken(token, 'auto')
+            .catchError((_) {}),
+      );
+    } catch (_) {}
   }
 }
 

@@ -17,6 +17,7 @@ class MockAuthRepository implements AuthRepository {
   bool failSignIn = false;
   bool failVerify = false;
   bool failSignOut = false;
+  bool queueSignOutEvent = false;
   bool cancelGoogle = false;
   bool cancelApple = false;
   bool failGoogle = false;
@@ -29,6 +30,7 @@ class MockAuthRepository implements AuthRepository {
   int verifyCount = 0;
   int deleteAccountCount = 0;
   bool failDeleteAccount = false;
+  bool _hasQueuedSignOutEvent = false;
 
   @override
   AuthUser? get currentUser => _user;
@@ -135,6 +137,16 @@ class MockAuthRepository implements AuthRepository {
       throw Exception('Sign out failed');
     }
     _user = null;
+    if (queueSignOutEvent) {
+      _hasQueuedSignOutEvent = true;
+      return;
+    }
+    _controller.add(null);
+  }
+
+  void emitQueuedSignOutEvent() {
+    if (!_hasQueuedSignOutEvent) return;
+    _hasQueuedSignOutEvent = false;
     _controller.add(null);
   }
 

@@ -4,8 +4,10 @@ import 'package:bookmyspace/features/auth/domain/auth_state.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/auth/presentation/screens/login_screen.dart';
+import 'package:bookmyspace/features/cms/presentation/cms_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
+import 'package:bookmyspace/features/modules/presentation/module_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -110,6 +112,99 @@ void main() {
     expect(container.read(authNotifierProvider), isA<AuthUnauthenticated>());
     expect(container.read(currentUserProvider), isNull);
     expect(repo.currentUser, isNull);
+  });
+
+  test('late sign-out events cannot overwrite the next signed-in user',
+      () async {
+    final repo = MockAuthRepository(
+      initialUser: const AuthUser(id: 'admin', email: 'admin@test.com'),
+    )..queueSignOutEvent = true;
+    final container = ProviderContainer(overrides: _repoOverrides(repo));
+    addTearDown(() {
+      container.dispose();
+      repo.dispose();
+    });
+
+    final notifier = container.read(authNotifierProvider.notifier);
+    await notifier.signOut();
+    expect(container.read(authNotifierProvider), isA<AuthUnauthenticated>());
+
+    await notifier.signInWithEmailPassword(
+      email: 'customer@test.com',
+      password: 'test-password',
+    );
+    expect(container.read(currentUserProvider)?.email, 'customer@test.com');
+
+    repo.emitQueuedSignOutEvent();
+    await Future<void>.microtask(() {});
+
+    expect(container.read(authNotifierProvider), isA<AuthAuthenticated>());
+    expect(container.read(currentUserProvider)?.email, 'customer@test.com');
+  });
+
+  testWidgets('account switch settles routing without stale shell state',
+      (tester) async {
+    final repo = MockAuthRepository(
+      initialUser: const AuthUser(id: 'admin', email: 'admin@test.com'),
+    )..queueSignOutEvent = true;
+    final container = ProviderContainer(
+      overrides: [
+        ..._repoOverrides(repo),
+        activeCmsBannersProvider.overrideWith((ref) async => const []),
+        moduleEnabledProvider('events').overrideWithValue(false),
+        moduleEnabledProvider('offers').overrideWithValue(false),
+      ],
+    );
+    final refresh = ValueNotifier(0);
+    container.listen<AuthState>(authNotifierProvider, (_, __) {
+      refresh.value++;
+    });
+    final router = createAppRouter(
+      initialLocation: AppRoutes.login,
+      refreshListenable: refresh,
+      authStateReader: () => container.read(authNotifierProvider),
+    );
+    addTearDown(() {
+      router.dispose();
+      refresh.dispose();
+      container.dispose();
+      repo.dispose();
+    });
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
+    expect(tester.takeException(), isNull);
+
+    final notifier = container.read(authNotifierProvider.notifier);
+    await notifier.signOut();
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.login);
+    expect(tester.takeException(), isNull);
+
+    await notifier.signInWithEmailPassword(
+      email: 'customer@test.com',
+      password: 'test-password',
+    );
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
+    expect(container.read(currentUserProvider)?.email, 'customer@test.com');
+    expect(tester.takeException(), isNull);
+
+    repo.emitQueuedSignOutEvent();
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
+    expect(container.read(currentUserProvider)?.email, 'customer@test.com');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Google success navigates off login using canonical session',
