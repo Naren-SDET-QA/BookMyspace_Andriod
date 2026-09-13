@@ -96,6 +96,15 @@ const optionalModuleManifests = <ModuleManifest>[
     // assistant available without giving it a slot on Home.
     defaultConfig: {'show_on_home': true},
   ),
+  ModuleManifest(
+    id: 'nav_tabs',
+    name: 'Bottom navigation',
+    description:
+        'Which destinations appear in the customer bottom bar, in what order, '
+        'and under what labels. Hiding a destination never removes its route — '
+        'deep links and in-app buttons still reach it.',
+    // An empty config resolves to the shipped NavTabsConfig.defaults.
+  ),
 ];
 
 ModuleManifest? moduleManifestFor(String id) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/search_route.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -172,6 +173,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   ..._composedSlivers(
+                    l10n: AppLocalizations.of(context),
                     responsive: responsive,
                     blocks: visibleBlocks,
                     dynamicCats: dynamicCats,
@@ -344,11 +346,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// The heading to show for [block] in the reader's language.
+  ///
+  /// An admin translation wins, then the admin's base title, then the shipped
+  /// localized default. That order lets a single-language admin setup still
+  /// read correctly in all five languages.
+  String _localizedTitle(HomeBlockConfig block, AppLocalizations l10n) {
+    final value = block.titleFor(l10n.locale.languageCode);
+    if (value.isNotEmpty) return value;
+    return switch (block.kind) {
+      HomeBlockKind.spotlight => l10n.homeSpotlightTitle,
+      HomeBlockKind.categoryChips => l10n.homeCategoriesTitle,
+      _ => '',
+    };
+  }
+
+  /// The sub-heading to show for [block] in the reader's language.
+  String _localizedSubtitle(HomeBlockConfig block, AppLocalizations l10n) =>
+      block.subtitleFor(l10n.locale.languageCode);
+
   /// Renders the admin-composed Home blocks in configured order.
   ///
   /// A block whose data is unavailable is skipped rather than rendered empty,
   /// so disabling a module or having no data never leaves a gap on Home.
   List<Widget> _composedSlivers({
+    required AppLocalizations l10n,
     required ResponsiveInfo responsive,
     required List<HomeBlockConfig> blocks,
     required List<VenueCategory> dynamicCats,
@@ -389,8 +411,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 14),
                 child: RepaintBoundary(
                   child: HomeAiBookingCard(
-                    title: block.title,
-                    subtitle: block.subtitle,
+                    title: _localizedTitle(block, l10n),
+                    subtitle: _localizedSubtitle(block, l10n),
                     style: block.style,
                   ),
                 ),
@@ -428,9 +450,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 8),
                 child: HomeSpotlightRow(
                   venues: ratedVenues,
-                  title:
-                      block.title.isEmpty ? 'Top-rated spaces' : block.title,
-                  subtitle: block.subtitle,
+                  title: _localizedTitle(block, l10n),
+                  subtitle: _localizedSubtitle(block, l10n),
                   style: block.style,
                   images: block.images,
                 ),
@@ -447,7 +468,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      block.title.isEmpty ? 'Listed categories' : block.title,
+                      _localizedTitle(block, l10n),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,

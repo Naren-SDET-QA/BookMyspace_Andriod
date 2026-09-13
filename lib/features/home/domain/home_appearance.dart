@@ -121,6 +121,8 @@ class HomeBlockConfig {
     this.order = 0,
     this.title = '',
     this.subtitle = '',
+    this.titles = const {},
+    this.subtitles = const {},
     this.images = const [],
     this.style = const HomeBlockStyle(),
   });
@@ -128,18 +130,42 @@ class HomeBlockConfig {
   final HomeBlockKind kind;
   final bool enabled;
   final int order;
+
+  /// The base title, used for every language the admin has not translated.
   final String title;
   final String subtitle;
+
+  /// Per-language overrides keyed by language code (`en`, `te`, `hi`, `kn`,
+  /// `ta`). A language the admin never filled in falls back to [title], so a
+  /// single-language setup keeps working and no section ever renders blank.
+  final Map<String, String> titles;
+  final Map<String, String> subtitles;
 
   /// Admin-supplied artwork (4-6 per section). Empty means "use live data".
   final List<String> images;
   final HomeBlockStyle style;
+
+  /// The title to render for [languageCode].
+  String titleFor(String languageCode) {
+    final localized = titles[languageCode];
+    if (localized != null && localized.trim().isNotEmpty) return localized;
+    return title;
+  }
+
+  /// The subtitle to render for [languageCode].
+  String subtitleFor(String languageCode) {
+    final localized = subtitles[languageCode];
+    if (localized != null && localized.trim().isNotEmpty) return localized;
+    return subtitle;
+  }
 
   HomeBlockConfig copyWith({
     bool? enabled,
     int? order,
     String? title,
     String? subtitle,
+    Map<String, String>? titles,
+    Map<String, String>? subtitles,
     List<String>? images,
     HomeBlockStyle? style,
   }) {
@@ -149,9 +175,36 @@ class HomeBlockConfig {
       order: order ?? this.order,
       title: title ?? this.title,
       subtitle: subtitle ?? this.subtitle,
+      titles: titles ?? this.titles,
+      subtitles: subtitles ?? this.subtitles,
       images: images ?? this.images,
       style: style ?? this.style,
     );
+  }
+
+  /// Sets one language's title, leaving every other language untouched.
+  ///
+  /// Clearing a language removes the override instead of storing an empty
+  /// string, so the section falls back to the base title again.
+  HomeBlockConfig withTitle(String languageCode, String value) {
+    final next = {...titles};
+    if (value.trim().isEmpty) {
+      next.remove(languageCode);
+    } else {
+      next[languageCode] = value;
+    }
+    return copyWith(titles: next);
+  }
+
+  /// Sets one language's subtitle, leaving every other language untouched.
+  HomeBlockConfig withSubtitle(String languageCode, String value) {
+    final next = {...subtitles};
+    if (value.trim().isEmpty) {
+      next.remove(languageCode);
+    } else {
+      next[languageCode] = value;
+    }
+    return copyWith(subtitles: next);
   }
 
   factory HomeBlockConfig.fromJson(Map json, HomeBlockKind fallbackKind) {
@@ -163,6 +216,8 @@ class HomeBlockConfig {
       order: _int(json['order']) ?? 0,
       title: json['title'] as String? ?? '',
       subtitle: json['subtitle'] as String? ?? '',
+      titles: _localizedMap(json['titles']),
+      subtitles: _localizedMap(json['subtitles']),
       images: rawImages is List
           ? rawImages
               .whereType<String>()
@@ -179,9 +234,25 @@ class HomeBlockConfig {
         'order': order,
         if (title.isNotEmpty) 'title': title,
         if (subtitle.isNotEmpty) 'subtitle': subtitle,
+        if (titles.isNotEmpty) 'titles': titles,
+        if (subtitles.isNotEmpty) 'subtitles': subtitles,
         if (images.isNotEmpty) 'images': images,
         'style': style.toJson(),
       };
+
+  /// Reads a `{language: text}` map, dropping blanks so a cleared field can
+  /// never win over the base text.
+  static Map<String, String> _localizedMap(Object? value) {
+    if (value is! Map) return const {};
+    final out = <String, String>{};
+    value.forEach((key, entry) {
+      if (entry is! String) return;
+      final text = entry.trim();
+      if (text.isEmpty) return;
+      out[key.toString()] = text;
+    });
+    return out;
+  }
 }
 
 /// The complete, ordered Home composition.
@@ -221,15 +292,15 @@ class HomeAppearance {
   }
 
   /// Shipped default: identical to the current production Home.
+  ///
+  /// The spotlight heading is left empty on purpose. An empty title falls back
+  /// to the localized default, so the shipped Home reads correctly in every
+  /// language instead of pinning English text into the config.
   static const HomeAppearance defaults = HomeAppearance([
     HomeBlockConfig(kind: HomeBlockKind.offerBanner, order: 10),
     HomeBlockConfig(kind: HomeBlockKind.aiBooking, order: 15),
     HomeBlockConfig(kind: HomeBlockKind.categoryMatrix, order: 20),
-    HomeBlockConfig(
-      kind: HomeBlockKind.spotlight,
-      order: 30,
-      title: 'Top-rated spaces',
-    ),
+    HomeBlockConfig(kind: HomeBlockKind.spotlight, order: 30),
     HomeBlockConfig(kind: HomeBlockKind.categoryChips, order: 40),
     HomeBlockConfig(kind: HomeBlockKind.recentBookings, order: 50),
   ]);

@@ -130,7 +130,19 @@ class _AdminHomeAppearanceScreenState
   }
 }
 
-class _BlockEditor extends StatelessWidget {
+/// Languages an admin can give a section its own wording for.
+///
+/// English edits the base title that every language falls back to; the others
+/// write a per-language override.
+const _languages = <({String code, String label})>[
+  (code: 'en', label: 'English'),
+  (code: 'te', label: 'తెలుగు'),
+  (code: 'hi', label: 'हिन्दी'),
+  (code: 'kn', label: 'ಕನ್ನಡ'),
+  (code: 'ta', label: 'தமிழ்'),
+];
+
+class _BlockEditor extends StatefulWidget {
   const _BlockEditor({
     super.key,
     required this.block,
@@ -149,8 +161,47 @@ class _BlockEditor extends StatelessWidget {
   final ValueChanged<int> onMove;
 
   @override
+  State<_BlockEditor> createState() => _BlockEditorState();
+}
+
+class _BlockEditorState extends State<_BlockEditor> {
+  /// The language the title and subtitle fields currently edit.
+  String _language = 'en';
+
+  HomeBlockConfig get _block => widget.block;
+
+  /// What the field shows. English reads the base title, which is exactly what
+  /// [_setTitle] writes — so the editor never shows one value and stores another.
+  String get _titleValue =>
+      _language == 'en' ? _block.title : _block.titles[_language] ?? '';
+
+  String get _subtitleValue =>
+      _language == 'en' ? _block.subtitle : _block.subtitles[_language] ?? '';
+
+  void _setTitle(String value) {
+    widget.onChanged(
+      _language == 'en'
+          ? _block.copyWith(title: value)
+          : _block.withTitle(_language, value),
+    );
+  }
+
+  void _setSubtitle(String value) {
+    widget.onChanged(
+      _language == 'en'
+          ? _block.copyWith(subtitle: value)
+          : _block.withSubtitle(_language, value),
+    );
+  }
+
+  bool _translated(String code) => code == 'en'
+      ? _block.title.trim().isNotEmpty
+      : (_block.titles[code] ?? '').trim().isNotEmpty;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final block = _block;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -169,29 +220,71 @@ class _BlockEditor extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: 'Move up',
-                  onPressed: isFirst ? null : () => onMove(-1),
+                  onPressed: widget.isFirst ? null : () => widget.onMove(-1),
                   icon: const Icon(Icons.keyboard_arrow_up_rounded),
                 ),
                 IconButton(
                   tooltip: 'Move down',
-                  onPressed: isLast ? null : () => onMove(1),
+                  onPressed: widget.isLast ? null : () => widget.onMove(1),
                   icon: const Icon(Icons.keyboard_arrow_down_rounded),
                 ),
                 Switch(
                   value: block.enabled,
                   onChanged: (value) =>
-                      onChanged(block.copyWith(enabled: value)),
+                      widget.onChanged(block.copyWith(enabled: value)),
                 ),
               ],
             ),
             const SizedBox(height: 4),
+            Text('Wording', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final language in _languages)
+                  ChoiceChip(
+                    label: Text(
+                      language.label,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    selected: _language == language.code,
+                    onSelected: (_) =>
+                        setState(() => _language = language.code),
+                    avatar: _translated(language.code)
+                        ? const Icon(Icons.check_circle, size: 14)
+                        : null,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
             TextFormField(
-              initialValue: block.title,
-              decoration: const InputDecoration(
-                labelText: 'Section title (optional)',
+              key: ValueKey('title-${block.kind.id}-$_language'),
+              initialValue: _titleValue,
+              decoration: InputDecoration(
+                labelText: _language == 'en'
+                    ? 'Title (all languages)'
+                    : 'Title (${_languages.firstWhere((l) => l.code == _language).label})',
+                helperText: _language == 'en'
+                    ? null
+                    : 'Empty falls back to the title above',
                 isDense: true,
               ),
-              onChanged: (value) => onChanged(block.copyWith(title: value)),
+              onChanged: _setTitle,
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              key: ValueKey('subtitle-${block.kind.id}-$_language'),
+              initialValue: _subtitleValue,
+              decoration: InputDecoration(
+                labelText: _language == 'en'
+                    ? 'Subtitle (optional)'
+                    : 'Subtitle (${_languages.firstWhere((l) => l.code == _language).label})',
+                isDense: true,
+              ),
+              onChanged: _setSubtitle,
             ),
             const SizedBox(height: 12),
             Text('Background', style: theme.textTheme.labelLarge),
@@ -200,13 +293,13 @@ class _BlockEditor extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final entry in presets.entries)
+                for (final entry in widget.presets.entries)
                   _Swatch(
                     label: entry.key,
                     colors: entry.value,
                     selected: _matches(block.style.backgroundColors,
                         entry.value),
-                    onTap: () => onChanged(
+                    onTap: () => widget.onChanged(
                       block.copyWith(
                         style: block.style
                             .copyWith(backgroundColors: entry.value),
@@ -216,7 +309,7 @@ class _BlockEditor extends StatelessWidget {
                 ActionChip(
                   avatar: const Icon(Icons.format_color_reset, size: 16),
                   label: const Text('Default'),
-                  onPressed: () => onChanged(
+                  onPressed: () => widget.onChanged(
                     block.copyWith(
                       style: block.style.copyWith(backgroundColors: const []),
                     ),
@@ -233,7 +326,7 @@ class _BlockEditor extends StatelessWidget {
                 ),
                 Switch(
                   value: block.style.borderWidth > 0,
-                  onChanged: (value) => onChanged(
+                  onChanged: (value) => widget.onChanged(
                     block.copyWith(
                       style: block.style.copyWith(
                         borderWidth: value ? 1.4 : 0,
@@ -248,7 +341,7 @@ class _BlockEditor extends StatelessWidget {
                 ),
                 Switch(
                   value: block.style.glow,
-                  onChanged: (value) => onChanged(
+                  onChanged: (value) => widget.onChanged(
                     block.copyWith(style: block.style.copyWith(glow: value)),
                   ),
                 ),
@@ -258,7 +351,8 @@ class _BlockEditor extends StatelessWidget {
             _ImageListEditor(
               blockKindId: block.kind.id,
               images: block.images,
-              onChanged: (images) => onChanged(block.copyWith(images: images)),
+              onChanged: (images) =>
+                  widget.onChanged(block.copyWith(images: images)),
             ),
           ],
         ),

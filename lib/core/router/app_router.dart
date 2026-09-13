@@ -48,6 +48,10 @@ import '../../features/map/presentation/screens/venue_map_screen.dart';
 import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/venues/domain/venue.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
+import '../../features/navigation/presentation/nav_tab_labels.dart';
+import '../../features/navigation/presentation/nav_tabs_providers.dart';
+import '../../features/navigation/presentation/screens/admin_nav_tabs_screen.dart';
+import '../../features/navigation/presentation/screens/assistant_tab_screen.dart';
 import '../localization/app_localizations.dart';
 
 /// Route names used for navigation.
@@ -99,6 +103,8 @@ abstract class AppRoutes {
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
   static const featuresHub = '/features';
+  static const assistantTab = '/assistant';
+  static const adminNavTabs = '/admin/nav-tabs';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -414,6 +420,14 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.adminNavTabs,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminNavTabsScreen(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.ownerRegistration,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const OwnerRegistrationScreen(),
@@ -570,24 +584,48 @@ GoRouter createAppRouter({
               ),
             ],
           ),
+          // Branch 6. The assistant is a destination an admin opts into. It is
+          // declared last so every existing branch index stays unchanged, which
+          // keeps saved bar configurations and deep links valid.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.assistantTab,
+                builder: (context, state) => const AssistantTabScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
   );
 }
 
-class _AppShell extends StatelessWidget {
+class _AppShell extends ConsumerWidget {
   const _AppShell({required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final isCompact = MediaQuery.sizeOf(context).width < 600;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    // The admin-configured bar. The route tree itself is fixed, so this decides
+    // only which branches are reachable *from the bar* — never which routes
+    // exist. A hidden destination is still reachable by deep link.
+    final tabs = ref.watch(visibleNavTabsProvider);
+    final position = tabs.indexWhere(
+      (entry) => entry.tab.branch == navigationShell.currentIndex,
+    );
+    // Material 3 requires an in-range selection. A branch reached while hidden
+    // from the bar (deep link or an in-app button) has no bar position, so the
+    // first destination is highlighted instead of asserting.
+    final selectedIndex = position >= 0 ? position : 0;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Padding(
@@ -624,48 +662,25 @@ class _AppShell extends StatelessWidget {
               borderRadius: BorderRadius.circular(28),
               child: NavigationBar(
                 // Keep labels visible so first-time users can understand each
-                // destination without relying on platform-specific icon knowledge.
-                // Material 3 sizes the six destinations responsively on phones and
-                // preserves their accessibility labels on every platform.
+                // destination without relying on platform-specific icon
+                // knowledge. Material 3 sizes the destinations responsively on
+                // phones and preserves their accessibility labels everywhere.
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                selectedIndex: navigationShell.currentIndex,
+                selectedIndex: selectedIndex,
                 onDestinationSelected: (index) {
+                  final branch = tabs[index].tab.branch;
                   navigationShell.goBranch(
-                    index,
-                    initialLocation: index == navigationShell.currentIndex,
+                    branch,
+                    initialLocation: branch == navigationShell.currentIndex,
                   );
                 },
                 destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.home_outlined),
-                    selectedIcon: const Icon(Icons.home_rounded),
-                    label: l10n.navHome,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.notifications_outlined),
-                    selectedIcon: const Icon(Icons.notifications_rounded),
-                    label: isCompact ? 'Alerts' : l10n.notifications,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.search_outlined),
-                    selectedIcon: const Icon(Icons.search_rounded),
-                    label: l10n.navSearch,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.receipt_long_outlined),
-                    selectedIcon: const Icon(Icons.receipt_long_rounded),
-                    label: l10n.navBookings,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.school_outlined),
-                    selectedIcon: const Icon(Icons.school_rounded),
-                    label: l10n.courses,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.person_outline_rounded),
-                    selectedIcon: const Icon(Icons.person_rounded),
-                    label: l10n.navProfile,
-                  ),
+                  for (final entry in tabs)
+                    NavigationDestination(
+                      icon: Icon(entry.tab.icon),
+                      selectedIcon: Icon(entry.tab.selectedIcon),
+                      label: navTabLabel(entry, l10n, isCompact: isCompact),
+                    ),
                 ],
               ),
             ),

@@ -170,6 +170,13 @@ class AdminDashboardScreen extends ConsumerWidget {
                   'Add, enable, reorder and theme the customer Home blocks',
               onTap: () => context.push(AppRoutes.adminHomeLayout),
             ),
+            _AdminLink(
+              icon: Icons.tab_unselected_outlined,
+              title: 'Bottom navigation',
+              subtitle:
+                  'Choose which destinations customers see, in what order',
+              onTap: () => context.push(AppRoutes.adminNavTabs),
+            ),
             users.maybeWhen(
               error: (e, _) => Padding(
                 padding: const EdgeInsets.only(top: 16),

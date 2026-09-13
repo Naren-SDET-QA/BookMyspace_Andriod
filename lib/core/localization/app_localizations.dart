@@ -39,6 +39,9 @@ class AppLocalizations {
     'navSearch': 'Search',
     'navBookings': 'Bookings',
     'navProfile': 'Profile',
+    'navAssistant': 'Assistant',
+    'homeSpotlightTitle': 'Top-rated spaces',
+    'homeCategoriesTitle': 'Listed categories',
     'notifications': 'Notifications',
     'courses': 'Courses',
     'venues': 'Venues',
@@ -241,6 +244,9 @@ class AppLocalizations {
     'navSearch': 'శోధన',
     'navBookings': 'బుకింగ్‌లు',
     'navProfile': 'ప్రొఫైల్',
+    'navAssistant': 'సహాయకుడు',
+    'homeSpotlightTitle': 'అత్యుత్తమ రేటింగ్ ఉన్న స్థలాలు',
+    'homeCategoriesTitle': 'జాబితా చేసిన వర్గాలు',
     'notifications': 'నోటిఫికేషన్లు',
     'courses': 'కోర్సులు',
     'venues': 'వేదికలు',
@@ -443,6 +449,9 @@ class AppLocalizations {
     'navSearch': 'खोज',
     'navBookings': 'बुकिंग',
     'navProfile': 'प्रोफ़ाइल',
+    'navAssistant': 'सहायक',
+    'homeSpotlightTitle': 'सर्वाधिक रेटेड जगहें',
+    'homeCategoriesTitle': 'सूचीबद्ध श्रेणियाँ',
     'notifications': 'सूचनाएँ',
     'courses': 'कोर्स',
     'venues': 'स्थान',
@@ -644,6 +653,9 @@ class AppLocalizations {
     'navSearch': 'ಹುಡುಕು',
     'navBookings': 'ಬುಕಿಂಗ್‌ಗಳು',
     'navProfile': 'ಪ್ರೊಫೈಲ್',
+    'navAssistant': 'ಸಹಾಯಕ',
+    'homeSpotlightTitle': 'ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್ನ ಸ್ಥಳಗಳು',
+    'homeCategoriesTitle': 'ಪಟ್ಟಿ ಮಾಡಿದ ವರ್ಗಗಳು',
     'notifications': 'ಅಧಿಸೂಚನೆಗಳು',
     'courses': 'ಕೋರ್ಸ್‌ಗಳು',
     'venues': 'ಸ್ಥಳಗಳು',
@@ -846,6 +858,9 @@ class AppLocalizations {
     'navSearch': 'தேடல்',
     'navBookings': 'முன்பதிவுகள்',
     'navProfile': 'சுயவிவரம்',
+    'navAssistant': 'உதவியாளர்',
+    'homeSpotlightTitle': 'சிறந்த மதிப்பீட்டு இடங்கள்',
+    'homeCategoriesTitle': 'பட்டியலிடப்பட்ட பிரிவுகள்',
     'notifications': 'அறிவிப்புகள்',
     'courses': 'பாடநெறிகள்',
     'venues': 'இடங்கள்',
@@ -1052,6 +1067,13 @@ class AppLocalizations {
   String get navSearch => _t('navSearch');
   String get navBookings => _t('navBookings');
   String get navProfile => _t('navProfile');
+  String get navAssistant => _t('navAssistant');
+
+  // --- Home section defaults ---
+  // Used when an admin leaves a section title empty, so the shipped Home reads
+  // correctly in every language instead of falling back to English.
+  String get homeSpotlightTitle => _t('homeSpotlightTitle');
+  String get homeCategoriesTitle => _t('homeCategoriesTitle');
   String get notifications => _t('notifications');
   String get courses => _t('courses');
   String get venues => _t('venues');
