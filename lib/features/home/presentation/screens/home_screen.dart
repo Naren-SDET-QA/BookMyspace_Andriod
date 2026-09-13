@@ -126,6 +126,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const <VenueSubsection>[];
             final liveVenues =
                 popularVenuesAsync.valueOrNull ?? const <Venue>[];
+            // Empty until the reader picks a location: nearbyVenuesProvider
+            // deliberately never invents a city centroid.
+            final radarVenues =
+                ref.watch(nearbyVenuesProvider).valueOrNull ?? const <Venue>[];
             final trending = dynamicCats
                 .where((c) => c.isActive && c.slug != 'all')
                 .toList();
@@ -179,6 +183,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     dynamicCats: dynamicCats,
                     dynamicSubsections: dynamicSubsections,
                     liveVenues: liveVenues,
+                    radarVenues: radarVenues,
                     ratedVenues: (popularVenuesAsync.valueOrNull ??
                             const <Venue>[])
                         .where((venue) => venue.ratingCount > 0)
@@ -357,6 +362,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return switch (block.kind) {
       HomeBlockKind.spotlight => l10n.homeSpotlightTitle,
       HomeBlockKind.categoryChips => l10n.homeCategoriesTitle,
+      HomeBlockKind.liveRadar => l10n.homeLiveRadarTitle,
       _ => '',
     };
   }
@@ -376,6 +382,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required List<VenueCategory> dynamicCats,
     required List<VenueSubsection> dynamicSubsections,
     required List<Venue> liveVenues,
+    required List<Venue> radarVenues,
     required List<Venue> ratedVenues,
     required List<VenueCategory> trending,
     required List<Coupon> coupons,
@@ -512,8 +519,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           );
         case HomeBlockKind.liveRadar:
-          // Reserved: the Live Space Radar block ships with the map module.
-          break;
+          // Nothing honest to show without a location, so the block is skipped
+          // rather than padded with venues the reader is nowhere near.
+          if (radarVenues.isEmpty) break;
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 8),
+                child: HomeLiveRadar(
+                  venues: radarVenues,
+                  title: _localizedTitle(block, l10n),
+                  subtitle: _localizedSubtitle(block, l10n),
+                ),
+              ),
+            ),
+          );
       }
     }
     return slivers;

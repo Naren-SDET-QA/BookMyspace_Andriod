@@ -42,6 +42,8 @@ class AppLocalizations {
     'navAssistant': 'Assistant',
     'homeSpotlightTitle': 'Top-rated spaces',
     'homeCategoriesTitle': 'Listed categories',
+    'homeLiveRadarTitle': 'Nearest spaces',
+    'homeRecentBookingsTitle': 'Your recent bookings',
     'notifications': 'Notifications',
     'courses': 'Courses',
     'venues': 'Venues',
@@ -247,6 +249,8 @@ class AppLocalizations {
     'navAssistant': 'సహాయకుడు',
     'homeSpotlightTitle': 'అత్యుత్తమ రేటింగ్ ఉన్న స్థలాలు',
     'homeCategoriesTitle': 'జాబితా చేసిన వర్గాలు',
+    'homeLiveRadarTitle': 'సమీపంలోని స్థలాలు',
+    'homeRecentBookingsTitle': 'మీ ఇటీవలి బుకింగ్‌లు',
     'notifications': 'నోటిఫికేషన్లు',
     'courses': 'కోర్సులు',
     'venues': 'వేదికలు',
@@ -452,6 +456,8 @@ class AppLocalizations {
     'navAssistant': 'सहायक',
     'homeSpotlightTitle': 'सर्वाधिक रेटेड जगहें',
     'homeCategoriesTitle': 'सूचीबद्ध श्रेणियाँ',
+    'homeLiveRadarTitle': 'आस-पास की जगहें',
+    'homeRecentBookingsTitle': 'आपकी हाल की बुकिंग',
     'notifications': 'सूचनाएँ',
     'courses': 'कोर्स',
     'venues': 'स्थान',
@@ -656,6 +662,8 @@ class AppLocalizations {
     'navAssistant': 'ಸಹಾಯಕ',
     'homeSpotlightTitle': 'ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್ನ ಸ್ಥಳಗಳು',
     'homeCategoriesTitle': 'ಪಟ್ಟಿ ಮಾಡಿದ ವರ್ಗಗಳು',
+    'homeLiveRadarTitle': 'ಹತ್ತಿರದ ಸ್ಥಳಗಳು',
+    'homeRecentBookingsTitle': 'ನಿಮ್ಮ ಇತ್ತೀಚಿನ ಬುಕಿಂಗ್‌ಗಳು',
     'notifications': 'ಅಧಿಸೂಚನೆಗಳು',
     'courses': 'ಕೋರ್ಸ್‌ಗಳು',
     'venues': 'ಸ್ಥಳಗಳು',
@@ -861,6 +869,8 @@ class AppLocalizations {
     'navAssistant': 'உதவியாளர்',
     'homeSpotlightTitle': 'சிறந்த மதிப்பீட்டு இடங்கள்',
     'homeCategoriesTitle': 'பட்டியலிடப்பட்ட பிரிவுகள்',
+    'homeLiveRadarTitle': 'அருகிலுள்ள இடங்கள்',
+    'homeRecentBookingsTitle': 'உங்கள் சமீபத்திய முன்பதிவுகள்',
     'notifications': 'அறிவிப்புகள்',
     'courses': 'பாடநெறிகள்',
     'venues': 'இடங்கள்',
@@ -1074,6 +1084,8 @@ class AppLocalizations {
   // correctly in every language instead of falling back to English.
   String get homeSpotlightTitle => _t('homeSpotlightTitle');
   String get homeCategoriesTitle => _t('homeCategoriesTitle');
+  String get homeLiveRadarTitle => _t('homeLiveRadarTitle');
+  String get homeRecentBookingsTitle => _t('homeRecentBookingsTitle');
   String get notifications => _t('notifications');
   String get courses => _t('courses');
   String get venues => _t('venues');

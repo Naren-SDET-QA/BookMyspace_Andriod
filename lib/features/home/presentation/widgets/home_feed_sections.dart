@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
@@ -804,7 +805,7 @@ class HomeRecentBookings extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Your recent bookings',
+          AppLocalizations.of(context).homeRecentBookingsTitle,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
@@ -825,6 +826,217 @@ class HomeRecentBookings extends StatelessWidget {
               ),
             ),
       ],
+    );
+  }
+}
+
+/// The live space radar: the venues nearest to the reader right now.
+///
+/// It shows only what the backend actually knows — distance from the reader's
+/// selected location, rating and artwork. This codebase holds no availability
+/// data, so the block deliberately does **not** claim to know which slots are
+/// free; inventing that would be worse than leaving it out.
+///
+/// Without a location there is nothing honest to show, so it renders nothing at
+/// all rather than falling back to a made-up city — the same rule the spotlight
+/// and category blocks follow.
+class HomeLiveRadar extends StatelessWidget {
+  const HomeLiveRadar({
+    super.key,
+    required this.venues,
+    required this.title,
+    this.subtitle = '',
+    this.onVenueTap,
+  });
+
+  final List<Venue> venues;
+  final String title;
+  final String subtitle;
+
+  /// Defaults to opening the venue's details screen.
+  final ValueChanged<Venue>? onVenueTap;
+
+  /// Three keeps the block a glance rather than a list.
+  static const int maxCards = 3;
+
+  /// Card height, sized so the artwork plus two text lines always fit.
+  static const double stripHeight = 136;
+
+  @override
+  Widget build(BuildContext context) {
+    if (venues.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final shown = nearestFirst(venues).take(maxCards).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+        ),
+        if (subtitle.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        const SizedBox(height: 10),
+        SizedBox(
+          height: stripHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: shown.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final venue = shown[index];
+              return _RadarCard(
+                venue: venue,
+                onTap: () {
+                  final handler = onVenueTap;
+                  if (handler != null) {
+                    handler(venue);
+                  } else {
+                    context.push(
+                      AppRoutes.venueDetails.replaceFirst(':id', venue.id),
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Nearest first. A venue the backend returned without a distance keeps its
+  /// relative order at the back rather than being dropped.
+  static List<Venue> nearestFirst(List<Venue> venues) {
+    final sorted = [...venues];
+    sorted.sort((a, b) {
+      final da = a.distanceKm;
+      final db = b.distanceKm;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.compareTo(db);
+    });
+    return sorted;
+  }
+
+  /// The venue's cover artwork: an explicit cover wins, then sort order.
+  static String coverUrl(Venue venue) {
+    if (venue.images.isEmpty) return '';
+    final sorted = [...venue.images]..sort((a, b) {
+        if (a.isCover != b.isCover) return a.isCover ? -1 : 1;
+        return a.sortOrder.compareTo(b.sortOrder);
+      });
+    final cover = sorted.first;
+    final thumbnail = cover.thumbnailUrl;
+    return thumbnail != null && thumbnail.isNotEmpty ? thumbnail : cover.url;
+  }
+
+  /// Distance when the backend supplied one, otherwise the city.
+  ///
+  /// Metres and kilometres read the same in every shipped language, so no
+  /// translation is needed here.
+  static String distanceLabel(Venue venue) {
+    final km = venue.distanceKm;
+    if (km == null) return venue.city;
+    if (km < 1) return '${(km * 1000).round()} m';
+    return '${km.toStringAsFixed(1)} km';
+  }
+}
+
+class _RadarCard extends StatelessWidget {
+  const _RadarCard({required this.venue, required this.onTap});
+
+  final Venue venue;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 158,
+      child: Material(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppNetworkImage(
+                url: HomeLiveRadar.coverUrl(venue),
+                width: double.infinity,
+                height: 64,
+                fit: BoxFit.cover,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        venue.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.near_me_rounded,
+                            size: 12,
+                            color: AppTheme.brand,
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              HomeLiveRadar.distanceLabel(venue),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 13,
+                            color: Color(0xFFF59E0B),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            venue.avgRating.toStringAsFixed(1),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

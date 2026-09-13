@@ -12,6 +12,11 @@ enum HomeBlockKind {
   categoryMatrix('category_matrix', 'Category 3D matrix'),
   spotlight('spotlight', 'Spotlight carousel'),
   categoryChips('category_chips', 'Listed categories'),
+  /// Nearest venues by real distance from the reader's selected location.
+  ///
+  /// "Live" refers to the reader's current position, not to availability —
+  /// this codebase holds no slot data, so the block never claims a space is
+  /// free. Without a location it renders nothing.
   liveRadar('live_radar', 'Live space radar'),
   recentBookings('recent_bookings', 'Recent bookings');
 
