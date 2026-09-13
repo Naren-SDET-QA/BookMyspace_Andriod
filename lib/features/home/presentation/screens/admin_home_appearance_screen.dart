@@ -356,6 +356,7 @@ class _BlockEditorState extends State<_BlockEditor> {
             ),
             const SizedBox(height: 12),
             _VideoListEditor(
+              blockKindId: block.kind.id,
               videos: block.videos,
               onChanged: (videos) =>
                   widget.onChanged(block.copyWith(videos: videos)),
@@ -583,25 +584,31 @@ class _ImageListEditorState extends ConsumerState<_ImageListEditor> {
   }
 }
 
-/// Editor for the video links attached to a section.
+/// Editor for the media attached to a section.
 ///
-/// Links only, deliberately. A clip is far larger than artwork and is almost
-/// always already hosted somewhere, so the admin pastes the URL and the
-/// customer's own device opens it in whichever player it trusts. That keeps the
-/// feed fast — nothing is decoded while the customer scrolls — and avoids
-/// shipping a decoder that could only handle a narrow set of formats.
-class _VideoListEditor extends StatefulWidget {
-  const _VideoListEditor({required this.videos, required this.onChanged});
+/// Links stay first-class because a clip is usually already hosted somewhere and
+/// the customer's own device opens it in whichever player it trusts. That keeps
+/// the feed fast — nothing is decoded while the customer scrolls. Uploading is
+/// offered alongside it for the admin who has the file in hand and no host.
+class _VideoListEditor extends ConsumerStatefulWidget {
+  const _VideoListEditor({
+    required this.blockKindId,
+    required this.videos,
+    required this.onChanged,
+  });
 
+  /// Namespaces uploaded objects, e.g. `home/spotlight/…`.
+  final String blockKindId;
   final List<String> videos;
   final ValueChanged<List<String>> onChanged;
 
   @override
-  State<_VideoListEditor> createState() => _VideoListEditorState();
+  ConsumerState<_VideoListEditor> createState() => _VideoListEditorState();
 }
 
-class _VideoListEditorState extends State<_VideoListEditor> {
+class _VideoListEditorState extends ConsumerState<_VideoListEditor> {
   final _controller = TextEditingController();
+  bool _uploading = false;
 
   @override
   void dispose() {
@@ -614,6 +621,71 @@ class _VideoListEditorState extends State<_VideoListEditor> {
     if (url.isEmpty) return;
     widget.onChanged([...widget.videos, url]);
     _controller.clear();
+  }
+
+  /// Picks one or more clips and uploads each one that passes validation.
+  ///
+  /// Mirrors the artwork flow: a rejected file is reported by name and the rest
+  /// still upload, so one bad pick never discards a good batch.
+  ///
+  /// `withData: true` reads the bytes into memory, which is what keeps this
+  /// working on web — `dart:io` file reads are unavailable there. The 25 MB
+  /// ceiling below is what bounds that cost.
+  Future<void> _upload() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      allowMultiple: true,
+      withData: true,
+    );
+    final files = result?.files ?? const [];
+    if (files.isEmpty) return;
+
+    setState(() => _uploading = true);
+    final uploaded = <String>[];
+    try {
+      for (final file in files) {
+        final bytes = file.bytes;
+        final extension = (file.extension ?? '').toLowerCase();
+        if (bytes == null || bytes.isEmpty) {
+          _message('"${file.name}" could not be read.');
+          continue;
+        }
+        if (bytes.length > HomeMediaPath.maxVideoBytes) {
+          _message('"${file.name}" is larger than 25 MB.');
+          continue;
+        }
+        if (!HomeMediaPath.isAllowedVideoExtension(extension)) {
+          _message('"${file.name}" must be an MP4, WEBM or MOV.');
+          continue;
+        }
+        final url = await ref.read(homeMediaRepositoryProvider).uploadVideo(
+              blockKindId: widget.blockKindId,
+              bytes: bytes,
+              extension: extension,
+            );
+        uploaded.add(url);
+      }
+
+      if (!mounted) return;
+      if (uploaded.isNotEmpty) {
+        widget.onChanged([...widget.videos, ...uploaded]);
+        _message(
+          'Uploaded ${uploaded.length} video'
+          '${uploaded.length == 1 ? '' : 's'}. Publish to go live.',
+        );
+      }
+    } catch (error) {
+      _message('Upload failed: $error');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  void _message(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -663,9 +735,25 @@ class _VideoListEditorState extends State<_VideoListEditor> {
             const SizedBox(width: 8),
             IconButton.filledTonal(
               tooltip: 'Add video link',
-              onPressed: _add,
+              onPressed: _uploading ? null : _add,
               icon: const Icon(Icons.add_link_rounded),
             ),
+            const SizedBox(width: 8),
+            if (_uploading)
+              const SizedBox(
+                width: 40,
+                height: 40,
+                child: Padding(
+                  padding: EdgeInsets.all(9),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              IconButton.filled(
+                tooltip: 'Upload a video from this device',
+                onPressed: _upload,
+                icon: const Icon(Icons.upload_rounded),
+              ),
           ],
         ),
         const SizedBox(height: 4),
