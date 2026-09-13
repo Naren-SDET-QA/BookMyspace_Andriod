@@ -374,7 +374,8 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
   }) async {
     try {
       if (bytes.isEmpty) {
-        throw const app_errors.ValidationException('The selected image is empty.');
+        throw const app_errors.ValidationException(
+            'The selected image is empty.');
       }
       if (bytes.length > _maxImageBytes) {
         throw const app_errors.ValidationException(
@@ -425,14 +426,18 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
           .select('*')
           .eq('venue_id', venueId)
           .order('start_time');
-      return rows.whereType<Map<String, dynamic>>().map(TimeSlot.fromJson).toList();
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(TimeSlot.fromJson)
+          .toList();
     } catch (error) {
       throw app_errors.mapError(error);
     }
   }
 
   @override
-  Future<void> replaceTimeSlots(String venueId, List<TimeSlotDraft> slots) async {
+  Future<void> replaceTimeSlots(
+      String venueId, List<TimeSlotDraft> slots) async {
     try {
       await _assertOwnedVenue(venueId);
       _assertValidSlots(slots);
@@ -476,6 +481,55 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
   }
 
   @override
+  Future<List<VenueOperatingHours>> listOperatingHours(String venueId) async {
+    try {
+      final rows = await _client
+          .from('venue_operating_hours')
+          .select('day_of_week, opens_at, closes_at, is_closed')
+          .eq('venue_id', venueId)
+          .order('day_of_week');
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(VenueOperatingHours.fromJson)
+          .toList(growable: false);
+    } catch (error) {
+      throw app_errors.mapError(error);
+    }
+  }
+
+  @override
+  Future<void> replaceOperatingHours(
+    String venueId,
+    List<VenueOperatingHours> hours,
+  ) async {
+    try {
+      await _assertOwnedVenue(venueId);
+      _assertValidOperatingHours(hours);
+      await _client
+          .from('venue_operating_hours')
+          .delete()
+          .eq('venue_id', venueId);
+      if (hours.isEmpty) return;
+
+      final rows = hours.map((hour) {
+        return {
+          'venue_id': venueId,
+          'day_of_week': hour.dayOfWeek,
+          // The deployed schema requires concrete time values even for a
+          // closed day; the closed flag is the authoritative state.
+          'opens_at': hour.opensAt ?? '00:00:00',
+          'closes_at': hour.closesAt ?? '00:00:00',
+          'is_closed': hour.isClosed,
+        };
+      }).toList(growable: false);
+      await _client.from('venue_operating_hours').insert(rows);
+    } catch (error) {
+      if (error is app_errors.AppException) rethrow;
+      throw app_errors.mapError(error);
+    }
+  }
+
+  @override
   Future<List<VenueBlockedDate>> listBlockedDates(String venueId) async {
     try {
       final rows = await _client
@@ -503,7 +557,10 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
   ) async {
     try {
       await _assertOwnedVenue(venueId);
-      await _client.from('venue_blocked_dates').delete().eq('venue_id', venueId);
+      await _client
+          .from('venue_blocked_dates')
+          .delete()
+          .eq('venue_id', venueId);
       if (dates.isEmpty) return;
       final rows = dates.map((item) {
         final date = item.date.toUtc();
@@ -543,6 +600,28 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
     final message = validateTimeSlotDrafts(slots);
     if (message != null) {
       throw app_errors.ValidationException(message);
+    }
+  }
+
+  static void _assertValidOperatingHours(List<VenueOperatingHours> hours) {
+    final days = <int>{};
+    final timePattern = RegExp(r'^\d{2}:\d{2}(:\d{2})?$');
+    for (final hour in hours) {
+      if (hour.dayOfWeek < 0 ||
+          hour.dayOfWeek > 6 ||
+          !days.add(hour.dayOfWeek)) {
+        throw const app_errors.ValidationException(
+          'Operating hours must contain at most one row for each weekday.',
+        );
+      }
+      if (hour.isClosed) continue;
+      if (!timePattern.hasMatch(hour.opensAt ?? '') ||
+          !timePattern.hasMatch(hour.closesAt ?? '') ||
+          hour.closesAt!.compareTo(hour.opensAt!) <= 0) {
+        throw const app_errors.ValidationException(
+          'Each open day needs a valid opening and closing time.',
+        );
+      }
     }
   }
 

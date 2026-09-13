@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../booking/domain/booking.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
+import '../../../venue_sections/domain/venue_section.dart';
+import '../../../venue_sections/presentation/venue_section_providers.dart';
 import '../../domain/owner_venue_repository.dart';
 import '../providers/owner_venue_providers.dart';
 
@@ -147,7 +150,11 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
 
   // Time Slots
   late List<OperatingSlot> _slots;
+  late List<VenueOperatingHours> _operatingHours;
   List<VenueBlockedDate> _blockedDates = [];
+  late List<VenueSectionType> _sectionTypes;
+  late List<VenueSection> _sections;
+  bool _publishSections = true;
   final _picker = ImagePicker();
   bool _uploadingImage = false;
 
@@ -205,6 +212,10 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
       }
     }
 
+    _operatingHours = _defaultOperatingHours();
+    _sectionTypes = [];
+    _sections = [];
+
     final baseAmount = double.tryParse(_priceController.text) ?? 35000.0;
     _slots = [
       OperatingSlot(
@@ -232,14 +243,28 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadAvailability(ev.id);
       });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadSectionTypes();
+      });
     }
   }
 
   Future<void> _loadAvailability(String venueId) async {
     try {
       final repo = ref.read(ownerVenueRepositoryProvider);
-      final slots = await repo.listTimeSlots(venueId);
-      final blocked = await repo.listBlockedDates(venueId);
+      final results = await Future.wait<Object>([
+        repo.listTimeSlots(venueId),
+        repo.listBlockedDates(venueId),
+        repo.listOperatingHours(venueId),
+        ref.read(venueSectionRepositoryProvider).sectionTypes(),
+        ref.read(venueSectionRepositoryProvider).ownerVenueSections(venueId),
+      ]);
+      final slots = results[0] as List<TimeSlot>;
+      final blocked = results[1] as List<VenueBlockedDate>;
+      final hours = results[2] as List<VenueOperatingHours>;
+      final sectionTypes = results[3] as List<VenueSectionType>;
+      final sections = results[4] as List<VenueSection>;
       if (!mounted) return;
       setState(() {
         if (slots.isNotEmpty) {
@@ -257,9 +282,132 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
               .toList();
         }
         _blockedDates = blocked;
+        if (hours.isNotEmpty) _operatingHours = hours;
+        _sectionTypes = sectionTypes;
+        _sections = sections
+            .where((section) => section.type.isActive)
+            .toList(growable: true)
+          ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
       });
     } catch (_) {
       // Availability editors remain usable with local defaults.
+    }
+  }
+
+  Future<void> _loadSectionTypes() async {
+    try {
+      final types =
+          await ref.read(venueSectionRepositoryProvider).sectionTypes();
+      if (!mounted) return;
+      setState(() => _sectionTypes = types);
+    } catch (_) {
+      // The venue form remains usable when the optional section catalog is
+      // temporarily unavailable.
+    }
+  }
+
+  List<VenueOperatingHours> _defaultOperatingHours() {
+    return List<VenueOperatingHours>.generate(7, (day) {
+      return VenueOperatingHours(
+        dayOfWeek: day,
+        opensAt: '08:00:00',
+        closesAt: '23:30:00',
+      );
+    }, growable: true);
+  }
+
+  static const _dayNames = <String>[
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  static TimeOfDay _parseTime(String? value, TimeOfDay fallback) {
+    final parts = (value ?? '').split(':');
+    if (parts.length < 2) return fallback;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null || hour > 23 || minute > 59) {
+      return fallback;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  static String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
+  }
+
+  Future<void> _pickOperatingTime(int index, {required bool opening}) async {
+    final current = _operatingHours[index];
+    final fallback = opening
+        ? const TimeOfDay(hour: 8, minute: 0)
+        : const TimeOfDay(hour: 23, minute: 30);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _parseTime(
+        opening ? current.opensAt : current.closesAt,
+        fallback,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final updated = VenueOperatingHours(
+      dayOfWeek: current.dayOfWeek,
+      opensAt: opening ? _formatTime(picked) : current.opensAt,
+      closesAt: opening ? current.closesAt : _formatTime(picked),
+      isClosed: current.isClosed,
+    );
+    setState(() => _operatingHours[index] = updated);
+  }
+
+  void _updateSection(
+    String sectionId,
+    VenueSection Function(VenueSection current) update,
+  ) {
+    final index = _sections.indexWhere((section) => section.id == sectionId);
+    if (index < 0) return;
+    setState(() {
+      _sections[index] = update(_sections[index]);
+    });
+  }
+
+  void _moveSection(String sectionId, int direction) {
+    final index = _sections.indexWhere((section) => section.id == sectionId);
+    final next = index + direction;
+    if (index < 0 || next < 0 || next >= _sections.length) return;
+    setState(() {
+      final reordered = [..._sections];
+      final item = reordered.removeAt(index);
+      reordered.insert(next, item);
+      _sections = reordered
+          .asMap()
+          .entries
+          .map((entry) => entry.value.copyWith(displayOrder: entry.key))
+          .toList(growable: false);
+    });
+  }
+
+  Future<void> _addSection(VenueSectionType type) async {
+    final venueId = widget.existingVenue?.id;
+    if (venueId == null || venueId.isEmpty) return;
+    try {
+      final section = await ref.read(venueSectionRepositoryProvider).addSection(
+            venueId: venueId,
+            type: type,
+          );
+      if (!mounted) return;
+      setState(() {
+        _sections = [..._sections, section]
+          ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not add section: $error')),
+      );
     }
   }
 
@@ -461,7 +609,16 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
             )
             .toList(),
       );
+      await repo.replaceOperatingHours(saved.id, _operatingHours);
       await repo.replaceBlockedDates(saved.id, _blockedDates);
+      final sectionRepo = ref.read(venueSectionRepositoryProvider);
+      for (final section in _sections) {
+        if (section.id.isEmpty) continue;
+        await sectionRepo.updateSection(section);
+      }
+      if (_publishSections) {
+        await sectionRepo.publish(saved.id);
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -475,7 +632,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                 Text(
                   _isEditMode
                       ? 'Updated "$name" successfully!'
-                      : 'Space "$name" published successfully!',
+                      : 'Space "$name" saved successfully!',
                 ),
               ],
             ),
@@ -1656,6 +1813,375 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
   // ==========================================
   // STEP 3: MEDIA (VIDEO & 3D TOUR) & SLOTS
   // ==========================================
+  Widget _buildOperatingHoursCard(ThemeData theme) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      color: theme.colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Operating hours',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Customers can only request slots during an open day and time.',
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ..._operatingHours.asMap().entries.map((entry) {
+              final index = entry.key;
+              final hours = entry.value;
+              final isClosed = hours.isClosed;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      child: Text(
+                        _dayNames[hours.dayOfWeek.clamp(0, 6)],
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: !isClosed,
+                      onChanged: (open) {
+                        setState(() {
+                          _operatingHours[index] = VenueOperatingHours(
+                            dayOfWeek: hours.dayOfWeek,
+                            opensAt: hours.opensAt ?? '08:00:00',
+                            closesAt: hours.closesAt ?? '23:30:00',
+                            isClosed: !open,
+                          );
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: isClosed
+                          ? Text(
+                              'Closed',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            )
+                          : Wrap(
+                              spacing: 6,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () =>
+                                      _pickOperatingTime(index, opening: true),
+                                  child: Text(_displayTime(hours.opensAt)),
+                                ),
+                                const Text('–'),
+                                OutlinedButton(
+                                  onPressed: () =>
+                                      _pickOperatingTime(index, opening: false),
+                                  child: Text(_displayTime(hours.closesAt)),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _displayTime(String? value) {
+    final time = _parseTime(value, const TimeOfDay(hour: 0, minute: 0));
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute ${time.period == DayPeriod.am ? 'AM' : 'PM'}';
+  }
+
+  Widget _buildModuleConfigurationCard(ThemeData theme) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      color: theme.colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Plug-and-play venue sections',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Enable supported sections, edit their content, and publish them without changing app code. Booking, payments, authentication, and notifications stay protected.',
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Publish customer-facing sections on save'),
+              subtitle: const Text(
+                'Only published sections are visible on the customer venue page.',
+              ),
+              value: _publishSections,
+              onChanged: (value) => setState(() => _publishSections = value),
+            ),
+            if (_sections.isEmpty && widget.existingVenue == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Save the venue first to configure sections from the active Admin catalog.',
+                ),
+              ),
+            if (_sections.isEmpty && widget.existingVenue != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('No venue sections have been configured yet.'),
+              ),
+            ..._sections.map((section) => _buildSectionEditor(theme, section)),
+            if (widget.existingVenue != null && _sectionTypes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Add a supported section',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _sectionTypes
+                    .where(
+                      (type) => !_sections.any(
+                        (section) => section.sectionTypeId == type.id,
+                      ),
+                    )
+                    .map(
+                      (type) => OutlinedButton.icon(
+                        onPressed: () => _addSection(type),
+                        icon: const Icon(Icons.add),
+                        label: Text(type.name),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionEditor(
+    ThemeData theme,
+    VenueSection section,
+  ) {
+    final type = section.type;
+    final label = type.name.isEmpty ? type.key : type.name;
+    return Card(
+      key: ValueKey('venue-section-${section.id}'),
+      margin: const EdgeInsets.only(top: 8),
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      child: ExpansionTile(
+        initiallyExpanded: section.isEnabled,
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(
+          section.isEnabled
+              ? (section.isPublished
+                  ? 'Enabled and published'
+                  : 'Enabled, draft')
+              : 'Disabled',
+        ),
+        trailing: Switch.adaptive(
+          value: section.isEnabled,
+          onChanged: (value) => _updateSection(
+            section.id,
+            (current) => current.copyWith(isEnabled: value),
+          ),
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        children: [
+          if (type.supportsTitle) ...[
+            TextFormField(
+              key: ValueKey('${section.id}-title'),
+              initialValue: section.title,
+              decoration: const InputDecoration(labelText: 'Section title'),
+              onChanged: (value) => _updateSection(
+                section.id,
+                (current) => current.copyWith(title: value),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (type.supportsContent) ...[
+            TextFormField(
+              key: ValueKey('${section.id}-content'),
+              initialValue: section.content,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Customer-facing content',
+                hintText: 'Add the details customers should see.',
+              ),
+              onChanged: (value) => _updateSection(
+                section.id,
+                (current) => current.copyWith(content: value),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (type.supportsImage)
+            TextFormField(
+              key: ValueKey('${section.id}-image'),
+              initialValue: section.imageUrl,
+              decoration: const InputDecoration(
+                labelText: 'Optional image URL',
+                hintText: 'https://...',
+              ),
+              onChanged: (value) => _updateSection(
+                section.id,
+                (current) => current.copyWith(imageUrl: value),
+              ),
+            ),
+          if (type.supportsSubsections) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Visible subsections',
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            Wrap(
+              spacing: 6,
+              children: type.availableSubsections.map((option) {
+                final selected =
+                    section.visibleSubsections.contains(option.key);
+                return FilterChip(
+                  label: Text(option.label),
+                  selected: selected,
+                  onSelected: (value) => _updateSection(
+                    section.id,
+                    (current) => current.copyWith(
+                      visibleSubsections: value
+                          ? [...current.visibleSubsections, option.key]
+                          : current.visibleSubsections
+                              .where((key) => key != option.key)
+                              .toList(),
+                    ),
+                  ),
+                );
+              }).toList(growable: false),
+            ),
+          ],
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Translations'),
+            children: [
+              ..._translationFields(section, 'hi', 'Hindi'),
+              ..._translationFields(section, 'te', 'Telugu'),
+            ],
+          ),
+          Row(
+            children: [
+              const Spacer(),
+              IconButton(
+                tooltip: 'Move section up',
+                onPressed: section.displayOrder == 0
+                    ? null
+                    : () => _moveSection(section.id, -1),
+                icon: const Icon(Icons.keyboard_arrow_up),
+              ),
+              IconButton(
+                tooltip: 'Move section down',
+                onPressed: section.displayOrder == _sections.length - 1
+                    ? null
+                    : () => _moveSection(section.id, 1),
+                icon: const Icon(Icons.keyboard_arrow_down),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _translationFields(
+    VenueSection section,
+    String language,
+    String label,
+  ) {
+    final title = section.titleTranslations[language] ?? '';
+    final content = section.contentTranslations[language] ?? '';
+    return [
+      TextFormField(
+        key: ValueKey('${section.id}-$language-title'),
+        initialValue: title,
+        decoration: InputDecoration(labelText: '$label title'),
+        onChanged: (value) => _updateSection(
+          section.id,
+          (current) => current.copyWith(
+            titleTranslations: _withTranslation(
+              current.titleTranslations,
+              language,
+              value,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextFormField(
+        key: ValueKey('${section.id}-$language-content'),
+        initialValue: content,
+        maxLines: 2,
+        decoration: InputDecoration(labelText: '$label content'),
+        onChanged: (value) => _updateSection(
+          section.id,
+          (current) => current.copyWith(
+            contentTranslations: _withTranslation(
+              current.contentTranslations,
+              language,
+              value,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+    ];
+  }
+
+  static Map<String, String> _withTranslation(
+    Map<String, String> source,
+    String language,
+    String value,
+  ) {
+    final updated = Map<String, String>.from(source);
+    if (value.trim().isEmpty) {
+      updated.remove(language);
+    } else {
+      updated[language] = value;
+    }
+    return updated;
+  }
+
   Widget _buildStep3MediaAndSlots(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1725,6 +2251,10 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _buildOperatingHoursCard(theme),
+        const SizedBox(height: 12),
+        _buildModuleConfigurationCard(theme),
         const SizedBox(height: 12),
         // Time Slots & Session Pricing
         Card(
@@ -1876,8 +2406,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
         : _nameController.text.trim();
     final price = double.tryParse(_priceController.text) ?? 35000.0;
     final capacity = int.tryParse(_capacityController.text) ?? 500;
-    final city =
-        _cityController.text.trim().isEmpty ? 'City' : _cityController.text.trim();
+    final city = _cityController.text.trim().isEmpty
+        ? 'City'
+        : _cityController.text.trim();
     final address = _addressController.text.trim();
     final coverUrl = _photos.isNotEmpty ? _photos.first.url : '';
 

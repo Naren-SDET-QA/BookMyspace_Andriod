@@ -100,9 +100,13 @@ class _OwnerDashboardBody extends ConsumerWidget {
           onTap: () => context.push(AppRoutes.ownerVenueCreate),
         ),
         _QuickAction(
-          icon: Icons.category_rounded,
-          label: 'Manage Space Categories 🏷️',
-          onTap: () => context.push(AppRoutes.ownerCategories),
+          icon: Icons.dashboard_customize_rounded,
+          label: 'Manage Venue Sections 🏷️',
+          // Was AppRoutes.ownerCategories: that route rendered the ADMIN-only
+          // global category editor, letting any owner mutate every venue's
+          // shared category taxonomy. Owners now manage their own venue's
+          // plug-and-play sections from the venue list instead.
+          onTap: () => context.push(AppRoutes.ownerVenues),
         ),
         _QuickAction(
           icon: Icons.storefront_rounded,

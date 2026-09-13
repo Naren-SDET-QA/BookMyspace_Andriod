@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../venues/domain/venue.dart';
 import '../providers/owner_venue_providers.dart';
 import 'create_venue_screen.dart';
+import '../../../venue_sections/presentation/screens/owner_venue_sections_screen.dart';
 
 /// Owner spaces management screen listing all properties with edit, toggle, delete, and add actions.
 class OwnerVenuesScreen extends ConsumerStatefulWidget {
@@ -309,9 +310,7 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
   }
 
   Widget _buildVenueCard(Venue venue, ThemeData theme) {
-    final cover = venue.coverImageUrl.isNotEmpty
-        ? venue.coverImageUrl
-        : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80';
+    final cover = venue.coverImageUrl;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -328,15 +327,28 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
               SizedBox(
                 width: 105,
                 height: 105,
-                child: Image.network(
-                  cover,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.stadium),
-                  ),
-                ),
+                child: cover.isEmpty
+                    ? Container(
+                        color: theme.colorScheme.primaryContainer,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.stadium_rounded,
+                          color: theme.colorScheme.primary,
+                          size: 34,
+                        ),
+                      )
+                    : Image.network(
+                        cover,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: theme.colorScheme.primaryContainer,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
               ),
               Expanded(
                 child: Padding(
@@ -361,17 +373,25 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: venue.isActive
-                                  ? const Color(0xFFE8F5E9)
+                                  ? (venue.isVerified
+                                      ? const Color(0xFFE8F5E9)
+                                      : const Color(0xFFFFF3E0))
                                   : const Color(0xFFFFEBEE),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              venue.isActive ? 'Active' : 'Inactive',
+                              venue.isActive
+                                  ? (venue.isVerified
+                                      ? 'Published'
+                                      : 'Active · Review pending')
+                                  : 'Inactive',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: venue.isActive
-                                    ? const Color(0xFF2E7D32)
+                                    ? (venue.isVerified
+                                        ? const Color(0xFF2E7D32)
+                                        : Colors.orange.shade800)
                                     : const Color(0xFFC62828),
                               ),
                             ),
@@ -417,17 +437,33 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                TextButton.icon(
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit Space',
-                      style: TextStyle(fontSize: 12.5)),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => CreateVenueScreen(existingVenue: venue),
-                      ),
-                    );
-                  },
+                Row(
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('Edit Space',
+                          style: TextStyle(fontSize: 12.5)),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CreateVenueScreen(existingVenue: venue),
+                          ),
+                        );
+                      },
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.dashboard_customize_outlined, size: 16),
+                      label: const Text('Sections',
+                          style: TextStyle(fontSize: 12.5)),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => OwnerVenueSectionsScreen(venue: venue),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
                 Row(
                   children: [

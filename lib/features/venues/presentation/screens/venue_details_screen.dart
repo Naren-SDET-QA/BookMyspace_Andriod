@@ -15,6 +15,8 @@ import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../../core/widgets/staggered_entrance.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../reviews/presentation/widgets/venue_reviews_section.dart';
+import '../../../venue_sections/domain/venue_section.dart';
+import '../../../venue_sections/presentation/venue_section_providers.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
 import '../widgets/venue_badges.dart';
@@ -56,6 +58,8 @@ class _VenueDetailsBody extends ConsumerWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
+    final publishedSections =
+        ref.watch(publishedVenueSectionsProvider(venue.id));
     final accent = categoryAccentColor(venue.category?.parentSection);
 
     return CustomScrollView(
@@ -291,6 +295,15 @@ class _VenueDetailsBody extends ConsumerWidget {
                     accent: accent,
                   ),
                 ),
+                publishedSections.maybeWhen(
+                  data: (sections) => sections.isEmpty
+                      ? const SizedBox.shrink()
+                      : Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: _OwnerPublishedSections(sections: sections),
+                        ),
+                  orElse: () => const SizedBox.shrink(),
+                ),
                 const SizedBox(height: 24),
               ],
             ),
@@ -512,5 +525,138 @@ class _BookingBar extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Owner-configured, per-venue "plug-and-play" sections (About, Amenities,
+/// Gallery, Policies, FAQ, Nearby, Custom, ...). Purely additive: rendered
+/// only when the owner has published at least one enabled section for this
+/// venue, and always appended after every existing hardcoded block above so
+/// none of the venue page's existing behavior changes. Reads exclusively
+/// through the `list_published_venue_sections` RPC (see
+/// publishedVenueSectionsProvider), so a customer only ever sees content the
+/// owner has explicitly published — draft edits never leak here.
+class _OwnerPublishedSections extends StatelessWidget {
+  const _OwnerPublishedSections({required this.sections});
+
+  final List<PublishedVenueSection> sections;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final ordered = [...sections]
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < ordered.length; i++) ...[
+          if (i > 0) const SizedBox(height: 20),
+          _OwnerPublishedSectionCard(
+            section: ordered[i],
+            theme: theme,
+            language: language,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _OwnerPublishedSectionCard extends StatelessWidget {
+  const _OwnerPublishedSectionCard({
+    required this.section,
+    required this.theme,
+    required this.language,
+  });
+
+  final PublishedVenueSection section;
+  final ThemeData theme;
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    final localizedTitle = section.localizedTitle(language);
+    final title =
+        localizedTitle.isNotEmpty ? localizedTitle : section.sectionName;
+    final content = section.localizedContent(language);
+
+    return GlassmorphicCard(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(_ownerSectionIconFor(section.sectionIcon), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(title, style: theme.textTheme.titleMedium),
+                ),
+              ],
+            ),
+            if (section.imageUrl.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: AppNetworkImage(
+                  url: section.imageUrl,
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+            if (content.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                content,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (section.visibleSubsections.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: section.visibleSubsections
+                    .map((s) => Chip(
+                          label: Text(s, style: const TextStyle(fontSize: 12)),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ))
+                    .toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+IconData _ownerSectionIconFor(String? name) {
+  switch (name) {
+    case 'info_outline':
+      return Icons.info_outline;
+    case 'check_circle_outline':
+      return Icons.check_circle_outline;
+    case 'photo_library_outlined':
+      return Icons.photo_library_outlined;
+    case 'gavel_outlined':
+      return Icons.gavel_outlined;
+    case 'help_outline':
+      return Icons.help_outline;
+    case 'place_outlined':
+      return Icons.place_outlined;
+    case 'dashboard_customize_outlined':
+      return Icons.dashboard_customize_outlined;
+    default:
+      return Icons.widgets_outlined;
   }
 }

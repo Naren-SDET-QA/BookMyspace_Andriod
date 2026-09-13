@@ -117,6 +117,15 @@ abstract interface class OwnerVenueRepository {
 
   Future<void> replaceTimeSlots(String venueId, List<TimeSlotDraft> slots);
 
+  /// Lists all operating hours for an owned venue.
+  Future<List<VenueOperatingHours>> listOperatingHours(String venueId);
+
+  /// Replaces operating hours for an owned venue.
+  Future<void> replaceOperatingHours(
+    String venueId,
+    List<VenueOperatingHours> hours,
+  );
+
   Future<List<VenueBlockedDate>> listBlockedDates(String venueId);
 
   Future<void> replaceBlockedDates(
