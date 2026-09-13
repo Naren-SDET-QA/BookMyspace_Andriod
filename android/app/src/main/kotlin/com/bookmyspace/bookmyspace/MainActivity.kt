@@ -1,5 +1,6 @@
 package com.bookmyspace.bookmyspace
 
+import android.content.Intent
 import android.util.Log
 import com.razorpay.Checkout
 import com.razorpay.PaymentData
@@ -13,6 +14,8 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
 
     private val CHANNEL = "com.bookmyspace.bookmyspace/razorpay_native"
     private var pendingResult: MethodChannel.Result? = null
+
+    private val pushChannel by lazy { AndroidPushChannel(this) { this } }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -65,6 +68,32 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
                 result.notImplemented()
             }
         }
+
+        // Android counterpart of the iOS `apns_push` channel. Local
+        // notifications and permission state are real in every build; remote
+        // push reports itself as unconfigured until a Firebase project file
+        // and a sender exist. See docs/CROSS_PLATFORM_COMPLIANCE_REPORT.md.
+        pushChannel.attach(flutterEngine.dartExecutor.binaryMessenger)
+
+        // A notification tap that cold-started the app cannot reach Dart yet,
+        // because the service registers its handler after this runs. Stash it
+        // so Dart can pull it via getInitialNotification.
+        pushChannel.captureInitialIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pushChannel.dispatchTap(intent)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        pushChannel.onPermissionResult(requestCode, grantResults)
     }
 
     override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {

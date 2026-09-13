@@ -3,6 +3,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Runtime notification permission on API 33+. Below that the user can
+         still switch notifications off in system settings, which the channel
+         reports through getPermissionStatus. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
@@ -42,5 +46,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Posts the delayed 1-hour pre-booking reminder that AndroidPushChannel
+             scheduled with AlarmManager. Not exported: only this app's own
+             alarms may reach it. -->
+        <receiver
+            android:name=".PushAlarmReceiver"
+            android:exported="false" />
     </application>
 </manifest>

@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,11 +35,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final is1HourEnabled = ref.watch(is1HourReminderEnabledProvider);
     final permissionAsync = ref.watch(pushPermissionStatusProvider);
 
-    final platformName = kIsWeb
-        ? 'Web Push'
-        : (!kIsWeb && Platform.isIOS)
-            ? 'APNs (iOS)'
-            : 'Push';
+    // Name of the transport that is actually wired for this platform and
+    // build. Comes from the service so the UI cannot label an Android build
+    // "FCM" when no remote transport exists.
+    final platformName = pushService.transportLabel;
 
     final unreadCount = unreadCountAsync.valueOrNull ?? 0;
     final showDevelopmentPushControls = AppConfig.isDevelopment && kDebugMode;
@@ -95,6 +92,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     permissionStatus: permissionAsync.valueOrNull ??
                         pushService.permissionStatus,
                     deviceToken: pushService.currentDeviceToken,
+                    isLocalNotificationsOnly:
+                        pushService.isLocalNotificationsOnly,
                     showDevelopmentPushControls: showDevelopmentPushControls,
                     onToggle1Hour: (val) async {
                       ref.read(is1HourReminderEnabledProvider.notifier).state =
@@ -250,6 +249,7 @@ class _PushControlCard extends StatelessWidget {
     required this.is1HourEnabled,
     required this.permissionStatus,
     required this.deviceToken,
+    required this.isLocalNotificationsOnly,
     required this.showDevelopmentPushControls,
     required this.onToggle1Hour,
     required this.onRequestPermission,
@@ -261,6 +261,10 @@ class _PushControlCard extends StatelessWidget {
   final bool is1HourEnabled;
   final PushPermissionStatus permissionStatus;
   final String? deviceToken;
+
+  /// True when no server can reach this device, so the missing device token
+  /// below is explained rather than left looking like a failure.
+  final bool isLocalNotificationsOnly;
   final bool showDevelopmentPushControls;
   final ValueChanged<bool> onToggle1Hour;
   final VoidCallback onRequestPermission;
@@ -381,6 +385,32 @@ class _PushControlCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            if (isLocalNotificationsOnly) ...[
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 15,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Reminders on this build are raised by the device itself. '
+                      'Server-sent alerts need a Firebase project file and a '
+                      'sender, which are not configured here.',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
 
             if (!permissionStatus.isGranted) ...[
               const SizedBox(height: 12),

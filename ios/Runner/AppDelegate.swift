@@ -263,8 +263,11 @@ import Razorpay
       }
 
     case "getApnsToken":
-      let token = self.apnsDeviceToken ?? "apns_sim_\(UUID().uuidString.prefix(12).lowercased())"
-      result(["token": token])
+      // Return the real token only. Fabricating a placeholder here would be
+      // registered with Supabase as a delivery address that can never receive
+      // anything, which makes "device registered" meaningless. Dart already
+      // treats an empty token as "not registered yet".
+      result(["token": self.apnsDeviceToken ?? ""])
 
     case "registerForRemoteNotifications":
       DispatchQueue.main.async {
