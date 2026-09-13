@@ -469,14 +469,17 @@ class _ImageListEditorState extends ConsumerState<_ImageListEditor> {
     final uploaded = <String>[];
     try {
       for (final file in files) {
-        final bytes = file.bytes;
         final extension = (file.extension ?? '').toLowerCase();
-        if (bytes == null || bytes.isEmpty) {
-          _message('"${file.name}" could not be read.');
+        // Same reasoning as the video editor: check the declared size first,
+        // then confirm against the real byte length.
+        if (file.size > HomeMediaPath.maxBytes ||
+            (file.bytes?.length ?? 0) > HomeMediaPath.maxBytes) {
+          _message('"${file.name}" is larger than 10 MB.');
           continue;
         }
-        if (bytes.length > HomeMediaPath.maxBytes) {
-          _message('"${file.name}" is larger than 10 MB.');
+        final bytes = file.bytes;
+        if (bytes == null || bytes.isEmpty) {
+          _message('"${file.name}" could not be read.');
           continue;
         }
         if (!HomeMediaPath.isAllowedExtension(extension)) {
@@ -628,9 +631,12 @@ class _VideoListEditorState extends ConsumerState<_VideoListEditor> {
   /// Mirrors the artwork flow: a rejected file is reported by name and the rest
   /// still upload, so one bad pick never discards a good batch.
   ///
-  /// `withData: true` reads the bytes into memory, which is what keeps this
-  /// working on web — `dart:io` file reads are unavailable there. The 25 MB
-  /// ceiling below is what bounds that cost.
+  /// `withData: true` is what keeps this working on web, where `dart:io` file
+  /// reads do not exist. The trade-off is that the picker materialises the
+  /// whole file before we ever see it, so the 25 MB ceiling bounds what we
+  /// *upload*, not peak memory. `withReadStream` would bound memory too, but it
+  /// is unsupported on macOS, so switching needs a per-platform fallback and a
+  /// real device to verify on — not worth risking a working upload for.
   Future<void> _upload() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.video,
@@ -644,14 +650,18 @@ class _VideoListEditorState extends ConsumerState<_VideoListEditor> {
     final uploaded = <String>[];
     try {
       for (final file in files) {
-        final bytes = file.bytes;
         final extension = (file.extension ?? '').toLowerCase();
-        if (bytes == null || bytes.isEmpty) {
-          _message('"${file.name}" could not be read.');
+        // Reject on the picker's declared size first, then confirm against the
+        // real byte length. The declared size lets the decision happen without
+        // depending on the buffer; the length check stays authoritative.
+        if (file.size > HomeMediaPath.maxVideoBytes ||
+            (file.bytes?.length ?? 0) > HomeMediaPath.maxVideoBytes) {
+          _message('"${file.name}" is larger than 25 MB.');
           continue;
         }
-        if (bytes.length > HomeMediaPath.maxVideoBytes) {
-          _message('"${file.name}" is larger than 25 MB.');
+        final bytes = file.bytes;
+        if (bytes == null || bytes.isEmpty) {
+          _message('"${file.name}" could not be read.');
           continue;
         }
         if (!HomeMediaPath.isAllowedVideoExtension(extension)) {
