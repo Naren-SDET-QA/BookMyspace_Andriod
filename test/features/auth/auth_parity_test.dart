@@ -177,6 +177,44 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.login);
   });
 
+  testWidgets('auth state transition redirects once from a protected route',
+      (tester) async {
+    AuthState auth = const AuthAuthenticated(
+      user: AuthUser(id: 'u1', email: 'a@b.com'),
+    );
+    final refresh = ValueNotifier(0);
+    addTearDown(refresh.dispose);
+    final router = createAppRouter(
+      initialLocation: AppRoutes.profile,
+      refreshListenable: refresh,
+      authStateReader: () => auth,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _repoOverrides(
+          MockAuthRepository(
+            initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+          ),
+        ),
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.profile);
+
+    auth = const AuthUnauthenticated();
+    refresh.value++;
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.login);
+  });
+
   testWidgets('signed-in users are redirected off login onto the shell',
       (tester) async {
     AuthState auth = const AuthAuthenticated(

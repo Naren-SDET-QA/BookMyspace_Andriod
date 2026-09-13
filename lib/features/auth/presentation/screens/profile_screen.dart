@@ -308,9 +308,6 @@ class ProfileScreen extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () async {
                     await ref.read(authNotifierProvider.notifier).signOut();
-                    if (context.mounted) {
-                      context.go(AppRoutes.login);
-                    }
                   },
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
