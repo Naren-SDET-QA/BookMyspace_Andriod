@@ -12,6 +12,7 @@ class CategoryDiscoveryPanel extends StatelessWidget {
     required this.selected,
     required this.pageController,
     required this.categories,
+    required this.dynamicSubsections,
     required this.venues,
     required this.onMasterChanged,
     required this.onMasterExplore,
@@ -22,6 +23,7 @@ class CategoryDiscoveryPanel extends StatelessWidget {
   final MainHomeSection selected;
   final PageController pageController;
   final List<VenueCategory> categories;
+  final List<VenueSubsection> dynamicSubsections;
   final List<Venue> venues;
   final ValueChanged<MainHomeSection> onMasterChanged;
   final ValueChanged<MainHomeSection> onMasterExplore;
@@ -32,6 +34,84 @@ class CategoryDiscoveryPanel extends StatelessWidget {
     if (matched == null) return null;
     final n = venues.where((v) => v.category?.slug == matched.slug).length;
     return n > 0 ? n : null;
+  }
+
+  List<HomeSubSection> _subsectionsFor(MainHomeSection section) {
+    final categoriesById = <String, VenueCategory>{
+      for (final category in categories) category.id: category,
+    };
+    final managed = dynamicSubsections
+        .where((subsection) {
+          final category = categoriesById[subsection.categoryId];
+          return category != null &&
+              _categoryBelongsToSection(category, section);
+        })
+        .map(
+          (subsection) => HomeSubSection(
+            label: subsection.name,
+            emoji: subsection.icon?.isNotEmpty == true
+                ? subsection.icon!
+                : categoriesById[subsection.categoryId]?.icon ?? section.emoji,
+            slug: subsection.slug,
+          ),
+        )
+        .toList();
+    if (managed.isNotEmpty) return managed;
+
+    final items = <HomeSubSection>[...section.subSections];
+    for (final category in categories) {
+      if (!category.isActive || !_categoryBelongsToSection(category, section)) {
+        continue;
+      }
+      if (items.any(
+          (item) => item.slug.toLowerCase() == category.slug.toLowerCase())) {
+        continue;
+      }
+      items.add(
+        HomeSubSection(
+          label: category.name,
+          emoji: category.icon?.isNotEmpty == true ? category.icon! : '🏷️',
+          slug: category.slug,
+        ),
+      );
+    }
+    return items;
+  }
+
+  bool _categoryBelongsToSection(
+    VenueCategory category,
+    MainHomeSection section,
+  ) {
+    final parent = category.parentSection?.toLowerCase();
+    if (parent != null && section.parentSectionAliases.contains(parent)) {
+      return true;
+    }
+    final slug = category.slug.toLowerCase();
+    if (section.searchAliases.contains(slug)) return true;
+    return switch (section) {
+      MainHomeSection.functionHalls => slug.contains('hall') ||
+          slug.contains('banquet') ||
+          slug.contains('venue') ||
+          slug.contains('lawn') ||
+          slug.contains('convention'),
+      MainHomeSection.lodgeRooms => slug.contains('hotel') ||
+          slug.contains('lodge') ||
+          slug.contains('resort') ||
+          slug.contains('room') ||
+          slug.contains('stay'),
+      MainHomeSection.pgHostels => slug.contains('pg') ||
+          slug.contains('hostel') ||
+          slug.contains('coliv'),
+      MainHomeSection.institutesClasses => slug.contains('class') ||
+          slug.contains('coaching') ||
+          slug.contains('academy') ||
+          slug.contains('institute'),
+      MainHomeSection.sportsTurfs => slug.contains('sport') ||
+          slug.contains('turf') ||
+          slug.contains('gym') ||
+          slug.contains('cowork') ||
+          slug.contains('studio'),
+    };
   }
 
   @override
@@ -116,6 +196,7 @@ class CategoryDiscoveryPanel extends StatelessWidget {
           _FunctionHallsMatrix(
             section: selected,
             categories: categories,
+            subsections: _subsectionsFor(selected),
             countFor: _countFor,
             onMasterTap: () => onMasterExplore(selected),
             onSubSectionTap: (sub) => onSubSectionTap(selected, sub),
@@ -124,6 +205,7 @@ class CategoryDiscoveryPanel extends StatelessWidget {
           _GenericSubSectionStrip(
             section: selected,
             categories: categories,
+            items: _subsectionsFor(selected),
             countFor: _countFor,
             onSubSectionTap: (sub) => onSubSectionTap(selected, sub),
           ),
@@ -262,6 +344,7 @@ class _FunctionHallsMatrix extends StatelessWidget {
   const _FunctionHallsMatrix({
     required this.section,
     required this.categories,
+    required this.subsections,
     required this.countFor,
     required this.onMasterTap,
     required this.onSubSectionTap,
@@ -269,13 +352,14 @@ class _FunctionHallsMatrix extends StatelessWidget {
 
   final MainHomeSection section;
   final List<VenueCategory> categories;
+  final List<HomeSubSection> subsections;
   final int? Function(VenueCategory?) countFor;
   final VoidCallback onMasterTap;
   final ValueChanged<HomeSubSection> onSubSectionTap;
 
   @override
   Widget build(BuildContext context) {
-    final cells = section.matrixCells;
+    final cells = _matrixCells;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -325,6 +409,35 @@ class _FunctionHallsMatrix extends StatelessWidget {
     );
   }
 
+  List<HomeSubSection?> get _matrixCells {
+    if (subsections.length == section.subSections.length &&
+        subsections.every((item) => section.subSections
+            .any((staticItem) => staticItem.slug == item.slug))) {
+      return section.matrixCells;
+    }
+    final items = <HomeSubSection>[];
+    for (final item in [...subsections, ...section.subSections]) {
+      if (items.any((existing) => existing.slug == item.slug)) continue;
+      items.add(item);
+      if (items.length == 8) break;
+    }
+    while (items.length < 8) {
+      final fallback = section.subSections[items.length];
+      if (!items.any((item) => item.slug == fallback.slug)) items.add(fallback);
+    }
+    return [
+      items[0],
+      items[1],
+      items[2],
+      items[3],
+      null,
+      items[4],
+      items[5],
+      items[6],
+      items[7],
+    ];
+  }
+
   Widget _subTile(HomeSubSection sub, int row, int col) {
     final matched = sub.match(categories);
     final rotateY = col == 0 ? 0.11 : (col == 2 ? -0.11 : 0.0);
@@ -348,18 +461,19 @@ class _GenericSubSectionStrip extends StatelessWidget {
   const _GenericSubSectionStrip({
     required this.section,
     required this.categories,
+    required this.items,
     required this.countFor,
     required this.onSubSectionTap,
   });
 
   final MainHomeSection section;
   final List<VenueCategory> categories;
+  final List<HomeSubSection> items;
   final int? Function(VenueCategory?) countFor;
   final ValueChanged<HomeSubSection> onSubSectionTap;
 
   @override
   Widget build(BuildContext context) {
-    final items = section.subSections;
     return SizedBox(
       height: 128,
       child: ListView.separated(
