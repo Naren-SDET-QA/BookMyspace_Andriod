@@ -197,6 +197,15 @@ class Booking {
       status == BookingStatus.completed ||
       status == BookingStatus.refunded;
 
+  /// Only confirmed and completed bookings can be exported to a calendar.
+  ///
+  /// A cancelled/rejected/expired booking should not appear in the user's
+  /// calendar — exporting it would create a false commitment. Held/pending
+  /// bookings are not yet final and may be cancelled by the system.
+  bool get canExportCalendar =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed;
+
   String get displayStart =>
       startTime.length >= 5 ? startTime.substring(0, 5) : startTime;
   String get displayEnd =>
