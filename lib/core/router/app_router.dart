@@ -6,6 +6,8 @@ import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_cms_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
+import '../../features/admin_payment/presentation/screens/admin_payment_health_screen.dart';
+import '../../features/admin_payment/presentation/screens/admin_transaction_ledger_screen.dart';
 import '../../features/integrations/presentation/screens/admin_integrations_screen.dart';
 import '../../features/modules/presentation/screens/admin_modules_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
@@ -80,6 +82,7 @@ abstract class AppRoutes {
   static const adminCategories = '/admin/categories';
   static const adminBookings = '/admin/bookings';
   static const adminPayments = '/admin/payments';
+  static const adminPaymentsLedger = '/admin/payments/ledger';
   static const adminEvents = '/admin/events';
   static const adminCourses = '/admin/courses';
   static const adminSupport = '/admin/support';
@@ -340,7 +343,15 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
-          child: AdminPaymentsBlockedScreen(),
+          child: AdminPaymentHealthScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminPaymentsLedger,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminTransactionLedgerScreen(),
         ),
       ),
       GoRoute(

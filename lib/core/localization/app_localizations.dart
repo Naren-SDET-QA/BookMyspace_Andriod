@@ -179,6 +179,42 @@ class AppLocalizations {
     'onboardingTitle3': 'Seamless & Secure',
     'onboardingSubtitle3':
         'Pay securely with instant tax invoices and easy booking management.',
+    'adminPaymentOperations': 'Payment Operations',
+    'adminPaymentHealth': 'Payment Health',
+    'adminTransactionLedger': 'Transaction Ledger',
+    'paymentHealthHealthy': 'Healthy',
+    'paymentHealthWarning': 'Warning',
+    'paymentHealthAttention': 'Attention',
+    'paymentHealthCritical': 'Critical',
+    'paymentHealthUnavailable': 'No data',
+    'totalTransactions': 'Total Transactions',
+    'capturedPayments': 'Captured',
+    'pendingPayments': 'Pending',
+    'failedPayments': 'Failed',
+    'refundedPayments': 'Refunded',
+    'paymentSuccessRate': 'Success Rate',
+    'reconciliationExceptions': 'Reconciliation Exceptions',
+    'webhookMissing': 'Webhook Missing',
+    'readOnlyLabel': 'Read-only',
+    'noTransactionsInPeriod': 'No transactions in this period',
+    'noTransactionsInPeriodMessage':
+        'There is no payment activity for the selected filters.',
+    'searchByReferenceOrOrderId':
+        'Search by booking reference, order ID or payment ID',
+    'filterByStatus': 'Filter by status',
+    'filterByVenue': 'Filter by venue',
+    'dateRangeLabel': 'Date range',
+    'paymentStatusLabel': 'Payment status',
+    'bookingStatusLabel': 'Booking status',
+    'approvalStatusLabel': 'Approval status',
+    'webhookStatusLabel': 'Webhook status',
+    'permissionDeniedAdminPayments':
+        "You don't have permission to view Admin Payment Operations.",
+    'adminPaymentsLoadError': 'Payment operations data could not be loaded.',
+    'columnReference': 'Reference',
+    'columnVenue': 'Venue',
+    'columnAmount': 'Amount',
+    'columnCreatedAt': 'Created',
   };
 
   static const Map<String, String> _te = {
@@ -327,6 +363,42 @@ class AppLocalizations {
     'onboardingTitle3': 'సురక్షితం మరియు సులభం',
     'onboardingSubtitle3':
         'సురక్షితంగా చెల్లించి టాక్స్ ఇన్‌వాయిస్‌లు మరియు బుకింగ్ నిర్వహణ పొందండి.',
+    'adminPaymentOperations': 'పేమెంట్ ఆపరేషన్స్',
+    'adminPaymentHealth': 'పేమెంట్ హెల్త్',
+    'adminTransactionLedger': 'ట్రాన్సాక్షన్ లెడ్జర్',
+    'paymentHealthHealthy': 'ఆరోగ్యంగా ఉంది',
+    'paymentHealthWarning': 'హెచ్చరిక',
+    'paymentHealthAttention': 'దృష్టి అవసరం',
+    'paymentHealthCritical': 'తీవ్రమైనది',
+    'paymentHealthUnavailable': 'డేటా లేదు',
+    'totalTransactions': 'మొత్తం లావాదేవీలు',
+    'capturedPayments': 'క్యాప్చర్ అయినవి',
+    'pendingPayments': 'పెండింగ్‌లో ఉన్నవి',
+    'failedPayments': 'విఫలమైనవి',
+    'refundedPayments': 'రీఫండ్ చేయబడినవి',
+    'paymentSuccessRate': 'విజయ శాతం',
+    'reconciliationExceptions': 'సరిపోలిక మినహాయింపులు',
+    'webhookMissing': 'వెబ్‌హుక్ లేదు',
+    'readOnlyLabel': 'చదవడానికి మాత్రమే',
+    'noTransactionsInPeriod': 'ఈ కాలంలో లావాదేవీలు లేవు',
+    'noTransactionsInPeriodMessage':
+        'ఎంచుకున్న ఫిల్టర్‌లకు పేమెంట్ కార్యకలాపం లేదు.',
+    'searchByReferenceOrOrderId':
+        'బుకింగ్ రిఫరెన్స్, ఆర్డర్ ఐడీ లేదా పేమెంట్ ఐడీ ద్వారా వెతకండి',
+    'filterByStatus': 'స్థితి ద్వారా ఫిల్టర్ చేయండి',
+    'filterByVenue': 'వేదిక ద్వారా ఫిల్టర్ చేయండి',
+    'dateRangeLabel': 'తేదీ పరిధి',
+    'paymentStatusLabel': 'పేమెంట్ స్థితి',
+    'bookingStatusLabel': 'బుకింగ్ స్థితి',
+    'approvalStatusLabel': 'ఆమోద స్థితి',
+    'webhookStatusLabel': 'వెబ్‌హుక్ స్థితి',
+    'permissionDeniedAdminPayments':
+        'అడ్మిన్ పేమెంట్ ఆపరేషన్స్ చూడటానికి మీకు అనుమతి లేదు.',
+    'adminPaymentsLoadError': 'పేమెంట్ ఆపరేషన్స్ డేటా లోడ్ కాలేదు.',
+    'columnReference': 'రిఫరెన్స్',
+    'columnVenue': 'వేదిక',
+    'columnAmount': 'మొత్తం',
+    'columnCreatedAt': 'సృష్టించినది',
   };
 
   static const Map<String, String> _hi = {
@@ -475,6 +547,42 @@ class AppLocalizations {
     'onboardingTitle3': 'सरल और सुरक्षित',
     'onboardingSubtitle3':
         'सुरक्षित भुगतान, टैक्स इनवॉइस और आसान बुकिंग प्रबंधन.',
+    'adminPaymentOperations': 'भुगतान संचालन',
+    'adminPaymentHealth': 'भुगतान स्वास्थ्य',
+    'adminTransactionLedger': 'लेन-देन लेजर',
+    'paymentHealthHealthy': 'स्वस्थ',
+    'paymentHealthWarning': 'चेतावनी',
+    'paymentHealthAttention': 'ध्यान देने योग्य',
+    'paymentHealthCritical': 'गंभीर',
+    'paymentHealthUnavailable': 'डेटा उपलब्ध नहीं',
+    'totalTransactions': 'कुल लेन-देन',
+    'capturedPayments': 'कैप्चर किए गए',
+    'pendingPayments': 'लंबित',
+    'failedPayments': 'विफल',
+    'refundedPayments': 'रिफंड किए गए',
+    'paymentSuccessRate': 'सफलता दर',
+    'reconciliationExceptions': 'सुलह अपवाद',
+    'webhookMissing': 'वेबहुक अनुपलब्ध',
+    'readOnlyLabel': 'केवल पढ़ने के लिए',
+    'noTransactionsInPeriod': 'इस अवधि में कोई लेन-देन नहीं',
+    'noTransactionsInPeriodMessage':
+        'चयनित फ़िल्टर के लिए कोई भुगतान गतिविधि नहीं है।',
+    'searchByReferenceOrOrderId':
+        'बुकिंग संदर्भ, ऑर्डर आईडी या भुगतान आईडी से खोजें',
+    'filterByStatus': 'स्थिति के अनुसार फ़िल्टर करें',
+    'filterByVenue': 'स्थान के अनुसार फ़िल्टर करें',
+    'dateRangeLabel': 'दिनांक सीमा',
+    'paymentStatusLabel': 'भुगतान स्थिति',
+    'bookingStatusLabel': 'बुकिंग स्थिति',
+    'approvalStatusLabel': 'अनुमोदन स्थिति',
+    'webhookStatusLabel': 'वेबहुक स्थिति',
+    'permissionDeniedAdminPayments':
+        'आपको एडमिन भुगतान संचालन देखने की अनुमति नहीं है।',
+    'adminPaymentsLoadError': 'भुगतान संचालन डेटा लोड नहीं हो सका।',
+    'columnReference': 'संदर्भ',
+    'columnVenue': 'स्थान',
+    'columnAmount': 'राशि',
+    'columnCreatedAt': 'बनाया गया',
   };
 
   static const Map<String, String> _kn = {
@@ -623,6 +731,42 @@ class AppLocalizations {
     'onboardingTitle3': 'ಸುಲಭ ಮತ್ತು ಸುರಕ್ಷಿತ',
     'onboardingSubtitle3':
         'ಸುರಕ್ಷಿತ ಪಾವತಿ, ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಮತ್ತು ಸುಲಭ ಬುಕಿಂಗ್ ನಿರ್ವಹಣೆ.',
+    'adminPaymentOperations': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳು',
+    'adminPaymentHealth': 'ಪಾವತಿ ಆರೋಗ್ಯ',
+    'adminTransactionLedger': 'ವಹಿವಾಟು ಲೆಡ್ಜರ್',
+    'paymentHealthHealthy': 'ಆರೋಗ್ಯಕರ',
+    'paymentHealthWarning': 'ಎಚ್ಚರಿಕೆ',
+    'paymentHealthAttention': 'ಗಮನ ಅಗತ್ಯ',
+    'paymentHealthCritical': 'ನಿರ್ಣಾಯಕ',
+    'paymentHealthUnavailable': 'ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ',
+    'totalTransactions': 'ಒಟ್ಟು ವಹಿವಾಟುಗಳು',
+    'capturedPayments': 'ಸೆರೆಹಿಡಿಯಲಾಗಿದೆ',
+    'pendingPayments': 'ಬಾಕಿ ಇದೆ',
+    'failedPayments': 'ವಿಫಲವಾಗಿದೆ',
+    'refundedPayments': 'ಮರುಪಾವತಿಸಲಾಗಿದೆ',
+    'paymentSuccessRate': 'ಯಶಸ್ಸಿನ ದರ',
+    'reconciliationExceptions': 'ಸಮನ್ವಯ ವಿನಾಯಿತಿಗಳು',
+    'webhookMissing': 'ವೆಬ್‌ಹುಕ್ ಕಾಣೆಯಾಗಿದೆ',
+    'readOnlyLabel': 'ಓದಲು ಮಾತ್ರ',
+    'noTransactionsInPeriod': 'ಈ ಅವಧಿಯಲ್ಲಿ ವಹಿವಾಟುಗಳಿಲ್ಲ',
+    'noTransactionsInPeriodMessage':
+        'ಆಯ್ಕೆಮಾಡಿದ ಫಿಲ್ಟರ್‌ಗಳಿಗೆ ಯಾವುದೇ ಪಾವತಿ ಚಟುವಟಿಕೆ ಇಲ್ಲ.',
+    'searchByReferenceOrOrderId':
+        'ಬುಕಿಂಗ್ ಉಲ್ಲೇಖ, ಆರ್ಡರ್ ಐಡಿ ಅಥವಾ ಪಾವತಿ ಐಡಿ ಮೂಲಕ ಹುಡುಕಿ',
+    'filterByStatus': 'ಸ್ಥಿತಿಯ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
+    'filterByVenue': 'ಸ್ಥಳದ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
+    'dateRangeLabel': 'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿ',
+    'paymentStatusLabel': 'ಪಾವತಿ ಸ್ಥಿತಿ',
+    'bookingStatusLabel': 'ಬುಕಿಂಗ್ ಸ್ಥಿತಿ',
+    'approvalStatusLabel': 'ಅನುಮೋದನೆ ಸ್ಥಿತಿ',
+    'webhookStatusLabel': 'ವೆಬ್‌ಹುಕ್ ಸ್ಥಿತಿ',
+    'permissionDeniedAdminPayments':
+        'ಅಡ್ಮಿನ್ ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳನ್ನು ವೀಕ್ಷಿಸಲು ನಿಮಗೆ ಅನುಮತಿ ಇಲ್ಲ.',
+    'adminPaymentsLoadError': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳ ಡೇಟಾ ಲೋಡ್ ಆಗಲಿಲ್ಲ.',
+    'columnReference': 'ಉಲ್ಲೇಖ',
+    'columnVenue': 'ಸ್ಥಳ',
+    'columnAmount': 'ಮೊತ್ತ',
+    'columnCreatedAt': 'ರಚಿಸಲಾಗಿದೆ',
   };
 
   static const Map<String, String> _ta = {
@@ -771,8 +915,80 @@ class AppLocalizations {
     'onboardingTitle3': 'எளிதானதும் பாதுகாப்பானதும்',
     'onboardingSubtitle3':
         'பாதுகாப்பான கட்டணம், வரி விலைப்பட்டியல் மற்றும் எளிய முன்பதிவு நிர்வாகம்.',
+    'adminPaymentOperations': 'கட்டண செயல்பாடுகள்',
+    'adminPaymentHealth': 'கட்டண ஆரோக்கியம்',
+    'adminTransactionLedger': 'பரிவர்த்தனை பேரேடு',
+    'paymentHealthHealthy': 'ஆரோக்கியமானது',
+    'paymentHealthWarning': 'எச்சரிக்கை',
+    'paymentHealthAttention': 'கவனம் தேவை',
+    'paymentHealthCritical': 'மிக முக்கியமானது',
+    'paymentHealthUnavailable': 'தரவு இல்லை',
+    'totalTransactions': 'மொத்த பரிவர்த்தனைகள்',
+    'capturedPayments': 'பிடிக்கப்பட்டவை',
+    'pendingPayments': 'நிலுவையில் உள்ளவை',
+    'failedPayments': 'தோல்வியடைந்தவை',
+    'refundedPayments': 'திரும்பப் பெறப்பட்டவை',
+    'paymentSuccessRate': 'வெற்றி விகிதம்',
+    'reconciliationExceptions': 'சமரசம் விதிவிலக்குகள்',
+    'webhookMissing': 'வெப்ஹுக் இல்லை',
+    'readOnlyLabel': 'படிக்க மட்டும்',
+    'noTransactionsInPeriod': 'இந்த காலகட்டத்தில் பரிவர்த்தனைகள் இல்லை',
+    'noTransactionsInPeriodMessage':
+        'தேர்ந்தெடுக்கப்பட்ட வடிப்பான்களுக்கு கட்டண செயல்பாடு இல்லை.',
+    'searchByReferenceOrOrderId':
+        'முன்பதிவு குறிப்பு, ஆர்டர் ஐடி அல்லது கட்டண ஐடி மூலம் தேடுங்கள்',
+    'filterByStatus': 'நிலையின் அடிப்படையில் வடிகட்டவும்',
+    'filterByVenue': 'இடத்தின் அடிப்படையில் வடிகட்டவும்',
+    'dateRangeLabel': 'தேதி வரம்பு',
+    'paymentStatusLabel': 'கட்டண நிலை',
+    'bookingStatusLabel': 'முன்பதிவு நிலை',
+    'approvalStatusLabel': 'ஒப்புதல் நிலை',
+    'webhookStatusLabel': 'வெப்ஹுக் நிலை',
+    'permissionDeniedAdminPayments':
+        'நிர்வாக கட்டண செயல்பாடுகளை பார்க்க உங்களுக்கு அனுமதி இல்லை.',
+    'adminPaymentsLoadError': 'கட்டண செயல்பாடு தரவை ஏற்ற முடியவில்லை.',
+    'columnReference': 'குறிப்பு',
+    'columnVenue': 'இடம்',
+    'columnAmount': 'தொகை',
+    'columnCreatedAt': 'உருவாக்கப்பட்டது',
   };
 
+
+  String get adminPaymentOperations => _t('adminPaymentOperations');
+  String get adminPaymentHealth => _t('adminPaymentHealth');
+  String get adminTransactionLedger => _t('adminTransactionLedger');
+  String get paymentHealthHealthy => _t('paymentHealthHealthy');
+  String get paymentHealthWarning => _t('paymentHealthWarning');
+  String get paymentHealthAttention => _t('paymentHealthAttention');
+  String get paymentHealthCritical => _t('paymentHealthCritical');
+  String get paymentHealthUnavailable => _t('paymentHealthUnavailable');
+  String get totalTransactions => _t('totalTransactions');
+  String get capturedPayments => _t('capturedPayments');
+  String get pendingPayments => _t('pendingPayments');
+  String get failedPayments => _t('failedPayments');
+  String get refundedPayments => _t('refundedPayments');
+  String get paymentSuccessRate => _t('paymentSuccessRate');
+  String get reconciliationExceptions => _t('reconciliationExceptions');
+  String get webhookMissing => _t('webhookMissing');
+  String get readOnlyLabel => _t('readOnlyLabel');
+  String get noTransactionsInPeriod => _t('noTransactionsInPeriod');
+  String get noTransactionsInPeriodMessage =>
+      _t('noTransactionsInPeriodMessage');
+  String get searchByReferenceOrOrderId => _t('searchByReferenceOrOrderId');
+  String get filterByStatus => _t('filterByStatus');
+  String get filterByVenue => _t('filterByVenue');
+  String get dateRangeLabel => _t('dateRangeLabel');
+  String get paymentStatusLabel => _t('paymentStatusLabel');
+  String get bookingStatusLabel => _t('bookingStatusLabel');
+  String get approvalStatusLabel => _t('approvalStatusLabel');
+  String get webhookStatusLabel => _t('webhookStatusLabel');
+  String get permissionDeniedAdminPayments =>
+      _t('permissionDeniedAdminPayments');
+  String get adminPaymentsLoadError => _t('adminPaymentsLoadError');
+  String get columnReference => _t('columnReference');
+  String get columnVenue => _t('columnVenue');
+  String get columnAmount => _t('columnAmount');
+  String get columnCreatedAt => _t('columnCreatedAt');
   String _t(String key) {
     final lang = locale.languageCode;
     return _tables[lang]?[key] ?? _tables['en']?[key] ?? key;
