@@ -19,6 +19,29 @@ Deno.test("verifies the raw Razorpay webhook body signature", () => {
   }
 });
 
+Deno.test("signature verification does not require a global Buffer", () => {
+  const globalObject = globalThis as Record<string, unknown>;
+  const previousBuffer = globalObject.Buffer;
+  const body = '{"event":"payment.captured"}';
+  const secret = "webhook-test-secret";
+  const signature = createHmac("sha256", secret).update(body).digest("hex");
+
+  try {
+    delete globalObject.Buffer;
+    if (!verifyRazorpaySignature(body, signature, secret)) {
+      throw new Error(
+        "A valid webhook signature required a global Buffer implementation",
+      );
+    }
+  } finally {
+    if (previousBuffer === undefined) {
+      delete globalObject.Buffer;
+    } else {
+      globalObject.Buffer = previousBuffer;
+    }
+  }
+});
+
 Deno.test("prefers Razorpay event identity from the header or payload", () => {
   const event = {
     id: "payload-event-1",
