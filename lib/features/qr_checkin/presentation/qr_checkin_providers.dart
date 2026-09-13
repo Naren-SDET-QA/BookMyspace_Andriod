@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/app_exceptions.dart';
 import '../../booking/domain/booking.dart';
 import '../../booking/presentation/booking_providers.dart';
 import '../domain/qr_check_in.dart';
@@ -21,27 +22,19 @@ class QrCheckInState {
   const QrCheckInState({
     this.isLoading = false,
     this.result,
-    this.isTorchOn = false,
-    this.isFrontCamera = false,
   });
 
   final bool isLoading;
   final CheckInResult? result;
-  final bool isTorchOn;
-  final bool isFrontCamera;
 
   QrCheckInState copyWith({
     bool? isLoading,
     CheckInResult? result,
-    bool? isTorchOn,
-    bool? isFrontCamera,
     bool clearResult = false,
   }) {
     return QrCheckInState(
       isLoading: isLoading ?? this.isLoading,
       result: clearResult ? null : (result ?? this.result),
-      isTorchOn: isTorchOn ?? this.isTorchOn,
-      isFrontCamera: isFrontCamera ?? this.isFrontCamera,
     );
   }
 }
@@ -50,14 +43,6 @@ class QrCheckInNotifier extends StateNotifier<QrCheckInState> {
   QrCheckInNotifier(this.ref) : super(const QrCheckInState());
 
   final Ref ref;
-
-  void toggleTorch() {
-    state = state.copyWith(isTorchOn: !state.isTorchOn);
-  }
-
-  void toggleCamera() {
-    state = state.copyWith(isFrontCamera: !state.isFrontCamera);
-  }
 
   void dismissResult() {
     state = state.copyWith(clearResult: true);
@@ -94,11 +79,17 @@ class QrCheckInNotifier extends StateNotifier<QrCheckInState> {
 
       state = state.copyWith(isLoading: false, result: res);
       return res;
+    } on AppException catch (e) {
+      // The server already explained what went wrong. Replacing that with a
+      // generic "invalid code" message is how a missing backend contract
+      // previously reached guests as their own input error.
+      final res = CheckInResult(success: false, message: e.message);
+      state = state.copyWith(isLoading: false, result: res);
+      return res;
     } catch (e) {
       final res = CheckInResult(
         success: false,
-        message:
-            'Invalid QR code or booking reference. No active booking found.',
+        message: 'Check-in could not be completed. Please try again.',
       );
       state = state.copyWith(isLoading: false, result: res);
       return res;
