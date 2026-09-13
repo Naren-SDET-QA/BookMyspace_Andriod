@@ -939,3 +939,53 @@ now fails if the symbol ever changes.
 3. Serve the web build and open a receipt with the network offline, to establish
    what `printing` does without pdf.js.
 
+## 12. Screen-level visual evidence, and how to reproduce it
+
+The samples in `docs/samples/` come in two kinds, and the difference matters
+when reading them:
+
+- `receipt-sample.pdf` / `statement-sample.pdf` (and their `.png` renders) are
+  the **generated documents** — the bytes `ReceiptPdf.build` produces.
+- `receipt-screen-phone.png`, `statement-screen-phone.png` and
+  `receipt-screen-tablet.png` are the **app screen** — the real `ReceiptScreen`
+  widget, laid out at 390×844 and 1024×900 logical pixels.
+
+Both exist because neither answers the other's question: a document render
+cannot show whether the screen renders at all, and a screen render cannot show
+what the PDF will print.
+
+### The recipe
+
+The harness is deliberately not committed — it asserts nothing and would write
+files on every suite run. To reproduce a capture, add a temporary test under
+`test/features/receipts/` that:
+
+1. Pumps `ReceiptScreen(bookingId: 'b1')` inside a `ProviderScope` whose
+   `receiptProvider('b1')` is overridden with the fixtures in
+   `test/features/receipts/receipt_fixtures.dart`, inside a `MaterialApp` using
+   `AppTheme.light`.
+2. Wraps it in a `RepaintBoundary` with a known key, sets
+   `tester.view.physicalSize` and `devicePixelRatio` for the target width, then
+   calls `boundary.toImage(pixelRatio: 2)` inside `tester.runAsync` and writes
+   the PNG bytes out.
+3. Loads a real font first — see the caveat below.
+
+### The font caveat, stated plainly
+
+`flutter test` has no real font: every glyph renders as a **filled box**. A
+capture taken without loading one is a picture of the layout, not of the app,
+and presenting it as the latter would be misleading.
+
+These captures load the bundled `assets/fonts/NotoSans-Receipt.ttf` through
+`FontLoader` and re-apply that family to `textTheme`, `primaryTextTheme`, and
+the four component themes that set bare `TextStyle`s in `AppTheme`
+(`appBarTheme.titleTextStyle`, `filledButtonTheme`, `textButtonTheme`,
+`navigationBarTheme`). That last group is the part that is easy to miss:
+applying the family to `textTheme` alone still leaves the AppBar title and the
+filled button label as boxes, because both resolve through their component
+theme rather than the text theme.
+
+The app itself renders with the **platform default font**, so glyph shapes in
+these captures differ slightly from a device. Layout, spacing, colour and copy
+are the app's own.
+
