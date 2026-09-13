@@ -373,6 +373,17 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
     required bool showDragHandle,
     Key? key,
   }) {
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return _compactCategoryTile(
+        context,
+        theme,
+        category,
+        index,
+        showDragHandle: showDragHandle,
+        key: key,
+      );
+    }
+
     final isExpanded = _expandedCategoryIds.contains(category.id);
     return Card(
       key: key,
@@ -464,6 +475,136 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded,
                       size: 20, color: Colors.red),
+                  tooltip: 'Delete Category',
+                  onPressed:
+                      _isBusy ? null : () => _confirmDeleteCategory(category),
+                ),
+              ],
+            ),
+          ),
+          if (isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: _SubsectionsEditor(category: category),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactCategoryTile(
+    BuildContext context,
+    ThemeData theme,
+    VenueCategory category,
+    int index, {
+    required bool showDragHandle,
+    Key? key,
+  }) {
+    final isExpanded = _expandedCategoryIds.contains(category.id);
+    final icon = _categoryIcon(category);
+
+    return Card(
+      key: key,
+      elevation: 0,
+      shape: RoundedCornerShapeBorder(
+        side: BorderSide(
+          color: category.isActive
+              ? theme.colorScheme.outlineVariant.withValues(alpha: 0.6)
+              : Colors.red.withValues(alpha: 0.3),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            leading: showDragHandle
+                ? ReorderableDragStartListener(index: index, child: icon)
+                : icon,
+            title: Text(
+              category.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: category.isActive ? null : Colors.grey,
+              ),
+            ),
+            subtitle: Text(
+              'Slug: ${category.slug} • Section: ${category.parentSection ?? "general"} • Order: ${category.displayOrder}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.textTheme.bodySmall?.color,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: category.isActive
+                            ? Colors.green.withValues(alpha: 0.12)
+                            : Colors.red.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        category.isActive ? 'ACTIVE' : 'DISABLED',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: category.isActive
+                              ? Colors.green[700]
+                              : Colors.red[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                  ),
+                  tooltip: 'Show Subsections',
+                  onPressed: () => setState(() {
+                    if (isExpanded) {
+                      _expandedCategoryIds.remove(category.id);
+                    } else {
+                      _expandedCategoryIds.add(category.id);
+                    }
+                  }),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_rounded, size: 20),
+                  tooltip: 'Edit Category',
+                  onPressed: _isBusy
+                      ? null
+                      : () => _showEditCategoryDialog(context, category),
+                ),
+                Switch(
+                  value: category.isActive,
+                  activeThumbColor: AppTheme.brand,
+                  onChanged: _isBusy
+                      ? null
+                      : (value) => _setCategoryActive(category, value),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: Colors.red,
+                  ),
                   tooltip: 'Delete Category',
                   onPressed:
                       _isBusy ? null : () => _confirmDeleteCategory(category),
