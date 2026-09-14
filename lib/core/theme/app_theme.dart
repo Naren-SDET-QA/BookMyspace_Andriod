@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_theme_config.dart';
+
 /// Centralised Material 3 theme for BookMySpace.
 ///
 /// Supports light and dark mode with a warm, trustworthy brand palette.
@@ -46,44 +48,61 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
-  static ThemeData get light => _base(Brightness.light);
+  static ThemeData get light =>
+      fromConfig(AppThemeConfig.defaults, Brightness.light);
 
-  static ThemeData get dark => _base(Brightness.dark);
+  static ThemeData get dark =>
+      fromConfig(AppThemeConfig.defaults, Brightness.dark);
 
-  static ThemeData _base(Brightness brightness) {
+  /// Builds the existing Material 3 design system from safe, server-backed
+  /// tokens. Missing or malformed values are normalized by [AppThemeConfig].
+  static ThemeData fromConfig(AppThemeConfig config, Brightness brightness) {
+    return _base(brightness, config);
+  }
+
+  static ThemeData _base(Brightness brightness, AppThemeConfig config) {
     final isLight = brightness == Brightness.light;
-    final scheme = ColorScheme.fromSeed(
-      seedColor: brand,
+    final variant = config.variantFor(brightness);
+    final generatedScheme = ColorScheme.fromSeed(
+      seedColor: variant.primary,
       brightness: brightness,
-      primary: isLight ? brand : brandLight,
-      onPrimary: isLight ? Colors.white : darkCanvas,
-      primaryContainer:
-          isLight ? const Color(0xFFD7F8F1) : const Color(0xFF075E52),
-      onPrimaryContainer: isLight ? darkCanvas : const Color(0xFFB9FFF1),
-      secondary: action,
-      onSecondary: Colors.white,
-      secondaryContainer:
-          isLight ? const Color(0xFFDCE9FF) : const Color(0xFF1D4F9E),
-      onSecondaryContainer:
-          isLight ? const Color(0xFF062E6F) : const Color(0xFFD9E6FF),
-      tertiary: accent,
-      surface: isLight ? lightCanvas : darkCanvas,
-      onSurface: isLight ? textPrimary : const Color(0xFFF8FAFC),
-      onSurfaceVariant: isLight ? textSecondary : const Color(0xFFB6C5D6),
-      outline: isLight ? const Color(0xFF94A3B8) : const Color(0xFF59728A),
-      outlineVariant:
-          isLight ? const Color(0xFFCBD5E1) : const Color(0xFF284560),
-      error: isLight ? const Color(0xFFBA1A1A) : const Color(0xFFFFB4AB),
     );
+    final scheme = generatedScheme.copyWith(
+      primary: variant.primary,
+      onPrimary: _onColor(variant.primary, variant.text),
+      secondary: variant.secondary,
+      onSecondary: _onColor(variant.secondary, variant.text),
+      tertiary: variant.secondary,
+      surface: variant.background,
+      surfaceContainerLowest: variant.surface,
+      surfaceContainer: variant.surface,
+      surfaceContainerHigh: variant.surfaceVariant,
+      surfaceContainerHighest: variant.surfaceVariant,
+      onSurface: variant.text,
+      onSurfaceVariant: _onSurfaceVariant(variant.text, variant.background),
+      outline: _withAlpha(variant.text, isLight ? 0.42 : 0.5),
+      outlineVariant: _withAlpha(variant.text, isLight ? 0.18 : 0.28),
+    );
+    final buttonBackground = switch (config.buttonStyle) {
+      'soft' => variant.primary.withValues(alpha: 0.16),
+      'outline' => Colors.transparent,
+      _ => variant.primary,
+    };
+    final buttonForeground = config.buttonStyle == 'soft'
+        ? variant.primary
+        : _onColor(variant.primary, variant.text);
+    final buttonSide = config.buttonStyle == 'outline'
+        ? BorderSide(color: variant.primary, width: 1.2)
+        : BorderSide.none;
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: variant.background,
       visualDensity: VisualDensity.standard,
       appBarTheme: AppBarTheme(
         centerTitle: false,
-        backgroundColor: scheme.surface,
+        backgroundColor: variant.background,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         titleTextStyle: TextStyle(
@@ -96,23 +115,28 @@ class AppTheme {
           statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
           statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: scheme.surface,
-          systemNavigationBarIconBrightness:
-              isLight ? Brightness.dark : Brightness.light,
+          systemNavigationBarIconBrightness: isLight
+              ? Brightness.dark
+              : Brightness.light,
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
-        color: isLight ? Colors.white : darkCard,
+        elevation: config.cardElevation,
+        color: variant.card,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(config.cardRadius),
           side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: buttonBackground,
+          foregroundColor: buttonForeground,
+          side: buttonSide,
+          elevation: config.cardElevation,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(config.buttonRadius),
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
@@ -120,8 +144,9 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
+          side: BorderSide(color: variant.primary, width: 1.2),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(config.buttonRadius),
           ),
         ),
       ),
@@ -132,17 +157,17 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        fillColor: variant.surfaceVariant.withValues(alpha: 0.4),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(config.inputRadius),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(config.inputRadius),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(config.inputRadius),
           borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -151,7 +176,9 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(config.buttonRadius),
+        ),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       dividerTheme: DividerThemeData(
@@ -186,6 +213,85 @@ class AppTheme {
           );
         }),
       ),
+      extensions: [
+        AppThemeExtension(
+          bannerStyle: config.bannerStyle,
+          cardRadius: config.cardRadius,
+          glassOpacity: config.glassOpacity,
+          glassBorderOpacity: config.glassBorderOpacity,
+        ),
+      ],
     );
   }
+
+  static Color _onColor(Color background, Color preferred) {
+    if (AppThemeVariant.contrast(preferred, background) >= 4.5) {
+      return preferred;
+    }
+    return AppThemeVariant.contrast(Colors.white, background) >= 4.5
+        ? Colors.white
+        : Colors.black;
+  }
+
+  static Color _onSurfaceVariant(Color text, Color background) {
+    final alpha = brightnessFor(background) == Brightness.dark ? 0.72 : 0.68;
+    return _withAlpha(text, alpha);
+  }
+
+  static Brightness brightnessFor(Color color) =>
+      color.computeLuminance() < 0.35 ? Brightness.dark : Brightness.light;
+
+  static Color _withAlpha(Color color, double alpha) =>
+      color.withValues(alpha: alpha);
+}
+
+/// Theme data that is not represented by Material's [ColorScheme].
+@immutable
+class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
+  const AppThemeExtension({
+    required this.bannerStyle,
+    required this.cardRadius,
+    required this.glassOpacity,
+    required this.glassBorderOpacity,
+  });
+
+  final String bannerStyle;
+  final double cardRadius;
+  final double glassOpacity;
+  final double glassBorderOpacity;
+
+  @override
+  AppThemeExtension copyWith({
+    String? bannerStyle,
+    double? cardRadius,
+    double? glassOpacity,
+    double? glassBorderOpacity,
+  }) {
+    return AppThemeExtension(
+      bannerStyle: bannerStyle ?? this.bannerStyle,
+      cardRadius: cardRadius ?? this.cardRadius,
+      glassOpacity: glassOpacity ?? this.glassOpacity,
+      glassBorderOpacity: glassBorderOpacity ?? this.glassBorderOpacity,
+    );
+  }
+
+  @override
+  AppThemeExtension lerp(
+    covariant ThemeExtension<AppThemeExtension>? other,
+    double t,
+  ) {
+    if (other is! AppThemeExtension) return this;
+    return AppThemeExtension(
+      bannerStyle: t < 0.5 ? bannerStyle : other.bannerStyle,
+      cardRadius: _lerp(cardRadius, other.cardRadius, t),
+      glassOpacity: _lerp(glassOpacity, other.glassOpacity, t),
+      glassBorderOpacity: _lerp(
+        glassBorderOpacity,
+        other.glassBorderOpacity,
+        t,
+      ),
+    );
+  }
+
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
 }

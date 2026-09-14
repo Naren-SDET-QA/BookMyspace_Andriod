@@ -8,6 +8,7 @@ import 'core/localization/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/offline_banner.dart';
+import 'features/theme/presentation/app_theme_providers.dart';
 
 /// Root widget that wires together providers, theming, localization and routing.
 class BookMySpaceApp extends ConsumerWidget {
@@ -21,13 +22,14 @@ class BookMySpaceApp extends ConsumerWidget {
     final router = ref.watch(
       appRouterProvider(initialLocation ?? AppRoutes.shell),
     );
+    final themeConfig = ref.watch(effectiveAppThemeConfigProvider);
 
     return MaterialApp.router(
       title: 'BookMySpace',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.fromConfig(themeConfig, Brightness.light),
+      darkTheme: AppTheme.fromConfig(themeConfig, Brightness.dark),
       themeMode: ref.watch(themeModeProvider),
       locale: ref.watch(localeProvider),
       builder: (context, child) {
@@ -36,12 +38,14 @@ class BookMySpaceApp extends ConsumerWidget {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
-            statusBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
             statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
             systemNavigationBarColor: Theme.of(context).colorScheme.surface,
-            systemNavigationBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
           child: OfflineBanner(child: child ?? const SizedBox.shrink()),
         );

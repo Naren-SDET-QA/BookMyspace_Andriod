@@ -67,10 +67,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     if (widget.cmsBanners.isNotEmpty) {
       return [
         for (final banner in widget.cmsBanners)
-          _BannerSlide(
-            headline: banner.title,
-            subtitle: banner.subtitle,
-          ),
+          _BannerSlide(headline: banner.title, subtitle: banner.subtitle),
       ];
     }
     if (widget.coupons.isEmpty) {
@@ -173,15 +170,15 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     HomeBlockStyle style,
     bool isDark,
     bool hasImage,
+    String bannerStyle,
+    ColorScheme scheme,
   ) {
     if (style.backgroundColors.isNotEmpty) {
       final base = style.backgroundColors.length == 1
           ? [style.backgroundColors.first, style.backgroundColors.first]
           : style.backgroundColors;
       if (!hasImage) return base;
-      return [
-        for (final color in base) color.withValues(alpha: 0.82),
-      ];
+      return [for (final color in base) color.withValues(alpha: 0.82)];
     }
     if (hasImage) {
       return [
@@ -190,12 +187,16 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
         Colors.black.withValues(alpha: 0.70),
       ];
     }
+    if (bannerStyle == 'solid') {
+      return [scheme.primary, scheme.primary];
+    }
+    if (bannerStyle == 'minimal') {
+      return isDark
+          ? [scheme.surfaceContainerHigh, scheme.surface]
+          : [scheme.surfaceContainerHigh, scheme.surface];
+    }
     return isDark
-        ? const [
-            Color(0xFF075E54),
-            Color(0xFF0E7490),
-            Color(0xFF1E3A8A),
-          ]
+        ? const [Color(0xFF075E54), Color(0xFF0E7490), Color(0xFF1E3A8A)]
         : const [
             Color(0xFF008F7A),
             Color(0xFF14B8A6),
@@ -236,7 +237,9 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   @override
   Widget build(BuildContext context) {
     final slides = _slides;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final appTheme = theme.extension<AppThemeExtension>();
     final style = widget.style;
 
     return Semantics(
@@ -246,8 +249,9 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
         builder: (context, _) {
           final glowT = Curves.easeInOut.transform(_glow.value);
           final radius = BorderRadius.circular(style.radius);
-          final backdrop =
-              widget.images.isNotEmpty ? widget.images.first : null;
+          final backdrop = widget.images.isNotEmpty
+              ? widget.images.first
+              : null;
           return Container(
             height: style.height ?? 156,
             decoration: BoxDecoration(
@@ -260,10 +264,13 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                   : null,
               boxShadow: [
                 BoxShadow(
-                  color: (style.glow ? AppTheme.cyan : AppTheme.brand)
-                      .withValues(
-                    alpha: (style.glow ? 0.26 : 0.18) + glowT * 0.12,
-                  ),
+                  color:
+                      (style.glow
+                              ? theme.colorScheme.secondary
+                              : theme.colorScheme.primary)
+                          .withValues(
+                            alpha: (style.glow ? 0.26 : 0.18) + glowT * 0.12,
+                          ),
                   blurRadius: (style.glow ? 30 : 22) + glowT * 8,
                   offset: const Offset(0, 10),
                 ),
@@ -281,7 +288,13 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                       gradient: LinearGradient(
                         begin: Alignment(-1 + _drift.value * 0.35, -1),
                         end: Alignment(1.2 - _drift.value * 0.25, 1.1),
-                        colors: _backdropColors(style, isDark, backdrop != null),
+                        colors: _backdropColors(
+                          style,
+                          isDark,
+                          backdrop != null,
+                          appTheme?.bannerStyle ?? 'gradient',
+                          theme.colorScheme,
+                        ),
                       ),
                     ),
                   ),
@@ -315,17 +328,16 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                     ),
                   ),
                   Align(
-                    alignment: Alignment(
-                      -1.1 + _drift.value * 0.15,
-                      -1.2,
-                    ),
+                    alignment: Alignment(-1.1 + _drift.value * 0.15, -1.2),
                     child: IgnorePointer(
                       child: Container(
                         width: 180,
                         height: 180,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.10 + glowT * 0.06),
+                          color: Colors.white.withValues(
+                            alpha: 0.10 + glowT * 0.06,
+                          ),
                         ),
                       ),
                     ),
@@ -474,17 +486,14 @@ class _ParticlePainter extends CustomPainter {
     for (var i = 0; i < count; i++) {
       final seed = i * 0.137;
       final x = (seed * 1.7 + progress * (0.18 + (i % 3) * 0.04)) % 1.0;
-      final y = ((0.2 + seed) + math.sin((progress + seed) * math.pi * 2) * 0.08) %
+      final y =
+          ((0.2 + seed) + math.sin((progress + seed) * math.pi * 2) * 0.08) %
           1.0;
       final r = 1.6 + (i % 4) * 0.7 + glow * 0.6;
       paint.color = Colors.white.withValues(
         alpha: 0.12 + (i % 5) * 0.04 + glow * 0.08,
       );
-      canvas.drawCircle(
-        Offset(x * size.width, y * size.height),
-        r,
-        paint,
-      );
+      canvas.drawCircle(Offset(x * size.width, y * size.height), r, paint);
     }
   }
 
