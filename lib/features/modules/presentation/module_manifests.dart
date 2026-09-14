@@ -105,6 +105,18 @@ const optionalModuleManifests = <ModuleManifest>[
         'deep links and in-app buttons still reach it.',
     // An empty config resolves to the shipped NavTabsConfig.defaults.
   ),
+  ModuleManifest(
+    id: 'category_catalog',
+    name: 'Discovery catalogue',
+    description:
+        'Facility types, sections and subsections customers browse: their '
+        'wording, icons, artwork, order and visibility. Switching this off '
+        'restores the catalogue built into the app.',
+    // An empty config resolves to the shipped CatalogContent.defaults, which
+    // is generated from home_category_catalog.dart. So an admin who has never
+    // opened the editor sees exactly the shipped catalogue, and turning the
+    // module off is a complete rollback rather than an empty screen.
+  ),
 ];
 
 ModuleManifest? moduleManifestFor(String id) {

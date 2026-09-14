@@ -87,3 +87,19 @@ port = 54327
 
 [realtime]
 enabled = true
+
+# External Inventory (Channel Manager) webhook receiver. Authenticates
+# with an internal HMAC signature (EXTERNAL_INVENTORY_WEBHOOK_SECRET), not
+# a Supabase user JWT — see supabase/functions/external-inventory-webhook/helpers.ts.
+[functions.external-inventory-webhook]
+verify_jwt = false
+
+# External Inventory manual sync trigger. Authenticates with the caller's
+# own Supabase JWT; ownership is re-checked inside request_external_manual_sync().
+[functions.external-inventory-sync]
+verify_jwt = true
+
+[functions.ai-booking-assistant]
+verify_jwt = true
+[functions.mcp-api]
+verify_jwt = true

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_cms_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/cms/presentation/screens/admin_media_library_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
 import '../../features/integrations/presentation/screens/admin_integrations_screen.dart';
 import '../../features/modules/presentation/screens/admin_modules_screen.dart';
@@ -52,6 +53,7 @@ import '../../features/venues/presentation/screens/venue_details_screen.dart';
 import '../../features/navigation/presentation/nav_tab_labels.dart';
 import '../../features/navigation/presentation/nav_tabs_providers.dart';
 import '../../features/navigation/presentation/screens/admin_nav_tabs_screen.dart';
+import '../../features/cms/presentation/screens/admin_catalog_screen.dart';
 import '../../features/navigation/presentation/screens/assistant_tab_screen.dart';
 import '../localization/app_localizations.dart';
 
@@ -107,6 +109,8 @@ abstract class AppRoutes {
   static const featuresHub = '/features';
   static const assistantTab = '/assistant';
   static const adminNavTabs = '/admin/nav-tabs';
+  static const adminCatalog = '/admin/catalog';
+  static const adminMedia = '/admin/media';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -427,6 +431,22 @@ GoRouter createAppRouter({
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
           child: AdminNavTabsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminCatalog,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminCatalogScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminMedia,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminMediaLibraryScreen(),
         ),
       ),
       GoRoute(

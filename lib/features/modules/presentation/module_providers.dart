@@ -3,10 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/presentation/auth_providers.dart';
 import '../domain/feature_flag.dart';
+import '../domain/feature_flag_repository.dart';
 import '../infrastructure/supabase_feature_flag_repository.dart';
 import 'module_manifests.dart';
 
-final featureFlagRepositoryProvider = Provider((ref) {
+/// Typed to the interface rather than the Supabase implementation so tests
+/// can substitute a fake. Every caller uses only `listFlags` and `saveFlag`,
+/// both of which are on [FeatureFlagRepository], so this widens the type
+/// without changing behaviour.
+///
+/// This matters beyond tidiness: the `unsupported_module` defect fixed in
+/// migration 20260914155335 sat in production precisely because nothing
+/// exercised a flag *write* without a live database.
+final featureFlagRepositoryProvider = Provider<FeatureFlagRepository>((ref) {
   return SupabaseFeatureFlagRepository(ref.watch(supabaseProvider));
 });
 
