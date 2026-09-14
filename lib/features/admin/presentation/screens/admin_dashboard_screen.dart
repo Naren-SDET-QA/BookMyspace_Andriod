@@ -171,6 +171,14 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminHomeLayout),
             ),
             _AdminLink(
+              icon: Icons.account_tree_outlined,
+              title: 'Discovery catalogue',
+              subtitle:
+                  'Facility types, sections and subsections: wording, icons, '
+                  'artwork, order and visibility',
+              onTap: () => context.push(AppRoutes.adminCatalog),
+            ),
+            _AdminLink(
               icon: Icons.tab_unselected_outlined,
               title: 'Bottom navigation',
               subtitle:

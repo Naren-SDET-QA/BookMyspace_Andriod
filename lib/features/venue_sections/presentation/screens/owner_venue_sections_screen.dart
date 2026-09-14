@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../venues/domain/venue.dart';
+import '../../../cms/presentation/screens/owner_facility_builder_screen.dart';
 import '../../domain/venue_section.dart';
 import '../venue_section_providers.dart';
 
@@ -51,6 +52,15 @@ class _OwnerVenueSectionsScreenState
       appBar: AppBar(
         title: Text('Sections · ${widget.venue.name}'),
         actions: [
+          IconButton(
+            tooltip: 'Facility builder',
+            icon: const Icon(Icons.account_tree_outlined),
+            onPressed: _isBusy ? null : () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => OwnerFacilityBuilderScreen(
+                venueId: widget.venue.id, venueName: widget.venue.name,
+              )),
+            ),
+          ),
           IconButton(
             icon: Icon(
                 _previewMode ? Icons.edit_outlined : Icons.visibility_outlined),
