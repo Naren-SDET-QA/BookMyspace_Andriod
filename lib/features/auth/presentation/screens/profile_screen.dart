@@ -81,7 +81,7 @@ class ProfileScreen extends ConsumerWidget {
                                     shape: BoxShape.circle,
                                     color: theme.colorScheme.primaryContainer,
                                     border: Border.all(
-                                      color: AppTheme.brand,
+                                      color: AppTheme.violet,
                                       width: 2.5,
                                     ),
                                   ),
@@ -117,7 +117,7 @@ class ProfileScreen extends ConsumerWidget {
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: const BoxDecoration(
-                                        color: AppTheme.brand,
+                                        color: AppTheme.violet,
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -141,8 +141,7 @@ class ProfileScreen extends ConsumerWidget {
                                     user?.fullName.isNotEmpty == true
                                         ? user!.fullName
                                         : l10n.guest,
-                                    style:
-                                        theme.textTheme.titleLarge?.copyWith(
+                                    style: theme.textTheme.titleLarge?.copyWith(
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.3,
                                     ),
@@ -210,7 +209,7 @@ class ProfileScreen extends ConsumerWidget {
                               '${items.where((booking) => booking.isActive).length} active',
                           orElse: () => '—',
                         ),
-                        color: Colors.blue,
+                        color: AppTheme.violet,
                         onTap: () => context.push(AppRoutes.bookings),
                       ),
                     ),

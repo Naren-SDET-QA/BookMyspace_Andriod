@@ -7,20 +7,30 @@ import 'package:flutter/services.dart';
 class AppTheme {
   AppTheme._();
 
-  /// Brand colours shared with the native Android BookMySpace design system.
+  /// Brand colours for the dark+purple BookMySpace redesign (Phase: UI
+  /// match to approved reference design). `brand` stays teal and is kept
+  /// for the logo mark / success-adjacent accents; `violet`/`violetDeep`
+  /// are the new primary interactive colour (buttons, active states,
+  /// the location pill, the "Book Now" CTAs) matching the reference.
   static const Color brand = Color(0xFF00C9A7);
   static const Color brandLight = Color(0xFF5EEAD4);
   static const Color brandDark = Color(0xFF00A084);
   static const Color action = Color(0xFF2979FF);
   static const Color accent = Color(0xFFFF6B4A);
   static const Color success = Color(0xFF22C55E);
-  static const Color darkCanvas = Color(0xFF071422);
-  static const Color darkCard = Color(0xFF102433);
+  // Reference-matched dark canvas/card surfaces (near-black navy, not the
+  // previous lighter navy-blue) and the new violet/purple primary accent.
+  static const Color darkCanvas = Color(0xFF0B0E1A);
+  static const Color darkCard = Color(0xFF151A2C);
+  static const Color darkCardElevated = Color(0xFF1C2238);
   static const Color lightCanvas = Color(0xFFF3F7FA);
   static const Color textPrimary = Color(0xFF0B1F33);
   static const Color textSecondary = Color(0xFF475569);
   static const Color cyan = Color(0xFF22D3EE);
   static const Color violetSoft = Color(0xFF818CF8);
+  static const Color violet = Color(0xFF8B5CF6);
+  static const Color violetDeep = Color(0xFF6D28D9);
+  static const Color spotlightAmber = Color(0xFFF59E0B);
 
   static const LinearGradient brandGradient = LinearGradient(
     colors: [brand, cyan],
@@ -46,6 +56,13 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  /// Violet gradient for the location pill / primary CTAs in the redesign.
+  static const LinearGradient violetGradient = LinearGradient(
+    colors: [violetDeep, violet],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static ThemeData get light => _base(Brightness.light);
 
   static ThemeData get dark => _base(Brightness.dark);
@@ -55,18 +72,22 @@ class AppTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: brand,
       brightness: brightness,
-      primary: isLight ? brand : brandLight,
-      onPrimary: isLight ? Colors.white : darkCanvas,
+      // Dark mode primary is now violet (reference brand colour) instead
+      // of the teal brandLight; light mode is untouched (kept only as a
+      // fallback -- app.dart no longer routes to it, see redesign note
+      // there).
+      primary: isLight ? brand : violet,
+      onPrimary: isLight ? Colors.white : Colors.white,
       primaryContainer:
-          isLight ? const Color(0xFFD7F8F1) : const Color(0xFF075E52),
-      onPrimaryContainer: isLight ? darkCanvas : const Color(0xFFB9FFF1),
-      secondary: action,
-      onSecondary: Colors.white,
+          isLight ? const Color(0xFFD7F8F1) : const Color(0xFF3E2A78),
+      onPrimaryContainer: isLight ? darkCanvas : const Color(0xFFE4DBFF),
+      secondary: isLight ? action : cyan,
+      onSecondary: isLight ? Colors.white : darkCanvas,
       secondaryContainer:
           isLight ? const Color(0xFFDCE9FF) : const Color(0xFF1D4F9E),
       onSecondaryContainer:
           isLight ? const Color(0xFF062E6F) : const Color(0xFFD9E6FF),
-      tertiary: accent,
+      tertiary: isLight ? accent : spotlightAmber,
       surface: isLight ? lightCanvas : darkCanvas,
       onSurface: isLight ? textPrimary : const Color(0xFFF8FAFC),
       onSurfaceVariant: isLight ? textSecondary : const Color(0xFFB6C5D6),
@@ -105,7 +126,11 @@ class AppTheme {
         color: isLight ? Colors.white : darkCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+          side: BorderSide(
+            color: isLight
+                ? scheme.outlineVariant.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(

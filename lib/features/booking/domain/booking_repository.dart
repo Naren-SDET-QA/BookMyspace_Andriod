@@ -56,7 +56,35 @@ abstract interface class BookingRepository {
   Future<Booking> rejectBooking(String bookingId, {String? reason});
 
   /// Bookings for the signed-in user, newest first.
+  ///
+  /// Unbounded by design -- existing callers (QR check-in pass eligibility,
+  /// the profile screen) rely on seeing the complete history. New surfaces
+  /// that only need a bounded slice should use [recentBookings] (a small
+  /// fixed-size preview) or [myBookingsPage] (paginated) instead of adding
+  /// more callers here.
   Future<List<Booking>> myBookings();
+
+  /// Phase 9XM-3: a small, bounded slice of the signed-in user's most
+  /// recent bookings (newest first), for surfaces like Home that only ever
+  /// show a short preview and never need the full history.
+  Future<List<Booking>> recentBookings({int limit = 5});
+
+  /// Phase 9XM-3: one page of the signed-in user's bookings, newest first,
+  /// ordered deterministically (book_date desc, start_time desc, id asc as
+  /// a tiebreaker) so consecutive pages neither duplicate nor skip rows.
+  /// Used by the paginated My Bookings screen instead of [myBookings].
+  Future<List<Booking>> myBookingsPage({
+    required int offset,
+    required int limit,
+  });
+
+  /// Phase 9XM-3: fetches exactly one booking owned by the signed-in user
+  /// directly by id (RLS-scoped, same as every other query here), so
+  /// booking-detail lookups don't depend on that booking being present in
+  /// whatever page of [myBookingsPage] happens to be loaded. Returns null
+  /// if the booking doesn't exist or isn't visible to the caller -- never
+  /// invents a row, matching [myBookings]'s existing contract.
+  Future<Booking?> bookingById(String bookingId);
 
   /// Bookings visible to the signed-in venue owner through RLS
   /// (their venues, not a client-side role bypass).

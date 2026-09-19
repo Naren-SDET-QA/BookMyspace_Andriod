@@ -66,7 +66,7 @@ class _OwnerVenueSectionsScreenState
               onPressed: _isBusy ? null : () => _showAddSectionSheet(context),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Add Section'),
-              backgroundColor: AppTheme.brand,
+              backgroundColor: AppTheme.violet,
               foregroundColor: Colors.white,
             ),
       body: sectionsAsync.when(
@@ -330,7 +330,7 @@ class _SectionCard extends ConsumerWidget {
           children: [
             Switch(
               value: section.isEnabled,
-              activeThumbColor: AppTheme.brand,
+              activeThumbColor: AppTheme.violet,
               onChanged: isBusy
                   ? null
                   : (value) => _run(context, ref, () async {
@@ -376,12 +376,12 @@ class _SectionCard extends ConsumerWidget {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: AppTheme.brand.withValues(alpha: 0.1),
+        color: AppTheme.violet.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
       child: Icon(_iconFor(section.icon ?? section.type.icon),
-          color: AppTheme.brand),
+          color: AppTheme.violet),
     );
   }
 

@@ -98,6 +98,32 @@ class MockBookingRepository implements BookingRepository {
   @override
   Future<List<Booking>> myBookings() async => bookings;
 
+  // Phase 9XM-3: minimal mock support for the new bounded/paginated/by-id
+  // repository methods, added so this mock keeps implementing
+  // BookingRepository after the interface grew these methods. Behavior
+  // mirrors myBookings() as closely as makes sense for a test double.
+  @override
+  Future<List<Booking>> recentBookings({int limit = 5}) async =>
+      bookings.take(limit).toList();
+
+  @override
+  Future<List<Booking>> myBookingsPage({
+    required int offset,
+    required int limit,
+  }) async {
+    if (offset >= bookings.length) return const [];
+    final end = (offset + limit).clamp(0, bookings.length);
+    return bookings.sublist(offset, end);
+  }
+
+  @override
+  Future<Booking?> bookingById(String bookingId) async {
+    for (final booking in bookings) {
+      if (booking.id == bookingId) return booking;
+    }
+    return null;
+  }
+
   @override
   Future<List<Booking>> ownerVenueBookings() async => ownerBookings;
 

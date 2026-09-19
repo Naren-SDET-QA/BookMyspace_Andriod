@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/settings_controller.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/search_route.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -30,6 +32,7 @@ import '../widgets/category_glass_matrix.dart';
 import '../widgets/home_feed_sections.dart';
 import '../widgets/home_offer_banner.dart';
 import '../widgets/location_picker_sheet.dart';
+import '../widgets/voice_search_widget.dart';
 
 /// Customer Home: 3D glass category discovery plus popular venues.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -43,10 +46,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   MainHomeSection _selectedSection = MainHomeSection.functionHalls;
   late final PageController _masterPageController;
 
+  // Phase 9XM-2 (Home load optimization): popularVenues, venueCategories,
+  // venueSubsectionsCatalog, activeCoupons, and activeCmsBanners all gate
+  // above-the-fold content (the category discovery panel and the offer
+  // banner near the top of the page) and remain eagerly watched below,
+  // unchanged from before. upcomingEvents, publishedCourses, and
+  // myBookings only power sections further down the scroll (the events
+  // row, courses row, and recent-bookings row) and are never required for
+  // the first visible frame, so their first network trigger is deferred
+  // by one frame -- after the initial frame has already painted -- via
+  // this flag. This does not change what data loads or how it's cached
+  // (all three remain the same non-autoDispose FutureProviders, so this
+  // only delays *when* the first fetch starts, not duplicate-fetches or
+  // drops any data), and it introduces no artificial timer-based delay.
+  bool _deferredContentUnlocked = false;
+
   @override
   void initState() {
     super.initState();
     _masterPageController = PageController(viewportFraction: 0.78);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _deferredContentUnlocked = true);
+      }
+    });
+  }
+
+  /// Phase 9XM-2: returns [AsyncValue.loading] until the first frame has
+  /// painted, then watches [watch] normally on every subsequent build.
+  /// Riverpod supports conditional `ref.watch` calls (dependencies are
+  /// re-tracked each build), so this does not break provider semantics,
+  /// caching, or the `ref.invalidate` calls already used by pull-to-refresh
+  /// below.
+  AsyncValue<T> _deferUntilAfterFirstFrame<T>(
+    AsyncValue<T> Function() watch,
+  ) {
+    return _deferredContentUnlocked ? watch() : AsyncValue<T>.loading();
   }
 
   @override
@@ -97,15 +132,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final location = ref.watch(discoveryLocationProvider);
     final eventsEnabled = ref.watch(moduleEnabledProvider('events'));
     final offersEnabled = ref.watch(moduleEnabledProvider('offers'));
-    final eventsAsync = ref.watch(upcomingEventsProvider);
-    final coursesAsync = ref.watch(publishedCoursesProvider);
+    final eventsAsync =
+        _deferUntilAfterFirstFrame(() => ref.watch(upcomingEventsProvider));
+    final coursesAsync =
+        _deferUntilAfterFirstFrame(() => ref.watch(publishedCoursesProvider));
     final couponsAsync = ref.watch(activeCouponsProvider);
     final cmsBanners =
         ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
-    final myBookingsAsync = ref.watch(myBookingsProvider);
+    // Phase 9XM-3: Home only ever shows a short recent-bookings preview,
+    // so it reads the bounded recentBookingsProvider instead of the
+    // unbounded myBookingsProvider (that provider's full history is now
+    // reserved for callers that genuinely need it -- QR check-in pass
+    // eligibility and the profile screen). Still deferred past first
+    // frame per the 9XM-2 rationale (below-the-fold content).
+    final myBookingsAsync =
+        _deferUntilAfterFirstFrame(() => ref.watch(recentBookingsProvider));
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
+      // Real support entry point, not a fabricated AI chat -- this app has
+      // no AI assistant backend, so the floating help affordance opens the
+      // existing human support-ticket flow (AppRoutes.support /
+      // SupportTicketsScreen) rather than claiming a capability that
+      // doesn't exist.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push(AppRoutes.support),
+        backgroundColor: AppTheme.violet,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.support_agent_rounded),
+        label: const Text('Help'),
+      ),
       body: SafeArea(
         bottom: false,
         child: ResponsiveLayoutBuilder(
@@ -113,9 +169,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             final dynamicCats =
                 ref.watch(venueCategoriesProvider).valueOrNull ??
                     const <VenueCategory>[];
-            final dynamicSubsections =
-                ref.watch(venueSubsectionsCatalogProvider).valueOrNull ??
-                    const <VenueSubsection>[];
             final liveVenues =
                 popularVenuesAsync.valueOrNull ?? const <Venue>[];
             final trending = dynamicCats
@@ -131,7 +184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ref.invalidate(publishedCoursesProvider);
                 ref.invalidate(activeCouponsProvider);
                 ref.invalidate(listedVenueCitiesProvider);
-                ref.invalidate(myBookingsProvider);
+                ref.invalidate(recentBookingsProvider);
               },
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -140,14 +193,84 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: _TopHeaderBar(
                       user: user,
                       responsive: responsive,
-                      cityLabel: location.label,
-                      radiusKm: location.radiusKm,
-                      locationSource: location.source,
-                      onLocationTap: _showLocationPickerModal,
                       onLoginTap: () => context.push(AppRoutes.login),
                       onProfileTap: () => context.go(AppRoutes.profile),
                       onNotificationsTap: () =>
                           context.go(AppRoutes.notifications),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        responsive.horizontalPadding,
+                        4,
+                        responsive.horizontalPadding,
+                        12,
+                      ),
+                      child: HomeLocationBanner(
+                        cityLabel: location.label,
+                        radiusKm: location.radiusKm,
+                        source: location.source,
+                        gpsPhase: ref.watch(
+                          gpsSessionProvider.select((s) => s.phase),
+                        ),
+                        onTap: _showLocationPickerModal,
+                      ),
+                    ),
+                  ),
+                  if ((popularVenuesAsync.valueOrNull ?? const <Venue>[])
+                      .where((venue) => venue.ratingCount > 0)
+                      .isNotEmpty)
+                    // Featured spotlight card
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: responsive.horizontalPadding,
+                          vertical: 8,
+                        ),
+                        child: HomeSpotlightCarousel(
+                          venues: (popularVenuesAsync.valueOrNull ??
+                                  const <Venue>[])
+                              .where((venue) => venue.ratingCount > 0)
+                              .toList()
+                            ..sort(
+                                (a, b) => b.avgRating.compareTo(a.avgRating)),
+                        ),
+                      ),
+                    ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: responsive.horizontalPadding,
+                        vertical: 8,
+                      ),
+                      child: CategoryDiscoveryPanel(
+                        sections: MainHomeSection.discoveryOrder,
+                        selected: _selectedSection,
+                        pageController: _masterPageController,
+                        categories: dynamicCats,
+                        venues: liveVenues,
+                        onMasterChanged: (section) {
+                          setState(() => _selectedSection = section);
+                        },
+                        onMasterExplore: (section) =>
+                            _openMaster(section, dynamicCats),
+                        onSubSectionTap: (section, sub) =>
+                            _openSubSection(section, sub, dynamicCats),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: responsive.horizontalPadding,
+                        vertical: 8,
+                      ),
+                      child: HomeQuickAccessRow(
+                        venues: liveVenues,
+                        onSectionTap: (section) =>
+                            _openMaster(section, dynamicCats),
+                      ),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -182,48 +305,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: responsive.horizontalPadding,
-                        vertical: 8,
-                      ),
-                      child: CategoryDiscoveryPanel(
-                        sections: MainHomeSection.discoveryOrder,
-                        selected: _selectedSection,
-                        pageController: _masterPageController,
-                        categories: dynamicCats,
-                        dynamicSubsections: dynamicSubsections,
-                        venues: liveVenues,
-                        onMasterChanged: (section) {
-                          setState(() => _selectedSection = section);
-                        },
-                        onMasterExplore: (section) =>
-                            _openMaster(section, dynamicCats),
-                        onSubSectionTap: (section, sub) =>
-                            _openSubSection(section, sub, dynamicCats),
-                      ),
-                    ),
-                  ),
-                  if ((popularVenuesAsync.valueOrNull ?? const <Venue>[])
-                      .where((venue) => venue.ratingCount > 0)
-                      .isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 8,
-                        ),
-                        child: HomeSpotlightRow(
-                          venues: (popularVenuesAsync.valueOrNull ??
-                                  const <Venue>[])
-                              .where((venue) => venue.ratingCount > 0)
-                              .toList()
-                            ..sort(
-                                (a, b) => b.avgRating.compareTo(a.avgRating)),
-                        ),
-                      ),
-                    ),
                   if (offersEnabled &&
                       (couponsAsync.valueOrNull ?? const []).isNotEmpty)
                     SliverToBoxAdapter(
@@ -232,8 +313,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           horizontal: responsive.horizontalPadding,
                           vertical: 8,
                         ),
-                        child: HomeCouponRow(
-                          coupons: couponsAsync.valueOrNull ?? const [],
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Spotlight & Hot Deals',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            HomeCouponRow(
+                              coupons: couponsAsync.valueOrNull ?? const [],
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -307,6 +401,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
+                  // Inline voice search widget
+                  SliverToBoxAdapter(
+                    child: VoiceSearchWidget(
+                      onVoiceTap: () => _showVoiceBookingDialog(context),
+                    ),
+                  ),
+                  // Available Spaces heading
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
@@ -502,10 +603,6 @@ class _TopHeaderBar extends ConsumerWidget {
   const _TopHeaderBar({
     required this.user,
     required this.responsive,
-    required this.cityLabel,
-    required this.radiusKm,
-    required this.locationSource,
-    required this.onLocationTap,
     required this.onLoginTap,
     required this.onProfileTap,
     required this.onNotificationsTap,
@@ -513,10 +610,6 @@ class _TopHeaderBar extends ConsumerWidget {
 
   final dynamic user;
   final ResponsiveInfo responsive;
-  final String cityLabel;
-  final int radiusKm;
-  final DiscoveryLocationSource locationSource;
-  final VoidCallback onLocationTap;
   final VoidCallback onLoginTap;
   final VoidCallback onProfileTap;
   final VoidCallback onNotificationsTap;
@@ -524,7 +617,6 @@ class _TopHeaderBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final gpsPhase = ref.watch(gpsSessionProvider.select((s) => s.phase));
 
     final identity = user == null
         ? FilledButton.tonal(
@@ -571,21 +663,27 @@ class _TopHeaderBar extends ConsumerWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 BookMySpaceWordmark(
                   fontSize: 18,
                   textColor: theme.colorScheme.onSurface,
                 ),
-                HomeLocationHeader(
-                  cityLabel: cityLabel,
-                  radiusKm: radiusKm,
-                  source: locationSource,
-                  gpsPhase: gpsPhase,
-                  onTap: onLocationTap,
+                Text(
+                  'Turfs · Halls · PGs · Studios',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 10.5,
+                    letterSpacing: 0.2,
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 6),
+          const _LanguagePill(),
           IconButton(
             tooltip: 'Notifications',
             onPressed: onNotificationsTap,
@@ -594,6 +692,100 @@ class _TopHeaderBar extends ConsumerWidget {
           identity,
         ],
       ),
+    );
+  }
+}
+
+/// Language pill in the Home header. Real locales, real switching -- backed
+/// by the app's existing [localeProvider]/[LocaleNotifier], not a cosmetic
+/// stub. Tapping opens a picker over the languages [AppLocalizations]
+/// actually ships translations for.
+class _LanguagePill extends ConsumerWidget {
+  const _LanguagePill();
+
+  static const Map<String, String> _names = {
+    'en': 'English',
+    'te': 'Telugu',
+    'hi': 'Hindi',
+    'kn': 'Kannada',
+    'ta': 'Tamil',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final locale = ref.watch(localeProvider);
+    final label = _names[locale.languageCode] ?? locale.languageCode;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => _showLanguagePicker(context, ref),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color:
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.language_rounded, size: 15),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style:
+                  const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLanguagePicker(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final current = ref.read(localeProvider);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Choose language',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                ),
+              ),
+              for (final locale in AppLocalizations.supportedLocales)
+                RadioGroup<String>(
+                  groupValue: current.languageCode,
+                  onChanged: (value) {
+                    if (value != null) {
+                      ref.read(localeProvider.notifier).setLocale(locale);
+                      Navigator.pop(sheetContext);
+                    }
+                  },
+                  child: RadioListTile<String>(
+                    value: locale.languageCode,
+                    title: Text(
+                        _names[locale.languageCode] ?? locale.languageCode),
+                  ),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -688,7 +880,7 @@ class _SectionVenueCard extends ConsumerWidget {
     return GlassmorphicCard(
       borderRadius: 18,
       onTap: onTap,
-      accentGradient: AppTheme.brandGradient,
+      accentGradient: AppTheme.violetGradient,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

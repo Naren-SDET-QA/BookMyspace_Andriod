@@ -454,7 +454,7 @@ class _VenueMap extends StatelessWidget {
     required this.latitude,
     required this.longitude,
     required this.name,
-    this.accent = AppTheme.brand,
+    this.accent = AppTheme.violet,
   });
 
   final double latitude;

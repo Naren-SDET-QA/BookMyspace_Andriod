@@ -76,7 +76,8 @@ class _CourseBody extends ConsumerWidget {
                       ),
                     ),
                     if (course.instituteVerified)
-                      const Icon(Icons.verified_rounded, color: AppTheme.brand),
+                      const Icon(Icons.verified_rounded,
+                          color: AppTheme.violet),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -162,7 +163,7 @@ class _DetailChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Chip(
-      avatar: Icon(icon, size: 18, color: AppTheme.brand),
+      avatar: Icon(icon, size: 18, color: AppTheme.violet),
       label: Text(label),
     );
   }
@@ -195,7 +196,7 @@ class _FeeCard extends StatelessWidget {
           Text(
             course.isFree ? l10n.freeEvent : formatInr(course.feeAmount),
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: AppTheme.brand,
+              color: AppTheme.violet,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -322,13 +323,13 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppTheme.brand.withValues(alpha: 0.12),
+                                color: AppTheme.violet.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
                                 l10n.enrolled,
                                 style: theme.textTheme.labelSmall?.copyWith(
-                                  color: AppTheme.brand,
+                                  color: AppTheme.violet,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -352,7 +353,7 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
                             : l10n.soldOut,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: batch.seatsLeft > 0
-                              ? AppTheme.brand
+                              ? AppTheme.violet
                               : AppTheme.accent,
                           fontWeight: FontWeight.w600,
                         ),

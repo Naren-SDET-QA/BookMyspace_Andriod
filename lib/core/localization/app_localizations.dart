@@ -57,6 +57,7 @@ class AppLocalizations {
     'bookNow': 'Book Now',
     'search': 'Search',
     'searchHint': 'Search venues, cities or categories...',
+    'courseSearchHint': 'Search courses or institutes...',
     'filters': 'Filters',
     'clearFilters': 'Clear Filters',
     'apply': 'Apply',
@@ -126,6 +127,9 @@ class AppLocalizations {
     'modeHybrid': 'Hybrid',
     'settings': 'Settings',
     'themeMode': 'Theme Mode',
+    'filterAllCourses': 'All',
+    'home3dEffects': 'Color & 3D effects',
+    'home3dEffectsSubtitle': 'Depth and color effects on Home spotlight cards',
     'language': 'Language',
     'support': 'Support',
     'privacyPolicy': 'Privacy Policy',
@@ -242,6 +246,7 @@ class AppLocalizations {
     'bookNow': 'ఇప్పుడు బుక్ చేయండి',
     'search': 'శోధన',
     'searchHint': 'వేదికలు, నగరాలు లేదా వర్గాలను వెతకండి...',
+    'courseSearchHint': 'కోర్సులు లేదా సంస్థలను వెతకండి...',
     'filters': 'ఫిల్టర్లు',
     'clearFilters': 'ఫిల్టర్లు తీసివేయి',
     'apply': 'వర్తింపజేయి',
@@ -310,6 +315,10 @@ class AppLocalizations {
     'modeHybrid': 'హైబ్రిడ్',
     'settings': 'సెట్టింగ్‌లు',
     'themeMode': 'థీమ్',
+    'filterAllCourses': 'అన్నీ',
+    'home3dEffects': 'రంగు & 3D ప్రభావాలు',
+    'home3dEffectsSubtitle':
+        'హోమ్ స్పాట్‌లైట్ కార్డులపై లోతు మరియు రంగు ప్రభావాలు',
     'language': 'భాష',
     'support': 'సహాయం',
     'privacyPolicy': 'గోప్యతా విధానం',
@@ -426,6 +435,7 @@ class AppLocalizations {
     'bookNow': 'अभी बुक करें',
     'search': 'खोज',
     'searchHint': 'स्थान, शहर या श्रेणियाँ खोजें...',
+    'courseSearchHint': 'कोर्स या संस्थान खोजें...',
     'filters': 'फ़िल्टर',
     'clearFilters': 'फ़िल्टर हटाएँ',
     'apply': 'लागू करें',
@@ -475,7 +485,8 @@ class AppLocalizations {
     'registered': 'पंजीकृत',
     'registerNow': 'अभी पंजीकरण करें',
     'cancelRegistration': 'पंजीकरण रद्द करें',
-    'cancelRegistrationConfirm': 'क्या आप कार्यक्रम पंजीकरण रद्द करना चाहते हैं?',
+    'cancelRegistrationConfirm':
+        'क्या आप कार्यक्रम पंजीकरण रद्द करना चाहते हैं?',
     'registrationCancelled': 'पंजीकरण रद्द हो गया',
     'noCourses': 'कोई कोर्स नहीं',
     'noCoursesMessage': 'नए कोर्स जल्द आ रहे हैं.',
@@ -494,6 +505,9 @@ class AppLocalizations {
     'modeHybrid': 'हाइब्रिड',
     'settings': 'सेटिंग्स',
     'themeMode': 'थीम',
+    'filterAllCourses': 'सभी',
+    'home3dEffects': 'रंग और 3D प्रभाव',
+    'home3dEffectsSubtitle': 'होम स्पॉटलाइट कार्ड पर गहराई और रंग प्रभाव',
     'language': 'भाषा',
     'support': 'सहायता',
     'privacyPolicy': 'गोपनीयता नीति',
@@ -610,6 +624,7 @@ class AppLocalizations {
     'bookNow': 'ಈಗ ಬುಕ್ ಮಾಡಿ',
     'search': 'ಹುಡುಕು',
     'searchHint': 'ಸ್ಥಳ, ನಗರ ಅಥವಾ ವರ್ಗ ಹುಡುಕಿ...',
+    'courseSearchHint': 'ಕೋರ್ಸ್‌ಗಳು ಅಥವಾ ಸಂಸ್ಥೆಗಳನ್ನು ಹುಡುಕಿ...',
     'filters': 'ಫಿಲ್ಟರ್‌ಗಳು',
     'clearFilters': 'ಫಿಲ್ಟರ್ ತೆರವುಗೊಳಿಸಿ',
     'apply': 'ಅನ್ವಯಿಸಿ',
@@ -678,6 +693,10 @@ class AppLocalizations {
     'modeHybrid': 'ಹೈಬ್ರಿಡ್',
     'settings': 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
     'themeMode': 'ಥೀಮ್',
+    'filterAllCourses': 'ಎಲ್ಲಾ',
+    'home3dEffects': 'ಬಣ್ಣ ಮತ್ತು 3D ಪರಿಣಾಮಗಳು',
+    'home3dEffectsSubtitle':
+        'ಹೋಮ್ ಸ್ಪಾಟ್‌ಲೈಟ್ ಕಾರ್ಡ್‌ಗಳ ಮೇಲೆ ಆಳ ಮತ್ತು ಬಣ್ಣ ಪರಿಣಾಮಗಳು',
     'language': 'ಭಾಷೆ',
     'support': 'ಸಹಾಯ',
     'privacyPolicy': 'ಗೌಪ್ಯತಾ ನೀತಿ',
@@ -794,6 +813,7 @@ class AppLocalizations {
     'bookNow': 'இப்போது முன்பதிவு',
     'search': 'தேடல்',
     'searchHint': 'இடங்கள், நகரங்கள் அல்லது வகைகளைத் தேடுங்கள்...',
+    'courseSearchHint': 'பாடநெறிகள் அல்லது நிறுவனங்களைத் தேடுங்கள்...',
     'filters': 'வடிகட்டிகள்',
     'clearFilters': 'வடிகட்டிகளை அழி',
     'apply': 'பயன்படுத்து',
@@ -862,6 +882,10 @@ class AppLocalizations {
     'modeHybrid': 'ஹைப்ரிட்',
     'settings': 'அமைப்புகள்',
     'themeMode': 'தீம்',
+    'filterAllCourses': 'அனைத்தும்',
+    'home3dEffects': 'நிறம் & 3D விளைவுகள்',
+    'home3dEffectsSubtitle':
+        'ஹோம் ஸ்பாட்லைட் கார்டுகளில் ஆழம் மற்றும் நிற விளைவுகள்',
     'language': 'மொழி',
     'support': 'உதவி',
     'privacyPolicy': 'தனியுரிமைக் கொள்கை',
@@ -953,7 +977,6 @@ class AppLocalizations {
     'columnCreatedAt': 'உருவாக்கப்பட்டது',
   };
 
-
   String get adminPaymentOperations => _t('adminPaymentOperations');
   String get adminPaymentHealth => _t('adminPaymentHealth');
   String get adminTransactionLedger => _t('adminTransactionLedger');
@@ -1018,6 +1041,7 @@ class AppLocalizations {
   String get bookNow => _t('bookNow');
   String get search => _t('search');
   String get searchHint => _t('searchHint');
+  String get courseSearchHint => _t('courseSearchHint');
   String get filters => _t('filters');
   String get clearFilters => _t('clearFilters');
   String get apply => _t('apply');
@@ -1084,6 +1108,9 @@ class AppLocalizations {
   String get modeOnline => _t('modeOnline');
   String get modeOffline => _t('modeOffline');
   String get modeHybrid => _t('modeHybrid');
+  String get filterAllCourses => _t('filterAllCourses');
+  String get home3dEffects => _t('home3dEffects');
+  String get home3dEffectsSubtitle => _t('home3dEffectsSubtitle');
   String get settings => _t('settings');
   String get themeMode => _t('themeMode');
   String get language => _t('language');

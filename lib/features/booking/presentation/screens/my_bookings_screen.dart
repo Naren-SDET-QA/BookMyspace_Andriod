@@ -30,16 +30,40 @@ class MyBookingsScreen extends ConsumerStatefulWidget {
 
 class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
   RealtimeChannel? _bookingChannel;
+  // Captured for dispose(): `ref` must not be used after dispose (debug
+  // builds throw), so dispose() cannot call ref.read for the client.
+  SupabaseClient? _supabaseClient;
+
+  // Phase 9XM-3: drives infinite-scroll pagination. Works identically for
+  // touch scrolling (iOS/Android) and mouse/trackpad scrolling (Web) since
+  // ScrollController/ScrollPosition are platform-independent Flutter APIs
+  // with no iOS/Android-only dependency.
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _subscribeToBookingUpdates();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    // Fire the next-page fetch shortly before the user reaches the
+    // physical end of the list, so the next page is usually ready before
+    // they get there. MyBookingsPageController's own `_isFetching` guard
+    // (checked inside loadNextPage) prevents duplicate concurrent
+    // requests if this fires again before the previous page resolves.
+    if (position.pixels >= position.maxScrollExtent - 400) {
+      ref.read(myBookingsPageProvider.notifier).loadNextPage();
+    }
   }
 
   void _subscribeToBookingUpdates() {
     try {
       final client = ref.read(supabaseProvider);
+      _supabaseClient = client;
       final user = client.auth.currentUser;
       if (user == null) return;
 
@@ -55,7 +79,15 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
               value: user.id,
             ),
             callback: (_) {
-              if (mounted) ref.invalidate(myBookingsProvider);
+              if (!mounted) return;
+              // Preserve existing behavior for other consumers of the
+              // unbounded provider (QR check-in pass eligibility, profile
+              // screen).
+              ref.invalidate(myBookingsProvider);
+              // Phase 9XM-3: reset the paginated My Bookings list to page
+              // 1 on any realtime change, rather than trying to patch
+              // whichever pages happen to be loaded.
+              ref.read(myBookingsPageProvider.notifier).refresh();
             },
           )
           .subscribe();
@@ -68,16 +100,23 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     final channel = _bookingChannel;
-    if (channel != null) {
-      unawaited(ref.read(supabaseProvider).removeChannel(channel));
+    final client = _supabaseClient;
+    if (channel != null && client != null) {
+      unawaited(client.removeChannel(channel));
     }
     super.dispose();
   }
 
   Future<void> _refresh() async {
+    // Preserve existing behavior for other consumers of the unbounded
+    // provider (QR check-in pass eligibility, profile screen).
     ref.invalidate(myBookingsProvider);
-    await ref.read(myBookingsProvider.future);
+    // Phase 9XM-3: pull-to-refresh resets My Bookings to page 1 and
+    // discards previously loaded pages, then awaits the fresh first page
+    // so RefreshIndicator's spinner stays up until it's ready.
+    await ref.read(myBookingsPageProvider.notifier).refresh();
   }
 
   Future<void> _cancelBooking(Booking booking) async {
@@ -104,6 +143,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     try {
       await ref.read(bookingRepositoryProvider).cancelBooking(booking.id);
       ref.invalidate(myBookingsProvider);
+      ref.read(myBookingsPageProvider.notifier).refresh();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -138,6 +178,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
           .read(paymentRepositoryProvider)
           .requestRefund(bookingId: booking.id, amount: booking.totalAmount);
       ref.invalidate(myBookingsProvider);
+      ref.read(myBookingsPageProvider.notifier).refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -153,7 +194,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final bookings = ref.watch(myBookingsProvider);
+    // Phase 9XM-3: paginated state (page 1 loading, subsequent pages,
+    // hasMore/error) replaces the single unbounded myBookingsProvider
+    // fetch for this screen's list.
+    final pageState = ref.watch(myBookingsPageProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -166,43 +210,87 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
           ),
         ],
       ),
-      body: bookings.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(message: e.toString(), onRetry: _refresh),
-        data: (list) {
-          if (list.isEmpty) {
-            return EmptyState(
-              icon: Icons.receipt_long_rounded,
-              title: l10n.noBookings,
-              message: l10n.noBookingsMessage,
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (context, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _BookingCard(
-                  booking: list[i],
-                  onShowPass: (list[i].status == BookingStatus.confirmed ||
-                          list[i].status == BookingStatus.completed)
-                      ? () => _showEntryPass(list[i])
-                      : null,
-                  onCancel:
-                      list[i].canCancel ? () => _cancelBooking(list[i]) : null,
-                  onRefund:
-                      list[i].canRefund ? () => _requestRefund(list[i]) : null,
-                  onPay: list[i].canPay
-                      ? () => context.push(
-                            '/bookings/${list[i].id}/pay',
-                            extra: list[i],
-                          )
-                      : null,
+      body: _buildBody(pageState, l10n),
+    );
+  }
+
+  Widget _buildBody(MyBookingsPageState pageState, AppLocalizations l10n) {
+    if (pageState.isLoadingFirstPage) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (pageState.error != null && pageState.bookings.isEmpty) {
+      return ErrorView(
+        message: pageState.error.toString(),
+        onRetry: _refresh,
+      );
+    }
+    final list = pageState.bookings;
+    if (list.isEmpty) {
+      return EmptyState(
+        icon: Icons.receipt_long_rounded,
+        title: l10n.noBookings,
+        message: l10n.noBookingsMessage,
+      );
+    }
+    // A trailing row shows the load-more spinner, an inline retry after a
+    // failed page fetch, or nothing once hasMore is false (end of list) --
+    // there is no separate "you've reached the end" row so as not to
+    // change the screen's existing visual footprint beyond what
+    // pagination itself requires.
+    final showTrailingRow = pageState.isLoadingMore ||
+        (pageState.error != null && pageState.bookings.isNotEmpty);
+    final itemCount = list.length + (showTrailingRow ? 1 : 0);
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: itemCount,
+        itemBuilder: (context, i) {
+          if (i >= list.length) {
+            if (pageState.error != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: TextButton(
+                    onPressed: () => ref
+                        .read(myBookingsPageProvider.notifier)
+                        .loadNextPage(),
+                    child: Text(l10n.tryAgain),
+                  ),
+                ),
+              );
+            }
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _BookingCard(
+              booking: list[i],
+              onShowPass: (list[i].status == BookingStatus.confirmed ||
+                      list[i].status == BookingStatus.completed)
+                  ? () => _showEntryPass(list[i])
+                  : null,
+              onCancel:
+                  list[i].canCancel ? () => _cancelBooking(list[i]) : null,
+              onRefund:
+                  list[i].canRefund ? () => _requestRefund(list[i]) : null,
+              onPay: list[i].canPay
+                  ? () => context.push(
+                        '/bookings/${list[i].id}/pay',
+                        extra: list[i],
+                      )
+                  : null,
             ),
           );
         },
@@ -221,7 +309,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         title: Row(
           children: [
             const Icon(Icons.qr_code_2_rounded,
-                color: AppTheme.brand, size: 28),
+                color: AppTheme.violet, size: 28),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -269,7 +357,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                 Text(
                   booking.slotLabel,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.brand,
+                    color: AppTheme.violet,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -382,7 +470,7 @@ class _BookingCard extends StatelessWidget {
           colors: [AppTheme.accent, Color(0xFFFBBF24), Color(0xFFF59E0B)],
         ),
       BookingStatus.awaitingOwnerApproval => const LinearGradient(
-          colors: [AppTheme.brand, AppTheme.action, AppTheme.accent],
+          colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
         ),
       BookingStatus.ownerRejected ||
       BookingStatus.approvalExpired =>
@@ -393,7 +481,7 @@ class _BookingCard extends StatelessWidget {
           colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
         ),
       _ => const LinearGradient(
-          colors: [AppTheme.brand, AppTheme.action, AppTheme.accent],
+          colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
         ),
     };
 
@@ -463,7 +551,7 @@ class _BookingCard extends StatelessWidget {
               Text(
                 formatInr(booking.totalAmount),
                 style: theme.textTheme.titleMedium?.copyWith(
-                  color: AppTheme.brand,
+                  color: AppTheme.violet,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -531,7 +619,7 @@ class _StatusBadge extends StatelessWidget {
       BookingStatus.pending => ('Pending', Colors.orange),
       BookingStatus.awaitingOwnerApproval => (
           'Awaiting owner',
-          AppTheme.brand,
+          AppTheme.violet,
         ),
       BookingStatus.ownerRejected => ('Declined', Colors.red),
       BookingStatus.approvalExpired => ('Request expired', Colors.red),

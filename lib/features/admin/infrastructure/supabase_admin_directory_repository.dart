@@ -21,9 +21,8 @@ class SupabaseAdminDirectoryRepository implements AdminDirectoryRepository {
           .select('id, full_name, email, phone, created_at')
           .order('created_at', ascending: false)
           .limit(limit);
-      final roles = await _client
-          .from('user_roles')
-          .select('user_id, role, revoked_at');
+      final roles =
+          await _client.from('user_roles').select('user_id, role, revoked_at');
       final rolesByUser = <String, List<String>>{};
       for (final row in roles.whereType<Map<String, dynamic>>()) {
         if (row['revoked_at'] != null) continue;
@@ -32,20 +31,17 @@ class SupabaseAdminDirectoryRepository implements AdminDirectoryRepository {
         if (userId.isEmpty || role.isEmpty) continue;
         rolesByUser.putIfAbsent(userId, () => <String>[]).add(role);
       }
-      return profiles
-          .whereType<Map<String, dynamic>>()
-          .map((row) {
-            final id = row['id'] as String? ?? '';
-            return AdminUserRecord(
-              id: id,
-              fullName: row['full_name'] as String? ?? '',
-              email: row['email'] as String? ?? '',
-              phone: row['phone'] as String? ?? '',
-              roles: rolesByUser[id] ?? const [],
-              createdAt: DateTime.tryParse(row['created_at'] as String? ?? ''),
-            );
-          })
-          .toList();
+      return profiles.whereType<Map<String, dynamic>>().map((row) {
+        final id = row['id'] as String? ?? '';
+        return AdminUserRecord(
+          id: id,
+          fullName: row['full_name'] as String? ?? '',
+          email: row['email'] as String? ?? '',
+          phone: row['phone'] as String? ?? '',
+          roles: rolesByUser[id] ?? const [],
+          createdAt: DateTime.tryParse(row['created_at'] as String? ?? ''),
+        );
+      }).toList();
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -113,7 +109,10 @@ class SupabaseAdminDirectoryRepository implements AdminDirectoryRepository {
           .eq('status', 'published')
           .order('starts_at', ascending: true)
           .limit(limit);
-      return rows.whereType<Map<String, dynamic>>().map(Event.fromJson).toList();
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Event.fromJson)
+          .toList();
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -185,7 +184,10 @@ class SupabaseAdminDirectoryRepository implements AdminDirectoryRepository {
           .select('id, name, city, is_active, avg_rating, rating_count')
           .order('created_at', ascending: false)
           .limit(limit);
-      return rows.whereType<Map<String, dynamic>>().map(Venue.fromJson).toList();
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Venue.fromJson)
+          .toList();
     } catch (e) {
       throw app_errors.mapError(e);
     }

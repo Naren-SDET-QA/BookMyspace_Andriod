@@ -64,7 +64,7 @@ class QrCodePassWidget extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.qr_code, size: 13, color: AppTheme.brand),
+              const Icon(Icons.qr_code, size: 13, color: AppTheme.violet),
               const SizedBox(width: 4),
               Text(
                 'TOKEN: ${payload.token}',

@@ -385,8 +385,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                   ),
                   error: (e, _) => ErrorView(
                     message: e.toString(),
-                    onRetry: () =>
-                        ref.invalidate(searchResultsProvider(query)),
+                    onRetry: () => ref.invalidate(searchResultsProvider(query)),
                   ),
                 ),
               ),
@@ -586,7 +585,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppTheme.brand.withValues(alpha: 0.25),
+                        color: AppTheme.violet.withValues(alpha: 0.25),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),

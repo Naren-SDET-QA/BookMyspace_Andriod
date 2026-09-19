@@ -26,9 +26,15 @@ class BookMySpaceApp extends ConsumerWidget {
       title: 'BookMySpace',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      theme: AppTheme.light,
+      // Redesign: BookMySpace now ships a single fixed dark+purple brand
+      // look (matching the approved reference design), so both slots
+      // point at AppTheme.dark and themeMode is pinned regardless of the
+      // stored user preference. themeModeProvider is left in place
+      // (Settings screen still reads/writes it) so this is reversible
+      // without touching settings_controller.dart.
+      theme: AppTheme.dark,
       darkTheme: AppTheme.dark,
-      themeMode: ref.watch(themeModeProvider),
+      themeMode: ThemeMode.dark,
       locale: ref.watch(localeProvider),
       builder: (context, child) {
         final brightness = Theme.of(context).brightness;

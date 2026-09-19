@@ -200,9 +200,9 @@ class _StatChip extends StatelessWidget {
       width: 104,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: AppTheme.brand.withValues(alpha: 0.08),
+        color: AppTheme.violet.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.brand.withValues(alpha: 0.2)),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,7 +240,7 @@ class _AdminLink extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        leading: Icon(icon, color: AppTheme.brand),
+        leading: Icon(icon, color: AppTheme.violet),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right_rounded),

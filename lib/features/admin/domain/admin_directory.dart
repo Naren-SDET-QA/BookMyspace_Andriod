@@ -16,8 +16,9 @@ class AdminUserRecord {
   final List<String> roles;
   final DateTime? createdAt;
 
-  String get displayName =>
-      fullName.trim().isNotEmpty ? fullName.trim() : (email.isNotEmpty ? email : id);
+  String get displayName => fullName.trim().isNotEmpty
+      ? fullName.trim()
+      : (email.isNotEmpty ? email : id);
 }
 
 class AdminOwnerRecord {

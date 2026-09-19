@@ -52,8 +52,23 @@ class SupabaseBookingRepository implements BookingRepository {
     int holdMinutes = 10,
   }) async {
     try {
+      // Root cause of the `[missing_auth] Booking service error (401)`
+      // seen on Confirm Booking: `_client.functions.invoke` sends whatever
+      // Authorization header the FunctionsClient last cached from an auth
+      // state event (signedIn/tokenRefreshed). A silently restored session
+      // on cold start, or a session that expired between screens, can leave
+      // that cached header stale or absent even though the user is (or was)
+      // signed in -- the Edge Function then sees no Authorization header at
+      // all and returns 401 missing_auth before it ever reaches RLS. Fix:
+      // resolve and attach the current session's access token explicitly on
+      // every call, refreshing it once if it has expired, and fail fast with
+      // a clear AuthException (never a fabricated token) if no valid session
+      // is available -- rather than silently sending an unauthenticated
+      // request and surfacing a confusing server-side 401.
+      final session = await _requireValidSession();
       final response = await _client.functions.invoke(
         'create-booking-hold',
+        headers: {'Authorization': 'Bearer ${session.accessToken}'},
         body: {
           'venue_id': venueId,
           'slot_id': slotId,
@@ -203,6 +218,81 @@ class SupabaseBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<Booking>> recentBookings({int limit = 5}) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return const [];
+      final rows = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('user_id', user.id)
+          .order('book_date', ascending: false)
+          .order('start_time', ascending: false)
+          .order('id', ascending: true)
+          .limit(limit);
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Booking.fromJson)
+          .toList();
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<List<Booking>> myBookingsPage({
+    required int offset,
+    required int limit,
+  }) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return const [];
+      final safeOffset = offset < 0 ? 0 : offset;
+      final safeLimit = limit < 1 ? 1 : limit;
+      // Phase 9XM-3: same ordering as myBookings() (book_date desc,
+      // start_time desc), with `id` added as a deterministic tiebreaker.
+      // Without a tiebreaker, rows that share the same (book_date,
+      // start_time) have no guaranteed stable order across separate
+      // .range() requests, which could duplicate or skip rows between
+      // pages. The `id` order is arbitrary but stable, and never affects
+      // the visible newest-first ordering for rows with distinct
+      // (book_date, start_time).
+      final rows = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('user_id', user.id)
+          .order('book_date', ascending: false)
+          .order('start_time', ascending: false)
+          .order('id', ascending: true)
+          .range(safeOffset, safeOffset + safeLimit - 1);
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Booking.fromJson)
+          .toList();
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<Booking?> bookingById(String bookingId) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return null;
+      final row = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('id', bookingId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (row == null) return null;
+      return Booking.fromJson(row);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
   Future<List<Booking>> ownerVenueBookings() async {
     try {
       final user = _client.auth.currentUser;
@@ -239,6 +329,41 @@ class SupabaseBookingRepository implements BookingRepository {
       if (e is app_errors.BookingConflictException) rethrow;
       throw app_errors.mapError(e);
     }
+  }
+
+  /// Resolves the current Supabase session, refreshing it once if it has
+  /// expired, and never fabricating or bypassing auth: a missing or
+  /// unrefreshable session is surfaced as an explicit [app_errors.AuthException]
+  /// instead of letting the request go out without a valid user token.
+  Future<Session> _requireValidSession() async {
+    var session = _client.auth.currentSession;
+    if (session == null) {
+      throw const app_errors.AuthException(
+        'You must be signed in to book. Please sign in and try again.',
+        code: 'missing_session',
+      );
+    }
+    final expiresAt = session.expiresAt;
+    final isExpired = expiresAt != null &&
+        DateTime.now().toUtc().isAfter(
+              DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000,
+                  isUtc: true),
+            );
+    if (isExpired) {
+      try {
+        final refreshed = await _client.auth.refreshSession();
+        session = refreshed.session;
+      } catch (_) {
+        session = null;
+      }
+      if (session == null) {
+        throw const app_errors.AuthException(
+          'Your session has expired. Please sign in again to continue booking.',
+          code: 'expired_session',
+        );
+      }
+    }
+    return session;
   }
 
   Future<Booking> _loadBooking(String bookingId) async {

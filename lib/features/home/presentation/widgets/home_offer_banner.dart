@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../offers/domain/coupon.dart';
 
@@ -13,6 +14,7 @@ class _BannerSlide {
     required this.subtitle,
     this.code,
     this.claim = false,
+    this.imageUrl,
   });
 
   final String headline;
@@ -21,6 +23,55 @@ class _BannerSlide {
 
   /// True when [subtitle] is a real monetary/percentage offer.
   final bool claim;
+
+  /// Real per-banner image from the CMS record, when the banner has one.
+  /// Never fabricated: coupon-sourced and default slides have no backing
+  /// image field, so this stays null for those and the slide falls back to
+  /// the animated color background instead of a made-up picture.
+  final String? imageUrl;
+}
+
+/// Centralized per-banner color theme. To add another banner's look, add
+/// one entry here -- nothing else in this file needs to change. Themes
+/// cycle by slide index (`index % length`) when there are more slides than
+/// themes, and each provides its own dark/light variant so the gradient
+/// keeps working with the existing fixed white banner text. All entries are
+/// deliberately deep/saturated (not pastel) so white text stays readable.
+class _BannerColorTheme {
+  const _BannerColorTheme({required this.dark, required this.light});
+
+  final List<Color> dark;
+  final List<Color> light;
+}
+
+const List<_BannerColorTheme> _bannerColorThemes = [
+  // Teal/blue -- the original banner look, kept as the first theme.
+  _BannerColorTheme(
+    dark: [Color(0xFF075E54), Color(0xFF0E7490), Color(0xFF1E3A8A)],
+    light: [Color(0xFF00695C), Color(0xFF0E7490), Color(0xFF1D4ED8)],
+  ),
+  // Violet/magenta.
+  _BannerColorTheme(
+    dark: [Color(0xFF4C1D95), Color(0xFF7E22CE), Color(0xFFA21CAF)],
+    light: [Color(0xFF5B21B6), Color(0xFF9333EA), Color(0xFFC026D3)],
+  ),
+  // Amber/rose.
+  _BannerColorTheme(
+    dark: [Color(0xFF7C2D12), Color(0xFFB45309), Color(0xFF9D174D)],
+    light: [Color(0xFF9A3412), Color(0xFFD97706), Color(0xFFBE185D)],
+  ),
+  // Emerald/cyan.
+  _BannerColorTheme(
+    dark: [Color(0xFF064E3B), Color(0xFF0D9488), Color(0xFF075985)],
+    light: [Color(0xFF065F46), Color(0xFF0D9488), Color(0xFF0369A1)],
+  ),
+];
+
+/// Deterministic lookup -- never randomized, so the same slide always
+/// resolves to the same theme on every rebuild.
+List<Color> _bannerColorsFor(int index, bool isDark) {
+  final theme = _bannerColorThemes[index % _bannerColorThemes.length];
+  return isDark ? theme.dark : theme.light;
 }
 
 /// Premium promotional banner. Uses live coupon records when present;
@@ -44,9 +95,14 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   late final AnimationController _drift;
   late final AnimationController _glow;
   late final AnimationController _arrow;
+  // Drives the banner's background color crossfade when the carousel moves
+  // to a new slide. Purely a UI transition -- it never affects which slide
+  // is showing, only how the color of the current one animates in.
+  late final AnimationController _colorTransition;
   late final PageController _pageController;
   Timer? _autoPlay;
   int _index = 0;
+  int _previousIndex = 0;
   bool? _running;
 
   List<_BannerSlide> get _slides {
@@ -56,6 +112,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
           _BannerSlide(
             headline: banner.title,
             subtitle: banner.subtitle,
+            imageUrl: banner.imageUrl,
           ),
       ];
     }
@@ -96,6 +153,11 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
+    _colorTransition = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+      value: 1,
+    );
     _pageController = PageController();
   }
 
@@ -104,6 +166,8 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.coupons.length != widget.coupons.length) {
       _index = 0;
+      _previousIndex = 0;
+      _colorTransition.value = 1;
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -147,6 +211,25 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       .toString()
       .contains('TestWidgetsFlutterBinding');
 
+  /// Slide changed (by autoplay, swipe, or dot tap alike). Kicks off the
+  /// background color crossfade to the new slide's theme; the slide index
+  /// itself and everything else about the carousel is unaffected.
+  void _onPageChanged(int i) {
+    if (i == _index) return;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    setState(() {
+      _previousIndex = _index;
+      _index = i;
+    });
+    if (reduceMotion || _isWidgetTest) {
+      _colorTransition.value = 1;
+    } else {
+      _colorTransition
+        ..value = 0
+        ..forward();
+    }
+  }
+
   void _syncAutoPlay() {
     _autoPlay?.cancel();
     _autoPlay = null;
@@ -171,6 +254,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     _drift.dispose();
     _glow.dispose();
     _arrow.dispose();
+    _colorTransition.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -183,9 +267,21 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     return Semantics(
       label: slides[_index.clamp(0, slides.length - 1)].headline,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_drift, _glow, _arrow]),
+        animation: Listenable.merge([_drift, _glow, _arrow, _colorTransition]),
         builder: (context, _) {
           final glowT = Curves.easeInOut.transform(_glow.value);
+          // Crossfade from the previous slide's theme to the current
+          // slide's theme as `_colorTransition` runs 0 -> 1. At rest
+          // (value == 1, the steady state between slide changes) this is
+          // simply the current slide's colors -- deterministic, never
+          // randomized.
+          final fromColors = _bannerColorsFor(_previousIndex, isDark);
+          final toColors = _bannerColorsFor(_index, isDark);
+          final colorT = Curves.easeInOut.transform(_colorTransition.value);
+          final bannerColors = List.generate(
+            toColors.length,
+            (i) => Color.lerp(fromColors[i], toColors[i], colorT)!,
+          );
           return Container(
             height: 156,
             decoration: BoxDecoration(
@@ -208,18 +304,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                       gradient: LinearGradient(
                         begin: Alignment(-1 + _drift.value * 0.35, -1),
                         end: Alignment(1.2 - _drift.value * 0.25, 1.1),
-                        colors: isDark
-                            ? const [
-                                Color(0xFF075E54),
-                                Color(0xFF0E7490),
-                                Color(0xFF1E3A8A),
-                              ]
-                            : const [
-                                Color(0xFF008F7A),
-                                Color(0xFF14B8A6),
-                                Color(0xFF38BDF8),
-                                Color(0xFF818CF8),
-                              ],
+                        colors: bannerColors,
                       ),
                     ),
                   ),
@@ -240,7 +325,8 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                         height: 180,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.10 + glowT * 0.06),
+                          color: Colors.white
+                              .withValues(alpha: 0.10 + glowT * 0.06),
                         ),
                       ),
                     ),
@@ -248,9 +334,44 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                   PageView.builder(
                     controller: _pageController,
                     itemCount: slides.length,
-                    onPageChanged: (i) => setState(() => _index = i),
-                    itemBuilder: (context, i) =>
-                        _BannerCopy(slide: slides[i], arrow: _arrow.value),
+                    onPageChanged: _onPageChanged,
+                    itemBuilder: (context, i) {
+                      final slide = slides[i];
+                      final hasImage =
+                          slide.imageUrl != null && slide.imageUrl!.isNotEmpty;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Real per-banner image (CMS-authored), when this
+                          // slide has one -- each banner shows its own
+                          // picture instead of every slide looking the
+                          // same. Slides with no backing image (coupons,
+                          // the no-data fallback) simply skip this and show
+                          // the animated color background underneath.
+                          if (hasImage) ...[
+                            AppNetworkImage(
+                              url: slide.imageUrl!,
+                              fit: BoxFit.cover,
+                            ),
+                            // Scrim so the existing white text/CTA stay
+                            // readable over an arbitrary photo.
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Color(0xB3000000),
+                                    Color(0x40000000),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          _BannerCopy(slide: slide, arrow: _arrow.value),
+                        ],
+                      );
+                    },
                   ),
                   if (slides.length > 1)
                     Positioned(
@@ -389,8 +510,9 @@ class _ParticlePainter extends CustomPainter {
     for (var i = 0; i < count; i++) {
       final seed = i * 0.137;
       final x = (seed * 1.7 + progress * (0.18 + (i % 3) * 0.04)) % 1.0;
-      final y = ((0.2 + seed) + math.sin((progress + seed) * math.pi * 2) * 0.08) %
-          1.0;
+      final y =
+          ((0.2 + seed) + math.sin((progress + seed) * math.pi * 2) * 0.08) %
+              1.0;
       final r = 1.6 + (i % 4) * 0.7 + glow * 0.6;
       paint.color = Colors.white.withValues(
         alpha: 0.12 + (i % 5) * 0.04 + glow * 0.08,

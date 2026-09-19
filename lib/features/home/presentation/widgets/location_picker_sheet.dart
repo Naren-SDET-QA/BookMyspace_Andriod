@@ -170,202 +170,211 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Select location',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: gps.isBusy ? null : _useGps,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 48),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  icon: gps.isBusy
-                      ? const _GpsPulseIcon()
-                      : const Icon(Icons.my_location_rounded),
-                  label: Text(
-                    gps.isBusy
-                        ? 'Getting your location…'
-                        : 'Use my current location',
-                  ),
-                ),
-              ),
-              if (gps.isBusy) ...[
-                const SizedBox(height: 10),
-                const _GpsProgressCard(),
-              ],
-              if (gps.isFailure) ...[
-                const SizedBox(height: 10),
-                _GpsFailureCard(
-                  phase: gps.phase,
-                  message: gps.message,
-                  onRetry: _useGps,
-                  onOpenSettings: () =>
-                      ref.read(gpsSessionProvider.notifier).openSettings(),
-                  onChooseCity: () => _scrollTo(_citySectionKey),
-                  onEnterPin: () {
-                    _scrollTo(_pinSectionKey);
-                    _pinFocus.requestFocus();
-                  },
-                ),
-              ],
-              if (gps.isSuccess && gps.fix != null) ...[
-                const SizedBox(height: 10),
-                _GpsSuccessCard(
-                  fix: gps.fix!,
-                  onApply: () => _applyGps(gps.fix!),
-                ),
-              ],
-              const SizedBox(height: 16),
-              KeyedSubtree(
-                key: _pinSectionKey,
-                child: const Text(
-                  'Find by Indian PIN code',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _pinController,
-                      focusNode: _pinFocus,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        counterText: '',
-                        hintText: '6-digit PIN',
-                        border: OutlineInputBorder(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Select location',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: gps.isBusy ? null : _useGps,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 48),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                        icon: gps.isBusy
+                            ? const _GpsPulseIcon()
+                            : const Icon(Icons.my_location_rounded),
+                        label: Text(
+                          gps.isBusy
+                              ? 'Getting your location…'
+                              : 'Use my current location',
+                        ),
                       ),
-                      onSubmitted: (_) => _lookupPin(),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.tonal(
-                    onPressed: _pinResult.status == PinLookupStatus.loading
-                        ? null
-                        : _lookupPin,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(88, 48),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    child: _pinResult.status == PinLookupStatus.loading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Lookup'),
-                  ),
-                ],
-              ),
-              if (_pinResult.status != PinLookupStatus.idle) ...[
-                const SizedBox(height: 8),
-                _PinStatusCard(
-                  result: _pinResult,
-                  selected: _selectedOffice,
-                  onSelect: (office) =>
-                      setState(() => _selectedOffice = office),
-                  onRetry: _lookupPin,
-                  onApply: _selectedOffice != null ? _applyPin : null,
-                ),
-              ],
-              const SizedBox(height: 16),
-              const Text(
-                'Radius preference (used when GPS is available):',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: radii.map((km) {
-                  return ChoiceChip(
-                    selected: location.radiusKm == km,
-                    label: Text('$km km'),
-                    onSelected: (selected) {
-                      if (selected) {
-                        ref
-                            .read(discoveryLocationProvider.notifier)
-                            .setRadiusKm(km);
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              KeyedSubtree(
-                key: _citySectionKey,
-                child: const Text(
-                  'Cities from listed venues',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 8),
-              citiesAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, _) => ErrorView(
-                  message: error.toString(),
-                  onRetry: () => ref.invalidate(listedVenueCitiesProvider),
-                ),
-                data: (cities) {
-                  if (cities.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.location_off_outlined,
-                      title: 'No listed cities yet',
-                      message: 'Cities appear here from real venue listings.',
-                    );
-                  }
-                  return Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.clear_all_rounded),
-                        title: const Text('All cities'),
-                        onTap: () {
-                          ref
-                              .read(discoveryLocationProvider.notifier)
-                              .setCity(null);
-                          Navigator.pop(context);
+                    if (gps.isBusy) ...[
+                      const SizedBox(height: 10),
+                      const _GpsProgressCard(),
+                    ],
+                    if (gps.isFailure) ...[
+                      const SizedBox(height: 10),
+                      _GpsFailureCard(
+                        phase: gps.phase,
+                        message: gps.message,
+                        onRetry: _useGps,
+                        onOpenSettings: () => ref
+                            .read(gpsSessionProvider.notifier)
+                            .openSettings(),
+                        onChooseCity: () => _scrollTo(_citySectionKey),
+                        onEnterPin: () {
+                          _scrollTo(_pinSectionKey);
+                          _pinFocus.requestFocus();
                         },
                       ),
-                      ...cities.map((city) {
-                        final selected = location.city == city &&
-                            location.source == DiscoveryLocationSource.city;
-                        return ListTile(
-                          leading: const Icon(Icons.location_on_outlined),
-                          title: Text(city),
-                          trailing: selected
-                              ? const Icon(Icons.check_circle,
-                                  color: AppTheme.brand)
-                              : null,
-                          onTap: () {
-                            ref
-                                .read(discoveryLocationProvider.notifier)
-                                .setCity(city);
-                            Navigator.pop(context);
+                    ],
+                    if (gps.isSuccess && gps.fix != null) ...[
+                      const SizedBox(height: 10),
+                      _GpsSuccessCard(
+                        fix: gps.fix!,
+                        onApply: () => _applyGps(gps.fix!),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    KeyedSubtree(
+                      key: _pinSectionKey,
+                      child: const Text(
+                        'Find by Indian PIN code',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _pinController,
+                            focusNode: _pinFocus,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            decoration: const InputDecoration(
+                              counterText: '',
+                              hintText: '6-digit PIN',
+                              border: OutlineInputBorder(),
+                            ),
+                            onSubmitted: (_) => _lookupPin(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          onPressed:
+                              _pinResult.status == PinLookupStatus.loading
+                                  ? null
+                                  : _lookupPin,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(88, 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                          ),
+                          child: _pinResult.status == PinLookupStatus.loading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Lookup'),
+                        ),
+                      ],
+                    ),
+                    if (_pinResult.status != PinLookupStatus.idle) ...[
+                      const SizedBox(height: 8),
+                      _PinStatusCard(
+                        result: _pinResult,
+                        selected: _selectedOffice,
+                        onSelect: (office) =>
+                            setState(() => _selectedOffice = office),
+                        onRetry: _lookupPin,
+                        onApply: _selectedOffice != null ? _applyPin : null,
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Radius preference (used when GPS is available):',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: radii.map((km) {
+                        return ChoiceChip(
+                          selected: location.radiusKm == km,
+                          label: Text('$km km'),
+                          onSelected: (selected) {
+                            if (selected) {
+                              ref
+                                  .read(discoveryLocationProvider.notifier)
+                                  .setRadiusKm(km);
+                            }
                           },
                         );
-                      }),
-                    ],
-                  );
-                },
-              ),
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    KeyedSubtree(
+                      key: _citySectionKey,
+                      child: const Text(
+                        'Cities from listed venues',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    citiesAsync.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (error, _) => ErrorView(
+                        message: error.toString(),
+                        onRetry: () =>
+                            ref.invalidate(listedVenueCitiesProvider),
+                      ),
+                      data: (cities) {
+                        if (cities.isEmpty) {
+                          return const EmptyState(
+                            icon: Icons.location_off_outlined,
+                            title: 'No listed cities yet',
+                            message:
+                                'Cities appear here from real venue listings.',
+                          );
+                        }
+                        return Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.clear_all_rounded),
+                              title: const Text('All cities'),
+                              onTap: () {
+                                ref
+                                    .read(discoveryLocationProvider.notifier)
+                                    .setCity(null);
+                                Navigator.pop(context);
+                              },
+                            ),
+                            ...cities.map((city) {
+                              final selected = location.city == city &&
+                                  location.source ==
+                                      DiscoveryLocationSource.city;
+                              return ListTile(
+                                leading: const Icon(Icons.location_on_outlined),
+                                title: Text(city),
+                                trailing: selected
+                                    ? const Icon(Icons.check_circle,
+                                        color: AppTheme.violet)
+                                    : null,
+                                onTap: () {
+                                  ref
+                                      .read(discoveryLocationProvider.notifier)
+                                      .setCity(city);
+                                  Navigator.pop(context);
+                                },
+                              );
+                            }),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -376,16 +385,15 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                 width: double.infinity,
                 child: FilledButton(
                   key: Key(
-                    canApplyGps ? 'apply_gps_location_footer' : 'apply_pin_location_footer',
+                    canApplyGps
+                        ? 'apply_gps_location_footer'
+                        : 'apply_pin_location_footer',
                   ),
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 52)),
-                  onPressed: canApplyGps
-                      ? () => _applyGps(gps.fix!)
-                      : _applyPin,
+                  onPressed:
+                      canApplyGps ? () => _applyGps(gps.fix!) : _applyPin,
                   child: Text(
-                    canApplyGps
-                        ? 'Apply this location'
-                        : 'Apply PIN location',
+                    canApplyGps ? 'Apply this location' : 'Apply PIN location',
                   ),
                 ),
               ),
@@ -436,9 +444,9 @@ class _GpsProgressCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.brand.withValues(alpha: 0.08),
+        color: AppTheme.violet.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.brand.withValues(alpha: 0.2)),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [

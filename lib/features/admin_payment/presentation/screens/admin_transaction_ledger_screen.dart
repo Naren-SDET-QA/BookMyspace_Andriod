@@ -37,8 +37,7 @@ class AdminTransactionLedgerScreen extends ConsumerWidget {
               onRefresh: () async =>
                   ref.refresh(transactionLedgerProvider.future),
               child: pageAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => ErrorView(
                   message: error.toString(),
                   onRetry: () => ref.invalidate(transactionLedgerProvider),
@@ -119,7 +118,8 @@ class _LedgerBody extends StatelessWidget {
                   cells: [
                     DataCell(Text(tx.bookingReference)),
                     DataCell(Text(tx.venueName ?? '-')),
-                    DataCell(Text('${tx.currency} ${tx.amount.toStringAsFixed(2)}')),
+                    DataCell(
+                        Text('${tx.currency} ${tx.amount.toStringAsFixed(2)}')),
                     DataCell(PaymentStatusChip(
                       label: tx.paymentStatus,
                       tone: toneForPaymentStatus(tx.paymentStatus),
@@ -187,8 +187,9 @@ class _PaginationBar extends StatelessWidget {
                 Text('${page.page} / ${page.totalPages}'),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed:
-                      page.hasNextPage ? () => onPageChanged(page.page + 1) : null,
+                  onPressed: page.hasNextPage
+                      ? () => onPageChanged(page.page + 1)
+                      : null,
                 ),
               ],
             ),

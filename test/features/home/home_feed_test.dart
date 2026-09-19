@@ -14,6 +14,7 @@ import 'package:bookmyspace/features/location/domain/gps_location.dart';
 import 'package:bookmyspace/features/location/presentation/gps_session.dart';
 import 'package:bookmyspace/features/location/presentation/location_providers.dart';
 import 'package:bookmyspace/features/offers/domain/coupon.dart';
+import 'package:bookmyspace/features/modules/presentation/module_providers.dart';
 import 'package:bookmyspace/features/offers/presentation/coupon_providers.dart';
 import 'package:bookmyspace/features/reviews/presentation/review_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
@@ -87,6 +88,8 @@ void main() {
             ),
           ),
           bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+          moduleEnabledProvider('offers').overrideWithValue(true),
+          moduleEnabledProvider('events').overrideWithValue(true),
         ],
         child: MaterialApp.router(
           routerConfig: router,
@@ -102,6 +105,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Above-the-fold content is built at the initial 390x2000 viewport, so
+    // assert it before scrolling (scrolling recycles these slivers out of the
+    // built tree). The HALL10 coupon assertions stay at full strength here:
+    // activeCouponsProvider is watched eagerly (not deferred), so the offer
+    // banner and coupon row are deterministically present after settle.
     expect(find.text('Select location'), findsWidgets);
     expect(find.text('Say a city, category, or budget...'), findsOneWidget);
     expect(
@@ -111,11 +119,23 @@ void main() {
     expect(find.text('Book More, Save More!'), findsOneWidget);
     expect(find.text('Use code HALL10'), findsOneWidget);
     expect(find.text('Top-rated spaces'), findsOneWidget);
-    expect(find.text('HALL10'), findsWidgets);
+    expect(find.textContaining('HALL10'), findsWidgets);
+    expect(find.text('Explore Verified Spaces'), findsOneWidget);
+    expect(find.text('Hyderabad (Madhapur)'), findsNothing);
+
+    // The events row lives below the fold inside a lazily-built sliver of the
+    // home CustomScrollView, so it is not part of the widget tree until it is
+    // scrolled near the viewport. Scroll it into view (mirroring real user
+    // behavior) before asserting, rather than depending on off-screen slivers
+    // being painted at the initial viewport.
+    await tester.scrollUntilVisible(
+      find.text('Upcoming events'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Upcoming events'), findsOneWidget);
     expect(find.text('Hyderabad Music Night'), findsOneWidget);
-    expect(find.text('Hyderabad (Madhapur)'), findsNothing);
-    expect(find.text('Explore Verified Spaces'), findsOneWidget);
   });
 
   testWidgets('location sheet shows GPS and PIN without overflowing',

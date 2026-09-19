@@ -123,8 +123,10 @@ class IndiaPostPinCodeRepository implements PinCodeRepository {
     final offices = officesRaw is List
         ? officesRaw
             .whereType<Map>()
-            .map((row) => PinCodeOffice.fromJson(Map<String, dynamic>.from(row)))
-            .where((office) => office.name.isNotEmpty || office.pincode.isNotEmpty)
+            .map(
+                (row) => PinCodeOffice.fromJson(Map<String, dynamic>.from(row)))
+            .where(
+                (office) => office.name.isNotEmpty || office.pincode.isNotEmpty)
             .toList()
         : const <PinCodeOffice>[];
     if (status == 'empty' || offices.isEmpty) {
@@ -151,7 +153,9 @@ class IndiaPostPinCodeRepository implements PinCodeRepository {
     }
     final row = Map<String, dynamic>.from(decoded.first as Map);
     final officesRaw = row['PostOffice'];
-    if (row['Status'] != 'Success' || officesRaw is! List || officesRaw.isEmpty) {
+    if (row['Status'] != 'Success' ||
+        officesRaw is! List ||
+        officesRaw.isEmpty) {
       return PinLookupResult(
         status: PinLookupStatus.empty,
         pincode: pin,

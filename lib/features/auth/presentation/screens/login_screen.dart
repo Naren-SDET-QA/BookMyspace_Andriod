@@ -34,6 +34,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool get _busy => _loading || _oauthBusy;
 
+  void _goToAuthenticatedDestination() {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+    final location = authenticatedLocationFromLogin(
+      GoRouterState.of(context).uri,
+    );
+    router.go(location);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,7 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _oauthBusy = false;
         _oauthProvider = null;
       });
-      GoRouter.maybeOf(context)?.go(AppRoutes.shell);
+      _goToAuthenticatedDestination();
     } catch (error) {
       if (!mounted) return;
       final cancelled = error is AuthCancelledException;
@@ -108,7 +117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
       if (!mounted) return;
       setState(() => _loading = false);
-      GoRouter.maybeOf(context)?.go(AppRoutes.shell);
+      _goToAuthenticatedDestination();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -197,7 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       setState(() => _loading = false);
-      GoRouter.maybeOf(context)?.go(AppRoutes.shell);
+      _goToAuthenticatedDestination();
     } catch (error) {
       if (mounted) {
         setState(() {

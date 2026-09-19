@@ -27,8 +27,7 @@ class PaymentHealth {
       pendingCount: (json['pending_count'] as num?)?.toInt() ?? 0,
       failedCount: (json['failed_count'] as num?)?.toInt() ?? 0,
       refundedCount: (json['refunded_count'] as num?)?.toInt() ?? 0,
-      capturedAmount:
-          (json['captured_amount'] as num?)?.toDouble() ?? 0,
+      capturedAmount: (json['captured_amount'] as num?)?.toDouble() ?? 0,
       pendingAmount: (json['pending_amount'] as num?)?.toDouble() ?? 0,
       // success_rate is intentionally nullable: when there is no captured or
       // failed activity in the selected range, the backend returns null

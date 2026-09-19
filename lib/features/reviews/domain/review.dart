@@ -43,7 +43,8 @@ class Review {
         updatedAt: json['updated_at'] != null
             ? DateTime.tryParse(json['updated_at'] as String)
             : null,
-        userName: json['user_name'] as String? ?? json['reviewer_name'] as String?,
+        userName:
+            json['user_name'] as String? ?? json['reviewer_name'] as String?,
         ownerReply: json['owner_reply'] as String?,
       );
 

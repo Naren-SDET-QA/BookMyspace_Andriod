@@ -137,11 +137,11 @@ class _ReviewTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor: AppTheme.brand.withValues(alpha: 0.16),
+                  backgroundColor: AppTheme.violet.withValues(alpha: 0.16),
                   child: Text(
                     name[0].toUpperCase(),
                     style: const TextStyle(
-                      color: AppTheme.brandDark,
+                      color: AppTheme.violetDeep,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -159,7 +159,7 @@ class _ReviewTile extends StatelessWidget {
                   const Text(
                     'Verified',
                     style: TextStyle(
-                      color: AppTheme.brand,
+                      color: AppTheme.violet,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),

@@ -62,33 +62,33 @@ class SupabaseVenueSectionRepository implements VenueSectionRepository {
         .eq('venue_id', venueId)
         .order('display_order')
         .asyncMap((rows) async {
-      // Realtime payloads do not include embedded relations, so re-fetch
-      // the type catalog once per emission and join it client-side.
-      final types = await sectionTypes();
-      final typesById = {for (final t in types) t.id: t};
-      return rows.map((row) {
-        final typeId = row['section_type_id'] as String?;
-        final merged = Map<String, dynamic>.from(row);
-        final type = typesById[typeId];
-        if (type != null) {
-          merged['venue_section_types'] = {
-            'id': type.id,
-            'key': type.key,
-            'name': type.name,
-            'description': type.description,
-            'icon': type.icon,
-            'allows_multiple': type.allowsMultiple,
-            'available_subsections': type.availableSubsections
-                .map((s) => {'key': s.key, 'label': s.label})
-                .toList(),
-            'editable_fields': type.editableFields,
-            'is_active': type.isActive,
-            'display_order': type.displayOrder,
-          };
-        }
-        return VenueSection.fromJson(merged);
-      }).toList();
-    });
+          // Realtime payloads do not include embedded relations, so re-fetch
+          // the type catalog once per emission and join it client-side.
+          final types = await sectionTypes();
+          final typesById = {for (final t in types) t.id: t};
+          return rows.map((row) {
+            final typeId = row['section_type_id'] as String?;
+            final merged = Map<String, dynamic>.from(row);
+            final type = typesById[typeId];
+            if (type != null) {
+              merged['venue_section_types'] = {
+                'id': type.id,
+                'key': type.key,
+                'name': type.name,
+                'description': type.description,
+                'icon': type.icon,
+                'allows_multiple': type.allowsMultiple,
+                'available_subsections': type.availableSubsections
+                    .map((s) => {'key': s.key, 'label': s.label})
+                    .toList(),
+                'editable_fields': type.editableFields,
+                'is_active': type.isActive,
+                'display_order': type.displayOrder,
+              };
+            }
+            return VenueSection.fromJson(merged);
+          }).toList();
+        });
   }
 
   @override
@@ -125,8 +125,7 @@ class SupabaseVenueSectionRepository implements VenueSectionRepository {
             'content': section.content,
             'content_i18n': section.contentTranslations,
             'image_url': section.imageUrl.isEmpty ? null : section.imageUrl,
-            'image_path':
-                section.imagePath.isEmpty ? null : section.imagePath,
+            'image_path': section.imagePath.isEmpty ? null : section.imagePath,
             'icon': section.icon,
             'display_order': section.displayOrder,
             'visible_subsections': section.visibleSubsections,
@@ -210,8 +209,7 @@ class SupabaseVenueSectionRepository implements VenueSectionRepository {
       }
       await _client
           .from('venue_sections')
-          .update({'image_url': null, 'image_path': null})
-          .eq('id', section.id);
+          .update({'image_url': null, 'image_path': null}).eq('id', section.id);
     } catch (e) {
       throw app_errors.mapError(e);
     }

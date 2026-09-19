@@ -230,7 +230,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ),
                           IconButton(
                             icon: const Icon(Icons.mic_rounded,
-                                color: AppTheme.brand),
+                                color: AppTheme.violet),
                             onPressed: _openVoiceSearch,
                             tooltip: 'Voice Search',
                           ),
@@ -264,7 +264,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ? Icons.my_location_rounded
                         : Icons.location_on_outlined,
                     size: 18,
-                    color: AppTheme.brand,
+                    color: AppTheme.violet,
                   ),
                   label: Text(
                     [
@@ -273,8 +273,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       if (query.pincode != null &&
                           query.pincode!.trim().isNotEmpty)
                         'PIN ${query.pincode!.trim()}',
-                      if (query.hasCoordinates)
-                        '${query.radiusKm ?? 10} km',
+                      if (query.hasCoordinates) '${query.radiusKm ?? 10} km',
                     ].join(' • '),
                   ),
                 ),
@@ -509,8 +508,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                             label: c.name,
                             emoji: c.icon,
                             selected: _categorySlug == c.slug,
-                            onTap: () =>
-                                setState(() => _categorySlug = c.slug),
+                            onTap: () => setState(() => _categorySlug = c.slug),
                           ),
                         ),
                       ],

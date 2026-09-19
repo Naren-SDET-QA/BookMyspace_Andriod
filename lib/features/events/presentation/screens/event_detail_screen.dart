@@ -126,7 +126,7 @@ class _InfoRow extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppTheme.brand),
+        Icon(icon, size: 18, color: AppTheme.violet),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -151,7 +151,7 @@ class _SeatsCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Card(
-      color: AppTheme.brand.withValues(alpha: 0.06),
+      color: AppTheme.violet.withValues(alpha: 0.06),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -165,7 +165,7 @@ class _SeatsCard extends StatelessWidget {
                         ? l10n.freeEvent
                         : formatInr(event.ticketPrice),
                     style: theme.textTheme.headlineSmall?.copyWith(
-                      color: AppTheme.brand,
+                      color: AppTheme.violet,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -191,7 +191,7 @@ class _SeatsCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.check_circle_rounded,
-                    color: AppTheme.brand,
+                    color: AppTheme.violet,
                     size: 28,
                   ),
                   const SizedBox(height: 4),

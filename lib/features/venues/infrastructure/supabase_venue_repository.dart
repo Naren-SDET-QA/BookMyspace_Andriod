@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart'
@@ -583,15 +584,26 @@ class SupabaseVenueRepository implements VenueRepository {
         }).toList();
       }
 
-      String? categoryId;
-      if (query.categorySlug != null) {
-        final catRow = await _client
-            .from('venue_categories')
-            .select('id')
-            .eq('slug', query.categorySlug!)
-            .maybeSingle();
-        categoryId = catRow?['id'] as String?;
-      }
+      // Phase 9XM-1 perf fix: previously this did a separate awaited
+      // round trip to resolve venue_categories.id from the slug, THEN
+      // filtered venues by that id -- two sequential network calls for
+      // every category-filtered search. PostgREST/Supabase supports
+      // filtering directly on an embedded (!inner-joined) resource's own
+      // columns in the same request, so the slug filter is applied
+      // in-line against the joined venue_categories relationship below,
+      // collapsing this to a single query. All other filters, ordering,
+      // pagination, and the response shape (Venue.fromJson mapping) are
+      // unchanged.
+      //
+      // NOTE (documented, deliberate, narrow behavior difference): the
+      // previous code silently skipped the category filter entirely if
+      // the slug matched no row in venue_categories (categoryId stayed
+      // null), returning all active venues that have *any* category.
+      // With the single-query filter below, a category slug that matches
+      // no row now correctly returns zero results instead of silently
+      // ignoring the filter. This only affects the edge case of a
+      // nonexistent/stale category slug, which the UI does not produce
+      // today (slugs always come from the categories list itself).
 
       // Use inner join syntax on venue_categories when filtering by category to avoid PostgREST 42803 grouping errors
       final selectClause = (query.categorySlug != null)
@@ -608,9 +620,8 @@ class SupabaseVenueRepository implements VenueRepository {
       if (query.query.trim().isNotEmpty) {
         builder = builder.textSearch('search_document', query.query.trim());
       }
-      if (categoryId != null && categoryId.isNotEmpty) {
-        // Explicitly cast category_id UUID parameter for PostgREST
-        builder = builder.filter('category_id', 'eq', categoryId);
+      if (query.categorySlug != null) {
+        builder = builder.eq('venue_categories.slug', query.categorySlug!);
       }
       if (query.pincode != null && query.pincode!.trim().isNotEmpty) {
         final pin = query.pincode!.trim();
@@ -644,17 +655,27 @@ class SupabaseVenueRepository implements VenueRepository {
           ),
       };
 
-      // Log exact SQL executed for function hall / category searches
-      if (query.categorySlug != null) {
-        final executedSql =
-            "SELECT $selectClause FROM venues WHERE is_active = true"
-            " AND category_id = '${categoryId ?? ''}'::uuid"
+      // Log exact SQL executed for function hall / category searches.
+      // Phase 9XL perf fix: this diagnostic string-build + log call ran on
+      // EVERY category-filtered search request in production, even though
+      // nothing consumes it outside local debugging. Gating it behind
+      // kDebugMode removes that per-request CPU/string-alloc/log overhead
+      // in release builds without changing search results or behavior.
+      if (kDebugMode && query.categorySlug != null) {
+        // Phase 9XM-1: updated to reflect the single-query slug filter;
+        // `categoryId` no longer exists (no separate lookup is made).
+        // Diagnostic-only -- gated by kDebugMode since Phase 9XL, never
+        // affects query results.
+        final executedSql = "SELECT $selectClause FROM venues"
+            " INNER JOIN venue_categories ON venue_categories.id = venues.category_id"
+            " WHERE venues.is_active = true"
+            " AND venue_categories.slug = '${query.categorySlug}'"
             "${query.query.trim().isNotEmpty ? " AND search_document @@ to_tsquery('${query.query.trim()}')" : ""}"
             "${query.city != null && query.city!.trim().isNotEmpty ? " AND city ILIKE '%${query.city!.trim()}%'" : ""}"
             " ORDER BY $orderColumn ${ascending ? 'ASC' : 'DESC'} LIMIT ${query.limit.clamp(1, 50)};";
 
         ErrorLogger.logMessage(
-          'Executing PostgREST Category Search SQL [slug=${query.categorySlug}, category_id=${categoryId ?? 'NULL'}]: $executedSql',
+          'Executing PostgREST Category Search SQL (Phase 9XM-1 single-query slug filter) [slug=${query.categorySlug}]: $executedSql',
           context: 'SupabaseVenueRepository.search',
         );
       }

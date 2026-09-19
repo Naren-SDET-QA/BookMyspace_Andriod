@@ -35,7 +35,13 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> signInWithEmailOtp(String email) {
     _ensureConfigured();
-    return _client.auth.signInWithOtp(email: email);
+    return _client.auth.signInWithOtp(
+      email: email,
+      // OTP email templates can also contain a magic link. Configure the
+      // native callback so either form returns to the app and lets the
+      // Supabase SDK restore the session before routing.
+      emailRedirectTo: kIsWeb ? null : oauthRedirectTo,
+    );
   }
 
   @override

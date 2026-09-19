@@ -294,7 +294,7 @@ class _PushControlCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: AppTheme.brand,
+                  backgroundColor: AppTheme.violet,
                   child: const Text('⏰', style: TextStyle(fontSize: 18)),
                 ),
                 const SizedBox(width: 12),
@@ -372,7 +372,7 @@ class _PushControlCard extends StatelessWidget {
                       child: Text(
                         'Copy Token',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: AppTheme.brand,
+                          color: AppTheme.violet,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -489,7 +489,7 @@ class _NotificationTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
           color: isUnread
-              ? AppTheme.brand.withValues(alpha: 0.3)
+              ? AppTheme.violet.withValues(alpha: 0.3)
               : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
@@ -506,7 +506,7 @@ class _NotificationTile extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: isUnread
-                      ? AppTheme.brand.withValues(alpha: 0.15)
+                      ? AppTheme.violet.withValues(alpha: 0.15)
                       : theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -535,7 +535,7 @@ class _NotificationTile extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.brand,
+                              color: AppTheme.violet,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
@@ -563,12 +563,12 @@ class _NotificationTile extends StatelessWidget {
                       Row(
                         children: [
                           Icon(Icons.qr_code_2_rounded,
-                              size: 14, color: AppTheme.brand),
+                              size: 14, color: AppTheme.violet),
                           const SizedBox(width: 4),
                           Text(
                             'Tap to view check-in pass',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: AppTheme.brand,
+                              color: AppTheme.violet,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

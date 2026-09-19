@@ -25,8 +25,7 @@ class SupabaseCouponRepository implements CouponRepository {
           .where((coupon) =>
               coupon.code.isNotEmpty &&
               coupon.discountValue > 0 &&
-              (coupon.endsAt == null ||
-                  coupon.endsAt!.isAfter(DateTime.now())))
+              (coupon.endsAt == null || coupon.endsAt!.isAfter(DateTime.now())))
           .toList();
     } catch (e) {
       throw app_errors.mapError(e);

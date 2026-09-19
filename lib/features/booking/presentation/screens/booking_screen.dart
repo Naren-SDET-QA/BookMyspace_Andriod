@@ -208,7 +208,7 @@ class _VenueHeader extends StatelessWidget {
               avatar: const Icon(
                 Icons.people_alt_rounded,
                 size: 18,
-                color: AppTheme.brand,
+                color: AppTheme.violet,
               ),
               label: Text('${venue.capacity}'),
             ),
@@ -280,11 +280,11 @@ class _DateChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         width: 60,
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.brand : theme.colorScheme.surface,
+          color: isSelected ? AppTheme.violet : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:
-                isSelected ? AppTheme.brand : theme.colorScheme.outlineVariant,
+                isSelected ? AppTheme.violet : theme.colorScheme.outlineVariant,
           ),
         ),
         child: Column(
@@ -399,12 +399,13 @@ class _SlotTile extends StatelessWidget {
 
     return Material(
       color: isSelected
-          ? AppTheme.brand.withValues(alpha: 0.08)
+          ? AppTheme.violet.withValues(alpha: 0.08)
           : theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: isSelected ? AppTheme.brand : theme.colorScheme.outlineVariant,
+          color:
+              isSelected ? AppTheme.violet : theme.colorScheme.outlineVariant,
         ),
       ),
       child: InkWell(
@@ -449,7 +450,7 @@ class _SlotTile extends StatelessWidget {
                     Text(
                       formatInr(slot.priceAmount),
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppTheme.brand,
+                        color: AppTheme.violet,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -463,7 +464,7 @@ class _SlotTile extends StatelessWidget {
                               : Icons.radio_button_unchecked_rounded,
                           size: 18,
                           color: isSelected
-                              ? AppTheme.brand
+                              ? AppTheme.violet
                               : theme.colorScheme.outline,
                         ),
                       ],
@@ -529,7 +530,7 @@ class _ConfirmBar extends StatelessWidget {
                 Text(
                   formatInr(total),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.brand,
+                        color: AppTheme.violet,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -596,7 +597,7 @@ class _SummaryRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: emphasize ? AppTheme.brand : null,
+                color: emphasize ? AppTheme.violet : null,
               ),
             ),
           ),

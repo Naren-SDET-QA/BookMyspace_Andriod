@@ -127,7 +127,7 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
     final Color hoverAccent = widget.accentGradient is LinearGradient &&
             (widget.accentGradient as LinearGradient).colors.isNotEmpty
         ? (widget.accentGradient as LinearGradient).colors.first
-        : AppTheme.brand;
+        : AppTheme.violet;
 
     // Specular border highlights
     final borderColor = _isHovered

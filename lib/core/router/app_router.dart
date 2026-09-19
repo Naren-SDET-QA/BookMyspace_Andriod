@@ -21,6 +21,7 @@ import '../config/app_config.dart';
 import 'search_route.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/booking/domain/booking.dart';
+import '../../features/booking/presentation/booking_providers.dart';
 import '../../features/booking/presentation/screens/booking_screen.dart';
 import '../../features/booking/presentation/screens/booking_success_screen.dart';
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
@@ -105,6 +106,37 @@ abstract class AppRoutes {
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Returns an internal login URL that remembers the protected destination.
+///
+/// Keeping the destination in the query string means a deep link such as
+/// `/bookings` is still the user's destination after authentication. The
+/// value is validated again before it is used, so it cannot become an open
+/// redirect.
+String loginLocationFor(Uri destination) {
+  if (destination.path == AppRoutes.login) return AppRoutes.login;
+  return Uri(
+    path: AppRoutes.login,
+    queryParameters: {'redirect': destination.toString()},
+  ).toString();
+}
+
+/// Returns the safe post-auth destination encoded on the login route.
+String authenticatedLocationFromLogin(Uri loginUri) {
+  final destination = loginUri.queryParameters['redirect'];
+  if (destination == null || destination.isEmpty) return AppRoutes.shell;
+
+  final parsed = Uri.tryParse(destination);
+  if (parsed == null ||
+      parsed.hasScheme ||
+      parsed.hasAuthority ||
+      !parsed.path.startsWith('/') ||
+      parsed.path.startsWith('//') ||
+      parsed.path == AppRoutes.login) {
+    return AppRoutes.shell;
+  }
+  return parsed.toString();
+}
+
 /// Default initial location for the live app router.
 final routerInitialLocationProvider =
     Provider<String>((ref) => AppRoutes.shell);
@@ -177,9 +209,12 @@ GoRouter createAppRouter({
       final isPublic = path == AppRoutes.onboarding || path == AppRoutes.login;
       if (allowUnauthenticatedPreview) return null;
       if (user == null) {
-        return isPublic ? null : AppRoutes.login;
+        return isPublic ? null : loginLocationFor(state.uri);
       }
-      return isPublic ? AppRoutes.shell : null;
+      if (path == AppRoutes.login) {
+        return authenticatedLocationFromLogin(state.uri);
+      }
+      return path == AppRoutes.onboarding ? AppRoutes.shell : null;
     },
     errorBuilder: (context, state) {
       return _UnknownRouteScreen(location: state.uri.path);
@@ -577,15 +612,19 @@ GoRouter createAppRouter({
   );
 }
 
-class _AppShell extends StatelessWidget {
+class _AppShell extends ConsumerWidget {
   const _AppShell({required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final isCompact = MediaQuery.sizeOf(context).width < 600;
+    // Real count of bookings needing the user's attention (pending /
+    // awaiting owner approval) -- see actionableBookingsCountProvider.
+    // Never a fabricated notification number.
+    final actionableBookings = ref.watch(actionableBookingsCountProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
@@ -653,8 +692,18 @@ class _AppShell extends StatelessWidget {
                     label: l10n.navSearch,
                   ),
                   NavigationDestination(
-                    icon: const Icon(Icons.receipt_long_outlined),
-                    selectedIcon: const Icon(Icons.receipt_long_rounded),
+                    icon: actionableBookings > 0
+                        ? Badge(
+                            label: Text('$actionableBookings'),
+                            child: const Icon(Icons.receipt_long_outlined),
+                          )
+                        : const Icon(Icons.receipt_long_outlined),
+                    selectedIcon: actionableBookings > 0
+                        ? Badge(
+                            label: Text('$actionableBookings'),
+                            child: const Icon(Icons.receipt_long_rounded),
+                          )
+                        : const Icon(Icons.receipt_long_rounded),
                     label: l10n.navBookings,
                   ),
                   NavigationDestination(

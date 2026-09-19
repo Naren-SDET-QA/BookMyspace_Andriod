@@ -138,7 +138,7 @@ class AdminCmsScreen extends ConsumerWidget {
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.brand,
+                    backgroundColor: AppTheme.violet,
                   ),
                   onPressed: () => Navigator.pop(context, true),
                   child: const Text('Save'),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/auth_providers.dart';
 
 /// Settings screen: theme, language and account management entry points.
@@ -14,119 +15,122 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.settings)),
-      body: ListView(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.brightness_6_rounded),
-            title: Text(l10n.themeMode),
-            subtitle: Text(themeMode.name.toUpperCase()),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showThemePicker(context, ref),
-          ),
-          ListTile(
-            leading: const Icon(Icons.language_rounded),
-            title: Text(l10n.language),
-            subtitle: Text(locale.languageCode.toUpperCase()),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showLanguagePicker(context, ref),
-          ),
-          ListTile(
-            leading: const Icon(Icons.extension_outlined),
-            title: Text(l10n.featuresHub),
-            subtitle: Text(l10n.featuresHubSubtitle),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.featuresHub),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.notifications_outlined),
-            title: Text(l10n.notifications),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.notifications),
-          ),
-          ListTile(
-            leading: const Icon(Icons.support_agent_rounded),
-            title: Text(l10n.support),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.support),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: Text(l10n.privacyPolicy),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.privacyPolicy),
-          ),
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: Text(l10n.termsAndConditions),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.termsOfService),
-          ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text(l10n.about),
-            onTap: () => _showAboutDialog(context, l10n),
-          ),
-          const Divider(),
-          ListTile(
-            leading: Icon(
-              Icons.delete_forever_outlined,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            title: Text(
-              l10n.deleteAccount,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-            onTap: () => _confirmDeleteAccount(context, ref, l10n),
-          ),
-        ],
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        title: Text(l10n.settings,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-    );
-  }
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        children: [
+          // Appearance section
+          _SectionHeader(label: 'Appearance'),
+          const SizedBox(height: 8),
+          _GlassSettingsTile(
+            icon: Icons.auto_awesome_rounded,
+            iconColor: AppTheme.violet,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.home3dEffects,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      Text(
+                        l10n.home3dEffectsSubtitle,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: ref.watch(home3dEffectsProvider),
+                  onChanged: (enabled) => ref
+                      .read(home3dEffectsProvider.notifier)
+                      .setEnabled(enabled),
+                  activeThumbColor: AppTheme.violet,
+                ),
+              ],
+            ),
+          ),
+          _GlassSettingsTile(
+            icon: Icons.language_rounded,
+            iconColor: AppTheme.violet,
+            onTap: () => _showLanguagePicker(context, ref),
+            title: l10n.language,
+            subtitle: locale.languageCode.toUpperCase(),
+          ),
+          _GlassSettingsTile(
+            icon: Icons.extension_outlined,
+            iconColor: AppTheme.violet,
+            onTap: () => context.push(AppRoutes.featuresHub),
+            title: l10n.featuresHub,
+            subtitle: l10n.featuresHubSubtitle,
+          ),
+          const SizedBox(height: 20),
 
-  void _showThemePicker(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text(l10n.systemTheme),
-              onTap: () {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(ThemeMode.system);
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: Text(l10n.lightTheme),
-              onTap: () {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(ThemeMode.light);
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: Text(l10n.darkTheme),
-              onTap: () {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(ThemeMode.dark);
-                Navigator.pop(sheetContext);
-              },
-            ),
-          ],
-        ),
+          // Support section
+          _SectionHeader(label: 'Support'),
+          const SizedBox(height: 8),
+          _GlassSettingsTile(
+            icon: Icons.notifications_outlined,
+            iconColor: AppTheme.violet,
+            onTap: () => context.push(AppRoutes.notifications),
+            title: l10n.notifications,
+          ),
+          _GlassSettingsTile(
+            icon: Icons.support_agent_rounded,
+            iconColor: AppTheme.violet,
+            onTap: () => context.push(AppRoutes.support),
+            title: l10n.support,
+          ),
+          const SizedBox(height: 20),
+
+          // Legal section
+          _SectionHeader(label: 'Legal'),
+          const SizedBox(height: 8),
+          _GlassSettingsTile(
+            icon: Icons.privacy_tip_outlined,
+            iconColor: AppTheme.violet,
+            onTap: () => context.push(AppRoutes.privacyPolicy),
+            title: l10n.privacyPolicy,
+          ),
+          _GlassSettingsTile(
+            icon: Icons.description_outlined,
+            iconColor: AppTheme.violet,
+            onTap: () => context.push(AppRoutes.termsOfService),
+            title: l10n.termsAndConditions,
+          ),
+          _GlassSettingsTile(
+            icon: Icons.info_outline,
+            iconColor: AppTheme.violet,
+            onTap: () => _showAboutDialog(context, l10n),
+            title: l10n.about,
+          ),
+          const SizedBox(height: 20),
+
+          // Danger zone
+          _SectionHeader(label: 'Account'),
+          const SizedBox(height: 8),
+          _GlassSettingsTile(
+            icon: Icons.delete_forever_outlined,
+            iconColor: theme.colorScheme.error,
+            onTap: () => _confirmDeleteAccount(context, ref, l10n),
+            title: l10n.deleteAccount,
+            titleColor: theme.colorScheme.error,
+          ),
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }
@@ -278,5 +282,123 @@ class SettingsScreen extends ConsumerWidget {
         }
       }
     }
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+    );
+  }
+}
+
+class _GlassSettingsTile extends StatelessWidget {
+  const _GlassSettingsTile({
+    required this.icon,
+    required this.iconColor,
+    this.onTap,
+    this.title,
+    this.subtitle,
+    this.titleColor,
+    this.child,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback? onTap;
+  final String? title;
+  final String? subtitle;
+  final Color? titleColor;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 19),
+                ),
+                const SizedBox(width: 12),
+                if (child != null)
+                  Expanded(child: child!)
+                else
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (title != null)
+                          Text(
+                            title!,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: titleColor,
+                            ),
+                          ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                if (onTap != null && child == null)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

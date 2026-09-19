@@ -180,8 +180,8 @@ class _OwnerCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: AppTheme.brand.withValues(alpha: 0.12),
-              child: const Icon(Icons.person_rounded, color: AppTheme.brand),
+              backgroundColor: AppTheme.violet.withValues(alpha: 0.12),
+              child: const Icon(Icons.person_rounded, color: AppTheme.violet),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -234,7 +234,7 @@ class _QuickAction extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(icon, size: 24, color: AppTheme.brand),
+              Icon(icon, size: 24, color: AppTheme.violet),
               const SizedBox(width: 16),
               Text(
                 label,

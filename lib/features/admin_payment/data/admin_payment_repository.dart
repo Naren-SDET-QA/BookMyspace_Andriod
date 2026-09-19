@@ -80,11 +80,14 @@ class SupabaseAdminPaymentRepository implements AdminPaymentRepository {
       );
       final rows = (response as List?) ?? const [];
       final items = rows
-          .map((row) => PaymentTransaction.fromJson(row as Map<String, dynamic>))
+          .map(
+              (row) => PaymentTransaction.fromJson(row as Map<String, dynamic>))
           .toList();
       final totalCount = items.isEmpty
           ? 0
-          : ((rows.first as Map<String, dynamic>)['total_count'] as num?)?.toInt() ?? 0;
+          : ((rows.first as Map<String, dynamic>)['total_count'] as num?)
+                  ?.toInt() ??
+              0;
       return PaymentTransactionPage(
         items: items,
         totalCount: totalCount,

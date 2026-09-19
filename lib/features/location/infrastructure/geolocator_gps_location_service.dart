@@ -40,8 +40,8 @@ class GeolocatorGpsLocationService implements GpsLocationService {
       emit(GpsPhase.checkingService);
       final bool enabled;
       try {
-        enabled = await Geolocator.isLocationServiceEnabled()
-            .timeout(_probeTimeout);
+        enabled =
+            await Geolocator.isLocationServiceEnabled().timeout(_probeTimeout);
       } on TimeoutException {
         return const GpsResult(
           status: GpsRequestStatus.timeout,
