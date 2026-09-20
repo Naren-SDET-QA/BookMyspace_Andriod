@@ -168,7 +168,8 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
                                     template: template,
                                     selectedSlot: _selectedSlot,
                                     onAvailability: _openAvailability,
-                                    onBook: venue.isActive ? _openBooking : null,
+                                    onBook:
+                                        venue.isActive ? _openBooking : null,
                                     onCall: showCall ? _call : null,
                                     onChat: showChat ? _chat : null,
                                   ),
@@ -554,7 +555,11 @@ class _ListingBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          VenueReviewsSection(venueId: venue.id),
+          VenueReviewsSection(
+            venueId: venue.id,
+            avgRating: venue.avgRating,
+            ratingCount: venue.ratingCount,
+          ),
           const SizedBox(height: 20),
           Text(l10n.address, style: theme.textTheme.titleMedium),
           const SizedBox(height: 10),
@@ -591,26 +596,31 @@ class _PriceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = categoryAccentColor(venue.category?.parentSection);
-    return Row(
-      children: [
-        if (venue.hasDiscount) ...[
+    // FittedBox keeps original/current price on one line even inside the
+    // narrow sticky summary column instead of overflowing it.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        children: [
+          if (venue.hasDiscount) ...[
+            Text(
+              formatInr(venue.originalPrice!),
+              style: theme.textTheme.titleSmall?.copyWith(
+                decoration: TextDecoration.lineThrough,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           Text(
-            formatInr(venue.originalPrice!),
-            style: theme.textTheme.titleSmall?.copyWith(
-              decoration: TextDecoration.lineThrough,
-              color: theme.colorScheme.onSurfaceVariant,
+            formatInr(venue.price),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(width: 8),
         ],
-        Text(
-          formatInr(venue.price),
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: accent,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
