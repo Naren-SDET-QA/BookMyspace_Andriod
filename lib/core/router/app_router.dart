@@ -33,6 +33,7 @@ import '../../features/courses/presentation/screens/institute_detail_screen.dart
 import '../../features/courses/presentation/screens/my_courses_screen.dart';
 import '../../features/courses/presentation/screens/owner_course_editor_screen.dart';
 import '../../features/courses/presentation/screens/owner_courses_screen.dart';
+import '../../features/courses/presentation/screens/owner_institute_dashboard_screen.dart';
 import '../../features/courses/domain/course.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
@@ -109,6 +110,7 @@ abstract class AppRoutes {
   static const ownerVenueCreate = '/owner/venues/create';
   static const ownerBookings = '/owner/bookings';
   static const ownerCourses = '/owner/courses';
+  static const ownerInstituteDashboard = '/owner/institute';
   static const ownerCourseCreate = '/owner/courses/create';
   static const ownerCourseEdit = '/owner/courses/edit';
   static const privacyPolicy = '/privacy';
@@ -325,7 +327,9 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.education,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const EducationHubScreen(),
+        builder: (context, state) => EducationHubScreen(
+          initialQuery: state.uri.queryParameters['q'] ?? '',
+        ),
       ),
       GoRoute(
         path: AppRoutes.instituteDetails,
@@ -527,6 +531,18 @@ GoRouter createAppRouter({
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.venueOwner},
           child: OwnerBookingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerInstituteDashboard,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {
+            AppRole.instituteOwner,
+            AppRole.administrator,
+            AppRole.superAdministrator,
+          },
+          child: OwnerInstituteDashboardScreen(),
         ),
       ),
       GoRoute(

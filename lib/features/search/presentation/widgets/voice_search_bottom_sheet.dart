@@ -58,6 +58,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
     'Gents PG near Hitec City',
     'Football turf with lights',
     'Clear filters',
+    'Coding bootcamp in Hyderabad',
+    'Dance class near me',
   ];
 
   @override

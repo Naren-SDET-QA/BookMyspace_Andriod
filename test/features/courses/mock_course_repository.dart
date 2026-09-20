@@ -9,6 +9,7 @@ class MockCourseRepository implements CourseRepository {
   List<Institute> instituteList = const [];
   List<CourseFaculty> facultyList = const [];
   List<CourseFeedback> feedbackList = const [];
+  List<CourseDemoRegistration> admissions = const [];
   int _idSeq = 0;
 
   bool failList = false;
@@ -91,7 +92,13 @@ class MockCourseRepository implements CourseRepository {
   }
 
   @override
-  Future<void> enroll({required String batchId}) async {
+  Future<CourseEnrollmentRecord> enroll({
+    required String batchId,
+    bool isTrial = false,
+    String studentName = '',
+    String contactPhone = '',
+    DateTime? preferredStart,
+  }) async {
     if (failEnroll) throw Exception('enroll failed');
     lastEnrollBatchId = batchId;
     calls.add('enroll:$batchId');
@@ -103,7 +110,9 @@ class MockCourseRepository implements CourseRepository {
                   (batch) => batch.id == batchId
                       ? batch.copyWith(
                           userEnrolled: true,
-                          enrolledCount: batch.enrolledCount + 1,
+                          enrolledCount: isTrial
+                              ? batch.enrolledCount
+                              : batch.enrolledCount + 1,
                         )
                       : batch,
                 )
@@ -111,6 +120,15 @@ class MockCourseRepository implements CourseRepository {
           ),
         )
         .toList();
+    return CourseEnrollmentRecord(
+      id: 'enr-${++_idSeq}',
+      batchId: batchId,
+      status: isTrial ? 'trial' : 'enrolled',
+      isTrial: isTrial,
+      admissionCode: 'ADM-TEST$_idSeq',
+      studentName: studentName,
+      contactPhone: contactPhone,
+    );
   }
 
   @override
@@ -287,6 +305,14 @@ class MockCourseRepository implements CourseRepository {
     required DateTime startsOn,
     required int capacity,
     bool isActive = true,
+    String timing = '',
+    DateTime? endsOn,
+    double feeAmount = 0,
+    CourseMode? mode,
+    bool waitlistEnabled = false,
+    bool admissionsOpen = true,
+    String subject = '',
+    String categorySlug = '',
   }) async {
     calls.add('saveBatch:$courseId:$label');
     final id = batchId ?? 'nb${_idSeq++}';
@@ -298,6 +324,14 @@ class MockCourseRepository implements CourseRepository {
       capacity: capacity,
       enrolledCount: 0,
       isActive: isActive,
+      timing: timing,
+      endsOn: endsOn,
+      feeAmount: feeAmount,
+      mode: mode,
+      waitlistEnabled: waitlistEnabled,
+      admissionsOpen: admissionsOpen,
+      subject: subject,
+      categorySlug: categorySlug,
     );
     courses = courses.map((course) {
       if (course.id != courseId) return course;
@@ -310,6 +344,73 @@ class MockCourseRepository implements CourseRepository {
       }
       return course.copyWith(batches: batches);
     }).toList();
+  }
+
+  @override
+  Future<List<CourseDemoRegistration>> ownerAdmissions() async => admissions;
+
+  @override
+  Future<void> setAdmissionStatus({
+    required String registrationId,
+    required String status,
+  }) async {
+    calls.add('admission:$registrationId:$status');
+    admissions = admissions
+        .map(
+          (item) => item.id == registrationId
+              ? CourseDemoRegistration(
+                  id: item.id,
+                  courseId: item.courseId,
+                  studentName: item.studentName,
+                  mobile: item.mobile,
+                  email: item.email,
+                  preferredBatch: item.preferredBatch,
+                  note: item.note,
+                  status: status,
+                )
+              : item,
+        )
+        .toList();
+  }
+
+  @override
+  Future<void> updateInstitute({
+    required String instituteId,
+    String? address,
+    String? city,
+    String? phone,
+    String? timings,
+    List<String>? amenities,
+  }) async {
+    calls.add('updateInstitute:$instituteId');
+    instituteList = instituteList
+        .map(
+          (item) => item.id == instituteId
+              ? Institute(
+                  id: item.id,
+                  orgId: item.orgId,
+                  name: item.name,
+                  description: item.description,
+                  logoImage: item.logoImage,
+                  isVerified: item.isVerified,
+                  type: item.type,
+                  categoryId: item.categoryId,
+                  address: address ?? item.address,
+                  city: city ?? item.city,
+                  latitude: item.latitude,
+                  longitude: item.longitude,
+                  phone: phone ?? item.phone,
+                  email: item.email,
+                  whatsapp: item.whatsapp,
+                  website: item.website,
+                  mode: item.mode,
+                  timingsText: timings ?? item.timingsText,
+                  images: item.images,
+                  amenities: amenities ?? item.amenities,
+                )
+              : item,
+        )
+        .toList();
   }
 
   @override

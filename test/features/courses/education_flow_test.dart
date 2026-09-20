@@ -110,11 +110,34 @@ void main() {
     expect(find.byType(EducationHubScreen), findsOneWidget);
     // Institute name appears in multiple sections (featured + all), so use findsAtLeastNWidgets
     expect(find.text('Nexus Learning Institute'), findsAtLeastNWidgets(1));
-    expect(find.text('Institutes'), findsOneWidget);
-    // Institute type label also appears in multiple sections, so use findsAtLeastNWidgets
     expect(find.textContaining('Private'), findsAtLeastNWidgets(1));
-    // Verify the institute card is accessible from the all-institutes section
-    expect(find.byKey(const Key('all-institutes-i1')), findsOneWidget);
+    expect(find.byKey(const Key('featured-institute-i1')), findsOneWidget);
+    expect(find.text('Education & Institutes'), findsOneWidget);
+    expect(find.text('Search Available'), findsOneWidget);
+    expect(find.text('44% OFF'), findsNothing);
+    expect(find.textContaining('4.8'), findsNothing);
+  });
+
+  testWidgets('education hub discovery layout fits 320 and 1024', (
+    tester,
+  ) async {
+    final repo = MockCourseRepository()
+      ..instituteList = [MockCourseRepository.sampleInstitute()];
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final size in const [Size(320, 640), Size(1024, 800)]) {
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(_routerApp(repo, location: AppRoutes.education));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Courses'), findsOneWidget);
+      expect(find.text('Education & Institutes'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('all-institutes-i1')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Nexus Learning Institute'), findsAtLeastNWidgets(1));
+    }
   });
 
   testWidgets('education hub shows empty state with no institutes', (
@@ -152,7 +175,8 @@ void main() {
     await tester.pumpWidget(_routerApp(repo, location: AppRoutes.education));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Nexus Learning Institute'));
+    await _scrollTo(tester, find.byKey(const Key('all-institutes-i1')));
+    await tester.tap(find.byKey(const Key('all-institutes-i1')));
     await tester.pumpAndSettle();
 
     expect(find.byType(InstituteDetailScreen), findsOneWidget);

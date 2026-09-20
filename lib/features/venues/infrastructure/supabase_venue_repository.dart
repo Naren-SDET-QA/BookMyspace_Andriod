@@ -743,10 +743,12 @@ class SupabaseVenueRepository implements VenueRepository {
   @override
   Future<Venue> venueById(String id) async {
     try {
+      // _venueSelect already embeds venue_facilities; PostgREST rejects a
+      // duplicate embed of the same relation in one select (error 42803).
       final row = await _client
           .from('venues')
           .select(
-            '$_venueSelect, venue_facilities (facility, is_available), '
+            '$_venueSelect, '
             'venue_operating_hours (day_of_week, opens_at, closes_at, is_closed)',
           )
           .eq('id', id)

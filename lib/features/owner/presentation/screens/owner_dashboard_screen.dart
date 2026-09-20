@@ -135,6 +135,11 @@ class _OwnerDashboardBody extends ConsumerWidget {
         ),
         _QuickAction(
           icon: Icons.school_rounded,
+          label: 'Institute dashboard',
+          onTap: () => context.push(AppRoutes.ownerInstituteDashboard),
+        ),
+        _QuickAction(
+          icon: Icons.menu_book_rounded,
           label: 'My courses',
           onTap: () => context.push(AppRoutes.ownerCourses),
         ),

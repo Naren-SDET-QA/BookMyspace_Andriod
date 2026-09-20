@@ -9,10 +9,35 @@ abstract interface class CourseRepository {
   Future<Course> courseDetail(String courseId);
 
   /// Enrolls the current user into a batch (atomic, capacity-safe).
-  Future<void> enroll({required String batchId});
+  Future<CourseEnrollmentRecord> enroll({
+    required String batchId,
+    bool isTrial = false,
+    String studentName = '',
+    String contactPhone = '',
+    DateTime? preferredStart,
+  });
 
   /// Drops my enrollment from a batch, freeing a seat.
   Future<void> drop({required String batchId});
+
+  /// Owner-visible trial and admission requests for their institutes.
+  Future<List<CourseDemoRegistration>> ownerAdmissions();
+
+  /// Approve or reject a demo/trial admission (`pending` → contacted/cancelled).
+  Future<void> setAdmissionStatus({
+    required String registrationId,
+    required String status,
+  });
+
+  /// Updates institute profile fields the owner is allowed to write.
+  Future<void> updateInstitute({
+    required String instituteId,
+    String? address,
+    String? city,
+    String? phone,
+    String? timings,
+    List<String>? amenities,
+  });
 
   /// All institutes visible to the current role, name-ordered.
   Future<List<Institute>> institutes();
@@ -84,6 +109,14 @@ abstract interface class CourseRepository {
     required DateTime startsOn,
     required int capacity,
     bool isActive,
+    String timing = '',
+    DateTime? endsOn,
+    double feeAmount = 0,
+    CourseMode? mode,
+    bool waitlistEnabled = false,
+    bool admissionsOpen = true,
+    String subject = '',
+    String categorySlug = '',
   });
 
   /// Adds a faculty profile to a course.

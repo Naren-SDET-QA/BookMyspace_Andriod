@@ -557,6 +557,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     VoiceSearchBottomSheet.show(
       context,
       onFilterApplied: (voiceResult) {
+        if (voiceResult.categorySlug == 'institutes_classes') {
+          final query = voiceResult.cleanedSearchQuery.trim();
+          context.go(
+            query.isEmpty
+                ? AppRoutes.education
+                : '${AppRoutes.education}?q=${Uri.encodeQueryComponent(query)}',
+          );
+          return;
+        }
         context.go(
           SearchRouteParams.locationFor(voiceResult.toVenueSearchQuery()),
         );

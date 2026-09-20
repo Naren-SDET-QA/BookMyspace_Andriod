@@ -39,6 +39,8 @@ class VoiceFilterResult {
   final String spokenFeedback;
   final List<VoiceFilterBadge> badges;
 
+  bool get isEducationIntent => categorySlug == 'institutes_classes';
+
   VenueSearchQuery toVenueSearchQuery() {
     if (isClearCommand) {
       return const VenueSearchQuery();
@@ -86,7 +88,22 @@ class VoiceCommandFilterParser {
     final badges = <VoiceFilterBadge>[];
 
     // 2. Category Detection
-    if (_containsAny(
+    if (_containsAny(lower, [
+      'coaching',
+      'tuition',
+      'classes',
+      'dance class',
+      'music class',
+      'institute',
+      'academy',
+      'badminton training',
+      'coding bootcamp',
+      'bootcamp',
+    ])) {
+      categorySlug = 'institutes_classes';
+      badges.add(const VoiceFilterBadge(
+          iconEmoji: '🎓', title: 'Category', value: 'Institutes / Classes'));
+    } else if (_containsAny(
         lower, ['badminton', 'shuttle', 'wooden court', 'synthetic court'])) {
       categorySlug = 'sports_arena';
       badges.add(const VoiceFilterBadge(
@@ -143,18 +160,6 @@ class VoiceCommandFilterParser {
       categorySlug = 'lodge_rooms';
       badges.add(const VoiceFilterBadge(
           iconEmoji: '🏨', title: 'Category', value: 'Lodge / Rooms'));
-    } else if (_containsAny(lower, [
-      'coaching',
-      'tuition',
-      'classes',
-      'dance class',
-      'music class',
-      'institute',
-      'academy'
-    ])) {
-      categorySlug = 'institutes_classes';
-      badges.add(const VoiceFilterBadge(
-          iconEmoji: '🎓', title: 'Category', value: 'Institutes / Classes'));
     }
 
     // 3. Location / City Detection

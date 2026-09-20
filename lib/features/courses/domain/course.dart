@@ -77,6 +77,7 @@ class Institute {
     this.mode = CourseMode.offline,
     this.timingsText = '',
     this.images = const [],
+    this.amenities = const [],
   });
 
   final String id;
@@ -98,6 +99,7 @@ class Institute {
   final CourseMode mode;
   final String timingsText;
   final List<String> images;
+  final List<String> amenities;
 
   bool get hasContact =>
       phone.isNotEmpty || email.isNotEmpty || whatsapp.isNotEmpty;
@@ -125,6 +127,10 @@ class Institute {
         timingsText: json['timings'] as String? ?? '',
         images:
             (json['images'] as List? ?? const []).whereType<String>().toList(),
+        amenities: (json['amenities'] as List? ?? const [])
+            .map((item) => item.toString())
+            .where((item) => item.isNotEmpty)
+            .toList(),
       );
 }
 
@@ -364,6 +370,15 @@ class CourseBatch {
     required this.enrolledCount,
     this.isActive = true,
     this.userEnrolled = false,
+    this.timing = '',
+    this.endsOn,
+    this.feeAmount = 0,
+    this.mode,
+    this.waitlistEnabled = false,
+    this.waitlistCount = 0,
+    this.admissionsOpen = true,
+    this.subject = '',
+    this.categorySlug = '',
   });
 
   final String id;
@@ -374,6 +389,15 @@ class CourseBatch {
   final int enrolledCount;
   final bool isActive;
   final bool userEnrolled;
+  final String timing;
+  final DateTime? endsOn;
+  final double feeAmount;
+  final CourseMode? mode;
+  final bool waitlistEnabled;
+  final int waitlistCount;
+  final bool admissionsOpen;
+  final String subject;
+  final String categorySlug;
 
   int get seatsLeft {
     final left = capacity - enrolledCount;
@@ -382,22 +406,55 @@ class CourseBatch {
 
   bool get isFull => seatsLeft <= 0;
 
+  bool get isOngoingToday {
+    final today = DateTime.now();
+    final start = DateTime(startsOn.year, startsOn.month, startsOn.day);
+    final end = endsOn == null
+        ? start.add(const Duration(days: 90))
+        : DateTime(endsOn!.year, endsOn!.month, endsOn!.day);
+    final now = DateTime(today.year, today.month, today.day);
+    return !now.isBefore(start) && !now.isAfter(end);
+  }
+
   factory CourseBatch.fromJson(Map<String, dynamic> json) => CourseBatch(
         id: json['id'] as String? ?? '',
         courseId: json['course_id'] as String? ?? '',
-        label: json['label'] as String? ?? '',
+        label: json['label'] as String? ?? json['title'] as String? ?? '',
         startsOn: DateTime.tryParse(json['starts_on'] as String? ?? '') ??
+            DateTime.tryParse(json['start_date'] as String? ?? '') ??
             DateTime(1970),
-        capacity: (json['capacity'] as num?)?.toInt() ?? 0,
+        capacity: (json['capacity'] as num?)?.toInt() ??
+            (json['max_capacity'] as num?)?.toInt() ??
+            0,
         enrolledCount: (json['enrolled_count'] as num?)?.toInt() ?? 0,
         isActive: json['is_active'] as bool? ?? true,
         userEnrolled: json['user_enrolled'] as bool? ?? false,
+        timing: json['timing'] as String? ?? '',
+        endsOn: DateTime.tryParse(json['ends_on'] as String? ?? ''),
+        feeAmount: (json['fee_amount'] as num?)?.toDouble() ?? 0,
+        mode: json['mode'] is String
+            ? CourseMode.fromDb(json['mode'] as String)
+            : null,
+        waitlistEnabled: json['waitlist_enabled'] as bool? ?? false,
+        waitlistCount: (json['waitlist_count'] as num?)?.toInt() ?? 0,
+        admissionsOpen: json['admissions_open'] as bool? ?? true,
+        subject: json['subject'] as String? ?? '',
+        categorySlug: json['category_slug'] as String? ?? '',
       );
 
   CourseBatch copyWith({
     int? enrolledCount,
     bool? userEnrolled,
     bool? isActive,
+    String? timing,
+    DateTime? endsOn,
+    double? feeAmount,
+    CourseMode? mode,
+    bool? waitlistEnabled,
+    int? waitlistCount,
+    bool? admissionsOpen,
+    String? subject,
+    String? categorySlug,
   }) {
     return CourseBatch(
       id: id,
@@ -408,6 +465,15 @@ class CourseBatch {
       enrolledCount: enrolledCount ?? this.enrolledCount,
       isActive: isActive ?? this.isActive,
       userEnrolled: userEnrolled ?? this.userEnrolled,
+      timing: timing ?? this.timing,
+      endsOn: endsOn ?? this.endsOn,
+      feeAmount: feeAmount ?? this.feeAmount,
+      mode: mode ?? this.mode,
+      waitlistEnabled: waitlistEnabled ?? this.waitlistEnabled,
+      waitlistCount: waitlistCount ?? this.waitlistCount,
+      admissionsOpen: admissionsOpen ?? this.admissionsOpen,
+      subject: subject ?? this.subject,
+      categorySlug: categorySlug ?? this.categorySlug,
     );
   }
 }
@@ -462,6 +528,38 @@ class CourseFaq {
         question: json['question'] as String? ?? '',
         answer: json['answer'] as String? ?? '',
         displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Result of `enroll_in_course` / `enroll_in_course_details`.
+class CourseEnrollmentRecord {
+  const CourseEnrollmentRecord({
+    required this.id,
+    required this.batchId,
+    required this.status,
+    this.isTrial = false,
+    this.admissionCode = '',
+    this.studentName = '',
+    this.contactPhone = '',
+  });
+
+  final String id;
+  final String batchId;
+  final String status;
+  final bool isTrial;
+  final String admissionCode;
+  final String studentName;
+  final String contactPhone;
+
+  factory CourseEnrollmentRecord.fromJson(Map<String, dynamic> json) =>
+      CourseEnrollmentRecord(
+        id: json['id'] as String? ?? '',
+        batchId: json['batch_id'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        isTrial: json['is_trial'] as bool? ?? false,
+        admissionCode: json['admission_code'] as String? ?? '',
+        studentName: json['student_name'] as String? ?? '',
+        contactPhone: json['contact_phone'] as String? ?? '',
       );
 }
 

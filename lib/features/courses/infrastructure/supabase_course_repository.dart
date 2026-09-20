@@ -24,8 +24,8 @@ class SupabaseCourseRepository implements CourseRepository {
 
   static const String _extendedCourseSelect = '''
     *,
-    institutes (id, org_id, name, description, logo_image, is_verified, institute_type, category_id, address, city, latitude, longitude, phone, email, whatsapp, website, mode, timings, images),
-    course_batches (id, course_id, label, starts_on, capacity, enrolled_count, is_active),
+    institutes (id, org_id, name, description, logo_image, is_verified, institute_type, category_id, address, city, latitude, longitude, phone, email, whatsapp, website, mode, timings, images, amenities),
+    course_batches (id, course_id, label, starts_on, capacity, enrolled_count, is_active, timing, ends_on, fee_amount, mode, waitlist_enabled, waitlist_count, admissions_open, subject, category_slug),
     course_faculty (id, course_id, name, role, bio, photo_url),
     course_faqs (id, course_id, question, answer, display_order)
   ''';
@@ -212,16 +212,43 @@ class SupabaseCourseRepository implements CourseRepository {
   }
 
   @override
-  Future<void> enroll({required String batchId}) async {
+  Future<CourseEnrollmentRecord> enroll({
+    required String batchId,
+    bool isTrial = false,
+    String studentName = '',
+    String contactPhone = '',
+    DateTime? preferredStart,
+  }) async {
     final userId = _userId;
     if (userId == null) {
       throw const app_errors.AuthException('You must be signed in.');
     }
     try {
-      await _client.rpc<dynamic>(
-        'enroll_in_course',
-        params: {'p_batch_id': batchId, 'p_user_id': userId},
-      );
+      Map<String, dynamic> row;
+      try {
+        final raw = await _client.rpc<dynamic>(
+          'enroll_in_course_details',
+          params: {
+            'p_batch_id': batchId,
+            'p_user_id': userId,
+            'p_is_trial': isTrial,
+            'p_student_name': studentName,
+            'p_contact_phone': contactPhone,
+            'p_preferred_start': preferredStart?.toIso8601String(),
+          },
+        );
+        row = Map<String, dynamic>.from(raw as Map);
+      } on PostgrestException catch (e) {
+        if (!_isMissingRelation(e) && e.code != 'PGRST202') rethrow;
+        final raw = await _client.rpc<dynamic>(
+          'enroll_in_course',
+          params: {'p_batch_id': batchId, 'p_user_id': userId},
+        );
+        row = raw is Map
+            ? Map<String, dynamic>.from(raw)
+            : {'id': '', 'batch_id': batchId, 'status': 'enrolled'};
+      }
+      return CourseEnrollmentRecord.fromJson(row);
     } on PostgrestException catch (e) {
       final message = e.message.toLowerCase();
       if (message.contains('batch full')) {
@@ -496,16 +523,98 @@ class SupabaseCourseRepository implements CourseRepository {
     required DateTime startsOn,
     required int capacity,
     bool isActive = true,
+    String timing = '',
+    DateTime? endsOn,
+    double feeAmount = 0,
+    CourseMode? mode,
+    bool waitlistEnabled = false,
+    bool admissionsOpen = true,
+    String subject = '',
+    String categorySlug = '',
+  }) async {
+    final payload = <String, dynamic>{
+      if (batchId != null) 'id': batchId,
+      'course_id': courseId,
+      'label': label,
+      'starts_on': startsOn.toIso8601String(),
+      'capacity': capacity,
+      'is_active': isActive,
+    };
+    final extended = {
+      ...payload,
+      'timing': timing,
+      'ends_on': endsOn?.toIso8601String(),
+      'fee_amount': feeAmount,
+      if (mode != null) 'mode': mode.dbValue,
+      'waitlist_enabled': waitlistEnabled,
+      'admissions_open': admissionsOpen,
+      'subject': subject,
+      'category_slug': categorySlug,
+    };
+    try {
+      await _client.from('course_batches').upsert(extended);
+    } on PostgrestException catch (e) {
+      if (!_isMissingRelation(e)) throw app_errors.mapError(e);
+      await _client.from('course_batches').upsert(payload);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<List<CourseDemoRegistration>> ownerAdmissions() async {
+    try {
+      final rows = await _client
+          .from('course_demo_registrations')
+          .select()
+          .order('created_at', ascending: false);
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(CourseDemoRegistration.fromJson)
+          .toList();
+    } on PostgrestException catch (e) {
+      if (_isMissingRelation(e)) return const [];
+      throw app_errors.mapError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<void> setAdmissionStatus({
+    required String registrationId,
+    required String status,
   }) async {
     try {
-      await _client.from('course_batches').upsert({
-        if (batchId != null) 'id': batchId,
-        'course_id': courseId,
-        'label': label,
-        'starts_on': startsOn.toIso8601String(),
-        'capacity': capacity,
-        'is_active': isActive,
-      });
+      await _client
+          .from('course_demo_registrations')
+          .update({'status': status}).eq('id', registrationId);
+    } on PostgrestException catch (e) {
+      throw app_errors.mapError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<void> updateInstitute({
+    required String instituteId,
+    String? address,
+    String? city,
+    String? phone,
+    String? timings,
+    List<String>? amenities,
+  }) async {
+    final payload = <String, dynamic>{
+      if (address != null) 'address': address,
+      if (city != null) 'city': city,
+      if (phone != null) 'phone': phone,
+      if (timings != null) 'timings': timings,
+      if (amenities != null) 'amenities': amenities,
+    };
+    if (payload.isEmpty) return;
+    try {
+      await _client.from('institutes').update(payload).eq('id', instituteId);
     } on PostgrestException catch (e) {
       throw app_errors.mapError(e);
     } catch (e) {

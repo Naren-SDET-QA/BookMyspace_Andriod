@@ -89,15 +89,26 @@ class CourseEnrollmentController {
 
   final Ref _ref;
 
-  Future<void> enroll({
+  Future<CourseEnrollmentRecord> enroll({
     required String courseId,
     required String batchId,
+    bool isTrial = false,
+    String studentName = '',
+    String contactPhone = '',
+    DateTime? preferredStart,
   }) async {
-    await _ref.read(courseRepositoryProvider).enroll(batchId: batchId);
+    final record = await _ref.read(courseRepositoryProvider).enroll(
+          batchId: batchId,
+          isTrial: isTrial,
+          studentName: studentName,
+          contactPhone: contactPhone,
+          preferredStart: preferredStart,
+        );
     _ref.invalidate(publishedCoursesProvider);
     _ref.invalidate(courseDetailProvider(courseId));
     _ref.invalidate(myCoursesProvider);
     _ref.invalidate(instituteCoursesProvider);
+    return record;
   }
 
   Future<void> drop({
@@ -224,6 +235,14 @@ class OwnerCourseController {
     required DateTime startsOn,
     required int capacity,
     bool isActive = true,
+    String timing = '',
+    DateTime? endsOn,
+    double feeAmount = 0,
+    CourseMode? mode,
+    bool waitlistEnabled = false,
+    bool admissionsOpen = true,
+    String subject = '',
+    String categorySlug = '',
   }) async {
     await _ref.read(courseRepositoryProvider).saveBatch(
           batchId: batchId,
@@ -232,6 +251,14 @@ class OwnerCourseController {
           startsOn: startsOn,
           capacity: capacity,
           isActive: isActive,
+          timing: timing,
+          endsOn: endsOn,
+          feeAmount: feeAmount,
+          mode: mode,
+          waitlistEnabled: waitlistEnabled,
+          admissionsOpen: admissionsOpen,
+          subject: subject,
+          categorySlug: categorySlug,
         );
     _ref.invalidate(courseDetailProvider(courseId));
     _ref.invalidate(ownerCoursesProvider);
@@ -272,4 +299,10 @@ class OwnerCourseController {
 
 final ownerCourseControllerProvider = Provider<OwnerCourseController>((ref) {
   return OwnerCourseController(ref);
+});
+
+final ownerAdmissionsProvider =
+    FutureProvider<List<CourseDemoRegistration>>((ref) {
+  ref.watch(currentUserProvider);
+  return ref.watch(courseRepositoryProvider).ownerAdmissions();
 });

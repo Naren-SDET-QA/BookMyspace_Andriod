@@ -1148,7 +1148,7 @@ class HomeHorizontalCourses extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Courses',
+                'Explore Top Coaching & Training Academies',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
@@ -1156,8 +1156,8 @@ class HomeHorizontalCourses extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () => context.go(AppRoutes.coursesList),
-              child: const Text('View all'),
+              onPressed: () => context.go(AppRoutes.education),
+              child: const Text('View All Classes'),
             ),
           ],
         ),
@@ -1210,9 +1210,22 @@ class HomeHorizontalCourses extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall,
                                 ),
+                              if (course.batches.isNotEmpty)
+                                Text(
+                                  '${course.batches.fold<int>(0, (sum, batch) => sum + batch.seatsLeft)} seats left',
+                                  style: theme.textTheme.labelSmall,
+                                ),
                               const Spacer(),
                               Row(
                                 children: [
+                                  if (course.mode.name.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: Text(
+                                        course.mode.name.toUpperCase(),
+                                        style: theme.textTheme.labelSmall,
+                                      ),
+                                    ),
                                   Expanded(
                                     child: Text(
                                       formatInr(course.feeAmount),

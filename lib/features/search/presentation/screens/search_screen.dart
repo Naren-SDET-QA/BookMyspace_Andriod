@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/router/search_route.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
@@ -130,6 +131,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     VoiceSearchBottomSheet.show(
       context,
       onFilterApplied: (voiceResult) {
+        if (voiceResult.categorySlug == 'institutes_classes') {
+          final query = voiceResult.cleanedSearchQuery.trim();
+          context.go(
+            query.isEmpty
+                ? AppRoutes.education
+                : '${AppRoutes.education}?q=${Uri.encodeQueryComponent(query)}',
+          );
+          return;
+        }
         final newQuery = voiceResult.toVenueSearchQuery();
         if (voiceResult.isClearCommand) {
           _controller.clear();
