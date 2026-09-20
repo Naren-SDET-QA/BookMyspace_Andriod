@@ -5,6 +5,11 @@ class MockVenueRepository implements VenueRepository {
   bool failRequests = false;
   final List<String> _favs = [];
 
+  void seedVenue(Venue venue) {
+    _mockVenues.removeWhere((item) => item.id == venue.id);
+    _mockVenues.add(venue);
+  }
+
   final List<Venue> _mockVenues = [
     const Venue(
       id: 'v1',
@@ -246,6 +251,14 @@ class MockVenueRepository implements VenueRepository {
           query.city!.trim().isNotEmpty &&
           v.city.toLowerCase() != query.city!.trim().toLowerCase()) {
         return false;
+      }
+      if (query.facility != null && query.facility!.trim().isNotEmpty) {
+        final needle = query.facility!.trim().toLowerCase();
+        if (!v.facilities.any(
+          (item) => item.isAvailable && item.facility.toLowerCase() == needle,
+        )) {
+          return false;
+        }
       }
       return true;
     }).toList();

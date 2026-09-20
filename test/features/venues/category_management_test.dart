@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bookmyspace/features/venues/domain/listing_template.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 
 void main() {
@@ -31,6 +32,23 @@ void main() {
     expect(restored.supportedLanguages, category.supportedLanguages);
     expect(restored.nameTranslations, category.nameTranslations);
     expect(restored.descriptionTranslations, category.descriptionTranslations);
+  });
+
+  test('listing template overlay survives JSON mapping', () {
+    const category = VenueCategory(
+      id: 'category-1',
+      slug: 'function-halls',
+      name: 'Function Halls',
+      listingConfig: ListingTemplateConfig(
+        templateId: 'hall',
+        ctaBook: 'Reserve Hall',
+        published: false,
+      ),
+    );
+
+    final restored = VenueCategory.fromJson(category.toJson());
+    expect(restored.listingTemplate.ctaBook, 'Reserve Hall');
+    expect(restored.listingTemplate.isPublished, isFalse);
   });
 
   test('subsection preserves hierarchy, status, and translations', () {

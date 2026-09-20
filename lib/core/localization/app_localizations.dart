@@ -58,6 +58,24 @@ class AppLocalizations {
     'search': 'Search',
     'searchHint': 'Search venues, cities or categories...',
     'courseSearchHint': 'Search courses or institutes...',
+    'seeAll': 'See all',
+    'linkCopied': 'Link copied to clipboard',
+    'share': 'Share',
+    'downloadBrochure': 'Download brochure',
+    'whatYouLearn': 'What you\'ll learn',
+    'faq': 'Frequently asked questions',
+    'off': 'OFF',
+    'featuredInstitutes': 'Featured Institutes',
+    'popularCourses': 'Popular Courses',
+    'upcomingBatches': 'Upcoming Batches',
+    'watchDemoClass': 'Watch Demo Class',
+    'typeAllInstitutes': 'All',
+    'typePrivate': 'Private',
+    'typeStateGovernment': 'State Government',
+    'typeCentralGovernment': 'Central Government',
+    'typeUniversity': 'University',
+    'typeNgo': 'NGO',
+    'typeOther': 'Other',
     'filters': 'Filters',
     'clearFilters': 'Clear Filters',
     'apply': 'Apply',
@@ -219,6 +237,48 @@ class AppLocalizations {
     'columnVenue': 'Venue',
     'columnAmount': 'Amount',
     'columnCreatedAt': 'Created',
+
+    // Education / institutes
+    'education': 'Education',
+    'institutes': 'Institutes',
+    'noInstitutes': 'No institutes yet',
+    'noInstitutesMessage': 'Institutes and courses are coming soon.',
+    'instituteDetails': 'Institute Details',
+    'coursesByInstitute': 'Courses offered',
+    'aboutInstitute': 'About',
+    'faculty': 'Faculty',
+    'contactInstitute': 'Contact Institute',
+    'location': 'Location',
+    'timings': 'Timings',
+    'viewOnMap': 'View on map',
+    'myCourses': 'My Courses',
+    'noMyCourses': 'No enrollments yet',
+    'noMyCoursesMessage':
+        'Courses you enroll in will appear here with batch and invoice details.',
+    'discount': 'Discount',
+    'totalPayable': 'Total payable',
+    'feeBreakdown': 'Fee breakdown',
+    'demoAndRegistration': 'Demo & registration',
+    'registerForDemo': 'Register for Demo',
+    'demoRequestSubmitted': 'Demo request submitted.',
+    'studentName': 'Student name',
+    'mobileNumber': 'Mobile number',
+    'preferredBatch': 'Preferred batch',
+    'note': 'Note',
+    'submit': 'Submit',
+    'feedback': 'Feedback',
+    'noFeedback': 'No feedback yet',
+    'writeFeedback': 'Write feedback',
+    'feedbackSubmitted': 'Thanks for your feedback.',
+    'yourRating': 'Your rating',
+    'invoice': 'Invoice',
+    'viewInvoice': 'View invoice',
+    'invoiceNumber': 'Invoice',
+    'issuedOn': 'Issued on',
+    'netAmount': 'Net amount',
+    'educationUnavailable': 'Education is unavailable',
+    'educationUnavailableMessage':
+        'This optional module is currently disabled by the administrator.',
   };
 
   static const Map<String, String> _te = {
@@ -247,6 +307,24 @@ class AppLocalizations {
     'search': 'శోధన',
     'searchHint': 'వేదికలు, నగరాలు లేదా వర్గాలను వెతకండి...',
     'courseSearchHint': 'కోర్సులు లేదా సంస్థలను వెతకండి...',
+    'seeAll': 'అన్నీ చూడండి',
+    'linkCopied': 'లింక్ కాపీ చేయబడింది',
+    'share': 'షేర్ చేయండి',
+    'downloadBrochure': 'బ్రోచర్ డౌన్‌లోడ్ చేయండి',
+    'whatYouLearn': 'మీరు నేర్చుకునేవి',
+    'faq': 'తరచుగా అడిగే ప్రశ్నలు',
+    'off': 'తగ్గింపు',
+    'featuredInstitutes': 'ప్రత్యేక సంస్థలు',
+    'popularCourses': 'ప్రసిద్ధ కోర్సులు',
+    'upcomingBatches': 'రాబోయే బ్యాచ్‌లు',
+    'watchDemoClass': 'డెమో క్లాస్ చూడండి',
+    'typeAllInstitutes': 'అన్నీ',
+    'typePrivate': 'ప్రైవేట్',
+    'typeStateGovernment': 'రాష్ట్ర ప్రభుత్వం',
+    'typeCentralGovernment': 'కేంద్ర ప్రభుత్వం',
+    'typeUniversity': 'విశ్వవిద్యాలయం',
+    'typeNgo': 'ఎన్జీవో',
+    'typeOther': 'ఇతర',
     'filters': 'ఫిల్టర్లు',
     'clearFilters': 'ఫిల్టర్లు తీసివేయి',
     'apply': 'వర్తింపజేయి',
@@ -436,6 +514,24 @@ class AppLocalizations {
     'search': 'खोज',
     'searchHint': 'स्थान, शहर या श्रेणियाँ खोजें...',
     'courseSearchHint': 'कोर्स या संस्थान खोजें...',
+    'seeAll': 'सभी देखें',
+    'linkCopied': 'लिंक कॉपी हो गया',
+    'share': 'शेयर करें',
+    'downloadBrochure': 'ब्रोशर डाउनलोड करें',
+    'whatYouLearn': 'आप क्या सीखेंगे',
+    'faq': 'अक्सर पूछे जाने वाले प्रश्न',
+    'off': 'छूट',
+    'featuredInstitutes': 'प्रमुख संस्थान',
+    'popularCourses': 'लोकप्रिय कोर्स',
+    'upcomingBatches': 'आगामी बैच',
+    'watchDemoClass': 'डेमो क्लास देखें',
+    'typeAllInstitutes': 'सभी',
+    'typePrivate': 'निजी',
+    'typeStateGovernment': 'राज्य सरकार',
+    'typeCentralGovernment': 'केंद्र सरकार',
+    'typeUniversity': 'विश्वविद्यालय',
+    'typeNgo': 'एनजीओ',
+    'typeOther': 'अन्य',
     'filters': 'फ़िल्टर',
     'clearFilters': 'फ़िल्टर हटाएँ',
     'apply': 'लागू करें',
@@ -625,6 +721,24 @@ class AppLocalizations {
     'search': 'ಹುಡುಕು',
     'searchHint': 'ಸ್ಥಳ, ನಗರ ಅಥವಾ ವರ್ಗ ಹುಡುಕಿ...',
     'courseSearchHint': 'ಕೋರ್ಸ್‌ಗಳು ಅಥವಾ ಸಂಸ್ಥೆಗಳನ್ನು ಹುಡುಕಿ...',
+    'seeAll': 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ',
+    'linkCopied': 'ಲಿಂಕ್ ನಕಲಿಸಲಾಗಿದೆ',
+    'share': 'ಹಂಚಿಕೊಳ್ಳಿ',
+    'downloadBrochure': 'ಬ್ರೋಷರ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
+    'whatYouLearn': 'ನೀವು ಕಲಿಯುವುದು',
+    'faq': 'ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು',
+    'off': 'ರಿಯಾಯಿತಿ',
+    'featuredInstitutes': 'ಪ್ರಮುಖ ಸಂಸ್ಥೆಗಳು',
+    'popularCourses': 'ಜನಪ್ರಿಯ ಕೋರ್ಸ್‌ಗಳು',
+    'upcomingBatches': 'ಮುಂಬರುವ ಬ್ಯಾಚ್‌ಗಳು',
+    'watchDemoClass': 'ಡೆಮೊ ತರಗತಿ ವೀಕ್ಷಿಸಿ',
+    'typeAllInstitutes': 'ಎಲ್ಲಾ',
+    'typePrivate': 'ಖಾಸಗಿ',
+    'typeStateGovernment': 'ರಾಜ್ಯ ಸರ್ಕಾರ',
+    'typeCentralGovernment': 'ಕೇಂದ್ರ ಸರ್ಕಾರ',
+    'typeUniversity': 'ವಿಶ್ವವಿದ್ಯಾಲಯ',
+    'typeNgo': 'ಎನ್‌ಜಿಒ',
+    'typeOther': 'ಇತರೆ',
     'filters': 'ಫಿಲ್ಟರ್‌ಗಳು',
     'clearFilters': 'ಫಿಲ್ಟರ್ ತೆರವುಗೊಳಿಸಿ',
     'apply': 'ಅನ್ವಯಿಸಿ',
@@ -814,6 +928,24 @@ class AppLocalizations {
     'search': 'தேடல்',
     'searchHint': 'இடங்கள், நகரங்கள் அல்லது வகைகளைத் தேடுங்கள்...',
     'courseSearchHint': 'பாடநெறிகள் அல்லது நிறுவனங்களைத் தேடுங்கள்...',
+    'seeAll': 'அனைத்தையும் காண்க',
+    'linkCopied': 'இணைப்பு நகலெடுக்கப்பட்டது',
+    'share': 'பகிர்',
+    'downloadBrochure': 'சுற்றறிக்கையைப் பதிவிறக்கு',
+    'whatYouLearn': 'நீங்கள் கற்பவை',
+    'faq': 'அடிக்கடி கேட்கப்படும் கேள்விகள்',
+    'off': 'தள்ளுபடி',
+    'featuredInstitutes': 'சிறப்பு நிறுவனங்கள்',
+    'popularCourses': 'பிரபலமான பாடநெறிகள்',
+    'upcomingBatches': 'வரவிருக்கும் தொகுப்புகள்',
+    'watchDemoClass': 'டெமோ வகுப்பைப் பார்க்க',
+    'typeAllInstitutes': 'அனைத்தும்',
+    'typePrivate': 'தனியார்',
+    'typeStateGovernment': 'மாநில அரசு',
+    'typeCentralGovernment': 'மத்திய அரசு',
+    'typeUniversity': 'பல்கலைக்கழகம்',
+    'typeNgo': 'தன்னார்வ தொண்டு நிறுவனம்',
+    'typeOther': 'மற்றவை',
     'filters': 'வடிகட்டிகள்',
     'clearFilters': 'வடிகட்டிகளை அழி',
     'apply': 'பயன்படுத்து',
@@ -1042,6 +1174,24 @@ class AppLocalizations {
   String get search => _t('search');
   String get searchHint => _t('searchHint');
   String get courseSearchHint => _t('courseSearchHint');
+  String get seeAll => _t('seeAll');
+  String get linkCopied => _t('linkCopied');
+  String get share => _t('share');
+  String get downloadBrochure => _t('downloadBrochure');
+  String get whatYouLearn => _t('whatYouLearn');
+  String get faq => _t('faq');
+  String get off => _t('off');
+  String get featuredInstitutes => _t('featuredInstitutes');
+  String get popularCourses => _t('popularCourses');
+  String get upcomingBatches => _t('upcomingBatches');
+  String get watchDemoClass => _t('watchDemoClass');
+  String get typeAllInstitutes => _t('typeAllInstitutes');
+  String get typePrivate => _t('typePrivate');
+  String get typeStateGovernment => _t('typeStateGovernment');
+  String get typeCentralGovernment => _t('typeCentralGovernment');
+  String get typeUniversity => _t('typeUniversity');
+  String get typeNgo => _t('typeNgo');
+  String get typeOther => _t('typeOther');
   String get filters => _t('filters');
   String get clearFilters => _t('clearFilters');
   String get apply => _t('apply');
@@ -1160,6 +1310,46 @@ class AppLocalizations {
   String get onboardingSubtitle2 => _t('onboardingSubtitle2');
   String get onboardingTitle3 => _t('onboardingTitle3');
   String get onboardingSubtitle3 => _t('onboardingSubtitle3');
+
+  // Education / institutes
+  String get education => _t('education');
+  String get institutes => _t('institutes');
+  String get noInstitutes => _t('noInstitutes');
+  String get noInstitutesMessage => _t('noInstitutesMessage');
+  String get instituteDetails => _t('instituteDetails');
+  String get coursesByInstitute => _t('coursesByInstitute');
+  String get aboutInstitute => _t('aboutInstitute');
+  String get faculty => _t('faculty');
+  String get contactInstitute => _t('contactInstitute');
+  String get location => _t('location');
+  String get timings => _t('timings');
+  String get viewOnMap => _t('viewOnMap');
+  String get myCourses => _t('myCourses');
+  String get noMyCourses => _t('noMyCourses');
+  String get noMyCoursesMessage => _t('noMyCoursesMessage');
+  String get discount => _t('discount');
+  String get totalPayable => _t('totalPayable');
+  String get feeBreakdown => _t('feeBreakdown');
+  String get demoAndRegistration => _t('demoAndRegistration');
+  String get registerForDemo => _t('registerForDemo');
+  String get demoRequestSubmitted => _t('demoRequestSubmitted');
+  String get studentName => _t('studentName');
+  String get mobileNumber => _t('mobileNumber');
+  String get preferredBatch => _t('preferredBatch');
+  String get note => _t('note');
+  String get submit => _t('submit');
+  String get feedback => _t('feedback');
+  String get noFeedback => _t('noFeedback');
+  String get writeFeedback => _t('writeFeedback');
+  String get feedbackSubmitted => _t('feedbackSubmitted');
+  String get yourRating => _t('yourRating');
+  String get invoice => _t('invoice');
+  String get viewInvoice => _t('viewInvoice');
+  String get invoiceNumber => _t('invoiceNumber');
+  String get issuedOn => _t('issuedOn');
+  String get netAmount => _t('netAmount');
+  String get educationUnavailable => _t('educationUnavailable');
+  String get educationUnavailableMessage => _t('educationUnavailableMessage');
 }
 
 class _AppLocalizationsDelegate

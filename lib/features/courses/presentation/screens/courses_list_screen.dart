@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -79,7 +81,21 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
     final courses = ref.watch(publishedCoursesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.courses)),
+      appBar: AppBar(
+        title: Text(l10n.courses),
+        actions: [
+          IconButton(
+            tooltip: l10n.institutes,
+            icon: const Icon(Icons.account_balance_outlined),
+            onPressed: () => context.push(AppRoutes.education),
+          ),
+          IconButton(
+            tooltip: l10n.myCourses,
+            icon: const Icon(Icons.backpack_outlined),
+            onPressed: () => context.push(AppRoutes.myCourses),
+          ),
+        ],
+      ),
       body: courses.when(
         loading: () => ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),

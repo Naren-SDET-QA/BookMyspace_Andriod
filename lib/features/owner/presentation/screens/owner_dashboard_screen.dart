@@ -133,6 +133,11 @@ class _OwnerDashboardBody extends ConsumerWidget {
           label: l10n.support,
           onTap: () => context.push(AppRoutes.support),
         ),
+        _QuickAction(
+          icon: Icons.school_rounded,
+          label: 'My courses',
+          onTap: () => context.push(AppRoutes.ownerCourses),
+        ),
       ],
     );
   }

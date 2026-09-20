@@ -17,7 +17,14 @@ final venueRepositoryProvider = Provider<VenueRepository>((ref) {
 ///
 /// Supabase Realtime keeps customer discovery in sync with admin changes.
 final venueCategoriesProvider = StreamProvider<List<VenueCategory>>((ref) {
-  return ref.watch(venueRepositoryProvider).categoryStream(activeOnly: true);
+  return ref
+      .watch(venueRepositoryProvider)
+      .categoryStream(activeOnly: true)
+      .map(
+        (categories) => categories
+            .where((category) => category.listingTemplate.isPublished)
+            .toList(growable: false),
+      );
 });
 
 /// All categories provider for management screens (including inactive ones).

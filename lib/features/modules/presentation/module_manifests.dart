@@ -45,6 +45,17 @@ const optionalModuleManifests = <ModuleManifest>[
     description: 'Published course discovery and detail screens.',
   ),
   ModuleManifest(
+    id: 'demo_registration',
+    name: 'Course demo & registration',
+    description:
+        'Demo videos, brochures, external links and internal demo requests on course pages.',
+  ),
+  ModuleManifest(
+    id: 'course_feedback',
+    name: 'Course reviews and feedback',
+    description: 'Enrolled-learner ratings and comments on course pages.',
+  ),
+  ModuleManifest(
     id: 'reviews',
     name: 'Reviews',
     description: 'Venue reviews and ratings.',

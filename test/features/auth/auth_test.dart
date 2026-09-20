@@ -80,7 +80,7 @@ void main() {
       repo.dispose();
     });
 
-    test('Google and Apple cancellation does not create a session', () async {
+    test('Google cancellation does not create a session', () async {
       final googleRepo = MockAuthRepository()..cancelGoogle = true;
       expect(
         googleRepo.signInWithGoogle(),
@@ -88,26 +88,15 @@ void main() {
       );
       expect(googleRepo.currentUser, isNull);
       googleRepo.dispose();
-
-      final appleRepo = MockAuthRepository()..cancelApple = true;
-      expect(
-        appleRepo.signInWithApple(),
-        throwsA(isA<AuthCancelledException>()),
-      );
-      expect(appleRepo.currentUser, isNull);
-      appleRepo.dispose();
     });
 
-    test('OTP send failures do not affect Google or Apple', () async {
+    test('OTP send failures do not affect Google', () async {
       final repo = MockAuthRepository()..failSignIn = true;
       await repo.signInWithGoogle();
       expect(repo.currentUser?.email, 'mock@test.com');
       await repo.signOut();
-      await repo.signInWithApple();
-      expect(repo.currentUser?.email, 'mock@test.com');
       expect(repo.signInCount, 0);
       expect(repo.googleCount, 1);
-      expect(repo.appleCount, 1);
       repo.dispose();
     });
 

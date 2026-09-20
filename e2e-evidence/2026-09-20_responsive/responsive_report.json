@@ -1,0 +1,214 @@
+{
+  "widths": {
+    "320": {
+      "width": 320,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": "n/a",
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "375": {
+      "width": 375,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": "n/a",
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "390": {
+      "width": 390,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": "n/a",
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "430": {
+      "width": 430,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": "n/a",
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "768": {
+      "width": 768,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": "n/a",
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "1024": {
+      "width": 1024,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": false,
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "1280": {
+      "width": 1280,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": false,
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    },
+    "1440": {
+      "width": 1440,
+      "checks": {
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": false,
+        "call": true,
+        "chat": false,
+        "about": false,
+        "keySpecs": false,
+        "cancellation": false,
+        "facilities": false,
+        "ratingBadge": false,
+        "price": false,
+        "assurance": false,
+        "address": false,
+        "mapSection": true,
+        "bookingSummaryAtWide": false,
+        "noOverflowError": true
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "textSample": "(function() {\n      var progress = 0;\n      var fillElem = document.getElementById('loading-progress-fill');\n      var pctElem = document.getElementById('loading-progress-text');\n      var statusElem = document.getElementById('loading-status-text');\n      var loadingContainer = document.getElementById('loading');\n      var timeoutView = document.getElementById('loading-timeout-view');\n      var ti"
+    }
+  },
+  "venueId": "8f3e8c12-7df3-4b59-9c47-2a0b9f1d6e31",
+  "appUrl": "http://127.0.0.1:8099"
+}

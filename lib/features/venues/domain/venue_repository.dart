@@ -5,6 +5,10 @@ abstract class VenueRepository {
   /// Fetches venue categories. Pass [activeOnly] to filter active ones.
   Future<List<VenueCategory>> categories({bool activeOnly = false});
 
+  /// Gets a single venue category by ID with full details including the
+  /// resolved listing template. Used by admin editing surfaces.
+  Future<VenueCategory> getCategory(String id);
+
   /// Adds a new category.
   Future<VenueCategory> addCategory({
     required String name,
@@ -12,6 +16,7 @@ abstract class VenueRepository {
     String? icon,
     String? parentSection,
     bool isActive = true,
+    ListingTemplateConfig? listingConfig = null,
   });
 
   /// Updates an existing category.

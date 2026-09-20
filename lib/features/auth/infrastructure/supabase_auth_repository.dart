@@ -98,11 +98,6 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthUser> signInWithApple() {
-    return _signInWithOAuth(supabase.OAuthProvider.apple);
-  }
-
-  @override
   Future<void> signOut() => _client.auth.signOut();
 
   @override
@@ -209,8 +204,6 @@ class SupabaseAuthRepository implements AuthRepository {
     switch (provider) {
       case supabase.OAuthProvider.google:
         return 'Google';
-      case supabase.OAuthProvider.apple:
-        return 'Apple';
       default:
         return provider.name;
     }
@@ -228,6 +221,15 @@ class SupabaseAuthRepository implements AuthRepository {
       return errors.AuthCancelledException('$label sign-in was cancelled.');
     }
     if (error is supabase.AuthException) {
+      final raw = error.message.toLowerCase();
+      if (raw.contains('provider is not enabled') ||
+          raw.contains('unsupported provider')) {
+        return errors.AuthException(
+          '$label sign-in is not available right now. Please try another '
+          'sign-in method or contact support.',
+          code: error.code ?? 'provider_disabled',
+        );
+      }
       return errors.AuthException(error.message, code: error.code);
     }
     return errors.mapError(error);

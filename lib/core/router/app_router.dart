@@ -27,6 +27,13 @@ import '../../features/booking/presentation/screens/booking_success_screen.dart'
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
 import '../../features/courses/presentation/screens/course_detail_screen.dart';
 import '../../features/courses/presentation/screens/courses_list_screen.dart';
+import '../../features/courses/presentation/screens/admin_education_screen.dart';
+import '../../features/courses/presentation/screens/education_hub_screen.dart';
+import '../../features/courses/presentation/screens/institute_detail_screen.dart';
+import '../../features/courses/presentation/screens/my_courses_screen.dart';
+import '../../features/courses/presentation/screens/owner_course_editor_screen.dart';
+import '../../features/courses/presentation/screens/owner_courses_screen.dart';
+import '../../features/courses/domain/course.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
@@ -73,6 +80,9 @@ abstract class AppRoutes {
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
   static const courseDetails = '/courses/:id';
+  static const education = '/education';
+  static const instituteDetails = '/institutes/:id';
+  static const myCourses = '/my-courses';
   static const notifications = '/notifications';
   static const analytics = '/analytics';
   static const support = '/support';
@@ -86,6 +96,7 @@ abstract class AppRoutes {
   static const adminPaymentsLedger = '/admin/payments/ledger';
   static const adminEvents = '/admin/events';
   static const adminCourses = '/admin/courses';
+  static const adminEducation = '/admin/education';
   static const adminSupport = '/admin/support';
   static const adminAudit = '/admin/audit';
   static const adminCms = '/admin/cms';
@@ -97,6 +108,9 @@ abstract class AppRoutes {
   static const ownerVenues = '/owner/venues';
   static const ownerVenueCreate = '/owner/venues/create';
   static const ownerBookings = '/owner/bookings';
+  static const ownerCourses = '/owner/courses';
+  static const ownerCourseCreate = '/owner/courses/create';
+  static const ownerCourseEdit = '/owner/courses/edit';
   static const privacyPolicy = '/privacy';
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
@@ -309,6 +323,23 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.education,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const EducationHubScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.instituteDetails,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => InstituteDetailScreen(
+          instituteId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.myCourses,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MyCoursesScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.analytics,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
@@ -406,6 +437,14 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.adminEducation,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminEducationScreen(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.adminSupport,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
@@ -489,6 +528,45 @@ GoRouter createAppRouter({
           requiredRoles: {AppRole.venueOwner},
           child: OwnerBookingsScreen(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCourses,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {
+            AppRole.instituteOwner,
+            AppRole.administrator,
+            AppRole.superAdministrator,
+          },
+          child: OwnerCoursesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCourseCreate,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {
+            AppRole.instituteOwner,
+            AppRole.administrator,
+            AppRole.superAdministrator,
+          },
+          child: OwnerCourseEditorScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCourseEdit,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final extraCourse = state.extra as Course?;
+          return RoleGate(
+            requiredRoles: const {
+              AppRole.instituteOwner,
+              AppRole.administrator,
+              AppRole.superAdministrator,
+            },
+            child: OwnerCourseEditorScreen(existing: extraCourse),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.ownerVenueCreate,

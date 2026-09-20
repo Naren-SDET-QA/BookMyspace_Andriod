@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Shared cross-platform (web / iOS / Android) 3D tilt-and-press wrapper for
 /// category cards.
@@ -51,6 +52,7 @@ class _InteractiveTiltCardState extends State<InteractiveTiltCard> {
   Offset _pointer = Offset.zero; // -1..1 in both axes, relative to center
   bool _hovering = false;
   bool _pressed = false;
+  bool _focused = false;
   Size _size = Size.zero;
   DateTime? _lastTapTime;
 
@@ -68,6 +70,21 @@ class _InteractiveTiltCardState extends State<InteractiveTiltCard> {
     final clamped = Offset(dx.clamp(-1.0, 1.0), dy.clamp(-1.0, 1.0));
     _pointer = clamped;
     pointerNotifier.value = clamped;
+  }
+
+  /// Shared debounce (ignore a repeat activation within 300ms) used by
+  /// both the pointer tap path and the keyboard Enter/Space path so a
+  /// keyboard user gets exactly the same double-activation protection as
+  /// a touch/mouse user.
+  void _confirmTap() {
+    final now = DateTime.now();
+    final last = _lastTapTime;
+    if (last != null &&
+        now.difference(last) < const Duration(milliseconds: 300)) {
+      return;
+    }
+    _lastTapTime = now;
+    widget.onTap();
   }
 
   @override
@@ -89,78 +106,102 @@ class _InteractiveTiltCardState extends State<InteractiveTiltCard> {
         ? widget.pressScale
         : (_hovering && enabled ? widget.hoverScale : 1.0);
 
-    return Semantics(
-      button: true,
-      label: widget.semanticLabel,
-      child: MouseRegion(
-        onEnter: (_) {
-          if (!widget.enabled) return;
-          setState(() => _hovering = true);
-        },
-        onExit: (_) {
-          if (!widget.enabled) return;
-          setState(() {
-            _hovering = false;
-            _pointer = Offset.zero;
-          });
-          pointerNotifier.value = Offset.zero;
-        },
-        onHover: widget.enabled
-            ? (event) {
-                _updatePointer(event.localPosition);
-                // Only rebuild when tilt actually changes (throttle
-                // pointer-driven rebuilds to avoid jitter on fast mouse
-                // movement).
-                if (mounted) setState(() {});
-              }
-            : null,
-        cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: widget.enabled
-              ? (details) {
-                  _updatePointer(details.localPosition);
-                  setState(() => _pressed = true);
+    return Focus(
+      canRequestFocus: widget.enabled,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (!widget.enabled) return KeyEventResult.ignored;
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.space) {
+          _confirmTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Semantics(
+        button: true,
+        label: widget.semanticLabel,
+        child: MouseRegion(
+          onEnter: (_) {
+            if (!widget.enabled) return;
+            setState(() => _hovering = true);
+          },
+          onExit: (_) {
+            if (!widget.enabled) return;
+            setState(() {
+              _hovering = false;
+              _pointer = Offset.zero;
+            });
+            pointerNotifier.value = Offset.zero;
+          },
+          onHover: widget.enabled
+              ? (event) {
+                  _updatePointer(event.localPosition);
+                  // Only rebuild when tilt actually changes (throttle
+                  // pointer-driven rebuilds to avoid jitter on fast mouse
+                  // movement).
+                  if (mounted) setState(() {});
                 }
               : null,
-          onTapUp: widget.enabled
-              ? (_) {
-                  setState(() => _pressed = false);
-                  // Debounce: ignore taps within 300ms of the last one.
-                  final now = DateTime.now();
-                  final last = _lastTapTime;
-                  if (last != null &&
-                      now.difference(last) <
-                          const Duration(milliseconds: 300)) {
-                    return;
+          cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: widget.enabled
+                ? (details) {
+                    _updatePointer(details.localPosition);
+                    setState(() => _pressed = true);
                   }
-                  _lastTapTime = now;
-                  widget.onTap();
-                }
-              : null,
-          onTapCancel: () => setState(() => _pressed = false),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              _size = constraints.biggest;
-              return AnimatedContainer(
-                duration: Duration(
-                  milliseconds: _hovering || _pressed ? 90 : 260,
-                ),
-                curve: Curves.easeOut,
-                transformAlignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.0018)
-                  ..rotateX(rotateX)
-                  ..rotateY(rotateY)
-                  ..scaleByDouble(scale, scale, 1.0, 1.0),
-                child: widget.borderRadius != null
-                    ? ClipRRect(
-                        borderRadius: widget.borderRadius!,
-                        child: widget.child,
+                : null,
+            onTapUp: widget.enabled
+                ? (_) {
+                    setState(() => _pressed = false);
+                    _confirmTap();
+                  }
+                : null,
+            onTapCancel: () => setState(() => _pressed = false),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                _size = constraints.biggest;
+                // Keyboard-only focus ring: theme-colored, same radius as
+                // the card, visible only while focused via Tab/keyboard. It
+                // never appears from a mouse click or touch tap, and adds no
+                // extra motion of its own.
+                // None of today's callers pass borderRadius (it would clip
+                // their shadow via the ClipRRect below), so fall back to a
+                // sensible generic radius here purely for the ring's own
+                // corners -- it never affects clipping or the card's shape.
+                final focusRing = _focused
+                    ? BoxDecoration(
+                        borderRadius:
+                            widget.borderRadius ?? BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        ),
                       )
-                    : widget.child,
-              );
-            },
+                    : null;
+                return AnimatedContainer(
+                  duration: Duration(
+                    milliseconds: _hovering || _pressed ? 90 : 260,
+                  ),
+                  curve: Curves.easeOut,
+                  transformAlignment: Alignment.center,
+                  foregroundDecoration: focusRing,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0018)
+                    ..rotateX(rotateX)
+                    ..rotateY(rotateY)
+                    ..scaleByDouble(scale, scale, 1.0, 1.0),
+                  child: widget.borderRadius != null
+                      ? ClipRRect(
+                          borderRadius: widget.borderRadius!,
+                          child: widget.child,
+                        )
+                      : widget.child,
+                );
+              },
+            ),
           ),
         ),
       ),

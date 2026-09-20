@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/validators/app_validators.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../domain/phone_otp_provider.dart';
@@ -69,11 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       final repository = ref.read(authRepositoryProvider);
-      if (provider == 'google') {
-        await repository.signInWithGoogle();
-      } else {
-        await repository.signInWithApple();
-      }
+      await repository.signInWithGoogle();
       if (!mounted) return;
       setState(() {
         _oauthBusy = false;
@@ -298,29 +293,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           _oauthProvider == 'google'
                               ? 'Connecting to Google...'
                               : 'Continue with Google',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        key: const Key('apple-sign-in'),
-                        onPressed: _busy ? null : () => _socialSignIn('apple'),
-                        icon: _oauthProvider == 'apple'
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.apple_rounded),
-                        label: Text(
-                          _oauthProvider == 'apple'
-                              ? 'Connecting to Apple...'
-                              : 'Continue with Apple',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onSurface,
-                          side: BorderSide(
-                              color: AppTheme.brand.withValues(alpha: 0.4)),
                         ),
                       ),
                       const SizedBox(height: 20),

@@ -21,8 +21,9 @@ class SupabaseVenueRepository implements VenueRepository {
 
   static const String _venueSelect = '''
     *,
-    venue_categories (id, slug, name, icon),
-    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order)
+    venue_categories (id, slug, name, icon, metadata, parent_section, is_active, description, image_url),
+    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+    venue_facilities (facility, is_available)
   ''';
 
   @override
@@ -38,29 +39,51 @@ class SupabaseVenueRepository implements VenueRepository {
   }
 
   @override
+  Future<VenueCategory> getCategory(String id) async {
+    try {
+      final row = await _client
+          .from('venue_categories')
+          .select('*')
+          .eq('id', id)
+          .single();
+      if (row == null) {
+        throw const NotFoundException('Category not found.');
+      }
+      return VenueCategory.fromJson(row);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
   Future<VenueCategory> addCategory({
     required String name,
     required String slug,
     String? icon,
     String? parentSection,
     bool isActive = true,
+    ListingTemplateConfig? listingConfig = null,
   }) async {
     try {
       _validateNameAndSlug(name, slug);
+      final insertData = {
+        'name': name,
+        'slug': slug.trim().toLowerCase(),
+        'icon': icon ?? '🏷️',
+        'is_active': isActive,
+        'parent_section': parentSection ?? 'general',
+        'display_order': await _nextCategoryOrder(),
+        'metadata': {
+          'active': isActive,
+          'parent_section': parentSection ?? 'general',
+        },
+      };
+      if (listingConfig != null) {
+        insertData['metadata']['listing'] = listingConfig.toJson();
+      }
       final row = await _client
           .from('venue_categories')
-          .insert({
-            'name': name,
-            'slug': slug.trim().toLowerCase(),
-            'icon': icon ?? '🏷️',
-            'is_active': isActive,
-            'parent_section': parentSection ?? 'general',
-            'display_order': await _nextCategoryOrder(),
-            'metadata': {
-              'active': isActive,
-              'parent_section': parentSection ?? 'general',
-            },
-          })
+          .insert(insertData)
           .select()
           .single();
       final created = VenueCategory.fromJson(row);
@@ -84,6 +107,9 @@ class SupabaseVenueRepository implements VenueRepository {
           : <String, dynamic>{};
       metadata['active'] = category.isActive;
       metadata['parent_section'] = category.parentSection ?? 'general';
+      if (category.listingConfig != null) {
+        metadata['listing'] = category.listingConfig!.toJson();
+      }
       final row = await _client
           .from('venue_categories')
           .update({
@@ -580,6 +606,15 @@ class SupabaseVenueRepository implements VenueRepository {
               return false;
             }
           }
+          if (query.facility != null && query.facility!.trim().isNotEmpty) {
+            final needle = query.facility!.trim().toLowerCase();
+            if (!venue.facilities.any(
+              (item) =>
+                  item.isAvailable && item.facility.toLowerCase() == needle,
+            )) {
+              return false;
+            }
+          }
           return true;
         }).toList();
       }
@@ -609,8 +644,9 @@ class SupabaseVenueRepository implements VenueRepository {
       final selectClause = (query.categorySlug != null)
           ? '''
             *,
-            venue_categories!inner (id, slug, name, icon),
-            venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order)
+            venue_categories!inner (id, slug, name, icon, metadata, parent_section, is_active, description, image_url),
+            venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+            venue_facilities (facility, is_available)
           '''
           : _venueSelect;
 
@@ -685,10 +721,20 @@ class SupabaseVenueRepository implements VenueRepository {
       final rows = await builder
           .order(orderColumn, ascending: ascending)
           .range(start, start + pageSize - 1);
-      return rows
-          .whereType<Map<String, dynamic>>()
-          .map(Venue.fromJson)
-          .toList();
+      var results =
+          rows.whereType<Map<String, dynamic>>().map(Venue.fromJson).toList();
+      if (query.facility != null && query.facility!.trim().isNotEmpty) {
+        final needle = query.facility!.trim().toLowerCase();
+        results = results
+            .where(
+              (venue) => venue.facilities.any(
+                (item) =>
+                    item.isAvailable && item.facility.toLowerCase() == needle,
+              ),
+            )
+            .toList();
+      }
+      return results;
     } catch (e) {
       throw mapError(e);
     }

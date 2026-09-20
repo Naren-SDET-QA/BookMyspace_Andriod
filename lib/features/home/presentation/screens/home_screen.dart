@@ -44,7 +44,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   MainHomeSection _selectedSection = MainHomeSection.functionHalls;
-  late final PageController _masterPageController;
 
   // Phase 9XM-2 (Home load optimization): popularVenues, venueCategories,
   // venueSubsectionsCatalog, activeCoupons, and activeCmsBanners all gate
@@ -64,7 +63,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _masterPageController = PageController(viewportFraction: 0.78);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() => _deferredContentUnlocked = true);
@@ -86,7 +84,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
-    _masterPageController.dispose();
     super.dispose();
   }
 
@@ -106,6 +103,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openMaster(MainHomeSection section, List<VenueCategory> cats) {
+    // Education lands on the institutes/courses hub rather than a venue search.
+    if (section == MainHomeSection.institutesClasses) {
+      context.push(AppRoutes.education);
+      return;
+    }
     final matched = section.matchMaster(cats);
     _openSearch(categorySlug: matched?.slug ?? section.id);
   }
@@ -139,6 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final couponsAsync = ref.watch(activeCouponsProvider);
     final cmsBanners =
         ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
+    final categoryImageBySlot = ref.watch(activeCmsBannersBySlotProvider);
     // Phase 9XM-3: Home only ever shows a short recent-bookings preview,
     // so it reads the bounded recentBookingsProvider instead of the
     // unbounded myBookingsProvider (that provider's full history is now
@@ -159,8 +162,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onPressed: () => context.push(AppRoutes.support),
         backgroundColor: AppTheme.violet,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.support_agent_rounded),
-        label: const Text('Help'),
+        icon: const Icon(Icons.smart_toy_rounded),
+        label: const Text('AI Help'),
       ),
       body: SafeArea(
         bottom: false,
@@ -247,7 +250,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: CategoryDiscoveryPanel(
                         sections: MainHomeSection.discoveryOrder,
                         selected: _selectedSection,
-                        pageController: _masterPageController,
                         categories: dynamicCats,
                         venues: liveVenues,
                         onMasterChanged: (section) {
@@ -257,6 +259,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             _openMaster(section, dynamicCats),
                         onSubSectionTap: (section, sub) =>
                             _openSubSection(section, sub, dynamicCats),
+                        onExploreAll: () => _openSearch(),
+                        isLoadingLiveData:
+                            popularVenuesAsync.isLoading && liveVenues.isEmpty,
+                        categoryImageBySlot: categoryImageBySlot,
                       ),
                     ),
                   ),

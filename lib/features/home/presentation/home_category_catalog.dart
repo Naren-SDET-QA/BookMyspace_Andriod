@@ -1,6 +1,85 @@
 import 'package:flutter/material.dart';
 
 import '../../venues/domain/venue.dart';
+import '../../cms/domain/cms_banner.dart';
+
+/// Resolved, VALIDATED visual style for a category card -- icon, accent,
+/// gradient and badge color, each independently falling back to the
+/// section's built-in theme default when the CMS value is missing or
+/// malformed. This is the ONLY place that should read
+/// [CmsBanner.iconName]/[CmsBanner.accentColor]/etc: consumers always call
+/// [CmsCategoryStyle.resolve] rather than touching the raw CMS strings, so
+/// a bad admin value (typo'd icon name, invalid hex) can never crash a
+/// render -- it just silently falls back.
+class CmsCategoryStyle {
+  const CmsCategoryStyle({
+    required this.icon,
+    required this.accentColor,
+    required this.gradientStart,
+    required this.gradientEnd,
+    required this.badgeColor,
+  });
+
+  /// Null means "use the section's built-in emoji", not "no icon" --
+  /// callers should keep their existing emoji fallback when this is null.
+  final IconData? icon;
+  final Color accentColor;
+  final Color gradientStart;
+  final Color gradientEnd;
+  final Color badgeColor;
+
+  /// Curated allowlist: only these names can ever come from the CMS and
+  /// resolve to a real icon. Anything else (typo, empty, unrecognized)
+  /// resolves to null (== "use the emoji"), never a broken/blank icon.
+  static const Map<String, IconData> iconAllowlist = {
+    'celebration': Icons.celebration_rounded,
+    'stadium': Icons.stadium_rounded,
+    'sports': Icons.sports_rounded,
+    'apartment': Icons.apartment_rounded,
+    'home_work': Icons.home_work_rounded,
+    'school': Icons.school_rounded,
+    'menu_book': Icons.menu_book_rounded,
+    'hotel': Icons.hotel_rounded,
+    'bed': Icons.bed_rounded,
+    'groups': Icons.groups_rounded,
+  };
+
+  /// Parses `#RRGGBB` or `#AARRGGBB` (case-insensitive, `#` optional).
+  /// Anything else -- empty, wrong length, non-hex characters -- returns
+  /// null so the caller's fallback color is used instead of crashing.
+  static Color? tryParseHex(String? value) {
+    if (value == null) return null;
+    var hex = value.trim();
+    if (hex.isEmpty) return null;
+    if (hex.startsWith('#')) hex = hex.substring(1);
+    if (hex.length == 6) hex = 'FF$hex';
+    if (hex.length != 8) return null;
+    final parsed = int.tryParse(hex, radix: 16);
+    if (parsed == null) return null;
+    return Color(parsed);
+  }
+
+  static CmsCategoryStyle resolve(MainHomeSection section, CmsBanner? banner) {
+    final fallbackAccent = section.accentColor;
+    final validBanner = banner != null && banner.isActive;
+    final accent = validBanner
+        ? tryParseHex(banner.accentColor) ?? fallbackAccent
+        : fallbackAccent;
+    return CmsCategoryStyle(
+      icon: validBanner ? iconAllowlist[banner.iconName] : null,
+      accentColor: accent,
+      gradientStart: validBanner
+          ? tryParseHex(banner.gradientStartColor) ?? accent
+          : accent,
+      gradientEnd: validBanner
+          ? tryParseHex(banner.gradientEndColor) ??
+              fallbackAccent.withValues(alpha: 0.55)
+          : fallbackAccent.withValues(alpha: 0.55),
+      badgeColor:
+          validBanner ? tryParseHex(banner.badgeColor) ?? accent : accent,
+    );
+  }
+}
 
 /// Presentation-only sub-section used by the Home discovery matrix.
 ///
@@ -186,7 +265,31 @@ enum MainHomeSection {
     }
   }
 
-  String get imageUrl {
+  /// CMS `cms_banners.slot` key an admin can use to override this
+  /// section's image (see admin CMS screen). Not a fabricated 6th
+  /// category set -- these map 1:1 onto the five real master sections.
+  String get imageSlot {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 'category_function_halls';
+      case MainHomeSection.sportsTurfs:
+        return 'category_sports_turfs';
+      case MainHomeSection.pgHostels:
+        return 'category_pg_hostels';
+      case MainHomeSection.institutesClasses:
+        return 'category_institutes_classes';
+      case MainHomeSection.lodgeRooms:
+        return 'category_lodge_rooms';
+    }
+  }
+
+  /// Stock-photo placeholder used ONLY until an admin uploads a real image
+  /// for [imageSlot] via the CMS. TODO(product): replace with a properly
+  /// licensed/branded local asset per category -- these Unsplash URLs are
+  /// a temporary bootstrap, not the intended long-term source, which is
+  /// why every real render path prefers the CMS-configured slot image
+  /// first (see `_resolveCategoryImage` in category_glass_matrix.dart).
+  String get fallbackImageUrl {
     switch (this) {
       case MainHomeSection.functionHalls:
         return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&auto=format&fit=crop&q=80';
@@ -268,6 +371,36 @@ enum MainHomeSection {
             emoji: '🌿',
             slug: 'outdoor_venue',
             aliasSlugs: ['garden_venue', 'outdoor_hall'],
+          ),
+          HomeSubSection(
+            label: 'Auditoriums',
+            emoji: '🎭',
+            slug: 'auditorium',
+          ),
+          HomeSubSection(
+            label: 'Community Halls',
+            emoji: '🤝',
+            slug: 'community_hall',
+          ),
+          HomeSubSection(
+            label: 'Exhibition Halls',
+            emoji: '🖼️',
+            slug: 'exhibition_hall',
+          ),
+          HomeSubSection(
+            label: 'Government Halls',
+            emoji: '🏦',
+            slug: 'govt_hall',
+          ),
+          HomeSubSection(
+            label: 'Meeting Rooms',
+            emoji: '👔',
+            slug: 'meeting_room',
+          ),
+          HomeSubSection(
+            label: 'Temples',
+            emoji: '🛕',
+            slug: 'temple',
           ),
         ];
       case MainHomeSection.sportsTurfs:
@@ -365,6 +498,11 @@ enum MainHomeSection {
             emoji: '🌴',
             slug: 'resort',
             aliasSlugs: ['homestay'],
+          ),
+          HomeSubSection(
+            label: 'Guest Houses',
+            emoji: '🛎️',
+            slug: 'guest_house',
           ),
         ];
     }

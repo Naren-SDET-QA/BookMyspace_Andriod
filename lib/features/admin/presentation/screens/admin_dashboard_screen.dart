@@ -127,6 +127,12 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminCourses),
             ),
             _AdminLink(
+              icon: Icons.account_balance_outlined,
+              title: 'Education',
+              subtitle: 'Institutes, courses and module controls',
+              onTap: () => context.push(AppRoutes.adminEducation),
+            ),
+            _AdminLink(
               icon: Icons.analytics_outlined,
               title: 'Analytics',
               subtitle: 'Recorded analytics events',

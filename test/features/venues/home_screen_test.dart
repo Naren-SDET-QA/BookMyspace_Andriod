@@ -83,7 +83,8 @@ void main() {
 
     expect(find.byType(VenueDetailsScreen), findsOneWidget);
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
-    expect(find.textContaining('Book Now'), findsOneWidget);
+    expect(find.byKey(const Key('listing_book_cta')), findsOneWidget);
+    expect(find.byKey(const Key('listing_availability_cta')), findsOneWidget);
     expect(find.text('Reviews'), findsOneWidget);
   });
 

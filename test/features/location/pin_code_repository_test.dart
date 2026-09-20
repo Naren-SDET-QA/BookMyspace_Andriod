@@ -39,7 +39,8 @@ void main() {
       expect(result.offices.first.state, 'Telangana');
       expect(
         result.offices.first.hierarchy.map((item) => item.$1).toList(),
-        containsAll(['State', 'District', 'Mandal / Taluk', 'City / Area', 'PIN']),
+        containsAll(
+            ['State', 'District', 'Mandal / Taluk', 'City / Area', 'PIN']),
       );
     });
 

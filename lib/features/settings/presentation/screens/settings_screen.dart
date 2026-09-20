@@ -7,6 +7,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 
 /// Settings screen: theme, language and account management entry points.
 class SettingsScreen extends ConsumerWidget {
@@ -24,113 +25,118 @@ class SettingsScreen extends ConsumerWidget {
         title: Text(l10n.settings,
             style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        children: [
-          // Appearance section
-          _SectionHeader(label: 'Appearance'),
-          const SizedBox(height: 8),
-          _GlassSettingsTile(
-            icon: Icons.auto_awesome_rounded,
-            iconColor: AppTheme.violet,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.home3dEffects,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14),
-                      ),
-                      Text(
-                        l10n.home3dEffectsSubtitle,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
+      body: ResponsiveLayoutBuilder(
+        builder: (context, responsive) => ListView(
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.horizontalPadding,
+            vertical: 12,
+          ),
+          children: [
+            // Appearance section
+            _SectionHeader(label: 'Appearance'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.auto_awesome_rounded,
+              iconColor: AppTheme.violet,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.home3dEffects,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        Text(
+                          l10n.home3dEffectsSubtitle,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Switch(
-                  value: ref.watch(home3dEffectsProvider),
-                  onChanged: (enabled) => ref
-                      .read(home3dEffectsProvider.notifier)
-                      .setEnabled(enabled),
-                  activeThumbColor: AppTheme.violet,
-                ),
-              ],
+                  Switch(
+                    value: ref.watch(home3dEffectsProvider),
+                    onChanged: (enabled) => ref
+                        .read(home3dEffectsProvider.notifier)
+                        .setEnabled(enabled),
+                    activeThumbColor: AppTheme.violet,
+                  ),
+                ],
+              ),
             ),
-          ),
-          _GlassSettingsTile(
-            icon: Icons.language_rounded,
-            iconColor: AppTheme.violet,
-            onTap: () => _showLanguagePicker(context, ref),
-            title: l10n.language,
-            subtitle: locale.languageCode.toUpperCase(),
-          ),
-          _GlassSettingsTile(
-            icon: Icons.extension_outlined,
-            iconColor: AppTheme.violet,
-            onTap: () => context.push(AppRoutes.featuresHub),
-            title: l10n.featuresHub,
-            subtitle: l10n.featuresHubSubtitle,
-          ),
-          const SizedBox(height: 20),
+            _GlassSettingsTile(
+              icon: Icons.language_rounded,
+              iconColor: AppTheme.violet,
+              onTap: () => _showLanguagePicker(context, ref),
+              title: l10n.language,
+              subtitle: locale.languageCode.toUpperCase(),
+            ),
+            _GlassSettingsTile(
+              icon: Icons.extension_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.featuresHub),
+              title: l10n.featuresHub,
+              subtitle: l10n.featuresHubSubtitle,
+            ),
+            const SizedBox(height: 20),
 
-          // Support section
-          _SectionHeader(label: 'Support'),
-          const SizedBox(height: 8),
-          _GlassSettingsTile(
-            icon: Icons.notifications_outlined,
-            iconColor: AppTheme.violet,
-            onTap: () => context.push(AppRoutes.notifications),
-            title: l10n.notifications,
-          ),
-          _GlassSettingsTile(
-            icon: Icons.support_agent_rounded,
-            iconColor: AppTheme.violet,
-            onTap: () => context.push(AppRoutes.support),
-            title: l10n.support,
-          ),
-          const SizedBox(height: 20),
+            // Support section
+            _SectionHeader(label: 'Support'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.notifications_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.notifications),
+              title: l10n.notifications,
+            ),
+            _GlassSettingsTile(
+              icon: Icons.support_agent_rounded,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.support),
+              title: l10n.support,
+            ),
+            const SizedBox(height: 20),
 
-          // Legal section
-          _SectionHeader(label: 'Legal'),
-          const SizedBox(height: 8),
-          _GlassSettingsTile(
-            icon: Icons.privacy_tip_outlined,
-            iconColor: AppTheme.violet,
-            onTap: () => context.push(AppRoutes.privacyPolicy),
-            title: l10n.privacyPolicy,
-          ),
-          _GlassSettingsTile(
-            icon: Icons.description_outlined,
-            iconColor: AppTheme.violet,
-            onTap: () => context.push(AppRoutes.termsOfService),
-            title: l10n.termsAndConditions,
-          ),
-          _GlassSettingsTile(
-            icon: Icons.info_outline,
-            iconColor: AppTheme.violet,
-            onTap: () => _showAboutDialog(context, l10n),
-            title: l10n.about,
-          ),
-          const SizedBox(height: 20),
+            // Legal section
+            _SectionHeader(label: 'Legal'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.privacy_tip_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.privacyPolicy),
+              title: l10n.privacyPolicy,
+            ),
+            _GlassSettingsTile(
+              icon: Icons.description_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.termsOfService),
+              title: l10n.termsAndConditions,
+            ),
+            _GlassSettingsTile(
+              icon: Icons.info_outline,
+              iconColor: AppTheme.violet,
+              onTap: () => _showAboutDialog(context, l10n),
+              title: l10n.about,
+            ),
+            const SizedBox(height: 20),
 
-          // Danger zone
-          _SectionHeader(label: 'Account'),
-          const SizedBox(height: 8),
-          _GlassSettingsTile(
-            icon: Icons.delete_forever_outlined,
-            iconColor: theme.colorScheme.error,
-            onTap: () => _confirmDeleteAccount(context, ref, l10n),
-            title: l10n.deleteAccount,
-            titleColor: theme.colorScheme.error,
-          ),
-          const SizedBox(height: 32),
-        ],
+            // Danger zone
+            _SectionHeader(label: 'Account'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.delete_forever_outlined,
+              iconColor: theme.colorScheme.error,
+              onTap: () => _confirmDeleteAccount(context, ref, l10n),
+              title: l10n.deleteAccount,
+              titleColor: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }

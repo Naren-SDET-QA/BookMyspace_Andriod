@@ -128,7 +128,19 @@ void main() {
 
   testWidgets('no overflow at compact through extra-wide widths',
       (tester) async {
-    const widths = [320.0, 375.0, 390.0, 430.0, 768.0, 840.0, 1024.0, 1199.0, 1200.0, 1280.0, 1440.0];
+    const widths = [
+      320.0,
+      375.0,
+      390.0,
+      430.0,
+      768.0,
+      840.0,
+      1024.0,
+      1199.0,
+      1200.0,
+      1280.0,
+      1440.0
+    ];
     for (final width in widths) {
       tester.view.physicalSize = Size(width, 900);
       tester.view.devicePixelRatio = 1;

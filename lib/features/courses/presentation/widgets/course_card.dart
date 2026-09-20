@@ -66,6 +66,16 @@ class CourseCard extends StatelessWidget {
                     background: AppTheme.violet,
                   ),
                 ),
+                if (course.discountAmount > 0 && course.feeAmount > 0)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: _Pill(
+                      text:
+                          '${((course.discountAmount / course.feeAmount) * 100).round()}% ${l10n.off}',
+                      background: AppTheme.accent,
+                    ),
+                  ),
                 Positioned(
                   left: 12,
                   right: 12,

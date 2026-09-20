@@ -122,14 +122,33 @@ void main() {
       expect(cleared.search, isNull);
     });
 
-    test('kPaymentStatusValues and kBookingStatusValues match the deployed enums', () {
-      expect(kPaymentStatusValues, containsAll(<String>[
-        'pending', 'authorized', 'captured', 'failed', 'refunded', 'partially_refunded',
-      ]));
-      expect(kBookingStatusValues, containsAll(<String>[
-        'held', 'pending', 'confirmed', 'completed', 'cancelled', 'refunded',
-        'no_show', 'awaiting_owner_approval', 'owner_rejected', 'approval_expired',
-      ]));
+    test(
+        'kPaymentStatusValues and kBookingStatusValues match the deployed enums',
+        () {
+      expect(
+          kPaymentStatusValues,
+          containsAll(<String>[
+            'pending',
+            'authorized',
+            'captured',
+            'failed',
+            'refunded',
+            'partially_refunded',
+          ]));
+      expect(
+          kBookingStatusValues,
+          containsAll(<String>[
+            'held',
+            'pending',
+            'confirmed',
+            'completed',
+            'cancelled',
+            'refunded',
+            'no_show',
+            'awaiting_owner_approval',
+            'owner_rejected',
+            'approval_expired',
+          ]));
     });
   });
 }

@@ -6,6 +6,8 @@ import 'package:bookmyspace/features/courses/domain/course.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/screens/course_detail_screen.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
+import 'package:bookmyspace/features/modules/domain/feature_flag.dart';
+import 'package:bookmyspace/features/modules/presentation/module_providers.dart';
 import 'package:bookmyspace/features/reviews/presentation/review_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +33,17 @@ List<Override> _overrides(
     venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
     eventRepositoryProvider.overrideWithValue(MockEventRepository()),
     reviewRepositoryProvider.overrideWithValue(MockReviewRepository()),
+    // Enable courses module for tests
+    featureFlagsProvider.overrideWith((ref) async {
+      return {
+        'courses': const FeatureFlag(
+          key: 'courses',
+          enabled: true,
+          platforms: ['ios', 'android', 'web'],
+          config: {},
+        ),
+      };
+    }),
   ];
 }
 
@@ -204,7 +217,8 @@ void main() {
 
     await _scrollTo(tester, find.text('Full Batch'));
     expect(find.text('Sold Out'), findsOneWidget);
-    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    final button = tester
+        .widget<FilledButton>(find.byKey(const Key("batch-enroll-bfull")));
     expect(button.onPressed, isNull);
   });
 

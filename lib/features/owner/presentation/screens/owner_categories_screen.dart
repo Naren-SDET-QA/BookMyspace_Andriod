@@ -11,6 +11,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
+import '../widgets/listing_template_editor.dart';
 
 const _supportedLanguageLabels = <String, String>{
   'en': 'English',
@@ -465,6 +466,12 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                       ? null
                       : () => _showEditCategoryDialog(context, category),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded, size: 20),
+                  tooltip: 'Listing template',
+                  onPressed:
+                      _isBusy ? null : () => _editListingTemplate(category),
+                ),
                 Switch(
                   value: category.isActive,
                   activeThumbColor: AppTheme.violet,
@@ -591,6 +598,12 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                   onPressed: _isBusy
                       ? null
                       : () => _showEditCategoryDialog(context, category),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded, size: 20),
+                  tooltip: 'Listing template',
+                  onPressed:
+                      _isBusy ? null : () => _editListingTemplate(category),
                 ),
                 Switch(
                   value: category.isActive,
@@ -858,6 +871,19 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
       ...nameTranslationControllers.values,
       ...descriptionTranslationControllers.values,
     ]);
+  }
+
+  Future<void> _editListingTemplate(VenueCategory category) async {
+    final updated = await showListingTemplateEditor(
+      context: context,
+      category: category,
+    );
+    if (updated == null) return;
+    await _runMutation(() async {
+      await ref.read(venueRepositoryProvider).updateCategory(
+            category.copyWith(listingConfig: updated),
+          );
+    }, successMessage: 'Listing template saved for ${category.name}');
   }
 
   Future<void> _showEditCategoryDialog(
@@ -1241,6 +1267,7 @@ class _AdminDesktopSidebar extends StatelessWidget {
       label: 'Integrations',
       route: '/admin/integrations'
     ),
+    (icon: Icons.settings_outlined, label: 'App Settings', route: '/settings'),
   ];
 
   @override

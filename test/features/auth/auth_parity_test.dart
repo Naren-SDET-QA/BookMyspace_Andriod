@@ -82,21 +82,6 @@ void main() {
     expect(container.read(currentUserProvider)?.email, 'mock@test.com');
   });
 
-  test('Apple success propagates to authNotifier and currentUser', () async {
-    final repo = MockAuthRepository();
-    final container = ProviderContainer(overrides: _repoOverrides(repo));
-    addTearDown(() {
-      container.dispose();
-      repo.dispose();
-    });
-
-    await repo.signInWithApple();
-    await Future<void>.microtask(() {});
-
-    expect(container.read(authNotifierProvider), isA<AuthAuthenticated>());
-    expect(container.read(currentUserProvider)?.id, 'mock-user');
-  });
-
   test('sign-out clears authNotifier and currentUser together', () async {
     final repo = MockAuthRepository(
       initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),

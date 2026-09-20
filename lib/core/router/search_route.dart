@@ -20,6 +20,7 @@ class SearchRouteParams {
     this.longitude,
     this.radiusKm,
     this.pincode,
+    this.facility,
   });
 
   static const categoryParam = 'category';
@@ -33,6 +34,7 @@ class SearchRouteParams {
   static const lngParam = 'lng';
   static const radiusParam = 'radius';
   static const pinParam = 'pin';
+  static const facilityParam = 'facility';
 
   final String query;
   final String? categorySlug;
@@ -45,6 +47,7 @@ class SearchRouteParams {
   final double? longitude;
   final int? radiusKm;
   final String? pincode;
+  final String? facility;
 
   factory SearchRouteParams.fromQuery(VenueSearchQuery query) {
     return SearchRouteParams(
@@ -58,6 +61,7 @@ class SearchRouteParams {
       longitude: query.longitude,
       radiusKm: query.radiusKm,
       pincode: query.pincode,
+      facility: query.facility,
     );
   }
 
@@ -91,6 +95,7 @@ class SearchRouteParams {
       longitude: _parseDouble(routeOrExtra(lngParam)),
       radiusKm: _parseInt(routeOrExtra(radiusParam)),
       pincode: routeOrExtra(pinParam),
+      facility: routeOrExtra(facilityParam),
     );
   }
 
@@ -110,6 +115,7 @@ class SearchRouteParams {
       longitude: longitude,
       radiusKm: radiusKm,
       pincode: pincode,
+      facility: facility,
     );
   }
 
@@ -137,6 +143,7 @@ class SearchRouteParams {
       longitude: query.longitude,
       radiusKm: query.radiusKm,
       pincode: query.pincode,
+      facility: query.facility,
     ).mapLocation;
   }
 
@@ -162,6 +169,9 @@ class SearchRouteParams {
     }
     if (pincode != null && pincode!.trim().isNotEmpty) {
       params[pinParam] = pincode!.trim();
+    }
+    if (facility != null && facility!.trim().isNotEmpty) {
+      params[facilityParam] = facility!.trim();
     }
     return Uri(
       path: path,

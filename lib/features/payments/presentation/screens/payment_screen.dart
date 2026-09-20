@@ -10,6 +10,7 @@ import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/payment.dart';
 import '../payment_providers.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 
 /// Payment checkout screen matching the Android native Razorpay payment experience.
 ///
@@ -111,49 +112,54 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Error banner if any
-            if (paymentState.isAwaitingConfirmation) ...[
-              _PendingConfirmationCard(
-                message: paymentState.note ??
-                    'Payment was submitted. Waiting for confirmation.',
-                onRefresh: _refreshPaymentStatus,
+      body: ResponsiveLayoutBuilder(
+        builder: (context, responsive) => SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.horizontalPadding,
+            vertical: 16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Error banner if any
+              if (paymentState.isAwaitingConfirmation) ...[
+                _PendingConfirmationCard(
+                  message: paymentState.note ??
+                      'Payment was submitted. Waiting for confirmation.',
+                  onRefresh: _refreshPaymentStatus,
+                ),
+                const SizedBox(height: 16),
+              ] else if (paymentState.errorMessage != null) ...[
+                _ErrorRecoveryCard(
+                  message: paymentState.errorMessage!,
+                  onRetry: () => _executePayment(payableAmount, remainingDue),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Booking summary card
+              _BookingSummaryCard(booking: booking),
+              const SizedBox(height: 16),
+
+              // Price breakdown card
+              _PriceBreakdownCard(
+                booking: booking,
+                totalAmount: fullTotal,
               ),
               const SizedBox(height: 16),
-            ] else if (paymentState.errorMessage != null) ...[
-              _ErrorRecoveryCard(
-                message: paymentState.errorMessage!,
-                onRetry: () => _executePayment(payableAmount, remainingDue),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Booking summary card
-            _BookingSummaryCard(booking: booking),
-            const SizedBox(height: 16),
-
-            // Price breakdown card
-            _PriceBreakdownCard(
-              booking: booking,
-              totalAmount: fullTotal,
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.account_balance_wallet_outlined,
-                    color: theme.colorScheme.primary),
-                title: const Text('Pay securely with Razorpay'),
-                subtitle: const Text(
-                  'Choose UPI, cards or net banking in the secure checkout sheet.',
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.account_balance_wallet_outlined,
+                      color: theme.colorScheme.primary),
+                  title: const Text('Pay securely with Razorpay'),
+                  subtitle: const Text(
+                    'Choose UPI, cards or net banking in the secure checkout sheet.',
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 80), // bottom bar spacing
-          ],
+              const SizedBox(height: 80), // bottom bar spacing
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: _BottomPayBar(

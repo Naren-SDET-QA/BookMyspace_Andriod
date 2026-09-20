@@ -13,4 +13,92 @@ abstract interface class CourseRepository {
 
   /// Drops my enrollment from a batch, freeing a seat.
   Future<void> drop({required String batchId});
+
+  /// All institutes visible to the current role, name-ordered.
+  Future<List<Institute>> institutes();
+
+  /// A single institute profile.
+  Future<Institute> instituteDetail(String instituteId);
+
+  /// Published courses offered by one institute.
+  Future<List<Course>> coursesForInstitute(String instituteId);
+
+  /// The signed-in learner's active enrollments joined to course and batch.
+  Future<List<MyEnrolledCourse>> myEnrolledCourses();
+
+  /// Records an internal demo-class request for a course.
+  Future<void> registerForDemo({
+    required String courseId,
+    required String studentName,
+    required String mobile,
+    String email,
+    String preferredBatch,
+    String note,
+  });
+
+  /// Published feedback for a course, newest first.
+  Future<List<CourseFeedback>> courseFeedback(String courseId);
+
+  /// Submits feedback; only valid for an enrolled learner.
+  Future<void> submitFeedback({
+    required String courseId,
+    required int rating,
+    String comment,
+  });
+
+  /// Courses owned by the signed-in owner's institute(s), any status.
+  Future<List<Course>> ownerCourses();
+
+  /// Institutes the signed-in owner may manage (their own organizations).
+  Future<List<Institute>> ownerInstitutes();
+
+  /// Creates or updates a course. [publish] flips status to published;
+  /// otherwise the course stays a draft.
+  Future<String> saveCourse({
+    String? courseId,
+    required String instituteId,
+    required String title,
+    required String description,
+    required CourseMode mode,
+    required int durationWeeks,
+    required double feeAmount,
+    String instructorName,
+    String coverImage,
+    String categoryId,
+    double discountAmount,
+    List<CourseDemoMethod> demoMethods,
+    String demoVideoUrl,
+    String demoThumbnailUrl,
+    String brochureUrl,
+    String externalRegistrationUrl,
+    String contactPhone,
+    List<String> syllabusPoints,
+    bool publish,
+  });
+
+  /// Adds or replaces a batch on a course.
+  Future<void> saveBatch({
+    String? batchId,
+    required String courseId,
+    required String label,
+    required DateTime startsOn,
+    required int capacity,
+    bool isActive,
+  });
+
+  /// Adds a faculty profile to a course.
+  Future<void> addFaculty({
+    required String courseId,
+    required String name,
+    String role,
+    String bio,
+  });
+
+  /// Adds a FAQ entry to a course.
+  Future<void> addFaq({
+    required String courseId,
+    required String question,
+    required String answer,
+    int displayOrder,
+  });
 }
