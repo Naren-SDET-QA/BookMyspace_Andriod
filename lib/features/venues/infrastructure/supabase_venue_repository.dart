@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart'
     show BusinessException, NotFoundException, mapError;
+import '../domain/listing_template.dart';
 import '../../../core/firebase/error_logger.dart';
 import '../../../core/network/retry.dart';
 import '../domain/venue.dart';
@@ -45,7 +46,7 @@ class SupabaseVenueRepository implements VenueRepository {
           .from('venue_categories')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
       if (row == null) {
         throw const NotFoundException('Category not found.');
       }
@@ -66,6 +67,11 @@ class SupabaseVenueRepository implements VenueRepository {
   }) async {
     try {
       _validateNameAndSlug(name, slug);
+      final metadata = <String, dynamic>{
+        'active': isActive,
+        'parent_section': parentSection ?? 'general',
+        if (listingConfig != null) 'listing': listingConfig.toJson(),
+      };
       final insertData = {
         'name': name,
         'slug': slug.trim().toLowerCase(),
@@ -73,14 +79,8 @@ class SupabaseVenueRepository implements VenueRepository {
         'is_active': isActive,
         'parent_section': parentSection ?? 'general',
         'display_order': await _nextCategoryOrder(),
-        'metadata': {
-          'active': isActive,
-          'parent_section': parentSection ?? 'general',
-        },
+        'metadata': metadata,
       };
-      if (listingConfig != null) {
-        insertData['metadata']['listing'] = listingConfig.toJson();
-      }
       final row = await _client
           .from('venue_categories')
           .insert(insertData)

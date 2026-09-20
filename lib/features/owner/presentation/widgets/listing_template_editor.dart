@@ -147,7 +147,7 @@ class _ListingTemplateEditorDialogState
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               _FilterGroupsEditor(
-                filterGroups: _filterGroups,
+                initialFilterGroups: _filterGroups,
                 onFilterGroupsChanged: (value) =>
                     setState(() => _filterGroups = value),
               ),
@@ -157,9 +157,8 @@ class _ListingTemplateEditorDialogState
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               _SpecKeysEditor(
-                specKeys: _specKeys,
-                onSpecKeysChanged: (value) =>
-                    setState(() => _specKeys = value),
+                initialSpecKeys: _specKeys,
+                onSpecKeysChanged: (value) => setState(() => _specKeys = value),
               ),
               const SizedBox(height: 16),
               Text(
@@ -602,7 +601,6 @@ class _WireButton extends StatelessWidget {
   }
 }
 
-
 class _FilterGroupsEditor extends StatefulWidget {
   const _FilterGroupsEditor({
     required this.initialFilterGroups,
@@ -634,23 +632,25 @@ class _FilterGroupsEditorState extends State<_FilterGroupsEditor> {
           'Filter groups',
           style: Theme.of(context).textTheme.titleSmall,
         ),
-        ..._filterGroups.map((group) {
+        ..._filterGroups.asMap().entries.map((entry) {
+          final group = entry.value;
           return _FilterGroupEditor(
             group: group,
-            onChanged: (value) =>
-                setState(() {
-                  _filterGroups = _filterGroups
-                      .map((g, i) => i == group.id ? value : g)
-                      .toList();
-                  widget.onFilterGroupsChanged(_filterGroups);
-                }),
+            onChanged: (value) => setState(() {
+              _filterGroups = _filterGroups
+                  .asMap()
+                  .entries
+                  .map((e) => e.key == entry.key ? value : e.value)
+                  .toList();
+              widget.onFilterGroupsChanged(_filterGroups);
+            }),
           );
         }),
         const SizedBox(height: 8),
         _AddFilterGroupButton(
-          onPressed: () =>
-              setState(() {
-                _filterGroups = _filterGroups + [
+          onPressed: () => setState(() {
+            _filterGroups = _filterGroups +
+                [
                   ListingFilterGroup(
                     id: 'filter-${(widget.initialFilterGroups.length + 1)}',
                     label: 'New filter',
@@ -658,8 +658,8 @@ class _FilterGroupsEditorState extends State<_FilterGroupsEditor> {
                     options: ['Option 1', 'Option 2'],
                   ),
                 ];
-                widget.onFilterGroupsChanged(_filterGroups);
-              }),
+            widget.onFilterGroupsChanged(_filterGroups);
+          }),
         ),
       ],
     );
@@ -691,13 +691,12 @@ class _FilterGroupEditor extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onChanged: (value) =>
-                onChanged(ListingFilterGroup(
-                  id: value.trim(),
-                  label: group.label,
-                  type: group.type,
-                  options: group.options,
-                )),
+            onChanged: (value) => onChanged(ListingFilterGroup(
+              id: value.trim(),
+              label: group.label,
+              type: group.type,
+              options: group.options,
+            )),
           ),
           TextField(
             controller: TextEditingController(text: group.label),
@@ -707,23 +706,22 @@ class _FilterGroupEditor extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onChanged: (value) =>
-                onChanged(ListingFilterGroup(
-                  id: group.id,
-                  label: value.trim(),
-                  type: group.type,
-                  options: group.options,
-                )),
+            onChanged: (value) => onChanged(ListingFilterGroup(
+              id: group.id,
+              label: value.trim(),
+              type: group.type,
+              options: group.options,
+            )),
           ),
           DropdownButtonFormField<String>(
             initialValue: group.type.name,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Type',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            items: const [
+            items: [
               DropdownMenuItem(value: 'options', child: Text('Options')),
               DropdownMenuItem(value: 'range', child: Text('Range')),
               DropdownMenuItem(value: 'toggle', child: Text('Toggle')),
@@ -733,7 +731,8 @@ class _FilterGroupEditor extends StatelessWidget {
               onChanged(ListingFilterGroup(
                 id: group.id,
                 label: group.label,
-                type: ListingFilterType.valueOf(value),
+                type:
+                    ListingFilterType.values.firstWhere((t) => t.name == value),
                 options: group.options,
               ));
             },
@@ -798,25 +797,22 @@ class _SpecKeysEditorState extends State<_SpecKeysEditor> {
           'Key specifications (sections)',
           style: Theme.of(context).textTheme.titleSmall,
         ),
-        ..._specKeys.map((key) {
+        ..._specKeys.where((key) => key.isNotEmpty).map((key) {
           return _SpecKeyEditor(
-            key: key,
-            onChanged: (value) =>
-                setState(() {
-                  _specKeys = _specKeys
-                      .map((k) => k == key ? value : k)
-                      .toList();
-                  widget.onSpecKeysChanged(_specKeys);
-                }),
+            specKey: key,
+            onChanged: (value) => setState(() {
+              _specKeys = _specKeys.map((k) => k == key ? value : k).toList();
+              widget.onSpecKeysChanged(_specKeys);
+            }),
           );
         }),
         const SizedBox(height: 8),
         _AddSpecKeyButton(
-          onPressed: () =>
-              setState(() {
-                _specKeys = _specKeys + ['spec-${(widget.initialSpecKeys.length + 1)}'];
-                widget.onSpecKeysChanged(_specKeys);
-              }),
+          onPressed: () => setState(() {
+            _specKeys =
+                _specKeys + ['spec-${(widget.initialSpecKeys.length + 1)}'];
+            widget.onSpecKeysChanged(_specKeys);
+          }),
         ),
       ],
     );
@@ -825,11 +821,11 @@ class _SpecKeysEditorState extends State<_SpecKeysEditor> {
 
 class _SpecKeyEditor extends StatelessWidget {
   const _SpecKeyEditor({
-    required this.key,
+    required this.specKey,
     required this.onChanged,
   });
 
-  final String key;
+  final String specKey;
   final ValueChanged<String> onChanged;
 
   @override
@@ -838,7 +834,7 @@ class _SpecKeyEditor extends StatelessWidget {
       children: [
         Expanded(
           child: TextField(
-            controller: TextEditingController(text: key),
+            controller: TextEditingController(text: specKey),
             decoration: InputDecoration(
               labelText: 'Key',
               border: OutlineInputBorder(
@@ -846,7 +842,7 @@ class _SpecKeyEditor extends StatelessWidget {
               ),
             ),
             onChanged: (value) =>
-                onChanged(value.trim().isNotEmpty ? value.trim() : key),
+                onChanged(value.trim().isNotEmpty ? value.trim() : specKey),
           ),
         ),
         IconButton(

@@ -1,3 +1,4 @@
+import 'package:bookmyspace/features/venues/domain/listing_template.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:bookmyspace/features/venues/domain/venue_repository.dart';
 
@@ -106,12 +107,22 @@ class MockVenueRepository implements VenueRepository {
   }
 
   @override
+  Future<VenueCategory> getCategory(String id) async {
+    for (final venue in _mockVenues) {
+      final category = venue.category;
+      if (category != null && category.id == id) return category;
+    }
+    throw UnimplementedError('getCategory not seeded in mock');
+  }
+
+  @override
   Future<VenueCategory> addCategory({
     required String name,
     required String slug,
     String? icon,
     String? parentSection,
     bool isActive = true,
+    ListingTemplateConfig? listingConfig,
   }) async {
     return VenueCategory(
       id: slug,

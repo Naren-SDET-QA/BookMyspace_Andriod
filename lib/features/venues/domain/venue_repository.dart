@@ -1,3 +1,4 @@
+import 'listing_template.dart';
 import 'venue.dart';
 
 /// Contract for venue repository.
