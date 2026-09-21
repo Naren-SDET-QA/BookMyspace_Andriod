@@ -1,8 +1,35 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Google Maps key injection (NEVER commit the real key).
+// Resolution order:
+//   1. GOOGLE_MAPS_ANDROID_API_KEY environment variable (CI),
+//   2. googleMapsApiKey in android/local.properties or ~/.gradle/gradle.properties
+//      (both git-ignored developer machines),
+//   3. empty string -> the manifest ships an inert placeholder and the native
+//      map shows Google's own "missing key" state instead of crashing.
+val googleMapsApiKey: String by lazy {
+    val fromEnv = System.getenv("GOOGLE_MAPS_ANDROID_API_KEY")
+    if (!fromEnv.isNullOrBlank()) return@lazy fromEnv
+    val props = Properties()
+    val localProps = rootProject.file("local.properties")
+    if (localProps.exists()) {
+        localProps.inputStream().use { props.load(it) }
+    }
+    val userProps = Properties()
+    val globalProps = File(System.getProperty("user.home"), ".gradle/gradle.properties")
+    if (globalProps.exists()) {
+        globalProps.inputStream().use { userProps.load(it) }
+    }
+    props.getProperty("googleMapsApiKey")?.trim()?.takeIf { it.isNotBlank() }
+        ?: userProps.getProperty("googleMapsApiKey")?.trim()?.takeIf { it.isNotBlank() }
+        ?: ""
 }
 
 android {
@@ -28,6 +55,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
     buildTypes {

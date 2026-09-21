@@ -265,9 +265,17 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     AppLocalizations l10n,
     AsyncValue<bool> favorite,
   ) {
+    final mediaWidth = MediaQuery.sizeOf(context).width;
+    // BMS2-fidelity hero: a taller cinematic gallery on large screens
+    // (tablets / web tabs), the standard phone height on compact devices.
+    final heroHeight = mediaWidth >= 1024
+        ? 420.0
+        : mediaWidth >= 600
+            ? 340.0
+            : 260.0;
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 260,
+      expandedHeight: heroHeight,
       leading: IconButton(
         tooltip: l10n.back,
         onPressed: () {
@@ -475,6 +483,34 @@ class _ListingBody extends StatelessWidget {
           if (venue.ratingCount > 0) ...[
             const SizedBox(height: 6),
             RatingBadge(rating: venue.avgRating, count: venue.ratingCount),
+          ],
+          // BMS2 quick-fact chips: real venue data only (hidden when a
+          // venue has none of capacity / parking / food info).
+          if (venue.capacity > 0 ||
+              venue.parkingCapacity > 0 ||
+              venue.foodOptions.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (venue.capacity > 0)
+                  _QuickFactChip(
+                    icon: Icons.groups_rounded,
+                    label: '${venue.capacity} Guests',
+                  ),
+                if (venue.parkingCapacity > 0)
+                  _QuickFactChip(
+                    icon: Icons.local_parking_rounded,
+                    label: '${venue.parkingCapacity} Parking',
+                  ),
+                if (venue.foodOptions.trim().isNotEmpty)
+                  _QuickFactChip(
+                    icon: Icons.restaurant_rounded,
+                    label: venue.foodOptions.trim(),
+                  ),
+              ],
+            ),
           ],
           const SizedBox(height: 8),
           StaggeredFadeSlideIn(
@@ -1199,5 +1235,47 @@ IconData _ownerSectionIconFor(String? name) {
       return Icons.dashboard_customize_outlined;
     default:
       return Icons.widgets_outlined;
+  }
+}
+
+/// BMS2-style quick-fact chip (capacity / parking / food). Presentation
+/// only; values come straight from the venue record.
+class _QuickFactChip extends StatelessWidget {
+  const _QuickFactChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.violet),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

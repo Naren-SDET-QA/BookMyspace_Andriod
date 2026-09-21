@@ -52,6 +52,14 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Google Maps SDK for Android key. Injected at build time from an
+             environment variable (GOOGLE_MAPS_ANDROID_API_KEY) or a
+             git-ignored local.properties / ~/.gradle/gradle.properties entry
+             (googleMapsApiKey=...). Never hardcode a real key here. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${googleMapsApiKey}" />
+
         <!-- Posts the delayed 1-hour pre-booking reminder that AndroidPushChannel
              scheduled with AlarmManager. Not exported: only this app's own
              alarms may reach it. -->

@@ -28,9 +28,21 @@ import Razorpay
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Provide Google Maps API Key from environment or fallback default
-    let mapsApiKey = ProcessInfo.processInfo.environment["GOOGLE_MAPS_IOS_API_KEY"] ?? "default_maps_key"
-    GMSServices.provideAPIKey(mapsApiKey)
+    // Provide the Google Maps API key from the build setting injected by the
+    // git-ignored GoogleMapsKey.xcconfig (see GoogleMapsKey.xcconfig.example).
+    // ProcessInfo.environment only works for `flutter run` sessions; the
+    // bundle lookup works in release/TestFlight builds too. When no key is
+    // configured we deliberately do NOT call provideAPIKey with a fake value:
+    // Google's SDK then shows its own clear "missing key" state instead of
+    // a confusing authorization failure.
+    if let mapsApiKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String,
+       !mapsApiKey.isEmpty,
+       !mapsApiKey.contains("$(") {
+      GMSServices.provideAPIKey(mapsApiKey)
+    } else if let envKey = ProcessInfo.processInfo.environment["GOOGLE_MAPS_IOS_API_KEY"],
+              !envKey.isEmpty {
+      GMSServices.provideAPIKey(envKey)
+    }
 
     let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
 
