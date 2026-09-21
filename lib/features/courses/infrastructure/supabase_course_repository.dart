@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart' as app_errors;
+import '../../cms/domain/configurable_form.dart';
+import '../../cms/domain/target_modules.dart';
 import '../domain/course.dart';
 import '../domain/course_repository.dart';
 
@@ -24,9 +26,9 @@ class SupabaseCourseRepository implements CourseRepository {
 
   static const String _extendedCourseSelect = '''
     *,
-    institutes (id, org_id, name, description, logo_image, is_verified, institute_type, category_id, address, city, latitude, longitude, phone, email, whatsapp, website, mode, timings, images, amenities),
+    institutes (id, org_id, name, description, logo_image, is_verified, institute_type, category_id, address, city, latitude, longitude, phone, email, whatsapp, website, mode, timings, images, amenities, module_config, registration_form, profile),
     course_batches (id, course_id, label, starts_on, capacity, enrolled_count, is_active, timing, ends_on, fee_amount, mode, waitlist_enabled, waitlist_count, admissions_open, subject, category_slug),
-    course_faculty (id, course_id, name, role, bio, photo_url),
+    course_faculty (id, course_id, institute_id, name, role, bio, photo_url, designation, department, qualification, specialization, experience_text, skills, languages, demo_url, resume_url, is_active),
     course_faqs (id, course_id, question, answer, display_order)
   ''';
 
@@ -218,6 +220,7 @@ class SupabaseCourseRepository implements CourseRepository {
     String studentName = '',
     String contactPhone = '',
     DateTime? preferredStart,
+    Map<String, dynamic> formAnswers = const {},
   }) async {
     final userId = _userId;
     if (userId == null) {
@@ -248,7 +251,11 @@ class SupabaseCourseRepository implements CourseRepository {
             ? Map<String, dynamic>.from(raw)
             : {'id': '', 'batch_id': batchId, 'status': 'enrolled'};
       }
-      return CourseEnrollmentRecord.fromJson(row);
+      final record = CourseEnrollmentRecord.fromJson(row);
+      if (formAnswers.isNotEmpty && record.id.isNotEmpty) {
+        await _storeFormAnswers(record.id, formAnswers);
+      }
+      return record;
     } on PostgrestException catch (e) {
       final message = e.message.toLowerCase();
       if (message.contains('batch full')) {
@@ -604,6 +611,9 @@ class SupabaseCourseRepository implements CourseRepository {
     String? phone,
     String? timings,
     List<String>? amenities,
+    TargetModuleConfig? modules,
+    ConfigurableFormSchema? registrationForm,
+    Map<String, dynamic>? profile,
   }) async {
     final payload = <String, dynamic>{
       if (address != null) 'address': address,
@@ -611,14 +621,133 @@ class SupabaseCourseRepository implements CourseRepository {
       if (phone != null) 'phone': phone,
       if (timings != null) 'timings': timings,
       if (amenities != null) 'amenities': amenities,
+      if (modules != null) 'module_config': modules.toJson(),
+      if (registrationForm != null)
+        'registration_form': registrationForm.toJson(),
+      if (profile != null) 'profile': profile,
     };
     if (payload.isEmpty) return;
     try {
       await _client.from('institutes').update(payload).eq('id', instituteId);
     } on PostgrestException catch (e) {
+      if (_isMissingRelation(e) &&
+          (modules != null || registrationForm != null || profile != null)) {
+        final fallback = <String, dynamic>{
+          if (address != null) 'address': address,
+          if (city != null) 'city': city,
+          if (phone != null) 'phone': phone,
+          if (timings != null) 'timings': timings,
+          if (amenities != null) 'amenities': amenities,
+        };
+        if (fallback.isEmpty) {
+          throw const app_errors.BusinessException(
+            'Configurable institute modules are not available yet.',
+            code: 'config_unavailable',
+          );
+        }
+        await _client.from('institutes').update(fallback).eq('id', instituteId);
+        return;
+      }
       throw app_errors.mapError(e);
     } catch (e) {
       throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<List<InstituteBranch>> branches(String instituteId) async {
+    try {
+      final rows = await _client
+          .from('institute_branches')
+          .select('*')
+          .eq('institute_id', instituteId)
+          .order('display_order');
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(InstituteBranch.fromJson)
+          .toList();
+    } on PostgrestException catch (e) {
+      if (_isMissingRelation(e)) return const [];
+      throw app_errors.mapError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<void> saveBranch(InstituteBranch branch) async {
+    try {
+      final payload = {
+        if (branch.id.isNotEmpty) 'id': branch.id,
+        'institute_id': branch.instituteId,
+        'name': branch.name,
+        'address': branch.address,
+        'landmark': branch.landmark,
+        'city': branch.city,
+        'district': branch.district,
+        'state': branch.state,
+        'pin_code': branch.pinCode,
+        'latitude': branch.latitude,
+        'longitude': branch.longitude,
+        'maps_url': branch.mapsUrl,
+        'is_primary': branch.isPrimary,
+        'is_active': branch.isActive,
+        'is_online_only': branch.isOnlineOnly,
+        'display_order': branch.displayOrder,
+      };
+      await _client.from('institute_branches').upsert(payload);
+    } on PostgrestException catch (e) {
+      if (_isMissingRelation(e)) {
+        throw const app_errors.BusinessException(
+          'Branches are not available yet.',
+          code: 'branches_unavailable',
+        );
+      }
+      throw app_errors.mapError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<void> deleteBranch(String branchId) async {
+    try {
+      await _client.from('institute_branches').delete().eq('id', branchId);
+    } on PostgrestException catch (e) {
+      throw app_errors.mapError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  Future<void> _storeFormAnswers(
+    String enrollmentId,
+    Map<String, dynamic> answers,
+  ) async {
+    final split = SensitiveFieldPolicy.split(answers);
+    try {
+      await _client
+          .from('course_enrollments')
+          .update({'form_answers': split.public}).eq('id', enrollmentId);
+    } on PostgrestException catch (e) {
+      if (!_isMissingRelation(e)) throw app_errors.mapError(e);
+    }
+    if (split.sensitive.isEmpty) return;
+    try {
+      await _client.from('enrollment_sensitive_fields').upsert(
+            split.sensitive.entries
+                .map(
+                  (entry) => {
+                    'enrollment_id': enrollmentId,
+                    'field_key': entry.key,
+                    'value': entry.value?.toString() ?? '',
+                  },
+                )
+                .toList(),
+            onConflict: 'enrollment_id,field_key',
+          );
+    } on PostgrestException catch (e) {
+      if (!_isMissingRelation(e)) throw app_errors.mapError(e);
     }
   }
 
@@ -628,20 +757,47 @@ class SupabaseCourseRepository implements CourseRepository {
     required String name,
     String role = '',
     String bio = '',
+    String instituteId = '',
+    String photoUrl = '',
+    String designation = '',
+    String qualification = '',
+    String specialization = '',
+    String experienceText = '',
+    String demoUrl = '',
   }) async {
     try {
       await _client.from('course_faculty').insert({
-        'course_id': courseId,
+        'course_id': courseId.isEmpty ? null : courseId,
+        if (instituteId.isNotEmpty) 'institute_id': instituteId,
         'name': name,
         'role': role,
         'bio': bio,
+        if (photoUrl.isNotEmpty) 'photo_url': photoUrl,
+        if (designation.isNotEmpty) 'designation': designation,
+        if (qualification.isNotEmpty) 'qualification': qualification,
+        if (specialization.isNotEmpty) 'specialization': specialization,
+        if (experienceText.isNotEmpty) 'experience_text': experienceText,
+        if (demoUrl.isNotEmpty) 'demo_url': demoUrl,
       });
     } on PostgrestException catch (e) {
       if (_isMissingRelation(e)) {
-        throw const app_errors.BusinessException(
-          'Faculty profiles are not available yet.',
-          code: 'faculty_unavailable',
-        );
+        try {
+          await _client.from('course_faculty').insert({
+            'course_id': courseId,
+            'name': name,
+            'role': role,
+            'bio': bio,
+          });
+          return;
+        } on PostgrestException catch (inner) {
+          if (_isMissingRelation(inner)) {
+            throw const app_errors.BusinessException(
+              'Faculty profiles are not available yet.',
+              code: 'faculty_unavailable',
+            );
+          }
+          throw app_errors.mapError(inner);
+        }
       }
       throw app_errors.mapError(e);
     } catch (e) {

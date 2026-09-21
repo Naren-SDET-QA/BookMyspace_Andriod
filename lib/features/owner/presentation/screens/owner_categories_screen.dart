@@ -42,63 +42,32 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
   bool _isBusy = false;
   String? _selectedDesktopCategoryId;
   bool _desktopReorderMode = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(allVenueCategoriesProvider);
     final locale = ref.watch(localeProvider);
     final theme = Theme.of(context);
+    final allSubsectionsAsync = ref.watch(allVenueSubsectionsCatalogProvider);
 
-    if (MediaQuery.sizeOf(context).width >= 1050) {
-      final allSubsectionsAsync = ref.watch(allVenueSubsectionsCatalogProvider);
-      return categoriesAsync.when(
-        loading: () => const _AdminDesktopLoading(),
-        error: (error, _) => Scaffold(
-          body: ErrorView(
-            message: error.toString(),
-            onRetry: () => ref.invalidate(allVenueCategoriesProvider),
-          ),
-        ),
-        data: (categories) => _buildDesktopConsole(
-          context,
-          theme,
-          categories,
-          allSubsectionsAsync.valueOrNull ?? const <VenueSubsection>[],
-          currentLocale: locale,
-          onLocaleChanged: (nextLocale) =>
-              ref.read(localeProvider.notifier).setLocale(nextLocale),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Space Categories Management 🏷️'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh Categories',
-            onPressed: () {
-              ref.invalidate(allVenueCategoriesProvider);
-              ref.invalidate(venueCategoriesProvider);
-            },
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isBusy ? null : () => _showAddCategoryDialog(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Category'),
-        backgroundColor: AppTheme.violet,
-        foregroundColor: Colors.white,
-      ),
-      body: categoriesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => ErrorView(
+    return categoriesAsync.when(
+      loading: () => const _AdminDesktopLoading(),
+      error: (error, _) => Scaffold(
+        backgroundColor: const Color(0xFFF5F8FC),
+        body: ErrorView(
           message: error.toString(),
           onRetry: () => ref.invalidate(allVenueCategoriesProvider),
         ),
-        data: (categories) => _buildCategoryBody(context, theme, categories),
+      ),
+      data: (categories) => _buildDesktopConsole(
+        context,
+        theme,
+        categories,
+        allSubsectionsAsync.valueOrNull ?? const <VenueSubsection>[],
+        currentLocale: locale,
+        onLocaleChanged: (nextLocale) =>
+            ref.read(localeProvider.notifier).setLocale(nextLocale),
       ),
     );
   }
@@ -130,16 +99,25 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
         .where((subsection) => subsection.isActive)
         .toList(growable: false);
 
+    final width = MediaQuery.sizeOf(context).width;
+    final isCompact = width < 840;
+    final isMedium = width >= 840 && width < 1200;
+    final sidebar = _AdminDesktopSidebar(
+      collapsed: isMedium,
+      onNavigate: (route) => context.go(route),
+      onViewApp: () => context.go('/home'),
+    );
+
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF5F8FC),
+      drawer: isCompact
+          ? Drawer(backgroundColor: _adminNavy, child: sidebar)
+          : null,
       body: SafeArea(
         child: Row(
           children: [
-            _AdminDesktopSidebar(
-              collapsed: false,
-              onNavigate: (route) => context.go(route),
-              onViewApp: () => context.go('/home'),
-            ),
+            if (!isCompact) sidebar,
             Expanded(
               child: Column(
                 children: [
@@ -147,16 +125,24 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                     searchQuery: _searchQuery,
                     onSearchChanged: (value) =>
                         setState(() => _searchQuery = value),
-                    onMenu: () => _showMessage(
-                      'Use the sidebar to navigate the Admin Console.',
-                    ),
+                    compact: isCompact,
+                    onMenu: isCompact
+                        ? () => _scaffoldKey.currentState?.openDrawer()
+                        : () => _showMessage(
+                              'Use the sidebar to navigate the Admin Console.',
+                            ),
                     onViewApp: () => context.go('/home'),
                     currentLocale: currentLocale,
                     onLocaleChanged: onLocaleChanged,
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(28, 18, 28, 32),
+                      padding: EdgeInsets.fromLTRB(
+                        isCompact ? 16 : 28,
+                        18,
+                        isCompact ? 16 : 28,
+                        32,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -193,6 +179,8 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                               counts: counts,
                               selected: selected!,
                               activeSubsections: activeSubsections,
+                              compact: isCompact,
+                              medium: isMedium,
                               reorderMode: _desktopReorderMode,
                               isBusy: _isBusy,
                               onSelect: (category) => setState(() {
@@ -232,6 +220,9 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
     );
   }
 
+  // Kept as the previous compact list implementation; the console above is
+  // now used at every width so the screenshot layout stays consistent.
+  // ignore: unused_element
   Widget _buildCategoryBody(
     BuildContext context,
     ThemeData theme,
@@ -607,7 +598,7 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                 ),
                 Switch(
                   value: category.isActive,
-                  activeThumbColor: AppTheme.violet,
+                  activeThumbColor: AppTheme.brand,
                   onChanged: _isBusy
                       ? null
                       : (value) => _setCategoryActive(category, value),
@@ -1082,14 +1073,14 @@ class _OwnerCategoriesScreenState extends ConsumerState<OwnerCategoriesScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: icon == category.icon
-                            ? AppTheme.violet.withValues(alpha: 0.14)
+                            ? AppTheme.brand.withValues(alpha: 0.14)
                             : Theme.of(context)
                                 .colorScheme
                                 .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: icon == category.icon
-                              ? AppTheme.violet
+                              ? AppTheme.brand
                               : Colors.transparent,
                         ),
                       ),
@@ -1210,8 +1201,7 @@ class _AdminDesktopSidebar extends StatelessWidget {
   final ValueChanged<String> onNavigate;
   final VoidCallback onViewApp;
 
-  static const _items = <({IconData icon, String label, String? route})>[
-    (icon: Icons.dashboard_outlined, label: 'Dashboard', route: '/admin'),
+  static const _contentItems = <({IconData icon, String label, String route})>[
     (
       icon: Icons.category_outlined,
       label: 'Categories',
@@ -1221,19 +1211,27 @@ class _AdminDesktopSidebar extends StatelessWidget {
     (
       icon: Icons.view_quilt_outlined,
       label: 'Home Sections',
-      route: '/admin/cms'
+      route: '/admin/home-layout'
     ),
     (
       icon: Icons.text_fields_outlined,
       label: 'Text & Labels',
-      route: '/admin/cms'
+      route: '/admin/nav-tabs'
     ),
     (
       icon: Icons.perm_media_outlined,
       label: 'Media Library',
-      route: '/admin/cms'
+      route: '/admin/media'
     ),
-    (icon: Icons.palette_outlined, label: 'App Theme', route: '/features'),
+    (
+      icon: Icons.palette_outlined,
+      label: 'App Theme',
+      route: '/admin/home-layout'
+    ),
+  ];
+
+  static const _mainItems = <({IconData icon, String label, String route})>[
+    (icon: Icons.dashboard_outlined, label: 'Dashboard', route: '/admin'),
     (
       icon: Icons.account_balance_outlined,
       label: 'Venues',
@@ -1255,18 +1253,14 @@ class _AdminDesktopSidebar extends StatelessWidget {
       route: '/admin/payments'
     ),
     (icon: Icons.event_outlined, label: 'Events', route: '/admin/events'),
-    (icon: Icons.school_outlined, label: 'Courses', route: '/admin/courses'),
+    (icon: Icons.school_outlined, label: 'Courses', route: '/admin/education'),
     (
       icon: Icons.bar_chart_outlined,
       label: 'Reports & Analytics',
       route: '/analytics'
     ),
     (icon: Icons.tune_outlined, label: 'Feature Hub', route: '/admin/modules'),
-    (
-      icon: Icons.integration_instructions_outlined,
-      label: 'Integrations',
-      route: '/admin/integrations'
-    ),
+    (icon: Icons.draw_outlined, label: 'Live Editor', route: '/admin/catalog'),
     (icon: Icons.settings_outlined, label: 'App Settings', route: '/settings'),
   ];
 
@@ -1321,25 +1315,41 @@ class _AdminDesktopSidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
-                for (final item in _items) ...[
-                  if (item.label == 'Categories')
-                    _AdminSidebarItem(
-                      icon: Icons.inventory_2_outlined,
-                      label: 'Content Management',
-                      selected: true,
-                      collapsed: collapsed,
-                      onTap: () => onNavigate('/admin/categories'),
+                _AdminSidebarItem(
+                  icon: Icons.dashboard_outlined,
+                  label: 'Dashboard',
+                  selected: false,
+                  collapsed: collapsed,
+                  onTap: () => onNavigate('/admin'),
+                ),
+                _AdminSidebarItem(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Content Management',
+                  selected: true,
+                  collapsed: collapsed,
+                  onTap: () => onNavigate('/admin/categories'),
+                ),
+                if (!collapsed)
+                  for (final item in _contentItems)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 18),
+                      child: _AdminSidebarItem(
+                        icon: item.icon,
+                        label: item.label,
+                        selected: item.route == '/admin/categories',
+                        collapsed: false,
+                        nested: true,
+                        onTap: () => onNavigate(item.route),
+                      ),
                     ),
+                for (final item in _mainItems.skip(1))
                   _AdminSidebarItem(
                     icon: item.icon,
                     label: item.label,
-                    selected: item.route == '/admin/categories',
+                    selected: false,
                     collapsed: collapsed,
-                    onTap: item.route == null
-                        ? null
-                        : () => onNavigate(item.route!),
+                    onTap: () => onNavigate(item.route),
                   ),
-                ],
               ],
             ),
           ),
@@ -1391,12 +1401,14 @@ class _AdminSidebarItem extends StatelessWidget {
     required this.selected,
     required this.collapsed,
     required this.onTap,
+    this.nested = false,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final bool collapsed;
+  final bool nested;
   final VoidCallback? onTap;
 
   @override
@@ -1408,7 +1420,9 @@ class _AdminSidebarItem extends StatelessWidget {
       child: Tooltip(
         message: collapsed ? label : '',
         child: Material(
-          color: selected ? _adminBlue : Colors.transparent,
+          color: selected
+              ? (nested ? const Color(0xFF123A66) : _adminBlue)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           child: InkWell(
             onTap: onTap,
@@ -1416,7 +1430,7 @@ class _AdminSidebarItem extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: collapsed ? 0 : 12,
-                vertical: 11,
+                vertical: nested ? 8 : 11,
               ),
               child: Row(
                 mainAxisAlignment: collapsed
@@ -1436,6 +1450,15 @@ class _AdminSidebarItem extends StatelessWidget {
                     ),
                     if (label == 'Content Management')
                       const Icon(Icons.expand_less, color: Colors.white70),
+                    if (nested && selected)
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: _adminTeal,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                   ],
                 ],
               ),
@@ -1455,6 +1478,7 @@ class _AdminDesktopTopBar extends StatefulWidget {
     required this.onViewApp,
     required this.currentLocale,
     required this.onLocaleChanged,
+    this.compact = false,
   });
 
   final String searchQuery;
@@ -1463,6 +1487,7 @@ class _AdminDesktopTopBar extends StatefulWidget {
   final VoidCallback onViewApp;
   final Locale currentLocale;
   final ValueChanged<Locale> onLocaleChanged;
+  final bool compact;
 
   @override
   State<_AdminDesktopTopBar> createState() => _AdminDesktopTopBarState();
@@ -1497,9 +1522,10 @@ class _AdminDesktopTopBarState extends State<_AdminDesktopTopBar> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = widget.compact;
     return Container(
       height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: _adminBorder)),
@@ -1508,9 +1534,8 @@ class _AdminDesktopTopBarState extends State<_AdminDesktopTopBar> {
         children: [
           IconButton(
               onPressed: widget.onMenu, icon: const Icon(Icons.menu_rounded)),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 440,
+          const SizedBox(width: 8),
+          Expanded(
             child: TextField(
               controller: _searchController,
               onChanged: widget.onSearchChanged,
@@ -1527,13 +1552,19 @@ class _AdminDesktopTopBarState extends State<_AdminDesktopTopBar> {
               ),
             ),
           ),
-          const Spacer(),
-          OutlinedButton.icon(
-            onPressed: widget.onViewApp,
-            icon: const Icon(Icons.open_in_new, size: 16),
-            label: const Text('View App'),
-          ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          if (!compact)
+            OutlinedButton.icon(
+              onPressed: widget.onViewApp,
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('View App'),
+            )
+          else
+            IconButton(
+              tooltip: 'View App',
+              onPressed: widget.onViewApp,
+              icon: const Icon(Icons.open_in_new, size: 18),
+            ),
           PopupMenuButton<String>(
             tooltip: 'Language',
             onSelected: (languageCode) =>
@@ -1545,17 +1576,20 @@ class _AdminDesktopTopBarState extends State<_AdminDesktopTopBar> {
                     ))
                 .toList(growable: false),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 4 : 10, vertical: 8),
               child: Row(
                 children: [
                   const Icon(Icons.language, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    _supportedLanguageLabels[
-                            widget.currentLocale.languageCode] ??
-                        'English',
-                  ),
-                  const Icon(Icons.keyboard_arrow_down, size: 18),
+                  if (!compact) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      _supportedLanguageLabels[
+                              widget.currentLocale.languageCode] ??
+                          'English',
+                    ),
+                    const Icon(Icons.keyboard_arrow_down, size: 18),
+                  ],
                 ],
               ),
             ),
@@ -1573,17 +1607,19 @@ class _AdminDesktopTopBarState extends State<_AdminDesktopTopBar> {
             backgroundColor: Color(0xFFE1EBF7),
             child: Icon(Icons.person_outline, color: _adminNavy),
           ),
-          const SizedBox(width: 8),
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Admin', style: TextStyle(fontWeight: FontWeight.w700)),
-              Text('Administrator',
-                  style: TextStyle(fontSize: 11, color: Colors.black54)),
-            ],
-          ),
-          const Icon(Icons.keyboard_arrow_down),
+          if (!compact) ...[
+            const SizedBox(width: 8),
+            const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Admin', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text('Super Administrator',
+                    style: TextStyle(fontSize: 11, color: Colors.black54)),
+              ],
+            ),
+            const Icon(Icons.keyboard_arrow_down),
+          ],
         ],
       ),
     );
@@ -1605,19 +1641,26 @@ class _DesktopBreadcrumbHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.end,
       children: [
-        const Expanded(
-          child: Column(
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 240, maxWidth: 720),
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Icon(Icons.home_outlined, size: 15, color: Colors.black45),
                   SizedBox(width: 8),
-                  Text('Content Management',
-                      style: TextStyle(color: Colors.black54, fontSize: 13)),
+                  Flexible(
+                    child: Text('Content Management',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.black54, fontSize: 13)),
+                  ),
                   Icon(Icons.chevron_right, color: Colors.black38, size: 18),
                   Text('Categories',
                       style: TextStyle(fontSize: 13, color: _adminNavy)),
@@ -1645,13 +1688,11 @@ class _DesktopBreadcrumbHeader extends StatelessWidget {
           icon: const Icon(Icons.apps_outlined),
           label: const Text('Manage Icons'),
         ),
-        const SizedBox(width: 12),
         OutlinedButton.icon(
           onPressed: onReorder,
           icon: const Icon(Icons.swap_vert_rounded),
           label: Text(reorderMode ? 'Done Reordering' : 'Reorder'),
         ),
-        const SizedBox(width: 12),
         FilledButton.icon(
           onPressed: onAddCategory,
           icon: const Icon(Icons.add),
@@ -1682,45 +1723,59 @@ class _DesktopStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _DesktopStatCard(
-            icon: Icons.category_outlined,
-            value: '$categoryCount',
-            label: 'Main Categories',
-            color: const Color(0xFF6C3CF0),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _DesktopStatCard(
-            icon: Icons.account_tree_outlined,
-            value: '$subsectionCount',
-            label: 'Subsections',
-            color: const Color(0xFFFFB51B),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _DesktopStatCard(
-            icon: Icons.verified_outlined,
-            value: '$activeCount active',
-            label: 'Live Updates',
-            color: _adminTeal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: _DesktopStatCard(
-            icon: Icons.language_outlined,
-            value: '$languageCount',
-            label: 'Supported Languages',
-            color: _adminBlue,
-          ),
-        ),
-      ],
+    final cards = [
+      _DesktopStatCard(
+        icon: Icons.category_outlined,
+        value: '$categoryCount',
+        label: 'Main Categories',
+        color: const Color(0xFF6C3CF0),
+      ),
+      _DesktopStatCard(
+        icon: Icons.account_tree_outlined,
+        value: '$subsectionCount',
+        label: 'Subsections',
+        color: const Color(0xFFFFB51B),
+      ),
+      const _DesktopStatCard(
+        icon: Icons.verified_outlined,
+        value: 'Live Updates',
+        label: 'Instantly in App',
+        color: _adminTeal,
+      ),
+      _DesktopStatCard(
+        icon: Icons.language_outlined,
+        value: 'Multi-language',
+        label: 'EN · తెలుగు · हिंदी · ಕನ್ನಡ · தமிழ்',
+        color: _adminBlue,
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 900;
+        if (wide) {
+          return Row(
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(flex: i == 3 ? 2 : 1, child: cards[i]),
+              ],
+            ],
+          );
+        }
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final card in cards)
+              SizedBox(
+                width: constraints.maxWidth >= 520
+                    ? (constraints.maxWidth - 12) / 2
+                    : constraints.maxWidth,
+                child: card,
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1741,7 +1796,7 @@ class _DesktopStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 76,
+      constraints: const BoxConstraints(minHeight: 76),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1763,13 +1818,15 @@ class _DesktopStatCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(value,
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w800)),
-                Text(label,
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w800)),
+                Text(label,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style:
                         const TextStyle(fontSize: 11, color: Colors.black54)),
@@ -1788,6 +1845,8 @@ class _DesktopManagementGrid extends StatelessWidget {
     required this.counts,
     required this.selected,
     required this.activeSubsections,
+    this.compact = false,
+    this.medium = false,
     required this.reorderMode,
     required this.isBusy,
     required this.onSelect,
@@ -1808,6 +1867,8 @@ class _DesktopManagementGrid extends StatelessWidget {
   final Map<String, int> counts;
   final VenueCategory selected;
   final List<VenueSubsection> activeSubsections;
+  final bool compact;
+  final bool medium;
   final bool reorderMode;
   final bool isBusy;
   final ValueChanged<VenueCategory> onSelect;
@@ -1833,68 +1894,88 @@ class _DesktopManagementGrid extends StatelessWidget {
             category.slug.toLowerCase().contains(query))
         .toList(growable: false);
 
+    final list = _DesktopCategoryListCard(
+      categories: filtered,
+      counts: counts,
+      selected: selected,
+      reorderMode: reorderMode && query.isEmpty,
+      isBusy: isBusy,
+      searchQuery: searchQuery,
+      onSearchChanged: onSearchChanged,
+      onSelect: onSelect,
+      onEdit: onEdit,
+      onToggle: onToggle,
+      onDelete: onDelete,
+      onReorder: onReorder,
+      onRefresh: onRefresh,
+    );
+    final details = _DesktopCategoryDetailsCard(
+      category: selected,
+      isBusy: isBusy,
+      onDelete: onDelete,
+      onEdit: onEdit,
+      onToggle: onToggle,
+      onChangeIcon: onChangeIcon,
+      onChangeImage: onChangeImage,
+      onRemoveImage: onRemoveImage,
+      onSaveDetails: onSaveDetails,
+    );
+    final right = Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _adminBorder),
+          ),
+          child: _SubsectionsEditor(category: selected),
+        ),
+        const SizedBox(height: 14),
+        _DesktopLivePreviewCard(
+          categories: categories.where((c) => c.isActive).toList(),
+          activeSubsections: activeSubsections,
+          onRefresh: onRefresh,
+        ),
+      ],
+    );
+
+    if (compact) {
+      return Column(
+        children: [
+          list,
+          const SizedBox(height: 14),
+          details,
+          const SizedBox(height: 14),
+          right,
+        ],
+      );
+    }
+    if (medium) {
+      return Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: list),
+              const SizedBox(width: 14),
+              Expanded(child: details),
+            ],
+          ),
+          const SizedBox(height: 14),
+          right,
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          flex: 3,
-          child: _DesktopCategoryListCard(
-            categories: filtered,
-            counts: counts,
-            selected: selected,
-            reorderMode: reorderMode && query.isEmpty,
-            isBusy: isBusy,
-            searchQuery: searchQuery,
-            onSearchChanged: onSearchChanged,
-            onSelect: onSelect,
-            onEdit: onEdit,
-            onToggle: onToggle,
-            onDelete: onDelete,
-            onReorder: onReorder,
-            onRefresh: onRefresh,
-          ),
-        ),
+        Expanded(flex: 3, child: list),
         const SizedBox(width: 14),
-        Expanded(
-          flex: 4,
-          child: _DesktopCategoryDetailsCard(
-            category: selected,
-            isBusy: isBusy,
-            onDelete: onDelete,
-            onEdit: onEdit,
-            onToggle: onToggle,
-            onChangeIcon: onChangeIcon,
-            onChangeImage: onChangeImage,
-            onRemoveImage: onRemoveImage,
-            onSaveDetails: onSaveDetails,
-          ),
-        ),
+        Expanded(flex: 4, child: details),
         const SizedBox(width: 14),
-        Expanded(
-          flex: 5,
-          child: Column(
-            children: [
-              Card(
-                margin: EdgeInsets.zero,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: _adminBorder),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: _SubsectionsEditor(category: selected),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _DesktopLivePreviewCard(
-                categories: categories.where((c) => c.isActive).toList(),
-                activeSubsections: activeSubsections,
-                onRefresh: onRefresh,
-              ),
-            ],
-          ),
-        ),
+        Expanded(flex: 5, child: right),
       ],
     );
   }
@@ -2074,24 +2155,35 @@ class _DesktopCategoryRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch.adaptive(
-            value: category.isActive,
-            onChanged: isBusy ? null : (value) => onToggle(category, value),
-            activeTrackColor: _adminTeal.withValues(alpha: 0.35),
-            activeThumbColor: _adminTeal,
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Category actions',
-            onSelected: (value) {
-              if (value == 'edit') onEdit(category);
-              if (value == 'delete') onDelete(category);
-            },
-            icon: Icon(Icons.more_vert,
-                color: selected ? Colors.white : Colors.black54, size: 18),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit category')),
-              PopupMenuItem(value: 'delete', child: Text('Delete category')),
-            ],
+          FittedBox(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Switch.adaptive(
+                  value: category.isActive,
+                  onChanged:
+                      isBusy ? null : (value) => onToggle(category, value),
+                  activeTrackColor: _adminTeal.withValues(alpha: 0.35),
+                  activeThumbColor: _adminTeal,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Category actions',
+                  onSelected: (value) {
+                    if (value == 'edit') onEdit(category);
+                    if (value == 'delete') onDelete(category);
+                  },
+                  icon: Icon(Icons.more_vert,
+                      color: selected ? Colors.white : Colors.black54,
+                      size: 18),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit category')),
+                    PopupMenuItem(
+                        value: 'delete', child: Text('Delete category')),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -2161,7 +2253,10 @@ class _DesktopCategoryDetailsCard extends StatelessWidget {
           const Text('Icon',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
           const SizedBox(height: 7),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
                 width: 48,
@@ -2174,32 +2269,63 @@ class _DesktopCategoryDetailsCard extends StatelessWidget {
                 child: Text(category.icon ?? '🏷️',
                     style: const TextStyle(fontSize: 25)),
               ),
-              const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: isBusy ? null : () => onChangeIcon(category),
                 icon: const Icon(Icons.image_outlined, size: 17),
                 label: const Text('Change Icon'),
               ),
+              for (final icon in const [
+                '🏛️',
+                '🏢',
+                '🏟️',
+                '🌳',
+                '🎓',
+                '🛕',
+                '📸',
+                '💼',
+              ])
+                InkWell(
+                  onTap: isBusy ? null : () => onChangeIcon(category),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: icon == category.icon
+                          ? const Color(0xFFECE5FF)
+                          : const Color(0xFFF3F6FB),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color:
+                            icon == category.icon ? _adminBlue : _adminBorder,
+                      ),
+                    ),
+                    child: Text(icon, style: const TextStyle(fontSize: 16)),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 14),
           const Text('Category Image',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
           const SizedBox(height: 7),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _CategoryImagePreview(category: category),
-              const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: isBusy ? null : () => onChangeImage(category),
                 icon: const Icon(Icons.image_outlined, size: 17),
                 label: const Text('Change Image'),
               ),
               if (category.imageUrl.isNotEmpty || category.imagePath.isNotEmpty)
-                IconButton(
-                  tooltip: 'Remove image',
+                TextButton.icon(
                   onPressed: isBusy ? null : () => onRemoveImage(category),
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label:
+                      const Text('Remove', style: TextStyle(color: Colors.red)),
                 ),
             ],
           ),
@@ -2217,6 +2343,13 @@ class _DesktopCategoryDetailsCard extends StatelessWidget {
               ),
               Text(category.isActive ? 'Active' : 'Disabled'),
             ],
+          ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Inactive categories will be hidden from the app',
+              style: TextStyle(fontSize: 11, color: Colors.black54),
+            ),
           ),
           const SizedBox(height: 8),
           _DesktopReadOnlyField(
@@ -2246,14 +2379,15 @@ class _DesktopCategoryDetailsCard extends StatelessWidget {
                 .toList(growable: false),
           ),
           const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
             children: [
               OutlinedButton(
                 onPressed: () => onEdit(category),
                 child: const Text('Edit Details'),
               ),
-              const SizedBox(width: 10),
               FilledButton(
                 onPressed: isBusy ? null : () => onSaveDetails(category),
                 style: FilledButton.styleFrom(backgroundColor: _adminTeal),
@@ -2299,17 +2433,32 @@ class _DesktopLivePreviewCard extends StatelessWidget {
                 colors: [Color(0xFF153C8E), Color(0xFF04C8B9)],
               ),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Explore Verified Spaces',
+                const Text('Explore Verified Spaces',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w800)),
-                SizedBox(height: 4),
-                Text('Find the perfect space for your special moments',
-                    style: TextStyle(color: Colors.white70, fontSize: 11)),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text(
+                        'Find the perfect space for your special moments',
+                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    TextButton(
+                      onPressed: () => context.go('/home'),
+                      child: const Text(
+                        'View All →',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -2324,8 +2473,35 @@ class _DesktopLivePreviewCard extends StatelessWidget {
                     width: 104,
                     child: Column(
                       children: [
-                        _CategoryImagePreview(category: category, size: 76),
-                        const SizedBox(height: 5),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            _CategoryImagePreview(category: category, size: 76),
+                            Positioned(
+                              bottom: -6,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: _adminTeal,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white, width: 2),
+                                  ),
+                                  child: Text(
+                                    category.icon ?? '🏷️',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         Text(category.name,
                             maxLines: 2,
                             textAlign: TextAlign.center,
@@ -2374,15 +2550,16 @@ class _DesktopPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        color: _adminNavy,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800)),
-              ),
+              Text(title,
+                  style: const TextStyle(
+                      color: _adminNavy,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
               if (trailing != null) trailing!,
             ],
           ),
@@ -2500,26 +2677,14 @@ class _SubsectionsEditor extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subsectionsAsync =
         ref.watch(allVenueSubsectionsProvider(category.id));
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(10),
+    return subsectionsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => ErrorView(
+        message: error.toString(),
+        onRetry: () => ref.invalidate(allVenueSubsectionsProvider(category.id)),
       ),
-      child: subsectionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => ErrorView(
-          message: error.toString(),
-          onRetry: () =>
-              ref.invalidate(allVenueSubsectionsProvider(category.id)),
-        ),
-        data: (subsections) =>
-            _SubsectionList(category: category, subsections: subsections),
-      ),
+      data: (subsections) =>
+          _SubsectionList(category: category, subsections: subsections),
     );
   }
 }
@@ -2543,18 +2708,27 @@ class _SubsectionListState extends ConsumerState<_SubsectionList> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                'Subsections (${subsections.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            Text(
+              'Subsections (${subsections.length})',
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: _adminNavy,
               ),
             ),
-            TextButton.icon(
+            FilledButton.icon(
               onPressed: _busy ? null : () => _showSubsectionDialog(),
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text('Add Subsection'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _adminBlue,
+                foregroundColor: Colors.white,
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           ],
         ),
@@ -2572,47 +2746,74 @@ class _SubsectionListState extends ConsumerState<_SubsectionList> {
             onReorder: _reorder,
             itemBuilder: (context, index) {
               final subsection = subsections[index];
-              return ListTile(
+              return Padding(
                 key: ValueKey(subsection.id),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(Icons.drag_handle_rounded),
-                    ),
-                    const SizedBox(width: 6),
-                    _SubsectionThumbnail(subsection: subsection),
-                  ],
-                ),
-                title: Text(subsection.name),
-                subtitle: Text(
-                    '${subsection.slug} • Order: ${subsection.displayOrder}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_rounded, size: 18),
-                      tooltip: 'Edit Subsection',
-                      onPressed: _busy
-                          ? null
-                          : () => _showSubsectionDialog(subsection),
-                    ),
-                    Switch(
-                      value: subsection.isActive,
-                      onChanged: _busy
-                          ? null
-                          : (value) => _setActive(subsection, value),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          size: 18, color: Colors.red),
-                      tooltip: 'Delete Subsection',
-                      onPressed: _busy ? null : () => _delete(subsection),
-                    ),
-                  ],
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _adminBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: const Icon(Icons.drag_indicator,
+                            color: Colors.black38, size: 18),
+                      ),
+                      const SizedBox(width: 6),
+                      _SubsectionThumbnail(subsection: subsection),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          subsection.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      FittedBox(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Switch.adaptive(
+                              value: subsection.isActive,
+                              onChanged: _busy
+                                  ? null
+                                  : (value) => _setActive(subsection, value),
+                              activeTrackColor:
+                                  _adminTeal.withValues(alpha: 0.35),
+                              activeThumbColor: _adminTeal,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              tooltip: 'Edit Subsection',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: _busy
+                                  ? null
+                                  : () => _showSubsectionDialog(subsection),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                                color: Colors.red,
+                              ),
+                              tooltip: 'Delete Subsection',
+                              visualDensity: VisualDensity.compact,
+                              onPressed:
+                                  _busy ? null : () => _delete(subsection),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

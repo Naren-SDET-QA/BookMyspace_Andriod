@@ -9,43 +9,15 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../domain/course.dart';
+import '../../domain/education_category.dart';
 import '../course_providers.dart';
+import '../widgets/batch_class_card.dart';
 import '../widgets/course_card.dart';
 
-/// A course-listing filter chip. `null` means "All"; [free] means the
-/// fee-free filter (real data via [Course.isFree]) rather than a delivery
-/// mode.
-class _CourseFilter {
-  const _CourseFilter({this.mode, this.free = false});
-
-  final CourseMode? mode;
-  final bool free;
-
-  static const all = _CourseFilter();
-
-  bool matches(Course course) {
-    if (free) return course.isFree;
-    if (mode != null) return course.mode == mode;
-    return true;
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is _CourseFilter && other.mode == mode && other.free == free;
-
-  @override
-  int get hashCode => Object.hash(mode, free);
-}
-
-/// All published courses, newest first.
-///
-/// Layout matches the reference design's spacing and section structure: a
-/// search field over the list, a row of filter chips, then a section header
-/// with a live count before the card list. Search and filters run entirely
-/// client-side over the already-fetched [Course] data (title text match,
-/// delivery mode, and the real [Course.isFree] flag) -- no rating,
-/// distance or discount data exists to filter or sort by, so those controls
-/// from the reference are intentionally omitted.
+/// All published courses with category selector, delivery mode filter,
+/// quick toggles for "Ongoing Today" and "Waitlist Available", and
+/// search matching class title, subject, institute name, instructor,
+/// or location.
 class CoursesListScreen extends ConsumerStatefulWidget {
   const CoursesListScreen({super.key});
 
@@ -56,7 +28,11 @@ class CoursesListScreen extends ConsumerStatefulWidget {
 class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
   final _searchController = TextEditingController();
   String _query = '';
-  _CourseFilter _filter = _CourseFilter.all;
+  EducationCategory _category = EducationCategory.all;
+  CourseMode? _mode;
+  bool _ongoingToday = false;
+  bool _waitlistOnly = false;
+  bool _showBatches = false;
 
   @override
   void dispose() {
@@ -67,11 +43,60 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
   List<Course> _applyFilters(List<Course> items) {
     final query = _query.trim().toLowerCase();
     return items.where((course) {
-      if (!_filter.matches(course)) return false;
+      if (_mode != null && course.mode != _mode) return false;
+      if (_category != EducationCategory.all &&
+          !_category.matches(
+            title: course.title,
+            subject: course.description,
+            categorySlug: course.categoryId,
+            instructor: course.instructorName,
+          )) {
+        return false;
+      }
       if (query.isEmpty) return true;
       return course.title.toLowerCase().contains(query) ||
-          course.instituteName.toLowerCase().contains(query);
+          course.instituteName.toLowerCase().contains(query) ||
+          course.instructorName.toLowerCase().contains(query) ||
+          course.description.toLowerCase().contains(query);
     }).toList();
+  }
+
+  List<({Course course, CourseBatch batch})> _matchingBatches(
+    List<Course> courses,
+  ) {
+    final query = _query.trim().toLowerCase();
+    final matches = <({Course course, CourseBatch batch})>[];
+    for (final course in courses) {
+      for (final batch in course.batches.where((b) => b.isActive)) {
+        if (_mode != null && (batch.mode ?? course.mode) != _mode) continue;
+        if (_ongoingToday && !batch.isOngoingToday) continue;
+        if (_waitlistOnly && !batch.waitlistEnabled) continue;
+        if (_category != EducationCategory.all &&
+            !_category.matches(
+              title: course.title,
+              subject: batch.subject,
+              categorySlug: batch.categorySlug.isNotEmpty
+                  ? batch.categorySlug
+                  : course.categoryId,
+              instructor: course.instructorName,
+            )) {
+          continue;
+        }
+        if (query.isNotEmpty) {
+          final haystack = [
+            course.title,
+            batch.subject,
+            batch.label,
+            course.instituteName,
+            course.instructorName,
+            course.instituteCity,
+          ].join(' ').toLowerCase();
+          if (!haystack.contains(query)) continue;
+        }
+        matches.add((course: course, batch: batch));
+      }
+    }
+    return matches;
   }
 
   @override
@@ -111,6 +136,7 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
         ),
         data: (items) {
           final filtered = _applyFilters(items);
+          final batchCards = _matchingBatches(items);
           return CustomScrollView(
             slivers: [
               SliverPadding(
@@ -119,26 +145,45 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _CourseSearchField(
+                      _SearchField(
                         controller: _searchController,
-                        hintText: l10n.courseSearchHint,
+                        hintText: 'Search classes, institutes, instructors...',
                         onChanged: (value) => setState(() => _query = value),
                       ),
                       const SizedBox(height: 12),
-                      _CourseFilterChips(
-                        selected: _filter,
-                        onSelected: (f) => setState(() => _filter = f),
-                        l10n: l10n,
+                      _CategoryChips(
+                        selected: _category,
+                        onSelected: (c) => setState(() => _category = c),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
+                      _ModeFilterRow(
+                        selectedMode: _mode,
+                        ongoingToday: _ongoingToday,
+                        waitlistOnly: _waitlistOnly,
+                        onModeSelected: (m) => setState(() {
+                          _mode = _mode == m ? null : m;
+                        }),
+                        onOngoingToggle: () =>
+                            setState(() => _ongoingToday = !_ongoingToday),
+                        onWaitlistToggle: () =>
+                            setState(() => _waitlistOnly = !_waitlistOnly),
+                      ),
+                      const SizedBox(height: 8),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '${l10n.courses} (${filtered.length})',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
+                          Expanded(
+                            child: Text(
+                              _showBatches
+                                  ? 'Batches (${batchCards.length})'
+                                  : '${l10n.courses} (${filtered.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
+                          ),
+                          _ViewToggle(
+                            showBatches: _showBatches,
+                            onToggle: (v) => setState(() => _showBatches = v),
                           ),
                         ],
                       ),
@@ -155,6 +200,28 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                     message: l10n.noCoursesMessage,
                   ),
                 )
+              else if (_showBatches)
+                if (batchCards.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyState(
+                      icon: Icons.event_note_outlined,
+                      title: 'No batches match',
+                      message: 'Try a different category, mode or search term.',
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    sliver: SliverList.separated(
+                      itemCount: batchCards.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => BatchClassCard(
+                        course: batchCards[i].course,
+                        batch: batchCards[i].batch,
+                      ),
+                    ),
+                  )
               else if (filtered.isEmpty)
                 const SliverFillRemaining(
                   hasScrollBody: false,
@@ -178,8 +245,8 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
   }
 }
 
-class _CourseSearchField extends StatelessWidget {
-  const _CourseSearchField({
+class _SearchField extends StatelessWidget {
+  const _SearchField({
     required this.controller,
     required this.hintText,
     required this.onChanged,
@@ -237,40 +304,30 @@ class _CourseSearchField extends StatelessWidget {
   }
 }
 
-class _CourseFilterChips extends StatelessWidget {
-  const _CourseFilterChips({
+class _CategoryChips extends StatelessWidget {
+  const _CategoryChips({
     required this.selected,
     required this.onSelected,
-    required this.l10n,
   });
 
-  final _CourseFilter selected;
-  final ValueChanged<_CourseFilter> onSelected;
-  final AppLocalizations l10n;
+  final EducationCategory selected;
+  final ValueChanged<EducationCategory> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final options = <(String, _CourseFilter)>[
-      (l10n.filterAllCourses, _CourseFilter.all),
-      (l10n.modeOnline, const _CourseFilter(mode: CourseMode.online)),
-      (l10n.modeOffline, const _CourseFilter(mode: CourseMode.offline)),
-      (l10n.modeHybrid, const _CourseFilter(mode: CourseMode.hybrid)),
-      (l10n.freeEvent, const _CourseFilter(free: true)),
-    ];
-
     return SizedBox(
-      height: 36,
+      height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: options.length,
+        itemCount: EducationCategory.values.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
-          final (label, filter) = options[i];
-          final isSelected = filter == selected;
+          final category = EducationCategory.values[i];
+          final isSelected = category == selected;
           return ChoiceChip(
-            label: Text(label),
+            label: Text(category.label),
             selected: isSelected,
-            onSelected: (_) => onSelected(filter),
+            onSelected: (_) => onSelected(category),
             showCheckmark: false,
             selectedColor: AppTheme.violet,
             labelStyle: TextStyle(
@@ -288,6 +345,170 @@ class _CourseFilterChips extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ModeFilterRow extends StatelessWidget {
+  const _ModeFilterRow({
+    required this.selectedMode,
+    required this.ongoingToday,
+    required this.waitlistOnly,
+    required this.onModeSelected,
+    required this.onOngoingToggle,
+    required this.onWaitlistToggle,
+  });
+
+  final CourseMode? selectedMode;
+  final bool ongoingToday;
+  final bool waitlistOnly;
+  final ValueChanged<CourseMode> onModeSelected;
+  final VoidCallback onOngoingToggle;
+  final VoidCallback onWaitlistToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: [
+        for (final mode in CourseMode.values)
+          FilterChip(
+            label: Text(mode.name.toUpperCase()),
+            selected: selectedMode == mode,
+            onSelected: (_) => onModeSelected(mode),
+            selectedColor: AppTheme.violet,
+            labelStyle: TextStyle(
+              color: selectedMode == mode ? Colors.white : null,
+              fontWeight:
+                  selectedMode == mode ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+        FilterChip(
+          avatar: const Icon(Icons.wb_sunny_rounded, size: 16),
+          label: const Text('Ongoing Today'),
+          selected: ongoingToday,
+          onSelected: (_) => onOngoingToggle(),
+        ),
+        FilterChip(
+          avatar: const Icon(Icons.hourglass_top_rounded, size: 16),
+          label: const Text('Waitlist Available'),
+          selected: waitlistOnly,
+          onSelected: (_) => onWaitlistToggle(),
+        ),
+      ],
+    );
+  }
+}
+
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({
+    required this.showBatches,
+    required this.onToggle,
+  });
+
+  final bool showBatches;
+  final ValueChanged<bool> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toggleBtn(
+            icon: Icons.view_list_rounded,
+            label: 'Courses',
+            selected: !showBatches,
+            onTap: () => onToggle(false),
+            theme: theme,
+          ),
+          _toggleBtn(
+            icon: Icons.calendar_view_day_rounded,
+            label: 'Batches',
+            selected: showBatches,
+            onTap: () => onToggle(true),
+            theme: theme,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleBtn({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    required ThemeData theme,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.violet : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color:
+                  selected ? Colors.white : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected
+                    ? Colors.white
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SearchEmptyState extends StatelessWidget {
+  const SearchEmptyState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded, size: 48, color: Colors.grey),
+            SizedBox(height: 12),
+            Text(
+              'No results found',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Try a different search term or filter.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }

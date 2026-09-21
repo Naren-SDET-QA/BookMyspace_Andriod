@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../cms/domain/configurable_form.dart';
+import '../../../cms/domain/target_modules.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../course_providers.dart';
 import '../widgets/course_card.dart';
 import 'education_hub_screen.dart';
@@ -18,14 +21,16 @@ class AdminEducationScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Education'),
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
               Tab(text: 'Institutes'),
               Tab(text: 'Courses'),
+              Tab(text: 'Field catalog'),
             ],
           ),
           actions: [
@@ -40,6 +45,7 @@ class AdminEducationScreen extends ConsumerWidget {
           children: [
             _AdminInstitutesTab(),
             _AdminCoursesTab(),
+            _AdminCatalogTab(),
           ],
         ),
       ),
@@ -91,6 +97,65 @@ class _AdminCoursesTab extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, i) => CourseCard(course: items[i]),
             ),
+    );
+  }
+}
+
+class _AdminCatalogTab extends ConsumerWidget {
+  const _AdminCatalogTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final flag = ref.watch(moduleFlagProvider('courses'));
+    final modules = TargetModuleConfig.fromJson(flag.config['modules']);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Platform defaults. Owners can only enable a module if it is on here. Aadhaar stays off until you allow it.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        for (final entry in TargetModuleConfig.catalog.entries)
+          SwitchListTile(
+            title: Text(entry.value),
+            value: modules.enabled(entry.key),
+            onChanged: (value) async {
+              final next = modules.copyWithFlag(entry.key, value);
+              final config = Map<String, dynamic>.from(flag.config)
+                ..['modules'] = next.toJson();
+              try {
+                await ref.read(featureFlagRepositoryProvider).saveFlag(
+                      key: 'courses',
+                      enabled: flag.enabled,
+                      platforms: flag.platforms,
+                      config: config,
+                    );
+                ref.invalidate(featureFlagsProvider);
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Not saved: $error')),
+                );
+              }
+            },
+          ),
+        const Divider(),
+        Text(
+          'Registration field catalog',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        for (final field in ConfigurableFormSchema.catalog())
+          ListTile(
+            dense: true,
+            title: Text(field.label),
+            subtitle: Text(field.type.name),
+            trailing: field.sensitive
+                ? const Text('sensitive')
+                : (field.enabled ? const Text('default on') : null),
+          ),
+      ],
     );
   }
 }

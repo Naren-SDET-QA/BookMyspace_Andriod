@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../offers/domain/coupon.dart';
+import '../../domain/home_appearance.dart';
 
 class _BannerSlide {
   const _BannerSlide({
@@ -31,60 +32,28 @@ class _BannerSlide {
   final String? imageUrl;
 }
 
-/// Centralized per-banner color theme. To add another banner's look, add
-/// one entry here -- nothing else in this file needs to change. Themes
-/// cycle by slide index (`index % length`) when there are more slides than
-/// themes, and each provides its own dark/light variant so the gradient
-/// keeps working with the existing fixed white banner text. All entries are
-/// deliberately deep/saturated (not pastel) so white text stays readable.
-class _BannerColorTheme {
-  const _BannerColorTheme({required this.dark, required this.light});
-
-  final List<Color> dark;
-  final List<Color> light;
-}
-
-const List<_BannerColorTheme> _bannerColorThemes = [
-  // Teal/blue -- the original banner look, kept as the first theme.
-  _BannerColorTheme(
-    dark: [Color(0xFF075E54), Color(0xFF0E7490), Color(0xFF1E3A8A)],
-    light: [Color(0xFF00695C), Color(0xFF0E7490), Color(0xFF1D4ED8)],
-  ),
-  // Violet/magenta.
-  _BannerColorTheme(
-    dark: [Color(0xFF4C1D95), Color(0xFF7E22CE), Color(0xFFA21CAF)],
-    light: [Color(0xFF5B21B6), Color(0xFF9333EA), Color(0xFFC026D3)],
-  ),
-  // Amber/rose.
-  _BannerColorTheme(
-    dark: [Color(0xFF7C2D12), Color(0xFFB45309), Color(0xFF9D174D)],
-    light: [Color(0xFF9A3412), Color(0xFFD97706), Color(0xFFBE185D)],
-  ),
-  // Emerald/cyan.
-  _BannerColorTheme(
-    dark: [Color(0xFF064E3B), Color(0xFF0D9488), Color(0xFF075985)],
-    light: [Color(0xFF065F46), Color(0xFF0D9488), Color(0xFF0369A1)],
-  ),
-];
-
-/// Deterministic lookup -- never randomized, so the same slide always
-/// resolves to the same theme on every rebuild.
-List<Color> _bannerColorsFor(int index, bool isDark) {
-  final theme = _bannerColorThemes[index % _bannerColorThemes.length];
-  return isDark ? theme.dark : theme.light;
-}
-
 /// Premium promotional banner. Uses live coupon records when present;
 /// never invents discounts.
+///
+/// Admin config may repaint the banner (background colours, border, radius,
+/// glow) and supply artwork, without changing the copy rules above.
 class HomeOfferBanner extends StatefulWidget {
   const HomeOfferBanner({
     super.key,
     this.coupons = const [],
     this.cmsBanners = const [],
+    this.style = const HomeBlockStyle(),
+    this.images = const [],
   });
 
   final List<Coupon> coupons;
   final List<CmsBanner> cmsBanners;
+
+  /// Admin paint: background colours, border, radius and glow.
+  final HomeBlockStyle style;
+
+  /// Optional admin artwork. The first entry becomes the banner backdrop.
+  final List<String> images;
 
   @override
   State<HomeOfferBanner> createState() => _HomeOfferBannerState();
@@ -95,14 +64,10 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   late final AnimationController _drift;
   late final AnimationController _glow;
   late final AnimationController _arrow;
-  // Drives the banner's background color crossfade when the carousel moves
-  // to a new slide. Purely a UI transition -- it never affects which slide
-  // is showing, only how the color of the current one animates in.
-  late final AnimationController _colorTransition;
+  late final AnimationController _sheen;
   late final PageController _pageController;
   Timer? _autoPlay;
   int _index = 0;
-  int _previousIndex = 0;
   bool? _running;
 
   List<_BannerSlide> get _slides {
@@ -153,11 +118,10 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _colorTransition = AnimationController(
+    _sheen = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
-      value: 1,
-    );
+      duration: const Duration(milliseconds: 3600),
+    )..repeat();
     _pageController = PageController();
   }
 
@@ -166,8 +130,6 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.coupons.length != widget.coupons.length) {
       _index = 0;
-      _previousIndex = 0;
-      _colorTransition.value = 1;
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -197,11 +159,13 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       if (!_drift.isAnimating) _drift.repeat();
       if (!_glow.isAnimating) _glow.repeat(reverse: true);
       if (!_arrow.isAnimating) _arrow.repeat(reverse: true);
+      if (!_sheen.isAnimating) _sheen.repeat();
       _syncAutoPlay();
     } else {
       _drift.stop();
       _glow.stop();
       _arrow.stop();
+      _sheen.stop();
       _autoPlay?.cancel();
       _autoPlay = null;
     }
@@ -211,23 +175,50 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       .toString()
       .contains('TestWidgetsFlutterBinding');
 
-  /// Slide changed (by autoplay, swipe, or dot tap alike). Kicks off the
-  /// background color crossfade to the new slide's theme; the slide index
-  /// itself and everything else about the carousel is unaffected.
+  /// Slide changed (by autoplay, swipe, or dot tap alike). The slide index
+  /// and everything else about the carousel is unaffected.
   void _onPageChanged(int i) {
     if (i == _index) return;
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     setState(() {
-      _previousIndex = _index;
       _index = i;
     });
-    if (reduceMotion || _isWidgetTest) {
-      _colorTransition.value = 1;
-    } else {
-      _colorTransition
-        ..value = 0
-        ..forward();
+  }
+
+  /// Admin colours win when set. With a photo backdrop the gradient becomes a
+  /// scrim so the copy stays legible.
+  List<Color> _backdropColors(
+    HomeBlockStyle style,
+    bool isDark,
+    bool hasImage,
+  ) {
+    if (style.backgroundColors.isNotEmpty) {
+      final base = style.backgroundColors.length == 1
+          ? [style.backgroundColors.first, style.backgroundColors.first]
+          : style.backgroundColors;
+      if (!hasImage) return base;
+      return [
+        for (final color in base) color.withValues(alpha: 0.82),
+      ];
     }
+    if (hasImage) {
+      return [
+        Colors.black.withValues(alpha: 0.62),
+        Colors.black.withValues(alpha: 0.28),
+        Colors.black.withValues(alpha: 0.70),
+      ];
+    }
+    return isDark
+        ? const [
+            Color(0xFF075E54),
+            Color(0xFF0E7490),
+            Color(0xFF1E3A8A),
+          ]
+        : const [
+            Color(0xFF008F7A),
+            Color(0xFF14B8A6),
+            Color(0xFF38BDF8),
+            Color(0xFF818CF8),
+          ];
   }
 
   void _syncAutoPlay() {
@@ -254,7 +245,7 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     _drift.dispose();
     _glow.dispose();
     _arrow.dispose();
-    _colorTransition.dispose();
+    _sheen.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -263,48 +254,75 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
   Widget build(BuildContext context) {
     final slides = _slides;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final style = widget.style;
 
     return Semantics(
       label: slides[_index.clamp(0, slides.length - 1)].headline,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_drift, _glow, _arrow, _colorTransition]),
+        animation: Listenable.merge([_drift, _glow, _arrow, _sheen]),
         builder: (context, _) {
           final glowT = Curves.easeInOut.transform(_glow.value);
-          // Crossfade from the previous slide's theme to the current
-          // slide's theme as `_colorTransition` runs 0 -> 1. At rest
-          // (value == 1, the steady state between slide changes) this is
-          // simply the current slide's colors -- deterministic, never
-          // randomized.
-          final fromColors = _bannerColorsFor(_previousIndex, isDark);
-          final toColors = _bannerColorsFor(_index, isDark);
-          final colorT = Curves.easeInOut.transform(_colorTransition.value);
-          final bannerColors = List.generate(
-            toColors.length,
-            (i) => Color.lerp(fromColors[i], toColors[i], colorT)!,
-          );
+          final radius = BorderRadius.circular(style.radius);
+          final backdrop =
+              widget.images.isNotEmpty ? widget.images.first : null;
           return Container(
-            height: 156,
+            height: style.height ?? 156,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: radius,
+              border: style.borderColor != null && style.borderWidth > 0
+                  ? Border.all(
+                      color: style.borderColor!,
+                      width: style.borderWidth,
+                    )
+                  : null,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.brand.withValues(alpha: 0.18 + glowT * 0.12),
-                  blurRadius: 22 + glowT * 8,
+                  color:
+                      (style.glow ? AppTheme.cyan : AppTheme.brand).withValues(
+                    alpha: (style.glow ? 0.26 : 0.18) + glowT * 0.12,
+                  ),
+                  blurRadius: (style.glow ? 30 : 22) + glowT * 8,
                   offset: const Offset(0, 10),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: radius,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
+                  if (backdrop != null)
+                    AppNetworkImage(url: backdrop, fit: BoxFit.cover),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment(-1 + _drift.value * 0.35, -1),
                         end: Alignment(1.2 - _drift.value * 0.25, 1.1),
-                        colors: bannerColors,
+                        colors:
+                            _backdropColors(style, isDark, backdrop != null),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment(-1.7 + _sheen.value * 3.4, 0),
+                    child: IgnorePointer(
+                      child: Transform.rotate(
+                        angle: -0.42,
+                        child: Container(
+                          width: 68,
+                          height: (style.height ?? 156) * 1.8,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.0),
+                                Colors.white.withValues(alpha: 0.20),
+                                Colors.white.withValues(alpha: 0.0),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

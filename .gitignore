@@ -2,7 +2,6 @@
 .gradle/
 .aistudio/
 android/.gradle/
-app/build/
 
 # Flutter/Dart
 .dart_tool/

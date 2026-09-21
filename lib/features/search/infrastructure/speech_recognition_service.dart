@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import '../domain/speech_recognition_state.dart';
 import 'web_speech_bridge.dart';
 
-/// Cross-platform Voice Speech Recognition Service for Flutter (iOS, Web, & Fallbacks).
+/// Cross-platform Voice Speech Recognition Service for Flutter (Android, iOS & Web).
 /// Matches Android SpeechRecognizer functionality with live streaming transcripts,
 /// permission handling, soundwave level metering, and automatic text fallback.
 class SpeechRecognitionService {
@@ -15,7 +15,9 @@ class SpeechRecognitionService {
     _initPlatformHandlers();
   }
 
-  static const MethodChannel _iosSpeechChannel = MethodChannel(
+  // The same channel name is registered natively on iOS (AppDelegate.swift,
+  // SFSpeechRecognizer) and Android (AndroidSpeechChannel.kt, SpeechRecognizer).
+  static const MethodChannel _nativeSpeechChannel = MethodChannel(
     'com.bookmyspace.bookmyspace/speech_recognition',
   );
 
@@ -95,8 +97,9 @@ class SpeechRecognitionService {
             break;
         }
       });
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      _iosSpeechChannel.setMethodCallHandler((call) async {
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
+      _nativeSpeechChannel.setMethodCallHandler((call) async {
         switch (call.method) {
           case 'onSpeechResult':
             final args = call.arguments as Map<dynamic, dynamic>? ?? {};
@@ -155,9 +158,10 @@ class SpeechRecognitionService {
     if (kIsWeb) {
       return WebSpeechBridge.isSupported;
     }
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
       try {
-        final result = await _iosSpeechChannel
+        final result = await _nativeSpeechChannel
             .invokeMapMethod<String, dynamic>('isAvailable');
         return result?['isAvailable'] as bool? ?? false;
       } catch (_) {
@@ -173,9 +177,10 @@ class SpeechRecognitionService {
       // Browser permissions are requested on getUserMedia / startListening
       return true;
     }
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
       try {
-        final result = await _iosSpeechChannel
+        final result = await _nativeSpeechChannel
             .invokeMapMethod<String, dynamic>('requestPermission');
         return result?['granted'] as bool? ?? false;
       } catch (_) {
@@ -207,7 +212,8 @@ class SpeechRecognitionService {
       return;
     }
 
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
       try {
         final permGranted = await requestPermission();
         if (!permGranted) {
@@ -223,13 +229,13 @@ class SpeechRecognitionService {
         _resetSilenceTimeout();
         _setState(const SpeechRecognitionListening(soundLevel: 0.2));
 
-        await _iosSpeechChannel.invokeMethod('startListening', {
+        await _nativeSpeechChannel.invokeMethod('startListening', {
           'language': language,
         });
       } catch (e) {
         _stopVolumeMetering();
         _setState(SpeechRecognitionError(
-          message: 'Failed to start voice search on iOS: $e',
+          message: 'Failed to start voice search: $e',
         ));
       }
       return;
@@ -249,9 +255,10 @@ class SpeechRecognitionService {
     _cancelSilenceTimeout();
     if (kIsWeb) {
       await WebSpeechBridge.stopListening();
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
       try {
-        await _iosSpeechChannel.invokeMethod('stopListening');
+        await _nativeSpeechChannel.invokeMethod('stopListening');
       } catch (_) {}
     }
 
@@ -274,9 +281,10 @@ class SpeechRecognitionService {
     _cancelSilenceTimeout();
     if (kIsWeb) {
       await WebSpeechBridge.abort();
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
       try {
-        await _iosSpeechChannel.invokeMethod('cancelListening');
+        await _nativeSpeechChannel.invokeMethod('cancelListening');
       } catch (_) {}
     }
     _setState(const SpeechRecognitionIdle());

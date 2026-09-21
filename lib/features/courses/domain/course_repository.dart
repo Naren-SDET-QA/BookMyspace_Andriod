@@ -1,3 +1,5 @@
+import '../../cms/domain/configurable_form.dart';
+import '../../cms/domain/target_modules.dart';
 import '../domain/course.dart';
 
 /// Contract for the courses feature.
@@ -15,6 +17,7 @@ abstract interface class CourseRepository {
     String studentName = '',
     String contactPhone = '',
     DateTime? preferredStart,
+    Map<String, dynamic> formAnswers = const {},
   });
 
   /// Drops my enrollment from a batch, freeing a seat.
@@ -37,7 +40,16 @@ abstract interface class CourseRepository {
     String? phone,
     String? timings,
     List<String>? amenities,
+    TargetModuleConfig? modules,
+    ConfigurableFormSchema? registrationForm,
+    Map<String, dynamic>? profile,
   });
+
+  Future<List<InstituteBranch>> branches(String instituteId);
+
+  Future<void> saveBranch(InstituteBranch branch);
+
+  Future<void> deleteBranch(String branchId);
 
   /// All institutes visible to the current role, name-ordered.
   Future<List<Institute>> institutes();
@@ -119,12 +131,19 @@ abstract interface class CourseRepository {
     String categorySlug = '',
   });
 
-  /// Adds a faculty profile to a course.
+  /// Adds a faculty profile to a course or institute.
   Future<void> addFaculty({
     required String courseId,
     required String name,
-    String role,
-    String bio,
+    String role = '',
+    String bio = '',
+    String instituteId = '',
+    String photoUrl = '',
+    String designation = '',
+    String qualification = '',
+    String specialization = '',
+    String experienceText = '',
+    String demoUrl = '',
   });
 
   /// Adds a FAQ entry to a course.

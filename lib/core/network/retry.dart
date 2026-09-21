@@ -9,12 +9,14 @@ class RetryConfig {
     this.initialDelay = const Duration(milliseconds: 500),
     this.maxDelay = const Duration(seconds: 5),
     this.backoffMultiplier = 2.0,
+    this.timeout = const Duration(seconds: 15),
   });
 
   final int maxRetries;
   final Duration initialDelay;
   final Duration maxDelay;
   final double backoffMultiplier;
+  final Duration timeout;
 
   /// Default config with exponential backoff.
   static const defaultConfig = RetryConfig();
@@ -48,7 +50,7 @@ Future<T> withRetry<T>(
 
   while (true) {
     try {
-      return await operation();
+      return await operation().timeout(config.timeout);
     } catch (e) {
       attempt++;
       if (attempt >= config.maxRetries) rethrow;

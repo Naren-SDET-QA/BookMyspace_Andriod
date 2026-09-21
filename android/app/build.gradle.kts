@@ -47,4 +47,10 @@ dependencies {
     // Keep the native checkout dependency explicit because this Flutter
     // module does not import the repository-level Android version catalog.
     implementation("com.razorpay:checkout:1.6.40")
+
+    // NotificationCompat / NotificationManagerCompat / ActivityCompat for the
+    // Android push channel. Pinned to the same version the repository-level
+    // catalog uses for coreKtx, but declared explicitly for the same reason as
+    // above: android/ has its own Gradle build with no version catalog.
+    implementation("androidx.core:core-ktx:1.15.0")
 }

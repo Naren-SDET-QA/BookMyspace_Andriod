@@ -38,6 +38,29 @@ final recentBookingsProvider = FutureProvider<List<Booking>>((ref) {
   return ref.watch(bookingRepositoryProvider).recentBookings(limit: 5);
 });
 
+/// Whether the signed-in user has any booking at [venueId] that has passed
+/// owner approval (pending payment, confirmed, or completed).
+///
+/// Backs contact reveal on listing details: the owner's direct phone is
+/// masked until the customer has a booking the owner accepted, mirroring the
+/// Android reference's "numbers unlock on booking confirmation" rule. Read
+/// from the same bounded recent-bookings fetch the screen already uses.
+final hasApprovedBookingForVenueProvider =
+    FutureProvider.autoDispose.family<bool, String>((ref, venueId) {
+  return ref
+      .watch(bookingRepositoryProvider)
+      .myBookings()
+      .then(
+        (bookings) => bookings.any(
+          (b) =>
+              b.venueId == venueId &&
+              (b.status == BookingStatus.pending ||
+                  b.status == BookingStatus.confirmed ||
+                  b.status == BookingStatus.completed),
+        ),
+      );
+});
+
 /// Count of the signed-in user's bookings that genuinely need their
 /// attention right now -- awaiting owner approval or a pending payment.
 /// Real data only: derived from [recentBookingsProvider]'s bounded preview

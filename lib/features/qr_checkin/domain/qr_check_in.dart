@@ -68,9 +68,33 @@ class BookingCheckInPayload {
       status: booking.status.dbValue,
       token:
           'BMS-PASS-${booking.id.replaceAll('-', '').takeLast(6).toUpperCase()}',
-      issuedAt: DateTime.now(),
+      // The booking's own creation time, not DateTime.now(). A pass is issued
+      // once, when the booking is made; stamping the build time made every
+      // serialisation of the same booking differ.
+      issuedAt: booking.createdAt,
     );
   }
+
+  /// The string actually encoded into the check-in QR pass.
+  ///
+  /// Deliberately carries the identifier and nothing else. The full [toJson]
+  /// record measures 428 bytes, which at quartile error correction needs a
+  /// 93x93 module code — 1.9 px per module inside the 200 px pass, far below
+  /// what a phone camera can resolve. This form is 76 bytes and lands on 45x45
+  /// modules at 3.9 px per module.
+  ///
+  /// Dropping the display fields loses nothing. `check_in_booking` resolves the
+  /// booking server-side and returns the venue, slot and times, so a
+  /// self-describing pass would only carry data that can go stale between issue
+  /// and scan. `SupabaseBookingRepository._bookingCode` reads `booking_id` out
+  /// of this map, which is the same contract the full record uses.
+  ///
+  /// Deterministic: the same booking always produces the same string, so the
+  /// rendered matrix does not churn on rebuild.
+  String toQrPayloadString() => jsonEncode(<String, String>{
+        't': 'BOOKING_CHECK_IN',
+        'booking_id': bookingId,
+      });
 
   Map<String, dynamic> toJson() => {
         'type': 'BOOKING_CHECK_IN',

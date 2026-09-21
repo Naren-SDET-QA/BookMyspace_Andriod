@@ -35,6 +35,7 @@ abstract interface class BookingRepository {
     required DateTime bookDate,
     required double amount,
     int approvalMinutes = 120,
+    String? couponCode,
   });
 
   /// Compatibility wrapper for older callers. New rows are created atomically

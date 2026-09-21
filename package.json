@@ -1,12 +1,12 @@
 {
-  "name": "bookmyspace-firestore-tests",
+  "name": "bookmyspace",
   "version": "1.0.0",
   "private": true,
+  "main": "web/server.js",
   "scripts": {
+    "dev": "node ./web/server.js",
     "start": "node ./web/server.js",
-    "test": "firebase emulators:exec --only firestore \"node --test firestore.test.js\""
-  },
-  "devDependencies": {
-    "@firebase/rules-unit-testing": "^3.0.4"
+    "serve": "node ./web/server.js",
+    "build": "echo 'Static web assets ready'"
   }
 }

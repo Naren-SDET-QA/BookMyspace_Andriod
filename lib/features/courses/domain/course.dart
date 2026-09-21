@@ -1,3 +1,6 @@
+import '../../cms/domain/configurable_form.dart';
+import '../../cms/domain/target_modules.dart';
+
 /// Course delivery mode (`course_mode` enum).
 enum CourseMode {
   online,
@@ -78,6 +81,10 @@ class Institute {
     this.timingsText = '',
     this.images = const [],
     this.amenities = const [],
+    this.modules = const TargetModuleConfig({}),
+    this.registrationForm = const ConfigurableFormSchema(),
+    this.profile = const {},
+    this.branches = const [],
   });
 
   final String id;
@@ -100,11 +107,26 @@ class Institute {
   final String timingsText;
   final List<String> images;
   final List<String> amenities;
+  final TargetModuleConfig modules;
+  final ConfigurableFormSchema registrationForm;
+  final Map<String, dynamic> profile;
+  final List<InstituteBranch> branches;
 
   bool get hasContact =>
       phone.isNotEmpty || email.isNotEmpty || whatsapp.isNotEmpty;
 
   bool get hasLocation => address.isNotEmpty || city.isNotEmpty;
+
+  ConfigurableFormSchema get publishedRegistrationForm {
+    var schema = registrationForm.publishedFields.isEmpty &&
+            registrationForm.draftFields.isEmpty
+        ? ConfigurableFormSchema.defaults()
+        : registrationForm;
+    if (!modules.enabled('aadhaar')) {
+      schema = schema.withoutAadhaar();
+    }
+    return schema;
+  }
 
   factory Institute.fromJson(Map<String, dynamic> json) => Institute(
         id: json['id'] as String? ?? '',
@@ -131,6 +153,123 @@ class Institute {
             .map((item) => item.toString())
             .where((item) => item.isNotEmpty)
             .toList(),
+        modules: TargetModuleConfig.fromJson(json['module_config']),
+        registrationForm: ConfigurableFormSchema.fromJson(
+          json['registration_form'] is Map<String, dynamic>
+              ? json['registration_form'] as Map<String, dynamic>
+              : null,
+        ),
+        profile: json['profile'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(json['profile'] as Map)
+            : const {},
+        branches: (json['institute_branches'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(InstituteBranch.fromJson)
+            .toList(),
+      );
+
+  Institute copyWith({
+    String? address,
+    String? city,
+    String? phone,
+    String? timingsText,
+    List<String>? amenities,
+    TargetModuleConfig? modules,
+    ConfigurableFormSchema? registrationForm,
+    Map<String, dynamic>? profile,
+    List<InstituteBranch>? branches,
+    String? description,
+    String? website,
+    String? email,
+  }) {
+    return Institute(
+      id: id,
+      orgId: orgId,
+      name: name,
+      description: description ?? this.description,
+      logoImage: logoImage,
+      isVerified: isVerified,
+      type: type,
+      categoryId: categoryId,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      latitude: latitude,
+      longitude: longitude,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      whatsapp: whatsapp,
+      website: website ?? this.website,
+      mode: mode,
+      timingsText: timingsText ?? this.timingsText,
+      images: images,
+      amenities: amenities ?? this.amenities,
+      modules: modules ?? this.modules,
+      registrationForm: registrationForm ?? this.registrationForm,
+      profile: profile ?? this.profile,
+      branches: branches ?? this.branches,
+    );
+  }
+}
+
+/// A physical or online branch of an institute (`institute_branches`).
+class InstituteBranch {
+  const InstituteBranch({
+    required this.id,
+    required this.instituteId,
+    this.name = 'Main branch',
+    this.address = '',
+    this.landmark = '',
+    this.city = '',
+    this.district = '',
+    this.state = '',
+    this.pinCode = '',
+    this.latitude,
+    this.longitude,
+    this.mapsUrl = '',
+    this.isPrimary = false,
+    this.isActive = true,
+    this.isOnlineOnly = false,
+    this.displayOrder = 0,
+  });
+
+  final String id;
+  final String instituteId;
+  final String name;
+  final String address;
+  final String landmark;
+  final String city;
+  final String district;
+  final String state;
+  final String pinCode;
+  final double? latitude;
+  final double? longitude;
+  final String mapsUrl;
+  final bool isPrimary;
+  final bool isActive;
+  final bool isOnlineOnly;
+  final int displayOrder;
+
+  bool get hasAddress =>
+      address.isNotEmpty || city.isNotEmpty || pinCode.isNotEmpty;
+
+  factory InstituteBranch.fromJson(Map<String, dynamic> json) =>
+      InstituteBranch(
+        id: json['id'] as String? ?? '',
+        instituteId: json['institute_id'] as String? ?? '',
+        name: json['name'] as String? ?? 'Main branch',
+        address: json['address'] as String? ?? '',
+        landmark: json['landmark'] as String? ?? '',
+        city: json['city'] as String? ?? '',
+        district: json['district'] as String? ?? '',
+        state: json['state'] as String? ?? '',
+        pinCode: json['pin_code'] as String? ?? '',
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
+        mapsUrl: json['maps_url'] as String? ?? '',
+        isPrimary: json['is_primary'] as bool? ?? false,
+        isActive: json['is_active'] as bool? ?? true,
+        isOnlineOnly: json['is_online_only'] as bool? ?? false,
+        displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -197,6 +336,7 @@ class Course {
     this.instituteName = '',
     this.instituteVerified = false,
     this.instituteCity = '',
+    this.instituteModules = const TargetModuleConfig({}),
     this.batches = const [],
     this.categoryId = '',
     this.discountAmount = 0,
@@ -225,6 +365,7 @@ class Course {
   final String instituteName;
   final bool instituteVerified;
   final String instituteCity;
+  final TargetModuleConfig instituteModules;
   final List<CourseBatch> batches;
   final String categoryId;
   final double discountAmount;
@@ -304,6 +445,7 @@ class Course {
       instituteName: institute['name'] as String? ?? '',
       instituteVerified: institute['is_verified'] as bool? ?? false,
       instituteCity: institute['city'] as String? ?? '',
+      instituteModules: TargetModuleConfig.fromJson(institute['module_config']),
       batches: batches,
       categoryId: json['category_id'] as String? ?? '',
       discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0,
@@ -343,6 +485,7 @@ class Course {
       instituteName: instituteName ?? this.instituteName,
       instituteVerified: instituteVerified ?? this.instituteVerified,
       instituteCity: instituteCity,
+      instituteModules: instituteModules,
       batches: batches ?? this.batches,
       categoryId: categoryId,
       discountAmount: discountAmount,
@@ -484,25 +627,64 @@ class CourseFaculty {
     required this.id,
     required this.courseId,
     required this.name,
+    this.instituteId = '',
     this.role = '',
     this.bio = '',
     this.photoUrl = '',
+    this.designation = '',
+    this.department = '',
+    this.qualification = '',
+    this.specialization = '',
+    this.experienceText = '',
+    this.skills = const [],
+    this.languages = const [],
+    this.demoUrl = '',
+    this.resumeUrl = '',
+    this.isActive = true,
   });
 
   final String id;
   final String courseId;
+  final String instituteId;
   final String name;
   final String role;
   final String bio;
   final String photoUrl;
+  final String designation;
+  final String department;
+  final String qualification;
+  final String specialization;
+  final String experienceText;
+  final List<String> skills;
+  final List<String> languages;
+  final String demoUrl;
+  final String resumeUrl;
+  final bool isActive;
 
   factory CourseFaculty.fromJson(Map<String, dynamic> json) => CourseFaculty(
         id: json['id'] as String? ?? '',
         courseId: json['course_id'] as String? ?? '',
+        instituteId: json['institute_id'] as String? ?? '',
         name: json['name'] as String? ?? '',
-        role: json['role'] as String? ?? '',
+        role: json['role'] as String? ?? json['designation'] as String? ?? '',
         bio: json['bio'] as String? ?? '',
         photoUrl: json['photo_url'] as String? ?? '',
+        designation: json['designation'] as String? ?? '',
+        department: json['department'] as String? ?? '',
+        qualification: json['qualification'] as String? ?? '',
+        specialization: json['specialization'] as String? ?? '',
+        experienceText: json['experience_text'] as String? ?? '',
+        skills: (json['skills'] as List? ?? const [])
+            .map((item) => item.toString())
+            .where((item) => item.isNotEmpty)
+            .toList(),
+        languages: (json['languages'] as List? ?? const [])
+            .map((item) => item.toString())
+            .where((item) => item.isNotEmpty)
+            .toList(),
+        demoUrl: json['demo_url'] as String? ?? '',
+        resumeUrl: json['resume_url'] as String? ?? '',
+        isActive: json['is_active'] as bool? ?? true,
       );
 }
 

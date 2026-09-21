@@ -5,17 +5,19 @@ class MockBookingRepository implements BookingRepository {
   MockBookingRepository({
     this.bookings = const [],
     this.ownerBookings = const [],
+    this.slots = const [],
   });
 
   List<Booking> bookings;
   List<Booking> ownerBookings;
+  List<SlotAvailability> slots;
 
   @override
   Future<List<SlotAvailability>> availableTimeSlots({
     required String venueId,
     required DateTime date,
   }) async =>
-      const [];
+      slots;
 
   @override
   Future<BookingHold> acquireHold({
@@ -36,6 +38,7 @@ class MockBookingRepository implements BookingRepository {
     required DateTime bookDate,
     required double amount,
     int approvalMinutes = 120,
+    String? couponCode,
   }) async {
     return Booking(
       id: 'b-request-1',

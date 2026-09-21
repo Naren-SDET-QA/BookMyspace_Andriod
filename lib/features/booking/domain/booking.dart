@@ -186,6 +186,31 @@ class Booking {
   /// Confirmed (captured) bookings can be refunded.
   bool get canRefund => status == BookingStatus.confirmed;
 
+  /// Bookings a customer may want to repeat.
+  ///
+  /// "Book again" is an offer, not a capability: it only opens the standard
+  /// booking flow, where availability, holds and owner approval are
+  /// recomputed server-side. Offered for finished-or-abandoned bookings —
+  /// statuses with no remaining lifecycle action of their own.
+  bool get canBookAgain =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed ||
+      status == BookingStatus.cancelled ||
+      status == BookingStatus.refunded ||
+      status == BookingStatus.ownerRejected ||
+      status == BookingStatus.approvalExpired;
+
+  /// Bookings whose payment was captured can produce an itemized receipt.
+  ///
+  /// Mirrors the gate in `public.issue_booking_receipt`, which refuses every
+  /// other status on the grounds that a receipt is evidence of payment. Kept in
+  /// step with the migration deliberately: offering a button that always fails
+  /// server-side is worse than not offering it.
+  bool get canViewReceipt =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed ||
+      status == BookingStatus.refunded;
+
   String get displayStart =>
       startTime.length >= 5 ? startTime.substring(0, 5) : startTime;
   String get displayEnd =>

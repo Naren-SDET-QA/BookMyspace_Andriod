@@ -220,7 +220,8 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  if (course.faculty.isNotEmpty) ...[
+                  if (course.instituteModules.enabled('faculty') &&
+                      course.faculty.isNotEmpty) ...[
                     Text(l10n.faculty, style: theme.textTheme.titleMedium),
                     const SizedBox(height: 10),
                     ...course.faculty.map(_FacultyTile.new),
@@ -251,14 +252,17 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                   const SizedBox(height: 16),
                   _FeeCard(course: course),
                   const SizedBox(height: 20),
-                  if (course.hasDemo && demoEnabled) ...[
+                  if (course.hasDemo &&
+                      demoEnabled &&
+                      course.instituteModules.enabled('demo')) ...[
                     Text(l10n.demoAndRegistration,
                         style: theme.textTheme.titleMedium),
                     const SizedBox(height: 10),
                     CourseDemoActions(course: course),
                     const SizedBox(height: 20),
                   ],
-                  if (course.brochureUrl.isNotEmpty) ...[
+                  if (course.brochureUrl.isNotEmpty &&
+                      course.instituteModules.enabled('brochure')) ...[
                     OutlinedButton.icon(
                       onPressed: () => openMediaUrl(course.brochureUrl),
                       icon: const Icon(Icons.description_outlined),
@@ -531,6 +535,14 @@ class _FacultyTile extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                if (faculty.qualification.isNotEmpty)
+                  Text(faculty.qualification, style: theme.textTheme.bodySmall),
+                if (faculty.specialization.isNotEmpty)
+                  Text(faculty.specialization,
+                      style: theme.textTheme.bodySmall),
+                if (faculty.experienceText.isNotEmpty)
+                  Text(faculty.experienceText,
+                      style: theme.textTheme.bodySmall),
                 if (faculty.bio.isNotEmpty)
                   Text(
                     faculty.bio,

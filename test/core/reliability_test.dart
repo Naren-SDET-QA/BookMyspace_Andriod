@@ -1,3 +1,5 @@
+import 'dart:async' as dart_async;
+
 import 'package:bookmyspace/core/errors/app_exceptions.dart';
 import 'package:bookmyspace/core/network/circuit_breaker.dart';
 import 'package:bookmyspace/core/network/idempotency.dart';
@@ -49,5 +51,24 @@ void main() {
 
   test('idempotency keys are unique per call', () {
     expect(IdempotencyKey.create('pay'), isNot(IdempotencyKey.create('pay')));
+  });
+
+  test('retry wrapper bounds a hung read', () async {
+    Object? error;
+    try {
+      await withReadRetry(
+        () async {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          return 1;
+        },
+        config: const RetryConfig(
+          maxRetries: 1,
+          timeout: Duration(milliseconds: 5),
+        ),
+      );
+    } catch (e) {
+      error = e;
+    }
+    expect(error, isA<dart_async.TimeoutException>());
   });
 }

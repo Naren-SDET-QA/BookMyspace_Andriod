@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/storage_service.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../cms/domain/configurable_form.dart';
+import '../../cms/domain/target_modules.dart';
 import '../domain/course.dart';
 import '../domain/course_repository.dart';
 import '../infrastructure/supabase_course_repository.dart';
@@ -96,6 +98,7 @@ class CourseEnrollmentController {
     String studentName = '',
     String contactPhone = '',
     DateTime? preferredStart,
+    Map<String, dynamic> formAnswers = const {},
   }) async {
     final record = await _ref.read(courseRepositoryProvider).enroll(
           batchId: batchId,
@@ -103,6 +106,7 @@ class CourseEnrollmentController {
           studentName: studentName,
           contactPhone: contactPhone,
           preferredStart: preferredStart,
+          formAnswers: formAnswers,
         );
     _ref.invalidate(publishedCoursesProvider);
     _ref.invalidate(courseDetailProvider(courseId));
@@ -269,15 +273,73 @@ class OwnerCourseController {
     required String name,
     String role = '',
     String bio = '',
+    String instituteId = '',
+    String photoUrl = '',
+    String designation = '',
+    String qualification = '',
+    String specialization = '',
+    String experienceText = '',
+    String demoUrl = '',
   }) async {
     await _ref.read(courseRepositoryProvider).addFaculty(
           courseId: courseId,
           name: name,
           role: role,
           bio: bio,
+          instituteId: instituteId,
+          photoUrl: photoUrl,
+          designation: designation,
+          qualification: qualification,
+          specialization: specialization,
+          experienceText: experienceText,
+          demoUrl: demoUrl,
         );
     _ref.invalidate(courseDetailProvider(courseId));
     _ref.invalidate(ownerCoursesProvider);
+    _ref.invalidate(ownerInstitutesProvider);
+  }
+
+  Future<void> saveInstituteConfig({
+    required String instituteId,
+    TargetModuleConfig? modules,
+    ConfigurableFormSchema? registrationForm,
+    Map<String, dynamic>? profile,
+    String? address,
+    String? city,
+    String? phone,
+    String? timings,
+    List<String>? amenities,
+  }) async {
+    await _ref.read(courseRepositoryProvider).updateInstitute(
+          instituteId: instituteId,
+          address: address,
+          city: city,
+          phone: phone,
+          timings: timings,
+          amenities: amenities,
+          modules: modules,
+          registrationForm: registrationForm,
+          profile: profile,
+        );
+    _ref.invalidate(ownerInstitutesProvider);
+    _ref.invalidate(institutesProvider);
+    _ref.invalidate(instituteDetailProvider(instituteId));
+  }
+
+  Future<void> saveBranch(InstituteBranch branch) async {
+    await _ref.read(courseRepositoryProvider).saveBranch(branch);
+    _ref.invalidate(ownerInstitutesProvider);
+    _ref.invalidate(instituteDetailProvider(branch.instituteId));
+    _ref.invalidate(instituteBranchesProvider(branch.instituteId));
+  }
+
+  Future<void> deleteBranch({
+    required String instituteId,
+    required String branchId,
+  }) async {
+    await _ref.read(courseRepositoryProvider).deleteBranch(branchId);
+    _ref.invalidate(instituteBranchesProvider(instituteId));
+    _ref.invalidate(instituteDetailProvider(instituteId));
   }
 
   Future<void> addFaq({
@@ -296,6 +358,11 @@ class OwnerCourseController {
     _ref.invalidate(ownerCoursesProvider);
   }
 }
+
+final instituteBranchesProvider = FutureProvider.autoDispose
+    .family<List<InstituteBranch>, String>((ref, instituteId) {
+  return ref.watch(courseRepositoryProvider).branches(instituteId);
+});
 
 final ownerCourseControllerProvider = Provider<OwnerCourseController>((ref) {
   return OwnerCourseController(ref);

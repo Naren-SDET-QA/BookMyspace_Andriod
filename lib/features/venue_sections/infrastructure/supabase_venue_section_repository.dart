@@ -235,6 +235,26 @@ class SupabaseVenueSectionRepository implements VenueSectionRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> publishSection(
+      String venueId, String sectionId) async {
+    try {
+      final result = await _client.rpc<Map<String, dynamic>>(
+        'publish_venue_section',
+        params: {'p_venue_id': venueId, 'p_section_id': sectionId},
+      );
+      if (result['success'] != true) {
+        throw app_errors.BusinessException(
+          (result['error_code'] as String?) ?? 'Could not publish section.',
+        );
+      }
+      return result;
+    } catch (e) {
+      if (e is app_errors.AppException) rethrow;
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
   Future<List<PublishedVenueSection>> publishedSections(
     String venueId,
   ) async {

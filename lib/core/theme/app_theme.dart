@@ -72,15 +72,13 @@ class AppTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: brand,
       brightness: brightness,
-      // Dark mode primary is now violet (reference brand colour) instead
-      // of the teal brandLight; light mode is untouched (kept only as a
-      // fallback -- app.dart no longer routes to it, see redesign note
-      // there).
-      primary: isLight ? brand : violet,
+      // Light and dark both use violet as the interactive primary so Home
+      // actions (Search, Book, selected tabs) match the customer mockup.
+      primary: violet,
       onPrimary: isLight ? Colors.white : Colors.white,
       primaryContainer:
-          isLight ? const Color(0xFFD7F8F1) : const Color(0xFF3E2A78),
-      onPrimaryContainer: isLight ? darkCanvas : const Color(0xFFE4DBFF),
+          isLight ? const Color(0xFFEDE9FE) : const Color(0xFF3E2A78),
+      onPrimaryContainer: isLight ? violetDeep : const Color(0xFFE4DBFF),
       secondary: isLight ? action : cyan,
       onSecondary: isLight ? Colors.white : darkCanvas,
       secondaryContainer:
@@ -188,16 +186,18 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 64,
+        height: 72,
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: isLight ? Colors.white : darkCard,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: scheme.primary.withValues(alpha: isLight ? 0.16 : 0.22),
-        indicatorShape: const StadiumBorder(),
+        indicatorColor: scheme.primary.withValues(alpha: isLight ? 0.12 : 0.22),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
-            fontSize: 10.5,
+            fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
             letterSpacing: -0.1,
             color: selected ? scheme.primary : scheme.onSurfaceVariant,
@@ -206,7 +206,7 @@ class AppTheme {
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            size: 22,
+            size: 24,
             color: selected ? scheme.primary : scheme.onSurfaceVariant,
           );
         }),

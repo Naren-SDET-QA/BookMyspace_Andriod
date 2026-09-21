@@ -726,3 +726,16 @@ class VenueSearchQuery {
         offset,
       );
 }
+
+/// Masks a venue's direct contact number for display before the customer has
+/// a booking the owner accepted (reference parity with the Android privacy
+/// rule "numbers unlock on booking confirmation").
+///
+/// Keeps the last two digits so the value still reads as a real number while
+/// remaining undialable; the digits shown are never enough to reconstruct it.
+String maskContactPhone(String raw) {
+  final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.length < 4) return '';
+  final head = digits.substring(0, digits.length - 2);
+  return '${'•' * (head.length - 2)}••${digits.substring(digits.length - 2)}';
+}

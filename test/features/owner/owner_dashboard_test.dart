@@ -91,9 +91,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Owner One'), findsOneWidget);
-    expect(find.text('Venue bookings'), findsOneWidget);
     expect(find.text('1'), findsWidgets);
     expect(find.text('2'), findsOneWidget);
     expect(find.textContaining('1180'), findsOneWidget);
+
+    // The reports card extends the page, so the venue bookings quick action
+    // sits below the fold in the test viewport — scroll to it like a user.
+    await tester.scrollUntilVisible(
+      find.text('Venue bookings'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Venue bookings'), findsOneWidget);
   });
 }

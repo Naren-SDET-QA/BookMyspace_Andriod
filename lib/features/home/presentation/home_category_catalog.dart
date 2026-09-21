@@ -265,6 +265,23 @@ enum MainHomeSection {
     }
   }
 
+  /// Default section artwork used as the CMS fallback when no banner media
+  /// is configured for the section.
+  String get imageUrl {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.sportsTurfs:
+        return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.pgHostels:
+        return 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.institutesClasses:
+        return 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.lodgeRooms:
+        return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&auto=format&fit=crop&q=80';
+    }
+  }
+
   /// CMS `cms_banners.slot` key an admin can use to override this
   /// section's image (see admin CMS screen). Not a fabricated 6th
   /// category set -- these map 1:1 onto the five real master sections.
@@ -301,6 +318,40 @@ enum MainHomeSection {
         return 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=900&auto=format&fit=crop&q=80';
       case MainHomeSection.lodgeRooms:
         return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&auto=format&fit=crop&q=80';
+    }
+  }
+
+  /// Premium poster images for section highlights - varied and unique per section
+  /// Used for featured showcase areas and section headers to provide visual variety
+  String get posterImageUrl {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.sportsTurfs:
+        return 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.pgHostels:
+        return 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.institutesClasses:
+        return 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.lodgeRooms:
+        return 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=900&auto=format&fit=crop&q=80';
+    }
+  }
+
+  /// Alternative images for section cards - adds variety to reduce repetition
+  /// Rotates through different visual perspectives for each category
+  String get alternateImageUrl {
+    switch (this) {
+      case MainHomeSection.functionHalls:
+        return 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.sportsTurfs:
+        return 'https://images.unsplash.com/photo-1517836357463-d25ddfcbf042?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.pgHostels:
+        return 'https://images.unsplash.com/photo-1501183007986-d339d92b493a?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.institutesClasses:
+        return 'https://images.unsplash.com/photo-1427504494785-cdfc993c1ac3?w=900&auto=format&fit=crop&q=80';
+      case MainHomeSection.lodgeRooms:
+        return 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=900&auto=format&fit=crop&q=80';
     }
   }
 

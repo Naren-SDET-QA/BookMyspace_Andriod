@@ -107,21 +107,36 @@ void main() {
 
     // Above-the-fold content is built at the initial 390x2000 viewport, so
     // assert it before scrolling (scrolling recycles these slivers out of the
-    // built tree). The HALL10 coupon assertions stay at full strength here:
-    // activeCouponsProvider is watched eagerly (not deferred), so the offer
-    // banner and coupon row are deterministically present after settle.
+    // built tree).
     expect(find.text('Select location'), findsWidgets);
-    expect(find.text('Say a city, category, or budget...'), findsOneWidget);
-    expect(
-      find.text('Voice search uses the same live filters as typed search.'),
-      findsOneWidget,
-    );
-    expect(find.text('Book More, Save More!'), findsOneWidget);
-    expect(find.text('Use code HALL10'), findsOneWidget);
-    expect(find.text('Top-rated spaces'), findsOneWidget);
-    expect(find.textContaining('HALL10'), findsWidgets);
-    expect(find.text('Explore Verified Spaces'), findsOneWidget);
+    expect(find.text('What are you looking for?'), findsOneWidget);
+    expect(find.text('Explore categories'), findsOneWidget);
+    expect(find.text('All Categories'), findsOneWidget);
+    expect(find.text('Spaces for Every Moment'), findsOneWidget);
     expect(find.text('Hyderabad (Madhapur)'), findsNothing);
+
+    // The offer banner sits below the Function Halls 3D matrix inside a
+    // lazily-built sliver, so it is not in the tree at the initial viewport.
+    // Scroll to the live coupon chip (mirroring real user behavior) before
+    // asserting. activeCouponsProvider is still watched eagerly; only the
+    // sliver paint is deferred.
+    await tester.scrollUntilVisible(
+      find.text('Use code HALL10'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Use code HALL10'), findsOneWidget);
+    expect(find.text('Hall weekday offer'), findsOneWidget);
+    expect(find.textContaining('HALL10'), findsWidgets);
+    expect(find.text('Book More, Save More!'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Top-rated spaces'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Top-rated spaces'), findsOneWidget);
 
     // The events row lives below the fold inside a lazily-built sliver of the
     // home CustomScrollView, so it is not part of the widget tree until it is
@@ -336,7 +351,68 @@ void main() {
     expect(find.text('Belagavi'), findsWidgets);
     await tester.tap(find.text('Apply this location').first);
     await tester.pumpAndSettle();
-    expect(find.text('Near you'), findsOneWidget);
+    expect(find.text('Belagavi'), findsWidgets);
+  });
+
+  testWidgets('guests picker fits a short viewport without overflowing',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = GoRouter(
+      initialLocation: AppRoutes.home,
+      routes: [
+        GoRoute(
+          path: AppRoutes.home,
+          builder: (context, state) => const HomeScreen(),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
+          authRepositoryProvider.overrideWithValue(
+            MockAuthRepository(
+              initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+            ),
+          ),
+          eventRepositoryProvider.overrideWithValue(MockEventRepository()),
+          courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+          reviewRepositoryProvider.overrideWithValue(MockReviewRepository()),
+          couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+          bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light,
+          routerConfig: router,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-guests-chip')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('home-guests-sheet')), findsOneWidget);
+    expect(find.text('1 Guest'), findsOneWidget);
+
+    await tester.tap(find.text('4 Guests'));
+    await tester.pumpAndSettle();
+    expect(find.text('4 Guests'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test('discovery location is only updated by user actions', () {

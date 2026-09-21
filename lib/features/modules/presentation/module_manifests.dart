@@ -88,6 +88,46 @@ const optionalModuleManifests = <ModuleManifest>[
     defaultEnabled: false,
     defaultConfig: {'reward_amount': 0, 'expiry_days': 30},
   ),
+  ModuleManifest(
+    id: 'home_appearance',
+    name: 'Home layout and theming',
+    description:
+        'Customer Home composition: which blocks appear, their order, titles, '
+        'artwork, background colours and borders.',
+    // An empty config resolves to the shipped HomeAppearance.defaults.
+  ),
+  ModuleManifest(
+    id: 'ai_booking',
+    name: 'AI booking assistant',
+    description:
+        'Plain-language booking assistant. Understands the customer on-device '
+        'and hands off to the real Search and Bookings screens; it never books '
+        'anything by itself.',
+    // The Home entry card is a separate switch: an admin can keep the
+    // assistant available without giving it a slot on Home.
+    defaultConfig: {'show_on_home': true},
+  ),
+  ModuleManifest(
+    id: 'nav_tabs',
+    name: 'Bottom navigation',
+    description:
+        'Which destinations appear in the customer bottom bar, in what order, '
+        'and under what labels. Hiding a destination never removes its route — '
+        'deep links and in-app buttons still reach it.',
+    // An empty config resolves to the shipped NavTabsConfig.defaults.
+  ),
+  ModuleManifest(
+    id: 'category_catalog',
+    name: 'Discovery catalogue',
+    description:
+        'Facility types, sections and subsections customers browse: their '
+        'wording, icons, artwork, order and visibility. Switching this off '
+        'restores the catalogue built into the app.',
+    // An empty config resolves to the shipped CatalogContent.defaults, which
+    // is generated from home_category_catalog.dart. So an admin who has never
+    // opened the editor sees exactly the shipped catalogue, and turning the
+    // module off is a complete rollback rather than an empty screen.
+  ),
 ];
 
 ModuleManifest? moduleManifestFor(String id) {

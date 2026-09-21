@@ -121,6 +121,7 @@ class SupabaseBookingRepository implements BookingRepository {
     required DateTime bookDate,
     required double amount,
     int approvalMinutes = 120,
+    String? couponCode,
   }) async {
     final hold = await acquireHold(
       venueId: venueId,
@@ -422,7 +423,29 @@ class SupabaseBookingRepository implements BookingRepository {
         params: {'p_code': code, 'p_method': 'qr'},
       );
       final data = response is Map<String, dynamic> ? response : null;
-      final bookingId = data?['booking_id'] as String?;
+
+      // The server owns the verdict. Surface its reason rather than collapsing
+      // every outcome into "invalid code" — that is how a missing backend
+      // contract previously reached guests as their own input error.
+      if (data == null || data['success'] != true) {
+        throw app_errors.ServerException(
+          data?['message']?.toString() ??
+              'The booking pass could not be validated.',
+          code: data?['error_code']?.toString().toLowerCase() ??
+              'check_in_failed',
+        );
+      }
+
+      // A pass that has already admitted someone is not a fresh check-in, and
+      // must not be reported as one.
+      if (data['already_checked_in'] == true) {
+        throw const app_errors.ValidationException(
+          'This pass has already been used to check in.',
+          code: 'booking_already_checked_in',
+        );
+      }
+
+      final bookingId = data['booking_id'] as String?;
       if (bookingId == null || bookingId.isEmpty) {
         throw const app_errors.NotFoundException(
           'The booking pass could not be validated.',

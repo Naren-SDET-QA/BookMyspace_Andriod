@@ -18,7 +18,9 @@ import '../../../../core/widgets/skeleton.dart';
 import '../../../../core/widgets/staggered_entrance.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../booking/domain/booking.dart';
+import '../../../booking/presentation/booking_providers.dart';
 import '../../../modules/presentation/module_providers.dart';
+import '../../../map/presentation/widgets/osm_tile_layer.dart';
 import '../../../reviews/presentation/widgets/venue_reviews_section.dart';
 import '../../../venue_sections/domain/venue_section.dart';
 import '../../../venue_sections/presentation/venue_section_providers.dart';
@@ -87,10 +89,30 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
   }
 
   Future<void> _call() async {
-    final phone = venue.contactPhone.trim();
+    final phone = _callablePhone;
     if (phone.isEmpty) return;
     final uri = Uri(scheme: 'tel', path: phone);
     await launchUrl(uri);
+  }
+
+  /// The number the customer may dial: the owner's direct line once contact
+  /// is revealed, otherwise the masked form (see the masking note in build).
+  String get _callablePhone => _contactRevealed
+      ? venue.contactPhone.trim()
+      : maskContactPhone(venue.contactPhone);
+
+  bool _contactRevealed = false;
+
+  Future<void> _whatsapp() async {
+    final phone = venue.contactPhone.trim().replaceAll(RegExp(r'[^0-9]'), '');
+    if (phone.isEmpty) return;
+    // WhatsApp requires a country code; the platform serves India.
+    final number = phone.startsWith('91') ? phone : '91$phone';
+    final text = Uri.encodeComponent(
+      'Hi, I am interested in ${venue.name} on BookMySpace.',
+    );
+    final uri = Uri.parse('https://wa.me/$number?text=$text');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   void _chat() {
@@ -104,7 +126,19 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     final supportEnabled = ref.watch(moduleEnabledProvider('support'));
     final publishedSections =
         ref.watch(publishedVenueSectionsProvider(venue.id));
-    final showCall = template.showCall && venue.contactPhone.trim().isNotEmpty;
+    // Contact masking (reference parity with the Android privacy rule):
+    // the owner's direct number is only actionable once the customer has a
+    // booking the owner accepted. Before that, the call button dials a
+    // masked number. Anonymous visitors see the masked form too.
+    final hasApprovedBooking = ref
+        .watch(hasApprovedBookingForVenueProvider(venue.id))
+        .valueOrNull;
+    final contactRevealed = hasApprovedBooking ?? false;
+    _contactRevealed = contactRevealed;
+    final callablePhone = contactRevealed
+        ? venue.contactPhone.trim()
+        : maskContactPhone(venue.contactPhone);
+    final showCall = template.showCall && callablePhone.isNotEmpty;
     final showChat = template.showChat && supportEnabled;
 
     return Scaffold(
@@ -171,6 +205,7 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
                                     onBook:
                                         venue.isActive ? _openBooking : null,
                                     onCall: showCall ? _call : null,
+                                    onWhatsApp: showCall ? _whatsapp : null,
                                     onChat: showChat ? _chat : null,
                                   ),
                                 ),
@@ -209,6 +244,7 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
             onAvailability: _openAvailability,
             onBook: _openBooking,
             onCall: showCall ? _call : null,
+            onWhatsApp: showCall ? _whatsapp : null,
             onChat: showChat ? _chat : null,
           );
         },
@@ -759,20 +795,19 @@ class _VenueMap extends StatelessWidget {
             ),
           ),
           children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.bookmyspace.app',
-            ),
+            const OsmTileLayer(),
             MarkerLayer(
               markers: [
                 Marker(
                   point: point,
                   width: 40,
                   height: 40,
+                  alignment: Alignment.bottomCenter,
                   child: Icon(Icons.location_pin, color: accent, size: 40),
                 ),
               ],
             ),
+            const OsmAttribution(),
           ],
         ),
       ),
@@ -812,6 +847,7 @@ class _StickyCtaBar extends StatelessWidget {
     required this.onBook,
     this.selectedSlot,
     this.onCall,
+    this.onWhatsApp,
     this.onChat,
   });
 
@@ -821,6 +857,7 @@ class _StickyCtaBar extends StatelessWidget {
   final VoidCallback onAvailability;
   final VoidCallback onBook;
   final VoidCallback? onCall;
+  final VoidCallback? onWhatsApp;
   final VoidCallback? onChat;
 
   @override
@@ -864,6 +901,18 @@ class _StickyCtaBar extends StatelessWidget {
                       ),
                       onPressed: onCall,
                       icon: const Icon(Icons.call_rounded, size: 18),
+                    ),
+                  if (onWhatsApp != null)
+                    IconButton(
+                      key: const Key('listing_whatsapp'),
+                      tooltip: 'WhatsApp',
+                      visualDensity: VisualDensity.compact,
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF00897B),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: onWhatsApp,
+                      icon: const Icon(Icons.chat_rounded, size: 18),
                     ),
                   if (onChat != null)
                     IconButton(
@@ -917,6 +966,7 @@ class _StickySummary extends StatelessWidget {
     required this.onBook,
     this.selectedSlot,
     this.onCall,
+    this.onWhatsApp,
     this.onChat,
   });
 
@@ -926,6 +976,7 @@ class _StickySummary extends StatelessWidget {
   final VoidCallback onAvailability;
   final VoidCallback? onBook;
   final VoidCallback? onCall;
+  final VoidCallback? onWhatsApp;
   final VoidCallback? onChat;
 
   @override
@@ -962,7 +1013,7 @@ class _StickySummary extends StatelessWidget {
             onPressed: onBook,
             child: Text(template.ctaBook),
           ),
-          if (onCall != null || onChat != null) ...[
+          if (onCall != null || onWhatsApp != null || onChat != null) ...[
             const SizedBox(height: 8),
             Row(
               children: [
@@ -974,7 +1025,15 @@ class _StickySummary extends StatelessWidget {
                       label: Text(template.ctaCall),
                     ),
                   ),
-                if (onCall != null && onChat != null) const SizedBox(width: 8),
+                if (onWhatsApp != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('listing_whatsapp'),
+                      onPressed: onWhatsApp,
+                      icon: const Icon(Icons.chat_rounded, size: 16),
+                      label: const Text('WhatsApp'),
+                    ),
+                  ),
                 if (onChat != null)
                   Expanded(
                     child: OutlinedButton.icon(

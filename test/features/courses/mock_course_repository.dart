@@ -1,3 +1,5 @@
+import 'package:bookmyspace/features/cms/domain/configurable_form.dart';
+import 'package:bookmyspace/features/cms/domain/target_modules.dart';
 import 'package:bookmyspace/features/courses/domain/course.dart';
 import 'package:bookmyspace/features/courses/domain/course_repository.dart';
 
@@ -10,6 +12,8 @@ class MockCourseRepository implements CourseRepository {
   List<CourseFaculty> facultyList = const [];
   List<CourseFeedback> feedbackList = const [];
   List<CourseDemoRegistration> admissions = const [];
+  List<InstituteBranch> branchList = const [];
+  Map<String, dynamic> lastFormAnswers = const {};
   int _idSeq = 0;
 
   bool failList = false;
@@ -98,9 +102,11 @@ class MockCourseRepository implements CourseRepository {
     String studentName = '',
     String contactPhone = '',
     DateTime? preferredStart,
+    Map<String, dynamic> formAnswers = const {},
   }) async {
     if (failEnroll) throw Exception('enroll failed');
     lastEnrollBatchId = batchId;
+    lastFormAnswers = formAnswers;
     calls.add('enroll:$batchId');
     courses = courses
         .map(
@@ -381,36 +387,58 @@ class MockCourseRepository implements CourseRepository {
     String? phone,
     String? timings,
     List<String>? amenities,
+    TargetModuleConfig? modules,
+    ConfigurableFormSchema? registrationForm,
+    Map<String, dynamic>? profile,
   }) async {
     calls.add('updateInstitute:$instituteId');
     instituteList = instituteList
         .map(
           (item) => item.id == instituteId
-              ? Institute(
-                  id: item.id,
-                  orgId: item.orgId,
-                  name: item.name,
-                  description: item.description,
-                  logoImage: item.logoImage,
-                  isVerified: item.isVerified,
-                  type: item.type,
-                  categoryId: item.categoryId,
-                  address: address ?? item.address,
-                  city: city ?? item.city,
-                  latitude: item.latitude,
-                  longitude: item.longitude,
-                  phone: phone ?? item.phone,
-                  email: item.email,
-                  whatsapp: item.whatsapp,
-                  website: item.website,
-                  mode: item.mode,
-                  timingsText: timings ?? item.timingsText,
-                  images: item.images,
-                  amenities: amenities ?? item.amenities,
+              ? item.copyWith(
+                  address: address,
+                  city: city,
+                  phone: phone,
+                  timingsText: timings,
+                  amenities: amenities,
+                  modules: modules,
+                  registrationForm: registrationForm,
+                  profile: profile,
                 )
               : item,
         )
         .toList();
+  }
+
+  @override
+  Future<List<InstituteBranch>> branches(String instituteId) async {
+    return branchList.where((b) => b.instituteId == instituteId).toList();
+  }
+
+  @override
+  Future<void> saveBranch(InstituteBranch branch) async {
+    calls.add('saveBranch:${branch.instituteId}');
+    final id = branch.id.isEmpty ? 'br${++_idSeq}' : branch.id;
+    final stored = InstituteBranch(
+      id: id,
+      instituteId: branch.instituteId,
+      name: branch.name,
+      address: branch.address,
+      city: branch.city,
+      isPrimary: branch.isPrimary,
+      isActive: branch.isActive,
+      isOnlineOnly: branch.isOnlineOnly,
+    );
+    branchList = [
+      ...branchList.where((item) => item.id != id),
+      stored,
+    ];
+  }
+
+  @override
+  Future<void> deleteBranch(String branchId) async {
+    calls.add('deleteBranch:$branchId');
+    branchList = branchList.where((item) => item.id != branchId).toList();
   }
 
   @override
@@ -419,6 +447,13 @@ class MockCourseRepository implements CourseRepository {
     required String name,
     String role = '',
     String bio = '',
+    String instituteId = '',
+    String photoUrl = '',
+    String designation = '',
+    String qualification = '',
+    String specialization = '',
+    String experienceText = '',
+    String demoUrl = '',
   }) async {
     calls.add('addFaculty:$courseId:$name');
     facultyList = [
@@ -426,9 +461,16 @@ class MockCourseRepository implements CourseRepository {
       CourseFaculty(
         id: 'fac${_idSeq++}',
         courseId: courseId,
+        instituteId: instituteId,
         name: name,
         role: role,
         bio: bio,
+        photoUrl: photoUrl,
+        designation: designation,
+        qualification: qualification,
+        specialization: specialization,
+        experienceText: experienceText,
+        demoUrl: demoUrl,
       ),
     ];
     courses = courses.map((course) {

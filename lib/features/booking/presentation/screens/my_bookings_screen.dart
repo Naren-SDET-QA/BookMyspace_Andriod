@@ -13,6 +13,8 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../payments/presentation/payment_providers.dart';
+import '../../../venues/domain/venue.dart';
+import '../../../venues/presentation/venue_providers.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
@@ -150,6 +152,27 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  // Reference-parity "Book again" (Android MyBookings). Offered for every
+  // finished-or-abandoned booking — the statuses a customer could plausibly
+  // want to repeat. It never duplicates anything client-side: it just opens
+  // the standard booking flow for the same venue, where availability, holds
+  // and owner approval are recomputed server-side. A venue deleted since the
+  // booking falls back to its public details screen.
+  Future<void> _bookAgain(Booking booking) async {
+    Venue? venue;
+    try {
+      venue = await ref.read(venueRepositoryProvider).venueById(booking.venueId);
+    } catch (_) {
+      venue = null;
+    }
+    if (!mounted) return;
+    if (venue == null) {
+      unawaited(context.push('/venues/${booking.venueId}'));
+      return;
+    }
+    unawaited(context.push('/venues/${venue.id}/book', extra: venue));
   }
 
   Future<void> _requestRefund(Booking booking) async {
@@ -290,6 +313,12 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                         '/bookings/${list[i].id}/pay',
                         extra: list[i],
                       )
+                  : null,
+              onReceipt: list[i].canViewReceipt
+                  ? () => context.push('/bookings/${list[i].id}/receipt')
+                  : null,
+              onBookAgain: list[i].canBookAgain
+                  ? () => _bookAgain(list[i])
                   : null,
             ),
           );
@@ -446,6 +475,8 @@ class _BookingCard extends StatelessWidget {
     this.onCancel,
     this.onRefund,
     this.onPay,
+    this.onReceipt,
+    this.onBookAgain,
   });
 
   final Booking booking;
@@ -453,6 +484,8 @@ class _BookingCard extends StatelessWidget {
   final VoidCallback? onCancel;
   final VoidCallback? onRefund;
   final VoidCallback? onPay;
+  final VoidCallback? onReceipt;
+  final VoidCallback? onBookAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -598,6 +631,18 @@ class _BookingCard extends StatelessWidget {
                 onPressed: onRefund,
                 icon: const Icon(Icons.currency_rupee_rounded, size: 18),
                 label: Text(l10n.requestRefund),
+              ),
+            ),
+          ],
+          if (onBookAgain != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('booking_card_book_again'),
+                onPressed: onBookAgain,
+                icon: const Icon(Icons.replay_rounded, size: 18),
+                label: const Text('Book again'),
               ),
             ),
           ],

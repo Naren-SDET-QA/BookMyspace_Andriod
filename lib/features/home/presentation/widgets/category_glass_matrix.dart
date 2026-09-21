@@ -5,6 +5,7 @@ import '../../../../core/widgets/interactive_tilt_card.dart';
 import '../../../venues/domain/venue.dart';
 import '../home_category_catalog.dart';
 import '../../../cms/domain/cms_banner.dart';
+import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
 
 /// Responsive category discovery panel with master carousel + sub-section grid.
 ///
@@ -28,6 +29,7 @@ class CategoryDiscoveryPanel extends StatefulWidget {
     required this.sections,
     required this.selected,
     required this.categories,
+    this.dynamicSubsections = const [],
     required this.venues,
     required this.onMasterChanged,
     required this.onMasterExplore,
@@ -40,6 +42,12 @@ class CategoryDiscoveryPanel extends StatefulWidget {
   final List<MainHomeSection> sections;
   final MainHomeSection selected;
   final List<VenueCategory> categories;
+
+  /// Admin-managed `venue_subsections` rows. When any of them belong to a
+  /// section (via its category's parent mapping), they replace the static
+  /// fallback sub-sections for that section so owner-created subsections
+  /// surface on customer discovery without a Flutter change.
+  final List<VenueSubsection> dynamicSubsections;
   final List<Venue> venues;
   final ValueChanged<MainHomeSection> onMasterChanged;
   final ValueChanged<MainHomeSection> onMasterExplore;
@@ -67,6 +75,72 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
   // rebuilds that happen when the user picks a different category or the
   // surrounding Home screen refreshes) -- not reset on every rebuild.
   _ViewMode _mode = _ViewMode.matrix3d;
+
+  List<HomeSubSection> _subsectionsFor(MainHomeSection section) {
+    // Function Halls discovery is frozen to the shipped cells
+    // (Marriage Halls, Banquet Halls, etc.). Live CMS/master categories
+    // and admin-managed venue_subsections must not replace that matrix.
+    if (section == MainHomeSection.functionHalls) {
+      return section.subSections;
+    }
+    final categoriesById = <String, VenueCategory>{
+      for (final category in widget.categories) category.id: category,
+    };
+    final managed = widget.dynamicSubsections.where((subsection) {
+      final category = categoriesById[subsection.categoryId];
+      return category != null && _categoryBelongsToSection(category, section);
+    }).map(
+      (subsection) => HomeSubSection(
+        label: subsection.name,
+        emoji: subsection.icon?.isNotEmpty == true
+            ? subsection.icon!
+            : categoriesById[subsection.categoryId]?.icon ?? section.emoji,
+        slug: subsection.slug,
+      ),
+    );
+    final items = <HomeSubSection>[...managed];
+    for (final category in widget.categories) {
+      if (!category.isActive || !_categoryBelongsToSection(category, section)) {
+        continue;
+      }
+      if (items.any(
+          (item) => item.slug.toLowerCase() == category.slug.toLowerCase())) {
+        continue;
+      }
+      items.add(
+        HomeSubSection(
+          label: category.name,
+          emoji: category.icon?.isNotEmpty == true ? category.icon! : '🏷️',
+          slug: category.slug,
+        ),
+      );
+    }
+    if (items.isEmpty) return section.subSections;
+    return items;
+  }
+
+  bool _categoryBelongsToSection(
+    VenueCategory category,
+    MainHomeSection section,
+  ) {
+    final parent = category.parentSection?.toLowerCase();
+    if (parent != null && section.parentSectionAliases.contains(parent)) {
+      return true;
+    }
+    final slug = category.slug.toLowerCase();
+    if (section.searchAliases.contains(slug)) return true;
+    return switch (section) {
+      MainHomeSection.functionHalls => slug.contains('hall'),
+      MainHomeSection.lodgeRooms =>
+        slug.contains('hotel') || slug.contains('lodge'),
+      MainHomeSection.pgHostels =>
+        slug.contains('pg') || slug.contains('hostel'),
+      MainHomeSection.institutesClasses =>
+        slug.contains('class') || slug.contains('coaching'),
+      MainHomeSection.sportsTurfs =>
+        slug.contains('sport') || slug.contains('turf'),
+    };
+  }
 
   int? _countFor(VenueCategory? matched) {
     if (matched == null) return null;
@@ -130,76 +204,31 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Eyebrow heading + live, real counts (never hardcoded -- the
-        // reference mockup says "6 master categories" but this app has
-        // ${sections.length}, so that's what's shown).
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          key: const Key('discovery-hero'),
           children: [
             Expanded(
-              child: Row(
-                key: const Key('discovery-hero'),
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(Icons.circle,
-                      size: 7, color: theme.colorScheme.tertiary),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'ALL MASTER CATEGORIES & MATRIX',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: (isCompact
-                              ? theme.textTheme.labelLarge
-                              : theme.textTheme.titleSmall)
-                          ?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.4,
-                        color: theme.colorScheme.tertiary,
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Inside this category',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-            if (!isCompact) ...[
-              const SizedBox(width: 12),
-              _UiModeSelector(
-                mode: _mode,
-                onChanged: (m) => setState(() => _mode = m),
-              ),
-            ],
-          ],
-        ),
-        SizedBox(height: isCompact ? 4 : 6),
-        Text(
-          'All ${sections.length} master categories • ${sections.fold<int>(0, (n, s) => n + s.subSections.length)}+ verified sub-sections • Interactive 3D depth',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            height: 1.35,
-          ),
-        ),
-        if (isCompact) ...[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: _UiModeSelector(
+            _UiModeSelector(
               mode: _mode,
               onChanged: (m) => setState(() => _mode = m),
             ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          selected.displayTitle,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-        ],
-        SizedBox(height: isCompact ? 14 : 18),
-
-        // Horizontal quick-jump chip row: "All Categories" + one chip per
-        // master section. Tapping a chip highlights that section (and
-        // expands its sub-section grid below) in every view mode -- same
-        // onMasterChanged/onMasterExplore contract as before, no new state.
-        _MasterChipRow(
-          sections: sections,
-          selected: selected,
-          onExploreAll: widget.onExploreAll,
-          onChipTap: handleMasterTap,
         ),
         SizedBox(height: isCompact ? 12 : 16),
 
@@ -228,6 +257,7 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
                     onTap: handleMasterTap,
                     imageFor: _imageFor,
                     styleFor: _styleFor,
+                    liveCountFor: _liveCountFor,
                   ),
                 _ViewMode.grid => _MatrixCardGrid(
                     sections: sections,
@@ -262,9 +292,12 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
         ),
         SizedBox(height: isCompact ? 14 : 16),
 
-        // Sub-section grid
+        // Sub-section grid. Function Halls always uses shipped cells;
+        // other sections use admin-managed subsections, then live
+        // categories, then shipped fallbacks -- see _subsectionsFor.
         _ResponsiveSubSectionGrid(
           section: selected,
+          items: _subsectionsFor(selected),
           categories: widget.categories,
           countFor: _countFor,
           onMasterTap: () => widget.onMasterExplore(selected),
@@ -296,6 +329,7 @@ class _UiModeSelector extends StatelessWidget {
       button: true,
       label: 'Discovery layout: ${mode.label}',
       child: PopupMenuButton<_ViewMode>(
+        key: const Key('discovery-layout-menu'),
         tooltip: 'Change discovery layout',
         initialValue: mode,
         onSelected: onChanged,
@@ -312,35 +346,21 @@ class _UiModeSelector extends StatelessWidget {
                   else
                     const SizedBox(width: 16),
                   const SizedBox(width: 8),
-                  Text(m.label),
+                  Flexible(
+                    child: Text(
+                      m.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
         ],
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.tertiary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: theme.colorScheme.tertiary.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                mode.label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.tertiary,
-                ),
-              ),
-              const SizedBox(width: 2),
-              Icon(Icons.expand_more_rounded,
-                  size: 14, color: theme.colorScheme.tertiary),
-            ],
-          ),
+        child: Icon(
+          Icons.tune_rounded,
+          size: 22,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -358,6 +378,7 @@ class _MatrixCardRow extends StatelessWidget {
     required this.onTap,
     required this.imageFor,
     required this.styleFor,
+    required this.liveCountFor,
   });
 
   final List<MainHomeSection> sections;
@@ -366,38 +387,41 @@ class _MatrixCardRow extends StatelessWidget {
   final ValueChanged<MainHomeSection> onTap;
   final String Function(MainHomeSection) imageFor;
   final CmsCategoryStyle Function(MainHomeSection) styleFor;
+  final int Function(MainHomeSection) liveCountFor;
 
   @override
   Widget build(BuildContext context) {
     final height = compact ? 112.0 : 140.0;
     return SizedBox(
       height: height,
-      child: ListView.builder(
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        itemCount: sections.length,
-        itemBuilder: (context, index) {
-          final section = sections[index];
-          final isSelected = section == selected;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            child: SizedBox(
-              width: compact ? 148 : 190,
-              child: _MasterGlassCard(
-                key: Key('master-${section.id}'),
-                section: section,
-                imageUrl: imageFor(section),
-                style: styleFor(section),
-                selected: isSelected,
-                tiltY: isSelected
-                    ? 0
-                    : (index < sections.indexOf(selected) ? 0.14 : -0.14),
-                compact: compact,
-                onTap: () => onTap(section),
+        child: Row(
+          children: [
+            for (var index = 0; index < sections.length; index++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                child: SizedBox(
+                  width: compact ? 148 : 190,
+                  child: _MasterGlassCard(
+                    key: Key('master-${sections[index].id}'),
+                    section: sections[index],
+                    imageUrl: imageFor(sections[index]),
+                    style: styleFor(sections[index]),
+                    selected: sections[index] == selected,
+                    tiltY: sections[index] == selected
+                        ? 0
+                        : (index < sections.indexOf(selected) ? 0.14 : -0.14),
+                    compact: compact,
+                    liveCount: liveCountFor(sections[index]),
+                    onTap: () => onTap(sections[index]),
+                    onAiHelp: () => AiBookingSheet.show(context),
+                  ),
+                ),
               ),
-            ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -686,126 +710,6 @@ class _EmptyCategoriesState extends StatelessWidget {
   }
 }
 
-/// Horizontal "All Categories" + master-section chip row.
-class _MasterChipRow extends StatelessWidget {
-  const _MasterChipRow({
-    required this.sections,
-    required this.selected,
-    required this.onExploreAll,
-    required this.onChipTap,
-  });
-
-  final List<MainHomeSection> sections;
-  final MainHomeSection selected;
-  final VoidCallback onExploreAll;
-  final ValueChanged<MainHomeSection> onChipTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          _MasterChip(
-            label: 'All Categories',
-            icon: Icons.star_rounded,
-            selected: false,
-            accentColor: Theme.of(context).colorScheme.tertiary,
-            onTap: onExploreAll,
-          ),
-          const SizedBox(width: 8),
-          for (final section in sections) ...[
-            _MasterChip(
-              label: section.displayTitle,
-              icon: null,
-              emoji: section.emoji,
-              selected: section == selected,
-              accentColor: section.accentColor,
-              onTap: () => onChipTap(section),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MasterChip extends StatelessWidget {
-  const _MasterChip({
-    required this.label,
-    required this.selected,
-    required this.accentColor,
-    required this.onTap,
-    this.icon,
-    this.emoji,
-  });
-
-  final String label;
-  final bool selected;
-  final Color accentColor;
-  final VoidCallback onTap;
-  final IconData? icon;
-  final String? emoji;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: Material(
-        color: selected
-            ? accentColor.withValues(alpha: 0.18)
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected
-                    ? accentColor.withValues(alpha: 0.7)
-                    : theme.colorScheme.outline.withValues(alpha: 0.25),
-                width: selected ? 1.6 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null)
-                  Icon(icon, size: 16, color: accentColor)
-                else if (emoji != null)
-                  Text(emoji!, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: selected
-                        ? theme.colorScheme.onSurface
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (selected) ...[
-                  const SizedBox(width: 4),
-                  Icon(Icons.circle, size: 6, color: accentColor),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// "Verified Venues" + "N Live Spaces" badge row shown above the selected
 /// master category title. Both values come from real data: "Verified
 /// Venues" reflects that every listed venue goes through the existing
@@ -1041,6 +945,8 @@ class _MasterGlassCard extends StatelessWidget {
     required this.tiltY,
     required this.onTap,
     this.compact = false,
+    this.liveCount = 0,
+    this.onAiHelp,
   });
 
   final MainHomeSection section;
@@ -1050,6 +956,8 @@ class _MasterGlassCard extends StatelessWidget {
   final double tiltY;
   final VoidCallback onTap;
   final bool compact;
+  final int liveCount;
+  final VoidCallback? onAiHelp;
 
   @override
   Widget build(BuildContext context) {
@@ -1151,9 +1059,7 @@ class _MasterGlassCard extends StatelessWidget {
                                     ?.copyWith(
                                   fontWeight: FontWeight.w800,
                                   height: 1.15,
-                                  color: isDark
-                                      ? Colors.white
-                                      : theme.colorScheme.onSurface,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
@@ -1161,6 +1067,83 @@ class _MasterGlassCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Live count badge — top-right corner
+                    if (liveCount > 0)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: Colors.greenAccent.shade400,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$liveCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // AI Help chip — bottom-right, only on selected card
+                    if (selected && onAiHelp != null)
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: onAiHelp,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: style.accentColor.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      style.accentColor.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.auto_awesome_rounded,
+                                    size: 12, color: Colors.white),
+                                SizedBox(width: 4),
+                                Text(
+                                  'AI Help',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1181,6 +1164,7 @@ class _MasterGlassCard extends StatelessWidget {
 class _ResponsiveSubSectionGrid extends StatelessWidget {
   const _ResponsiveSubSectionGrid({
     required this.section,
+    required this.items,
     required this.categories,
     required this.countFor,
     required this.onMasterTap,
@@ -1188,6 +1172,7 @@ class _ResponsiveSubSectionGrid extends StatelessWidget {
   });
 
   final MainHomeSection section;
+  final List<HomeSubSection> items;
   final List<VenueCategory> categories;
   final int? Function(VenueCategory?) countFor;
   final VoidCallback onMasterTap;
@@ -1198,7 +1183,6 @@ class _ResponsiveSubSectionGrid extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final isCompact = width < 600;
 
-    final items = section.subSections;
     final isFunctionHalls = section == MainHomeSection.functionHalls;
 
     // Compute responsive grid parameters

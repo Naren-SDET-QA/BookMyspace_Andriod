@@ -28,14 +28,45 @@ dependencies:
   intl: ^0.20.2
   flutter_secure_storage: ^9.0.0
   http: ^1.2.2
+  # Promoted from a transitive dependency. Already resolved for every platform,
+  # and Home section videos open in the platform player rather than in-app, so
+  # no video decoding happens while the feed scrolls.
   url_launcher: ^6.3.0
+  # Camera-side QR decoding for venue check-in. Pure plugin code on Android
+  # (CameraX + ML Kit), iOS (AVFoundation + Vision) and Web (zxing-wasm).
+  mobile_scanner: ^7.4.1
+  # Pass-side QR *encoding*. Pure Dart with no platform code, so the pass
+  # renders identically on all three platforms. Required because the previous
+  # pass widget hand-drew a QR-shaped grid that no reader could decode.
+  #
+  # Held at 3.x on purpose. `pdf` depends on `barcode`, which depends on
+  # `qr ^3.0.0`, and qr 4.0.0 turned QrErrorCorrectLevel into an enum and
+  # removed QrCode.fromData — so `barcode` cannot compile against it and a
+  # dependency_override only moves the failure from version solving to
+  # compilation. Do not bump this without re-checking `barcode`'s constraint.
+  #
+  # Verified equivalent rather than assumed: for the real check-in payload this
+  # produces a module-for-module identical 45x45 symbol to 4.0.0, and both
+  # raise InputTooLongException at the same 13328-bit limit. The symbol decodes
+  # to the exact expected payload under OpenCV's detector, both with the brand
+  # badge occluding the centre and at the production 3px-per-module size.
+  qr: ^3.0.2
+  # Itemized receipt rendering. `pdf` is pure Dart, so the document bytes are
+  # identical on Android, iOS and Web; `printing` supplies the platform-specific
+  # preview / save / share surface for those bytes.
+  pdf: ^3.11.0
+  printing: ^5.13.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   integration_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  # Declared so tests can swap in the in-memory storage platform that
+  # flutter_secure_storage ships for exactly this purpose. Without it, push
+  # service tests would hit an unregistered MethodChannel and could only
+  # exercise the paths that swallow storage errors.
+  flutter_secure_storage_platform_interface: ^1.1.2
   mocktail: ^1.0.4
 
 flutter:
@@ -43,3 +74,7 @@ flutter:
   assets:
     - assets/
     - assets/icons/
+    # Noto Sans subset used to embed text in generated receipt PDFs. Declared
+    # per-directory because a directory entry covers only the files directly
+    # inside it. See assets/fonts/README.md for why a font is needed at all.
+    - assets/fonts/

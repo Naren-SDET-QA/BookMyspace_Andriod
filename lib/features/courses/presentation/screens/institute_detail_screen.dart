@@ -123,7 +123,11 @@ class _InstituteBody extends ConsumerWidget {
                     ),
                   ),
                 ],
-                if (institute.hasLocation) ...[
+                if (institute.modules.show(
+                  key: 'location',
+                  hasData: institute.hasLocation ||
+                      institute.branches.any((b) => b.hasAddress),
+                )) ...[
                   const SizedBox(height: 16),
                   Text(l10n.location, style: theme.textTheme.titleMedium),
                   const SizedBox(height: 6),
@@ -147,6 +151,8 @@ class _InstituteBody extends ConsumerWidget {
                     ),
                   ),
                 ],
+                if (institute.modules.enabled('faculty'))
+                  _InstituteFaculty(instituteId: institute.id),
                 if (institute.hasContact || institute.website.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(l10n.contactInstitute,
@@ -219,6 +225,45 @@ class _InfoChip extends StatelessWidget {
     return Chip(
       avatar: Icon(icon, size: 18, color: AppTheme.violet),
       label: Text(label),
+    );
+  }
+}
+
+class _InstituteFaculty extends ConsumerWidget {
+  const _InstituteFaculty({required this.instituteId});
+
+  final String instituteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final courses =
+        ref.watch(instituteCoursesProvider(instituteId)).valueOrNull;
+    if (courses == null) return const SizedBox.shrink();
+    final faculty = [
+      for (final course in courses) ...course.faculty,
+    ].where((item) => item.name.isNotEmpty).toList();
+    if (faculty.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Faculty', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          for (final item in faculty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                [
+                  item.name,
+                  if (item.role.isNotEmpty) item.role,
+                  if (item.qualification.isNotEmpty) item.qualification,
+                ].join(' · '),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'package:bookmyspace/features/venues/presentation/screens/venue_details_s
 import 'package:bookmyspace/features/venue_sections/presentation/venue_section_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -124,6 +125,14 @@ void main() {
       expect(find.byKey(const Key('listing_availability_cta')), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets('listing details render an OSM map for the venue location',
+      (tester) async {
+    await tester.pumpWidget(_app(_venue(slug: 'function_hall')));
+    await tester.pumpAndSettle();
+    expect(find.byType(FlutterMap), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('no overflow at compact through extra-wide widths',

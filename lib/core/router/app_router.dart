@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_cms_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/cms/presentation/screens/admin_media_library_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
 import '../../features/admin_payment/presentation/screens/admin_payment_health_screen.dart';
 import '../../features/admin_payment/presentation/screens/admin_transaction_ledger_screen.dart';
 import '../../features/integrations/presentation/screens/admin_integrations_screen.dart';
 import '../../features/modules/presentation/screens/admin_modules_screen.dart';
+import '../../features/home/presentation/screens/admin_home_appearance_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/auth_user.dart';
@@ -50,6 +52,7 @@ import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
 import '../../features/payments/presentation/screens/payment_screen.dart';
 import '../../features/qr_checkin/presentation/screens/qr_check_in_scanner_screen.dart';
+import '../../features/receipts/presentation/screens/receipt_screen.dart';
 import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/settings/presentation/screens/features_hub_screen.dart';
@@ -58,6 +61,12 @@ import '../../features/map/presentation/screens/venue_map_screen.dart';
 import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/venues/domain/venue.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
+import '../../features/navigation/presentation/nav_tab_labels.dart';
+import '../../features/navigation/domain/nav_tabs.dart';
+import '../../features/navigation/presentation/nav_tabs_providers.dart';
+import '../../features/navigation/presentation/screens/admin_nav_tabs_screen.dart';
+import '../../features/cms/presentation/screens/admin_catalog_screen.dart';
+import '../../features/navigation/presentation/screens/assistant_tab_screen.dart';
 import '../localization/app_localizations.dart';
 
 /// Route names used for navigation.
@@ -77,6 +86,7 @@ abstract class AppRoutes {
   static const bookingFlow = '/venues/:id/book';
   static const paymentFlow = '/bookings/:id/pay';
   static const bookingSuccess = '/bookings/:id/success';
+  static const receipt = '/bookings/:id/receipt';
   static const eventsList = '/events';
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
@@ -103,6 +113,7 @@ abstract class AppRoutes {
   static const adminCms = '/admin/cms';
   static const adminIntegrations = '/admin/integrations';
   static const adminModules = '/admin/modules';
+  static const adminHomeLayout = '/admin/home-layout';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
   static const ownerCategories = '/owner/categories';
@@ -117,6 +128,10 @@ abstract class AppRoutes {
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
   static const featuresHub = '/features';
+  static const assistantTab = '/assistant';
+  static const adminNavTabs = '/admin/nav-tabs';
+  static const adminCatalog = '/admin/catalog';
+  static const adminMedia = '/admin/media';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -493,6 +508,38 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.adminHomeLayout,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminHomeAppearanceScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminNavTabs,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminNavTabsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminCatalog,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminCatalogScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminMedia,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminMediaLibraryScreen(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.ownerRegistration,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const OwnerRegistrationScreen(),
@@ -626,6 +673,13 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(
+        path: AppRoutes.receipt,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => ReceiptScreen(
+          bookingId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.qrScanner,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const QrCheckInScannerScreen(),
@@ -700,6 +754,17 @@ GoRouter createAppRouter({
               ),
             ],
           ),
+          // Branch 6. The assistant is a destination an admin opts into. It is
+          // declared last so every existing branch index stays unchanged, which
+          // keeps saved bar configurations and deep links valid.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.assistantTab,
+                builder: (context, state) => const AssistantTabScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -710,6 +775,20 @@ class _AppShell extends ConsumerWidget {
   const _AppShell({required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
+
+  /// Icon for one bar destination. The bookings tab shows a real badge with
+  /// the count of bookings awaiting the user's action; other tabs are plain.
+  Widget _navTabIcon(
+    NavTabConfig entry, {
+    required int actionableBookings,
+    required bool selected,
+  }) {
+    final icon = selected ? entry.tab.selectedIcon : entry.tab.icon;
+    if (entry.tab == NavTab.bookings && actionableBookings > 0) {
+      return Badge(label: Text('$actionableBookings'), child: Icon(icon));
+    }
+    return Icon(icon);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -722,97 +801,63 @@ class _AppShell extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    // The admin-configured bar. The route tree itself is fixed, so this decides
+    // only which branches are reachable *from the bar* — never which routes
+    // exist. A hidden destination is still reachable by deep link.
+    final tabs = ref.watch(visibleNavTabsProvider);
+    final position = tabs.indexWhere(
+      (entry) => entry.tab.branch == navigationShell.currentIndex,
+    );
+    // Material 3 requires an in-range selection. A branch reached while hidden
+    // from the bar (deep link or an in-app button) has no bar position, so the
+    // first destination is highlighted instead of asserting.
+    final selectedIndex = position >= 0 ? position : 0;
+
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(
-          10,
-          0,
-          10,
-          bottomInset > 0 ? bottomInset : 10,
-        ),
-        child: MediaQuery.removePadding(
-          context: context,
-          removeBottom: true,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF151A2C) : Colors.white,
+          border: Border(
+            top: BorderSide(
               color: isDark
-                  ? const Color(0xF0102433)
-                  : Colors.white.withValues(alpha: 0.94),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFE2E8F0),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0F172A)
-                      .withValues(alpha: isDark ? 0.45 : 0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFE2E8F0),
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomInset > 0 ? 0 : 4),
+          child: NavigationBar(
+            // Keep labels visible so first-time users can understand each
+            // destination without relying on platform-specific icon
+            // knowledge. Destinations and routes are unchanged.
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            selectedIndex: selectedIndex,
+            onDestinationSelected: (index) {
+              final branch = tabs[index].tab.branch;
+              navigationShell.goBranch(
+                branch,
+                initialLocation: branch == navigationShell.currentIndex,
+              );
+            },
+            destinations: [
+              for (final entry in tabs)
+                NavigationDestination(
+                  icon: _navTabIcon(
+                    entry,
+                    actionableBookings: actionableBookings,
+                    selected: false,
+                  ),
+                  selectedIcon: _navTabIcon(
+                    entry,
+                    actionableBookings: actionableBookings,
+                    selected: true,
+                  ),
+                  label: navTabLabel(entry, l10n, isCompact: isCompact),
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: NavigationBar(
-                // Keep labels visible so first-time users can understand each
-                // destination without relying on platform-specific icon knowledge.
-                // Material 3 sizes the six destinations responsively on phones and
-                // preserves their accessibility labels on every platform.
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                selectedIndex: navigationShell.currentIndex,
-                onDestinationSelected: (index) {
-                  navigationShell.goBranch(
-                    index,
-                    initialLocation: index == navigationShell.currentIndex,
-                  );
-                },
-                destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.home_outlined),
-                    selectedIcon: const Icon(Icons.home_rounded),
-                    label: l10n.navHome,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.notifications_outlined),
-                    selectedIcon: const Icon(Icons.notifications_rounded),
-                    label: isCompact ? 'Alerts' : l10n.notifications,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.search_outlined),
-                    selectedIcon: const Icon(Icons.search_rounded),
-                    label: l10n.navSearch,
-                  ),
-                  NavigationDestination(
-                    icon: actionableBookings > 0
-                        ? Badge(
-                            label: Text('$actionableBookings'),
-                            child: const Icon(Icons.receipt_long_outlined),
-                          )
-                        : const Icon(Icons.receipt_long_outlined),
-                    selectedIcon: actionableBookings > 0
-                        ? Badge(
-                            label: Text('$actionableBookings'),
-                            child: const Icon(Icons.receipt_long_rounded),
-                          )
-                        : const Icon(Icons.receipt_long_rounded),
-                    label: l10n.navBookings,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.school_outlined),
-                    selectedIcon: const Icon(Icons.school_rounded),
-                    label: l10n.courses,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.person_outline_rounded),
-                    selectedIcon: const Icon(Icons.person_rounded),
-                    label: l10n.navProfile,
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
         ),
       ),

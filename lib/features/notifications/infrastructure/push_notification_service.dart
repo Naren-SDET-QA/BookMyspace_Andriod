@@ -15,14 +15,21 @@ import '../domain/notification_repository.dart';
 import '../domain/push_notification_types.dart';
 import 'web_push_bridge.dart';
 
-/// Central Push Notification Service for BookMySpace Flutter (iOS & Web).
+/// Central Push Notification Service for BookMySpace Flutter
+/// (iOS, Android & Web).
 ///
 /// Features:
 /// - iOS: APNs native registration, category actions (View Pass, Directions),
 ///   foreground presentation banner/sound, background fetch, badge management.
+/// - Android: notification channel creation, runtime POST_NOTIFICATIONS
+///   handling, immediate and `AlarmManager`-scheduled display, action buttons,
+///   tap deep links. Local notifications need no Firebase project, so this
+///   works in every build; remote delivery is reported separately through
+///   [isRemotePushConfigured].
 /// - Web: Web Push API, Service Worker registration, push event display,
 ///   notificationclick deep link dispatching.
-/// - 1-Hour Pre-Booking Reminder scheduling, triggering & simulation matching Android.
+/// - 1-Hour Pre-Booking Reminder scheduling, triggering & simulation on all
+///   three platforms.
 /// - System-level permission requests and status checking.
 /// - Deep link routing with GoRouter.
 /// - Complete logout cleanup.
@@ -35,6 +42,10 @@ class PushNotificationService {
 
   static const String apnsChannelName = 'com.bookmyspace.bookmyspace/apns_push';
   final MethodChannel _apnsChannel = const MethodChannel(apnsChannelName);
+
+  static const String androidChannelName =
+      'com.bookmyspace.bookmyspace/android_push';
+  final MethodChannel _androidChannel = const MethodChannel(androidChannelName);
 
   final NotificationRepository _repository;
   final FlutterSecureStorage _storage;
@@ -58,12 +69,42 @@ class PushNotificationService {
   PushPermissionStatus _permissionStatus = PushPermissionStatus.notDetermined;
   bool _initialized = false;
   bool _is1HourReminderEnabled = true;
+  bool _remotePushConfigured = false;
 
   String? get currentDeviceToken => _currentDeviceToken;
   PushPermissionStatus get permissionStatus => _permissionStatus;
   bool get is1HourReminderEnabled => _is1HourReminderEnabled;
   List<ScheduledReminderInfo> get activeScheduledReminders =>
       _scheduledReminders.values.toList();
+
+  /// Whether a *server* can currently deliver a push message to this device.
+  ///
+  /// Only meaningful on Android today. There, local notifications work with no
+  /// backend at all, so "notifications are enabled" and "remote push is wired"
+  /// are genuinely different facts. Reporting them separately is what stops the
+  /// UI from implying a capability that does not exist.
+  bool get isRemotePushConfigured => _remotePushConfigured;
+
+  /// True when this build can only raise device-local notifications.
+  ///
+  /// Lets the UI explain an absent device token instead of showing a bare
+  /// "Not registered" with no reason.
+  bool get isLocalNotificationsOnly =>
+      !kIsWeb && Platform.isAndroid && !_remotePushConfigured;
+
+  /// Human-readable name of the transport actually backing notifications on
+  /// this platform and build.
+  ///
+  /// Lives here rather than in the widget so the UI cannot accidentally label
+  /// an unwired Android build as "FCM".
+  String get transportLabel {
+    if (kIsWeb) return 'Web Push';
+    if (Platform.isIOS) return 'APNs (iOS)';
+    if (Platform.isAndroid) {
+      return _remotePushConfigured ? 'FCM (Android)' : 'Local (Android)';
+    }
+    return 'Push';
+  }
 
   /// Initializes system push listeners for the current platform (iOS or Web).
   Future<void> initialize() async {
@@ -81,8 +122,10 @@ class PushNotificationService {
 
     if (kIsWeb) {
       await _initializeWeb();
-    } else if (!kIsWeb && Platform.isIOS) {
+    } else if (Platform.isIOS) {
       await _initializeIos();
+    } else if (Platform.isAndroid) {
+      await _initializeAndroid();
     }
 
     // Also listen to internal clicked stream to perform deep-link navigation
@@ -172,6 +215,89 @@ class PushNotificationService {
   }
 
   // ---------------------------------------------------------------------------
+  // Android Push Channel Handling
+  // ---------------------------------------------------------------------------
+
+  Future<void> _initializeAndroid() async {
+    _androidChannel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'onTokenReceived':
+          final token =
+              call.arguments is Map ? call.arguments['token'] as String? : null;
+          if (token != null && token.isNotEmpty) {
+            _currentDeviceToken = token;
+            await _storage.write(key: 'push_token', value: token);
+            await _repository.registerPushToken(token, 'android');
+          }
+          break;
+
+        case 'onNotificationReceived':
+          final args = call.arguments is Map
+              ? Map<String, dynamic>.from(call.arguments as Map)
+              : <String, dynamic>{};
+          final payload = PushNotificationPayload.fromMap(args);
+          _notificationReceivedController.add(payload);
+          await _recordInAppNotification(payload);
+          break;
+
+        case 'onNotificationClicked':
+          final args = call.arguments is Map
+              ? Map<String, dynamic>.from(call.arguments as Map)
+              : <String, dynamic>{};
+          final payload = PushNotificationPayload.fromMap(args);
+          _notificationClickedController.add(payload);
+          break;
+      }
+    });
+
+    // Read the real permission state and whether a remote transport exists.
+    try {
+      final statusResult =
+          await _androidChannel.invokeMethod<Map>('getPermissionStatus');
+      _permissionStatus = _parseAndroidPermissionStatus(
+          statusResult?['status'] as String? ?? 'notDetermined');
+      _remotePushConfigured =
+          statusResult?['remotePushConfigured'] as bool? ?? false;
+
+      // Always empty until a Firebase project file and the messaging
+      // dependency are present; the native side reports why.
+      final tokenResult = await _androidChannel.invokeMethod<Map>('getToken');
+      _remotePushConfigured = tokenResult?['remotePushConfigured'] as bool? ??
+          _remotePushConfigured;
+      final token = tokenResult?['token'] as String?;
+      if (token != null && token.isNotEmpty) {
+        _currentDeviceToken = token;
+        await _storage.write(key: 'push_token', value: token);
+        await _repository.registerPushToken(token, 'android');
+      }
+
+      // Check if cold-started by tapping a notification
+      final initialNotif =
+          await _androidChannel.invokeMethod<Map>('getInitialNotification');
+      if (initialNotif != null) {
+        final payload = PushNotificationPayload.fromMap(
+            Map<String, dynamic>.from(initialNotif));
+        _notificationClickedController.add(payload);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [AndroidPush] Android initialization error: $e');
+    }
+  }
+
+  PushPermissionStatus _parseAndroidPermissionStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'granted':
+        return PushPermissionStatus.granted;
+      case 'denied':
+        return PushPermissionStatus.denied;
+      case 'provisional':
+        return PushPermissionStatus.provisional;
+      default:
+        return PushPermissionStatus.notDetermined;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Web Push API & Service Worker Handling
   // ---------------------------------------------------------------------------
 
@@ -241,7 +367,9 @@ class PushNotificationService {
         await _refreshWebSubscription();
       }
       return _permissionStatus;
-    } else if (!kIsWeb && Platform.isIOS) {
+    }
+
+    if (Platform.isIOS) {
       try {
         final result =
             await _apnsChannel.invokeMethod<Map>('requestPermission');
@@ -265,10 +393,38 @@ class PushNotificationService {
         debugPrint('⚠️ [APNs] requestPermission error: $e');
         return PushPermissionStatus.denied;
       }
-    } else {
-      _permissionStatus = PushPermissionStatus.granted;
-      return _permissionStatus;
     }
+
+    if (Platform.isAndroid) {
+      try {
+        final result =
+            await _androidChannel.invokeMethod<Map>('requestPermission');
+        _permissionStatus = _parseAndroidPermissionStatus(
+            result?['status'] as String? ?? 'notDetermined');
+        _remotePushConfigured =
+            result?['remotePushConfigured'] as bool? ?? _remotePushConfigured;
+
+        if (_permissionStatus == PushPermissionStatus.granted) {
+          final tokenResult =
+              await _androidChannel.invokeMethod<Map>('getToken');
+          final token = tokenResult?['token'] as String?;
+          if (token != null && token.isNotEmpty) {
+            _currentDeviceToken = token;
+            await _storage.write(key: 'push_token', value: token);
+            await _repository.registerPushToken(token, 'android');
+          }
+        }
+        return _permissionStatus;
+      } catch (e) {
+        debugPrint('⚠️ [AndroidPush] requestPermission error: $e');
+        return PushPermissionStatus.denied;
+      }
+    }
+
+    // Unknown platform. Returning `granted` here is what previously let
+    // Android appear to have a working permission flow it never had. Nothing
+    // was probed, so report the unprobed state.
+    return _permissionStatus;
   }
 
   /// Refreshes and returns the current permission status.
@@ -277,7 +433,9 @@ class PushNotificationService {
       final status = await WebPushBridge.getPermissionStatus();
       _permissionStatus = _parseWebPermissionStatus(status);
       return _permissionStatus;
-    } else if (!kIsWeb && Platform.isIOS) {
+    }
+
+    if (Platform.isIOS) {
       try {
         final result =
             await _apnsChannel.invokeMethod<Map>('getPermissionStatus');
@@ -288,11 +446,95 @@ class PushNotificationService {
         return _permissionStatus;
       }
     }
-    return PushPermissionStatus.granted;
+
+    if (Platform.isAndroid) {
+      try {
+        final result =
+            await _androidChannel.invokeMethod<Map>('getPermissionStatus');
+        _permissionStatus = _parseAndroidPermissionStatus(
+            result?['status'] as String? ?? 'notDetermined');
+        _remotePushConfigured =
+            result?['remotePushConfigured'] as bool? ?? _remotePushConfigured;
+        return _permissionStatus;
+      } catch (_) {
+        return _permissionStatus;
+      }
+    }
+
+    return _permissionStatus;
   }
 
   // ---------------------------------------------------------------------------
-  // 1-Hour Pre-Booking Reminder Engine (Matching Android BookingReminderNotificationManager)
+  // System Notification Presentation
+  // ---------------------------------------------------------------------------
+
+  /// Hands a notification to the platform's own notification surface.
+  ///
+  /// Returns `true` only when a real system surface accepted it. Callers use
+  /// the result to decide whether a Dart-timer fallback is needed, so this must
+  /// not report success for a platform that silently did nothing — which is
+  /// exactly the failure mode Android had before it was wired up.
+  ///
+  /// On Web the browser owns scheduling, so [delay] is ignored here and the
+  /// caller keeps its timer.
+  Future<bool> _presentSystemNotification({
+    required String id,
+    required String title,
+    required String body,
+    required String categoryIdentifier,
+    required Map<String, dynamic> data,
+    Duration? delay,
+    List<Map<String, String>> actions = const [],
+  }) async {
+    if (kIsWeb) {
+      try {
+        await WebPushBridge.showNotification(
+          title,
+          body: body,
+          icon: '/icons/Icon-192.png',
+          badge: '/favicon.png',
+          data: data,
+          actions: actions,
+        );
+        return true;
+      } catch (e) {
+        debugPrint('⚠️ [WebPush] showNotification error: $e');
+        return false;
+      }
+    }
+
+    final arguments = <String, dynamic>{
+      'id': id,
+      'title': title,
+      'body': body,
+      'categoryIdentifier': categoryIdentifier,
+      'data': data,
+      if (delay != null)
+        'delaySeconds': (delay.inMilliseconds / 1000).clamp(1, 31536000),
+    };
+
+    try {
+      if (Platform.isIOS) {
+        await _apnsChannel.invokeMethod('showNotification', arguments);
+        return true;
+      }
+      if (Platform.isAndroid) {
+        await _androidChannel.invokeMethod('showNotification', {
+          ...arguments,
+          'actions': actions,
+        });
+        return true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ showNotification error: $e');
+      return false;
+    }
+
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1-Hour Pre-Booking Reminder Engine
   // ---------------------------------------------------------------------------
 
   /// Calculates the epoch millisecond timestamp 1 hour prior to booking start time.
@@ -384,42 +626,48 @@ class PushNotificationService {
     _scheduledReminders[booking.id] = info;
 
     final delayMs = reminderEpochMs - nowMs;
+    if (delayMs <= 0) return;
 
-    if (delayMs > 0) {
-      if (!kIsWeb && Platform.isIOS) {
-        // Schedule iOS local notification via APNs method channel
-        try {
-          await _apnsChannel.invokeMethod('showNotification', {
-            'id': 'reminder_${booking.id}',
-            'title': '⏰ Booking Starts in 1 Hour: $venueName',
-            'body':
-                'Reminder: Your slot ($slotLabel) begins in 1 hour. Tap to view your check-in pass.',
-            'categoryIdentifier': '1_HOUR_REMINDER',
-            'delaySeconds': (delayMs / 1000).clamp(1, 31536000),
-            'data': {
-              'type': '1_hour_reminder',
-              'booking_id': booking.id,
-              'venue_name': venueName,
-              'slot_time': slotLabel,
-              'booking_date': dateLabel,
-              'qr_token': qrToken,
-            },
-          });
-        } catch (_) {}
-      } else {
-        // On Web: schedule a Dart Timer
-        _activeTimers[booking.id]?.cancel();
-        _activeTimers[booking.id] = Timer(Duration(milliseconds: delayMs), () {
-          show1HourReminderNotification(
-            bookingId: booking.id,
-            venueName: venueName,
-            slotTime: slotLabel,
-            bookingDate: dateLabel,
-            qrCodeToken: qrToken,
-          );
-        });
-      }
-    }
+    final delay = Duration(milliseconds: delayMs);
+    final reminderData = <String, dynamic>{
+      'type': '1_hour_reminder',
+      'booking_id': booking.id,
+      'venue_name': venueName,
+      'slot_time': slotLabel,
+      'booking_date': dateLabel,
+      'qr_token': qrToken,
+    };
+
+    // iOS and Android both hold this themselves, so the reminder still arrives
+    // when the app is not running. Web cannot, and a failure on either native
+    // channel falls through to an in-process timer.
+    final scheduledNatively = !kIsWeb &&
+        await _presentSystemNotification(
+          id: 'reminder_${booking.id}',
+          title: '⏰ Booking Starts in 1 Hour: $venueName',
+          body:
+              'Reminder: Your slot ($slotLabel) begins in 1 hour. Tap to view your check-in pass.',
+          categoryIdentifier: '1_HOUR_REMINDER',
+          data: reminderData,
+          delay: delay,
+          actions: const [
+            {'action': 'view_pass', 'title': '🎟️ View Pass'},
+            {'action': 'directions', 'title': '🗺️ Directions'},
+          ],
+        );
+
+    if (scheduledNatively) return;
+
+    _activeTimers[booking.id]?.cancel();
+    _activeTimers[booking.id] = Timer(delay, () {
+      show1HourReminderNotification(
+        bookingId: booking.id,
+        venueName: venueName,
+        slotTime: slotLabel,
+        bookingDate: dateLabel,
+        qrCodeToken: qrToken,
+      );
+    });
   }
 
   /// Cancels an active 1-Hour reminder for a booking.
@@ -428,17 +676,22 @@ class PushNotificationService {
     _activeTimers[bookingId]?.cancel();
     _activeTimers.remove(bookingId);
 
-    if (!kIsWeb && Platform.isIOS) {
-      try {
+    if (kIsWeb) return;
+    try {
+      if (Platform.isIOS) {
         await _apnsChannel.invokeMethod('cancelNotification', {
           'id': 'reminder_$bookingId',
         });
-      } catch (_) {}
-    }
+      } else if (Platform.isAndroid) {
+        await _androidChannel.invokeMethod('cancelNotification', {
+          'id': 'reminder_$bookingId',
+        });
+      }
+    } catch (_) {}
   }
 
-  /// Shows an immediate rich Heads-Up Push Notification indicating a booking starts in 1 hour.
-  /// Matches Android's `show1HourReminderNotification` with action buttons "View Pass" & "Directions".
+  /// Shows an immediate rich Heads-Up Push Notification indicating a booking starts in 1 hour,
+  /// with action buttons "View Pass" & "Directions".
   Future<void> show1HourReminderNotification({
     required String bookingId,
     required String venueName,
@@ -461,29 +714,17 @@ class PushNotificationService {
       'qr_token': qrCodeToken,
     };
 
-    if (kIsWeb) {
-      await WebPushBridge.showNotification(
-        title,
-        body: body,
-        icon: '/icons/Icon-192.png',
-        badge: '/favicon.png',
-        data: payloadData,
-        actions: [
-          {'action': 'view_pass', 'title': '🎟️ View Pass'},
-          {'action': 'directions', 'title': '🗺️ Directions'},
-        ],
-      );
-    } else if (!kIsWeb && Platform.isIOS) {
-      try {
-        await _apnsChannel.invokeMethod('showNotification', {
-          'id': '1_hour_${DateTime.now().millisecondsSinceEpoch}',
-          'title': title,
-          'body': body,
-          'categoryIdentifier': '1_HOUR_REMINDER',
-          'data': payloadData,
-        });
-      } catch (_) {}
-    }
+    await _presentSystemNotification(
+      id: '1_hour_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      body: body,
+      categoryIdentifier: '1_HOUR_REMINDER',
+      data: payloadData,
+      actions: const [
+        {'action': 'view_pass', 'title': '🎟️ View Pass'},
+        {'action': 'directions', 'title': '🗺️ Directions'},
+      ],
+    );
 
     // In-app notification record
     final payload = PushNotificationPayload(
@@ -539,7 +780,7 @@ class PushNotificationService {
     );
   }
 
-  /// Simulates receiving a cloud push payload from APNs (iOS) or Web Push (Web).
+  /// Simulates receiving a cloud push payload on the current platform.
   Future<void> simulateCloudPush({
     String? customTitle,
     String? customBody,
@@ -561,29 +802,17 @@ class PushNotificationService {
       ...?extraData,
     };
 
-    if (kIsWeb) {
-      await WebPushBridge.showNotification(
-        title,
-        body: body,
-        icon: '/icons/Icon-192.png',
-        badge: '/favicon.png',
-        data: payloadData,
-        actions: [
-          {'action': 'view_pass', 'title': '🎟️ View Pass'},
-          {'action': 'directions', 'title': '🗺️ Directions'},
-        ],
-      );
-    } else if (!kIsWeb && Platform.isIOS) {
-      try {
-        await _apnsChannel.invokeMethod('showNotification', {
-          'id': 'cloud_push_${DateTime.now().millisecondsSinceEpoch}',
-          'title': title,
-          'body': body,
-          'categoryIdentifier': '1_HOUR_REMINDER',
-          'data': payloadData,
-        });
-      } catch (_) {}
-    }
+    await _presentSystemNotification(
+      id: 'cloud_push_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      body: body,
+      categoryIdentifier: '1_HOUR_REMINDER',
+      data: payloadData,
+      actions: const [
+        {'action': 'view_pass', 'title': '🎟️ View Pass'},
+        {'action': 'directions', 'title': '🗺️ Directions'},
+      ],
+    );
 
     final payload = PushNotificationPayload.fromMap({
       'title': title,
@@ -613,28 +842,16 @@ class PushNotificationService {
       'institute_name': instituteName,
     };
 
-    if (kIsWeb) {
-      await WebPushBridge.showNotification(
-        title,
-        body: body,
-        icon: '/icons/Icon-192.png',
-        badge: '/favicon.png',
-        data: data,
-        actions: [
-          {'action': 'book_now', 'title': '⚡ Book Seat Now'},
-        ],
-      );
-    } else if (!kIsWeb && Platform.isIOS) {
-      try {
-        await _apnsChannel.invokeMethod('showNotification', {
-          'id': 'batch_$classId',
-          'title': title,
-          'body': body,
-          'categoryIdentifier': 'BATCH_AVAILABILITY',
-          'data': data,
-        });
-      } catch (_) {}
-    }
+    await _presentSystemNotification(
+      id: 'batch_$classId',
+      title: title,
+      body: body,
+      categoryIdentifier: 'BATCH_AVAILABILITY',
+      data: data,
+      actions: const [
+        {'action': 'book_now', 'title': '⚡ Book Seat Now'},
+      ],
+    );
 
     final payload = PushNotificationPayload.fromMap({
       'title': title,
@@ -663,25 +880,13 @@ class PushNotificationService {
       'institute_name': instituteName,
     };
 
-    if (kIsWeb) {
-      await WebPushBridge.showNotification(
-        title,
-        body: body,
-        icon: '/icons/Icon-192.png',
-        badge: '/favicon.png',
-        data: data,
-      );
-    } else if (!kIsWeb && Platform.isIOS) {
-      try {
-        await _apnsChannel.invokeMethod('showNotification', {
-          'id': 'waitlist_$classId',
-          'title': title,
-          'body': body,
-          'categoryIdentifier': 'GENERAL_ALERT',
-          'data': data,
-        });
-      } catch (_) {}
-    }
+    await _presentSystemNotification(
+      id: 'waitlist_$classId',
+      title: title,
+      body: body,
+      categoryIdentifier: 'GENERAL_ALERT',
+      data: data,
+    );
 
     final payload = PushNotificationPayload.fromMap({
       'title': title,
@@ -789,14 +994,19 @@ class PushNotificationService {
     _activeTimers.clear();
     _scheduledReminders.clear();
 
-    // Clear platform badges and unregister if needed
-    if (!kIsWeb && Platform.isIOS) {
+    // Clear delivered notifications, platform badges, and subscriptions.
+    if (kIsWeb) {
+      try {
+        await WebPushBridge.unsubscribe();
+      } catch (_) {}
+    } else if (Platform.isIOS) {
       try {
         await _apnsChannel.invokeMethod('clearBadge');
       } catch (_) {}
-    } else if (kIsWeb) {
+    } else if (Platform.isAndroid) {
+      // Android has no app-icon badge; clearing means emptying the shade.
       try {
-        await WebPushBridge.unsubscribe();
+        await _androidChannel.invokeMethod('cancelAll');
       } catch (_) {}
     }
   }

@@ -169,6 +169,28 @@ class AdminDashboardScreen extends ConsumerWidget {
                   'Enable implemented modules and update validated configuration',
               onTap: () => context.push(AppRoutes.adminModules),
             ),
+            _AdminLink(
+              icon: Icons.dashboard_customize_outlined,
+              title: 'Home layout',
+              subtitle:
+                  'Add, enable, reorder and theme the customer Home blocks',
+              onTap: () => context.push(AppRoutes.adminHomeLayout),
+            ),
+            _AdminLink(
+              icon: Icons.account_tree_outlined,
+              title: 'Discovery catalogue',
+              subtitle:
+                  'Facility types, sections and subsections: wording, icons, '
+                  'artwork, order and visibility',
+              onTap: () => context.push(AppRoutes.adminCatalog),
+            ),
+            _AdminLink(
+              icon: Icons.tab_unselected_outlined,
+              title: 'Bottom navigation',
+              subtitle:
+                  'Choose which destinations customers see, in what order',
+              onTap: () => context.push(AppRoutes.adminNavTabs),
+            ),
             users.maybeWhen(
               error: (e, _) => Padding(
                 padding: const EdgeInsets.only(top: 16),

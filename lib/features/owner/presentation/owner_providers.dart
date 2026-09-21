@@ -61,6 +61,65 @@ class OwnerDashboardSnapshot {
   final double confirmedRevenue;
 }
 
+/// Daily/weekly report summary derived from the same RLS-scoped bookings the
+/// dashboard already reads. All numbers come from real rows in `public.bookings`
+/// filtered by the owner's venues — nothing is simulated and no new backend is
+/// required (Supabase RLS does the authorization).
+class OwnerReportSummary {
+  const OwnerReportSummary({
+    required this.todayBookings,
+    required this.todayRevenue,
+    required this.weekBookings,
+    required this.weekRevenue,
+  });
+
+  final int todayBookings;
+  final double todayRevenue;
+  final int weekBookings;
+  final double weekRevenue;
+}
+
+final ownerReportSummaryProvider =
+    FutureProvider.autoDispose<OwnerReportSummary>((ref) async {
+  final venues = await ref.watch(myVenuesProvider.future);
+  final bookings = await ref.watch(ownerVenueBookingsProvider.future);
+  final venueIds = venues.map((Venue venue) => venue.id).toSet();
+  final scoped = venueIds.isEmpty
+      ? bookings
+      : bookings
+          .where((booking) => venueIds.contains(booking.venueId))
+          .toList();
+
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = todayStart.add(const Duration(days: 1));
+  // Week starts Monday (matches Android reference weekly reports).
+  final weekStart =
+      todayStart.subtract(Duration(days: todayStart.weekday - 1));
+
+  bool inRange(Booking booking, DateTime start, DateTime endExclusive) =>
+      !booking.bookDate.isBefore(start) && booking.bookDate.isBefore(endExclusive);
+
+  // Revenue counts confirmed + completed bookings; cancelled/refunded money
+  // never counts as earned.
+  bool earnsRevenue(Booking booking) =>
+      booking.status == BookingStatus.confirmed ||
+      booking.status == BookingStatus.completed;
+
+  final todayActive = scoped.where((b) => inRange(b, todayStart, todayEnd));
+  final weekEnd = weekStart.add(const Duration(days: 7));
+  final weekActive = scoped.where((b) => inRange(b, weekStart, weekEnd));
+
+  return OwnerReportSummary(
+    todayBookings: todayActive.length,
+    todayRevenue: todayActive.where(earnsRevenue).fold<double>(
+        0, (sum, booking) => sum + booking.totalAmount),
+    weekBookings: weekActive.length,
+    weekRevenue: weekActive.where(earnsRevenue).fold<double>(
+        0, (sum, booking) => sum + booking.totalAmount),
+  );
+});
+
 final ownerDashboardSnapshotProvider =
     FutureProvider<OwnerDashboardSnapshot>((ref) async {
   final venues = await ref.watch(myVenuesProvider.future);

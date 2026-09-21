@@ -8,12 +8,15 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/responsive_layout.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/widgets/listing_availability.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
+import '../../../offers/domain/coupon.dart';
+import '../../../offers/presentation/coupon_providers.dart';
 
 /// Booking flow: pick a date, pick an available slot, and submit an owner
 /// approval request.
@@ -36,11 +39,61 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   SlotAvailability? _selectedSlot;
   bool _confirming = false;
   final Map<String, String> _extraValues = {};
+  final TextEditingController _couponController = TextEditingController();
+  Coupon? _appliedCoupon;
+  String? _couponError;
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
+    final prefs = ref.read(discoveryBookingPrefsProvider);
+    _selectedDate = prefs.day;
+    if (prefs.guests > 0) {
+      _extraValues['guests'] = '${prefs.guests}';
+    }
+  }
+
+  /// Live slot price, used for coupon minimum-amount validation.
+  double? get slotPrice => _selectedSlot?.priceAmount;
+
+  @override
+  void dispose() {
+    _couponController.dispose();
+    super.dispose();
+  }
+
+  /// Validates the entered code against the venue's active public coupons
+  /// (`public.coupons`, RLS-gated to active rows).
+  ///
+  /// This is a UX gate only. The server remains the sole authority for the
+  /// booking total: `request_venue_booking` recomputes base, tax and total
+  /// from the live slot and currently books at full price (the RPC accepts no
+  /// coupon parameter), so the coupon is recorded as a request note and the
+  /// confirm dialog states that the applied offer is settled at payment time.
+  void _applyCoupon() {
+    final coupons = ref.read(activeCouponsProvider).valueOrNull ?? const [];
+    final code = _couponController.text.trim().toUpperCase();
+    if (code.isEmpty) return;
+    final match = coupons.cast<Coupon?>().firstWhere(
+          (c) => c!.code.toUpperCase() == code,
+          orElse: () => null,
+        );
+    String? error;
+    if (match == null) {
+      error = 'Invalid or expired coupon code';
+    } else {
+      final price = slotPrice;
+      final min = match.minBookingAmount;
+      final floor = (min == null || min <= 0) ? 0.0 : min;
+      if (price != null && price < floor) {
+        error =
+            'Requires a minimum booking of \${formatInr(floor)} for this slot';
+      }
+    }
+    setState(() {
+      _appliedCoupon = error == null ? match : null;
+      _couponError = error;
+    });
   }
 
   @override
@@ -60,6 +113,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   onChanged: (key, value) =>
                       setState(() => _extraValues[key] = value),
                 );
+                final couponWidget = _CouponField(
+                  controller: _couponController,
+                  appliedCoupon: _appliedCoupon,
+                  errorText: _couponError,
+                  onApply: _applyCoupon,
+                  onRemove: () => setState(() {
+                    _appliedCoupon = null;
+                    _couponError = null;
+                    _couponController.clear();
+                  }),
+                );
                 final slots = ListingSlotList(
                   venueId: widget.venue.id,
                   date: date,
@@ -75,6 +139,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                           children: [
                             _VenueHeader(venue: widget.venue),
                             extras,
+                            couponWidget,
                             ListingDateStrip(
                               selected: date,
                               onSelected: (d) {
@@ -113,6 +178,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   children: [
                     _VenueHeader(venue: widget.venue),
                     extras,
+                    couponWidget,
                     const Divider(height: 1),
                     ListingDateStrip(
                       selected: date,
@@ -143,10 +209,30 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     );
   }
 
+  String? _missingRequiredField() {
+    for (final field in widget.venue.listingTemplate.bookingFields) {
+      if (!field.required || !field.isActive) continue;
+      if (field.type == ListingFieldType.date ||
+          field.type == ListingFieldType.slot) {
+        continue;
+      }
+      final value = _extraValues[field.key]?.trim() ?? '';
+      if (value.isEmpty) return field.label;
+    }
+    return null;
+  }
+
   Future<void> _confirmBooking(DateTime date) async {
     final slot = _selectedSlot;
     if (slot == null || _confirming) return;
     final l10n = AppLocalizations.of(context);
+    final missing = _missingRequiredField();
+    if (missing != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter $missing')),
+      );
+      return;
+    }
     final repo = ref.read(bookingRepositoryProvider);
 
     final taxRate = widget.venue.taxRate;
@@ -171,8 +257,22 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               label: l10n.selectTimeSlot,
               value: '${slot.displayStart} – ${slot.displayEnd}',
             ),
+            for (final field in widget.venue.listingTemplate.bookingFields)
+              if (field.type != ListingFieldType.date &&
+                  field.type != ListingFieldType.slot &&
+                  (_extraValues[field.key]?.trim().isNotEmpty ?? false))
+                _SummaryRow(
+                  label: field.label,
+                  value: _extraValues[field.key]!.trim(),
+                ),
             const Divider(height: 24),
             _SummaryRow(label: l10n.basePrice, value: formatInr(amount)),
+            if (_appliedCoupon != null)
+              _SummaryRow(
+                label: 'Coupon',
+                value: '\${_appliedCoupon!.code} (settled at payment)',
+                discountRow: true,
+              ),
             _SummaryRow(label: l10n.taxRate, value: formatInr(tax)),
             const Divider(height: 24),
             _SummaryRow(
@@ -204,6 +304,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         slotId: slot.slotId,
         bookDate: date,
         amount: amount,
+        couponCode: _appliedCoupon?.code,
       );
       ref.invalidate(myBookingsProvider);
       if (!mounted) return;
@@ -279,8 +380,9 @@ class _BookingExtraFields extends StatelessWidget {
           }
           return SizedBox(
             width: 160,
-            child: TextField(
+            child: TextFormField(
               key: Key('booking_field_${field.key}'),
+              initialValue: value,
               keyboardType: field.type == ListingFieldType.number
                   ? TextInputType.number
                   : TextInputType.text,
@@ -424,11 +526,13 @@ class _SummaryRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.emphasize = false,
+    this.discountRow = false,
   });
 
   final String label;
   final String value;
   final bool emphasize;
+  final bool discountRow;
 
   @override
   Widget build(BuildContext context) {
@@ -444,9 +548,11 @@ class _SummaryRow extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: emphasize
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurfaceVariant,
+                color: discountRow
+                    ? Colors.green.shade700
+                    : (emphasize
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -459,8 +565,87 @@ class _SummaryRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: emphasize ? AppTheme.violet : null,
+                color: discountRow
+                    ? Colors.green.shade700
+                    : (emphasize ? AppTheme.violet : null),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Coupon code entry widget — validates against activeCouponsProvider client-side.
+class _CouponField extends ConsumerWidget {
+  const _CouponField({
+    required this.controller,
+    required this.onApply,
+    required this.onRemove,
+    this.appliedCoupon,
+    this.errorText,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onApply;
+  final VoidCallback onRemove;
+  final Coupon? appliedCoupon;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    if (appliedCoupon != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: Row(
+          children: [
+            const Icon(Icons.local_offer_rounded,
+                size: 16, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '\${appliedCoupon!.code} — \${appliedCoupon!.valueLabel} applied',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: Colors.green.shade700),
+              ),
+            ),
+            TextButton(
+              onPressed: onRemove,
+              style:
+                  TextButton.styleFrom(foregroundColor: Colors.red.shade400),
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                hintText: 'Coupon code',
+                prefixIcon: const Icon(Icons.local_offer_outlined, size: 20),
+                errorText: errorText,
+                isDense: true,
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => onApply(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: EdgeInsets.only(top: errorText != null ? 0 : 0),
+            child: OutlinedButton(
+              onPressed: onApply,
+              child: const Text('Apply'),
             ),
           ),
         ],

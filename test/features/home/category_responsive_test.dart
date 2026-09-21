@@ -37,8 +37,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('ALL MASTER CATEGORIES & MATRIX'), findsOneWidget);
-    expect(find.textContaining('master categories'), findsOneWidget);
+    expect(find.text('Inside this category'), findsOneWidget);
+    expect(find.textContaining('Function Halls'), findsWidgets);
     // Title appears in the chip row, the 3D matrix tile, and the hero card
     expect(find.text('Function Halls & Celebrations'), findsWidgets);
   });
@@ -133,7 +133,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('ALL MASTER CATEGORIES & MATRIX'), findsOneWidget);
+    expect(find.text('Inside this category'), findsOneWidget);
     expect(find.byKey(const Key('function-halls-matrix')), findsOneWidget);
   });
 
@@ -161,7 +161,7 @@ void main() {
   });
 
   testWidgets(
-      'hero card shows the selected section and chip row lists all sections',
+      'hero card shows the selected section and matrix lists all sections',
       (tester) async {
     await tester.pumpWidget(
       _wrapScrollable(
@@ -183,13 +183,9 @@ void main() {
     // The static hero card reflects the selected section only.
     expect(find.byKey(const ValueKey('master-hero-function_halls')),
         findsOneWidget);
-    // The chip row still surfaces every section as a quick-jump target,
-    // even though only one hero card is rendered at a time.
     expect(find.text('Function Halls & Celebrations'), findsWidgets);
-    // Appears in both the chip row and the 3D matrix tile now that every
-    // section renders, not just the selected one.
     expect(find.text('Sports & Recreation'), findsWidgets);
-    expect(find.text('All Categories'), findsOneWidget);
+    expect(find.byKey(const Key('master-sports_turfs')), findsOneWidget);
   });
 
   testWidgets(
@@ -263,9 +259,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tapping the chip for the section that is ALREADY selected explores it
-    // instead of re-selecting it (same contract as before this change).
-    await tester.tap(find.text('Function Halls & Celebrations').first);
+    // Tapping the already-selected master card explores it
+    // (same contract as before this change).
+    await tester.tap(find.byKey(const Key('master-function_halls')));
     await tester.pumpAndSettle();
 
     expect(explored, MainHomeSection.functionHalls);
@@ -291,25 +287,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Default mode label is shown.
-    expect(find.text('UI 1: 3D Matrix'), findsOneWidget);
+    expect(find.byKey(const Key('discovery-layout-menu')), findsOneWidget);
 
-    await tester.tap(find.text('UI 1: 3D Matrix'));
+    await tester.tap(find.byKey(const Key('discovery-layout-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('UI 2: Standard Grid').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('UI 2: Standard Grid'), findsOneWidget);
     for (final section in MainHomeSection.discoveryOrder) {
       expect(find.textContaining(section.displayTitle), findsWidgets);
     }
 
-    await tester.tap(find.text('UI 2: Standard Grid'));
+    await tester.tap(find.byKey(const Key('discovery-layout-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('UI 3: Compact List').last);
     await tester.pumpAndSettle();
-
-    expect(find.text('UI 3: Compact List'), findsOneWidget);
     for (final section in MainHomeSection.discoveryOrder) {
       expect(find.textContaining(section.displayTitle), findsWidgets);
     }
@@ -644,13 +636,13 @@ void main() {
     await tester.pumpAndSettle();
     await expectAccentedColors(); // 3D Matrix (default mode)
 
-    await tester.tap(find.text('UI 1: 3D Matrix'));
+    await tester.tap(find.byKey(const Key('discovery-layout-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('UI 2: Standard Grid').last);
     await tester.pumpAndSettle();
     await expectAccentedColors(); // Standard Grid
 
-    await tester.tap(find.text('UI 2: Standard Grid'));
+    await tester.tap(find.byKey(const Key('discovery-layout-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('UI 3: Compact List').last);
     await tester.pumpAndSettle();

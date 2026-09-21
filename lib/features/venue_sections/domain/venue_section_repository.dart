@@ -49,6 +49,12 @@ abstract interface class VenueSectionRepository {
   /// is the only path that can change what customers see.
   Future<Map<String, dynamic>> publish(String venueId);
 
+  /// Publishes one authorized draft. Implementations must enforce ownership
+  /// server-side; the default keeps older repository fakes source-compatible.
+  Future<Map<String, dynamic>> publishSection(
+          String venueId, String sectionId) =>
+      publish(venueId);
+
   /// The published, customer-visible sections for a venue. Never reads the
   /// draft table directly -- always goes through the server-side
   /// `list_published_venue_sections` function.

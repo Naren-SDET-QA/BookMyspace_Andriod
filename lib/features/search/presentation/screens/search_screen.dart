@@ -13,6 +13,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../home/presentation/discovery_location.dart';
 import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
@@ -114,6 +115,82 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     context.go(SearchRouteParams.locationFor(query));
   }
 
+  void _showGuestPicker(int current) {
+    int guests = current;
+    showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AlertDialog(
+          title: const Text('Number of Guests'),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: guests > 1
+                    ? () => setModalState(() => guests--)
+                    : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '$guests',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: guests < 500
+                    ? () => setModalState(() => guests++)
+                    : null,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, guests),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    ).then((picked) {
+      if (picked != null && mounted) {
+        ref.read(discoveryBookingPrefsProvider.notifier).setGuests(picked);
+      }
+    });
+  }
+
+  String _searchDateLabel(DateTime date) {
+    final now = DateTime.now();
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return 'Today';
+    }
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
   void _onQueryChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
@@ -202,6 +279,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final query = _effectiveQuery();
     final results = ref.watch(searchResultsProvider(query));
     final categories = ref.watch(venueCategoriesProvider);
+    final bookingPrefs = ref.watch(discoveryBookingPrefsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -291,6 +369,41 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.event_rounded, size: 18),
+                  label: Text(_searchDateLabel(bookingPrefs.day)),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: bookingPrefs.day,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null && mounted) {
+                      ref
+                          .read(discoveryBookingPrefsProvider.notifier)
+                          .setDate(picked);
+                    }
+                  },
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.person_rounded, size: 18),
+                  label: Text(
+                    bookingPrefs.guests == 1
+                        ? '1 Guest'
+                        : '\${bookingPrefs.guests} Guests',
+                  ),
+                  onPressed: () => _showGuestPicker(bookingPrefs.guests),
+                ),
+              ],
+            ),
+          ),
           SizedBox(
             height: 48,
             child: ListView(
