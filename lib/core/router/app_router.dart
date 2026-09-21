@@ -135,7 +135,18 @@ abstract class AppRoutes {
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
-final shellNavigatorKey = GlobalKey<NavigatorState>();
+
+// Explicit navigator keys for each StatefulShellBranch.
+// go_router 14.x requires these to be stable, top-level singletons — not
+// created inside build — so it can reliably resolve the correct navigator
+// when a parentNavigatorKey route (e.g. Settings) pushes above the shell.
+final _shellHomeNavKey      = GlobalKey<NavigatorState>(debugLabel: 'shell-home');
+final _shellAlertsNavKey    = GlobalKey<NavigatorState>(debugLabel: 'shell-alerts');
+final _shellSearchNavKey    = GlobalKey<NavigatorState>(debugLabel: 'shell-search');
+final _shellBookingsNavKey  = GlobalKey<NavigatorState>(debugLabel: 'shell-bookings');
+final _shellCoursesNavKey   = GlobalKey<NavigatorState>(debugLabel: 'shell-courses');
+final _shellProfileNavKey   = GlobalKey<NavigatorState>(debugLabel: 'shell-profile');
+final _shellAssistantNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell-assistant');
 
 /// Returns an internal login URL that remembers the protected destination.
 ///
@@ -700,6 +711,7 @@ GoRouter createAppRouter({
         },
         branches: [
           StatefulShellBranch(
+            navigatorKey: _shellHomeNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.home,
@@ -708,6 +720,7 @@ GoRouter createAppRouter({
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _shellAlertsNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.notifications,
@@ -716,6 +729,7 @@ GoRouter createAppRouter({
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _shellSearchNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.search,
@@ -731,6 +745,7 @@ GoRouter createAppRouter({
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _shellBookingsNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.bookings,
@@ -739,6 +754,7 @@ GoRouter createAppRouter({
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _shellCoursesNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.coursesList,
@@ -747,6 +763,7 @@ GoRouter createAppRouter({
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _shellProfileNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.profile,
@@ -758,6 +775,7 @@ GoRouter createAppRouter({
           // declared last so every existing branch index stays unchanged, which
           // keeps saved bar configurations and deep links valid.
           StatefulShellBranch(
+            navigatorKey: _shellAssistantNavKey,
             routes: [
               GoRoute(
                 path: AppRoutes.assistantTab,
