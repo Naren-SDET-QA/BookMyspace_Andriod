@@ -1,94 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 
+import '../../features/accommodations/domain/accommodation.dart';
+import '../../features/accommodations/presentation/screens/accommodation_detail_screen.dart';
+import '../../features/accommodations/presentation/screens/accommodation_list_screen.dart';
+import '../../features/accommodations/presentation/screens/stay_management_screens.dart';
 import '../../features/admin/presentation/screens/admin_app_sections_screen.dart';
-import '../../features/admin/presentation/screens/admin_feature_configuration_screen.dart';
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_categories_screen.dart';
+import '../../features/admin/presentation/screens/admin_content_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/screens/admin_feature_configuration_screen.dart';
+import '../../features/admin/presentation/screens/admin_health_screen.dart';
+import '../../features/admin/presentation/screens/admin_help_center_screen.dart';
 import '../../features/admin/presentation/screens/admin_listing_fields_screen.dart';
 import '../../features/admin/presentation/screens/admin_listings_screen.dart';
-import '../../features/admin/presentation/screens/admin_venue_discovery_review_screen.dart';
-import '../../features/venue_discovery/presentation/screens/venue_discovery_screen.dart';
-import '../../features/venue_discovery/infrastructure/supabase_discovery_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
-import '../../features/admin/presentation/screens/admin_oversight_screen.dart';
-import '../../features/admin/presentation/screens/admin_tenant_configuration_screen.dart';
-import '../../features/admin/presentation/screens/admin_observability_screen.dart';
-import '../../features/admin/presentation/screens/admin_health_screen.dart';
-import '../../features/admin/presentation/screens/admin_settings_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_providers_screen.dart';
-import '../../features/admin/presentation/screens/admin_help_center_screen.dart';
+import '../../features/admin/presentation/screens/admin_observability_screen.dart';
+import '../../features/admin/presentation/screens/admin_oversight_screen.dart';
 import '../../features/admin/presentation/screens/admin_promotions_screen.dart';
-import '../../features/payments/presentation/screens/payment_health_screen.dart';
-import '../../features/registration/presentation/unified_registration_screen.dart';
+import '../../features/admin/presentation/screens/admin_settings_screen.dart';
+import '../../features/admin/presentation/screens/admin_tenant_configuration_screen.dart';
+import '../../features/admin/presentation/screens/admin_venue_claims_screen.dart';
+import '../../features/admin/presentation/screens/admin_venue_discovery_review_screen.dart';
 import '../../features/ai/presentation/screens/assistant_screen.dart';
-import '../../features/checkin/presentation/screens/qr_check_in_screen.dart';
-import '../../features/institutes/presentation/screens/institute_detail_screen.dart';
-import '../../features/institutes/presentation/screens/institute_owner_dashboard_screen.dart';
-import '../../features/institutes/presentation/screens/institutes_list_screen.dart';
-import '../../features/saved/presentation/screens/saved_screen.dart';
-import '../../features/settings/presentation/screens/theme_customizer_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/auth/domain/auth_user.dart';
-import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
-import '../../features/auth/presentation/screens/reset_password_screen.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
+import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/booking/domain/booking.dart';
 import '../../features/booking/presentation/screens/booking_screen.dart';
 import '../../features/booking/presentation/screens/invoice_screen.dart';
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
+import '../../features/business/presentation/screens/business_plan_configuration_screen.dart';
+import '../../features/business/presentation/screens/business_pricing_configuration_screen.dart';
+import '../../features/checkin/presentation/screens/qr_check_in_screen.dart';
 import '../../features/courses/presentation/screens/course_detail_screen.dart';
 import '../../features/courses/presentation/screens/courses_list_screen.dart';
+import '../../features/customer_analytics/presentation/screens/customer_analytics_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
+import '../../features/home/presentation/screens/customer_category_preferences_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/institutes/presentation/screens/institute_detail_screen.dart';
+import '../../features/institutes/presentation/screens/institute_owner_dashboard_screen.dart';
+import '../../features/institutes/presentation/screens/institutes_list_screen.dart';
+import '../../features/invoices/presentation/screens/invoice_screens.dart'
+    as invoice_feature;
+import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
+import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
+import '../../features/location/presentation/screens/location_management_screen.dart';
+import '../../features/meeting_rooms/presentation/screens/meeting_room_booking_screen.dart';
+import '../../features/meeting_rooms/presentation/screens/meeting_room_detail_screen.dart';
+import '../../features/meeting_rooms/presentation/screens/meeting_room_owner_screen.dart';
+import '../../features/meeting_rooms/presentation/screens/meeting_rooms_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/owner/presentation/screens/owner_dashboard_screen.dart';
-import '../../features/owner/presentation/screens/venue_optimizer_screen.dart';
+import '../../features/owner/presentation/screens/owner_operations_screen.dart';
+import '../../features/owner/presentation/screens/owner_profile_screen.dart';
 import '../../features/owner/presentation/screens/owner_registration_screen.dart';
 import '../../features/owner/presentation/screens/registration_field_configuration_screen.dart';
-import '../../features/business/presentation/screens/business_pricing_configuration_screen.dart';
+import '../../features/owner/presentation/screens/venue_optimizer_screen.dart';
 import '../../features/owner_bookings/presentation/screens/create_offline_booking_screen.dart';
 import '../../features/owner_bookings/presentation/screens/owner_bookings_screen.dart';
 import '../../features/owner_bookings/presentation/screens/owner_calendar_screen.dart';
 import '../../features/owner_venues/presentation/screens/create_venue_screen.dart';
-import '../../features/owner_venues/presentation/screens/owner_venues_screen.dart';
 import '../../features/owner_venues/presentation/screens/media_manager_screen.dart';
 import '../../features/owner_venues/presentation/screens/owner_availability_screen.dart';
-import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
-import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
-import '../../features/location/presentation/screens/location_management_screen.dart';
+import '../../features/owner_venues/presentation/screens/owner_venues_screen.dart';
+import '../../features/payments/presentation/screens/booking_success_screen.dart';
+import '../../features/payments/presentation/screens/commerce_payment_screen.dart';
+import '../../features/payments/presentation/screens/payment_health_screen.dart';
 import '../../features/payments/presentation/screens/payment_history_screen.dart';
 import '../../features/payments/presentation/screens/payment_screen.dart';
-import '../../features/rewards/presentation/screens/referral_screen.dart';
-import '../../features/rewards/presentation/screens/wallet_screen.dart';
-import '../../features/rewards/presentation/screens/admin_reward_config_screen.dart';
-import '../../features/customer_analytics/presentation/screens/customer_analytics_screen.dart';
+import '../../features/payments/presentation/screens/receipt_screen.dart';
 import '../../features/registration/presentation/module_configuration_screen.dart';
 import '../../features/registration/presentation/module_registration_screen.dart';
 import '../../features/registration/presentation/module_submission_status_screen.dart';
-import '../../features/business/presentation/screens/business_plan_configuration_screen.dart';
+import '../../features/registration/presentation/screens/registration_screens.dart';
+import '../../features/registration/presentation/unified_registration_screen.dart';
+import '../../features/rewards/presentation/screens/admin_reward_config_screen.dart';
+import '../../features/rewards/presentation/screens/referral_screen.dart';
+import '../../features/rewards/presentation/screens/wallet_screen.dart';
+import '../../features/saved/presentation/screens/saved_screen.dart';
+import '../../features/search/domain/ai_search_intent.dart';
+import '../../features/search/presentation/screens/map_screen.dart';
+import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/settings/presentation/screens/theme_customizer_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/sports/presentation/screens/sports_screens.dart';
+import '../../features/support/presentation/screens/support_screen.dart';
+import '../../features/venue_discovery/infrastructure/supabase_discovery_repository.dart';
+import '../../features/venue_discovery/presentation/screens/venue_discovery_screen.dart';
+import '../../features/venues/domain/venue.dart';
+import '../../features/venues/presentation/screens/venue_details_screen.dart';
 import '../config/settings_controller.dart';
+import '../localization/app_localizations.dart';
 import '../modular/feature_id.dart';
 import '../modular/feature_providers.dart';
 import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
-import '../../features/search/presentation/screens/map_screen.dart';
-import '../../features/search/presentation/screens/search_screen.dart';
-import '../../features/search/domain/ai_search_intent.dart';
-import '../../features/settings/presentation/screens/settings_screen.dart';
-import '../../features/home/presentation/screens/customer_category_preferences_screen.dart';
-import '../../features/support/presentation/screens/support_screen.dart';
-import '../../features/venues/domain/venue.dart';
-import '../../features/venues/presentation/screens/venue_details_screen.dart';
-import '../localization/app_localizations.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {
+  static const splash = '/splash';
   static const onboarding = '/onboarding';
   static const shell = '/home';
   static const home = '/home';
@@ -105,10 +126,18 @@ abstract class AppRoutes {
   static const venueDetails = '/venues/:id';
   static const bookingFlow = '/venues/:id/book';
   static const paymentFlow = '/bookings/:id/pay';
+  static const commercePayment = '/commerce/:id/pay';
+  static const bookingResult = '/bookings/:id/status';
+  static const bookingReceipt = '/bookings/:id/receipt';
   static const eventsList = '/events';
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
   static const courseDetails = '/courses/:id';
+  static const pgList = '/pg';
+  static const pgDetails = '/pg/:id';
+  static const staysList = '/stays';
+  static const stayDetails = '/stays/:id';
+  static const myStays = '/stays/bookings/mine';
   static const notifications = '/notifications';
   static const analytics = '/analytics';
   static const support = '/support';
@@ -131,6 +160,9 @@ abstract class AppRoutes {
   static const adminHelp = '/admin/help';
   static const adminPromotions = '/admin/promotions';
   static const adminListingFields = '/admin/listing-fields';
+  static const adminVenueImport = '/admin/venue-import';
+  static const adminVenueClaims = '/admin/venue-claims';
+  static const adminContent = '/admin/content';
   static const unifiedRegistration = '/register';
   static const adminLocations = '/admin/locations';
   static const assistant = '/assistant';
@@ -151,6 +183,23 @@ abstract class AppRoutes {
   static const ownerBookingCreate = '/owner/bookings/create';
   static const ownerLocations = '/owner/locations';
   static const ownerOptimizer = '/owner/optimizer';
+  static const ownerStays = '/owner/stays';
+  static const ownerMeetingRooms = '/owner/meeting-rooms';
+  static const ownerSports = '/owner/sports';
+  static const ownerProfile = '/owner/profile';
+  static const ownerAvailability = '/owner/availability';
+  static const ownerOfflineBooking = '/owner/offline-booking';
+  static const ownerPayments = '/owner/payments';
+  static const meetingRooms = '/meeting-rooms';
+  static const meetingRoomDetails = '/meeting-rooms/:id';
+  static const meetingRoomBooking = '/meeting-rooms/:id/book';
+  static const sportsVenues = '/sports';
+  static const sportsVenueDetails = '/sports/:id';
+  static const sportsBooking = '/sports/:id/book';
+  static const registrationForms = '/owner/registration-forms';
+  static const registrationFill = '/registration/forms/:id/fill';
+  static const invoiceConfig = '/owner/invoice-settings';
+  static const invoiceView = '/invoices/:id';
   static const adminRegistrationFields = '/admin/registration-fields';
   static const adminBusinessPricing = '/admin/business-pricing';
   static const adminRewards = '/admin/rewards';
@@ -197,6 +246,10 @@ GoRouter createAppRouter({
       features: features,
     ),
     routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/venue-discovery',
         builder: (context, state) => VenueDiscoveryScreen(
@@ -360,6 +413,23 @@ GoRouter createAppRouter({
         builder: (context, state) => const AdminListingFieldsScreen(),
       ),
       GoRoute(
+        path: AppRoutes.adminContent,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AdminContentScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminVenueImport,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => VenueDiscoveryScreen(
+          repository: SupabaseDiscoveryRepository(Supabase.instance.client),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminVenueClaims,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AdminVenueClaimsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.unifiedRegistration,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const UnifiedRegistrationScreen(),
@@ -373,6 +443,68 @@ GoRouter createAppRouter({
         path: AppRoutes.coursesList,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CoursesListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.pgList,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccommodationListScreen(module: AccommodationModule.pg),
+      ),
+      GoRoute(
+        path: AppRoutes.pgDetails,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => AccommodationDetailScreen(
+          propertyId: state.pathParameters['id'] ?? '',
+          module: AccommodationModule.pg,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.staysList,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccommodationListScreen(module: AccommodationModule.stay),
+      ),
+      GoRoute(
+        path: AppRoutes.stayDetails,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => AccommodationDetailScreen(
+          propertyId: state.pathParameters['id'] ?? '',
+          module: AccommodationModule.stay,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.meetingRooms,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MeetingRoomsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.meetingRoomDetails,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            MeetingRoomDetailScreen(roomId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.meetingRoomBooking,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            MeetingRoomBookingScreen(roomId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.sportsVenues,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SportsVenuesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.sportsVenueDetails,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            SportsVenueDetailScreen(venueId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.sportsBooking,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            SportsBookingScreen(venueId: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.venueDetails,
@@ -412,6 +544,14 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) =>
             CourseDetailScreen(courseId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.registrationFill,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => RegistrationFillScreen(
+          formId: state.pathParameters['id'] ?? '',
+          bookingId: state.uri.queryParameters['bookingId'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.analytics,
@@ -510,6 +650,63 @@ GoRouter createAppRouter({
         builder: (context, state) => const VenueOptimizerScreen(),
       ),
       GoRoute(
+        path: AppRoutes.ownerProfile,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const OwnerProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerAvailability,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const OwnerOperationsScreen(operation: OwnerOperation.availability),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerOfflineBooking,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const OwnerOperationsScreen(
+          operation: OwnerOperation.offlineBooking,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerPayments,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const OwnerOperationsScreen(operation: OwnerOperation.payments),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerStays,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const StayOwnerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerMeetingRooms,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MeetingRoomOwnerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerSports,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SportsOwnerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.registrationForms,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RegistrationFormsAdminScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.invoiceConfig,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const invoice_feature.InvoiceConfigScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.invoiceView,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => invoice_feature.InvoiceScreen(
+          invoiceId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.privacyPolicy,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const PrivacyPolicyScreen(),
@@ -529,6 +726,34 @@ GoRouter createAppRouter({
             initial: extra is Booking ? extra : null,
           );
         },
+      ),
+      GoRoute(
+        path: AppRoutes.bookingResult,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => state.extra is Booking
+            ? BookingSuccessScreen(booking: state.extra! as Booking)
+            : const MyBookingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.bookingReceipt,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            ReceiptScreen(bookingId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.commercePayment,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => CommercePaymentScreen(
+          referenceId: state.pathParameters['id'] ?? '',
+          amount:
+              double.tryParse(state.uri.queryParameters['amount'] ?? '') ?? 0,
+          currency: state.uri.queryParameters['currency'] ?? 'INR',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.myStays,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MyStayBookingsScreen(),
       ),
       GoRoute(
         path: AppRoutes.paymentFlow,
@@ -690,8 +915,12 @@ String? resolveAppRedirect({
   bool allowUnauthenticatedTestAccess = false,
   FeatureRegistry? features,
 }) {
+  // Backend-unavailable Phase-1 paths fail closed even while auth is still
+  // resolving, so their repositories cannot issue unsupported requests.
+  if (_isPhaseOneBackendUnavailable(location)) return AppRoutes.home;
   if (!authReady) return null;
   final isPublic =
+      location == AppRoutes.splash ||
       location == AppRoutes.onboarding ||
       location == AppRoutes.login ||
       location == AppRoutes.forgotPassword ||
@@ -717,6 +946,30 @@ String? resolveAppRedirect({
     }
   }
   return _featureRedirect(location, features);
+}
+
+/// These Phase-1 flows require schemas/RPCs that are present only on the
+/// Phase branch. Keep them out of PROD until their backend contracts have
+/// been reviewed and deployed; existing booking and module-registration
+/// routes intentionally remain available.
+bool _isPhaseOneBackendUnavailable(String location) {
+  const unavailableRoots = [
+    '/pg',
+    '/stays',
+    '/owner/stays',
+    '/meeting-rooms',
+    '/owner/meeting-rooms',
+    '/sports',
+    '/owner/sports',
+    '/commerce',
+    '/invoices',
+    '/owner/invoice-settings',
+    '/owner/registration-forms',
+    '/registration/forms',
+  ];
+  return unavailableRoots.any(
+    (root) => location == root || location.startsWith('$root/'),
+  );
 }
 
 String? _featureRedirect(String location, FeatureRegistry? features) {
@@ -782,7 +1035,8 @@ IconData _shellIcon(String id, {required bool selected}) {
     'bookings' =>
       selected ? Icons.receipt_long_rounded : Icons.receipt_long_outlined,
     'profile' => selected ? Icons.person_rounded : Icons.person_outline_rounded,
-    'saved' => selected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+    'saved' =>
+      selected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
     _ => selected ? Icons.home_rounded : Icons.home_outlined,
   };
 }

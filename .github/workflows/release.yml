@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  FLUTTER_VERSION: "3.47.2"
+  FLUTTER_VERSION: "3.44.0"
 
 jobs:
   version:
@@ -131,6 +131,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Validate iOS deployment target and plugin requirements
+        run: python3 scripts/check_ios_deployment_target.py
       - run: >
           flutter build ios --release --no-codesign
           --build-name=${{ needs.version.outputs.name }}
@@ -139,6 +141,8 @@ jobs:
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           --dart-define=ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }}
+      - name: Verify generated iOS deployment target
+        run: python3 scripts/check_ios_deployment_target.py --after-build
       - uses: actions/upload-artifact@v4
         with:
           name: ios-unsigned-${{ needs.version.outputs.name }}+${{ needs.version.outputs.number }}

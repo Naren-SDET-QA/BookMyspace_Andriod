@@ -47,9 +47,10 @@ checkout — none of this is inferred from the Android reference repo alone.
   Info.plist` already declares `NSMicrophoneUsageDescription`,
   `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`,
   `NSPhotoLibraryAddUsageDescription`, and
-  `NSLocationWhenInUseUsageDescription`. `IPHONEOS_DEPLOYMENT_TARGET` is
-  13.0 across all three build configs in `Runner.xcodeproj/project.pbxproj`
-  — modern enough for every plugin in `pubspec.yaml`.
+  `NSLocationWhenInUseUsageDescription`. The PROD minimum is iOS 14.0:
+  the live `file_picker_darwin` plugin requires iOS 14, so all three Xcode
+  project configurations and the Podfile use 14.0. CI validates these
+  settings and plugin minimums without automatically changing the policy.
 - Web PWA scaffolding exists: `web/manifest.json` has standard + maskable
   192/512 icons, standalone display, theme color; `web/index.html` has the
   iOS web-app meta tags and favicon wired.
