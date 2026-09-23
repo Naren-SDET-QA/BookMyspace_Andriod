@@ -6,11 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
-import '../../../../core/widgets/configurable_banner.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
@@ -38,11 +36,11 @@ import '../../../search/domain/ai_search_intent.dart';
 import '../../../venues/domain/category_configuration.dart';
 import '../../../venues/domain/category_discovery.dart';
 import '../../../venues/presentation/category_configuration_providers.dart';
-import '../../../promotions/presentation/widgets/promotion_strip.dart';
 import '../customer_section_providers.dart';
 import '../customer_category_preferences_providers.dart';
 import '../widgets/category_carousel.dart';
 import '../widgets/home_discovery_widgets.dart';
+import '../widgets/home_v2_widgets.dart';
 
 /// The 4 primary sections of BookMySpace
 enum MainHomeSection {
@@ -274,6 +272,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  void _openHomeSearch(String query) {
+    final trimmed = query.trim();
+    context.push(
+      AppRoutes.search,
+      extra: trimmed.isEmpty ? null : <String, dynamic>{'query': trimmed},
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -289,15 +295,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
     final selectedCatalog = ref.watch(selectedCustomerSectionProvider);
     final selectedCategorySlug = ref.watch(selectedCustomerCategoryProvider);
-    // Do not query venue data while the modular Home catalog is being shown.
-    // Category-scoped data is resolved by the selected module only.
+    // The first screen uses the existing location-aware provider; selected
+    // sections use their existing configured category provider.
     final popularVenuesAsync = selectedCatalog == null
-        ? const AsyncValue.data(<Venue>[])
+        ? ref.watch(nearbyVenuesProvider)
         : ref.watch(
             moduleVenuesProvider(
               selectedCategorySlug == null || selectedCategorySlug == 'all'
@@ -335,6 +340,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   SliverToBoxAdapter(
                     child: _TopHeaderBar(
                       user: user,
+                      locationLabel: area.label,
                       responsive: responsive,
                       showAssistant: features.isExposed(FeatureId.ai),
                       showNotifications: features.isExposed(
@@ -347,248 +353,140 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           context.push(AppRoutes.notifications),
                       onAssistantTap: () => context.push(AppRoutes.assistant),
                       onCheckInTap: () => context.push(AppRoutes.checkIn),
+                      onLocationTap: _showLocationPickerModal,
                     ),
                   ),
-                  if (AdminSettings.flag(
-                    homeConfig['home_banner_visible'],
-                    fallback: true,
-                  ))
-                    const SliverToBoxAdapter(child: PromotionStrip()),
-                  if (AdminSettings.flag(
-                    homeConfig['home_banner_visible'],
-                    fallback: true,
-                  ))
+                  if (selectedSection == null)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          responsive.horizontalPadding,
+                          8,
+                          responsive.horizontalPadding,
+                          12,
+                        ),
+                        child: HomeV2SearchBlock(
+                          locationLabel: area.label,
+                          onSubmit: _openHomeSearch,
+                          onBrowse: () => context.push(AppRoutes.search),
+                          onLocationTap: _showLocationPickerModal,
+                          onVoiceTap: features.isExposed(FeatureId.voice)
+                              ? () => _showVoiceBookingDialog(context)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  if (selectedSection == null &&
+                      AdminSettings.flag(
+                        homeConfig['home_banner_visible'],
+                        fallback: true,
+                      ))
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: responsive.horizontalPadding,
                         ),
-                        child: ConfigurableBanner(settings: homeConfig),
+                        child: HomeV2PromotionBanner(
+                          settings: homeConfig,
+                          onTap: () => context.push(AppRoutes.search),
+                        ),
+                      ),
+                    ),
+
+                  if (selectedSection == null)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          responsive.horizontalPadding,
+                          12,
+                          responsive.horizontalPadding,
+                          8,
+                        ),
+                        child: HomeV2DiscoverySection(
+                          categories: _visibleConfiguredHomeCategories(ref),
+                          locationLabel: area.label,
+                          onCategoryTap: _openConfiguredHomeCategory,
+                          onSpacesTap: () => context.push(
+                            AppRoutes.search,
+                            extra: <String, dynamic>{
+                              'section': CustomerSection.functionHalls.id,
+                            },
+                          ),
+                          onInstitutesTap: () =>
+                              context.push(AppRoutes.institutesList),
+                          onClassesTap: () =>
+                              context.push(AppRoutes.coursesList),
+                          onEventsTap: features.isExposed(FeatureId.events)
+                              ? () => context.push(AppRoutes.eventsList)
+                              : null,
+                          onMapTap: features.isExposed(FeatureId.maps)
+                              ? () => context.push(AppRoutes.map)
+                              : null,
+                          heroSubtitle: homeConfig['hero_subtitle']?.toString(),
+                        ),
                       ),
                     ),
 
                   // =========================================================
                   // 🌟 FIRST SCREEN: EXACTLY 4 MAIN SECTIONS ONLY
                   // =========================================================
+                  // First screen: modern presentation over the existing release contracts.
                   if (selectedSection == null) ...[
-                    if (responsive.isCompact)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: responsive.horizontalPadding,
-                          ),
-                          child: LocationBar(
-                            area: area,
-                            dense: true,
-                            onTap: _showLocationPickerModal,
-                          ),
-                        ),
-                      ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 8,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AdminSettings.text(
-                                homeConfig['hero_title'],
-                                'Book Your Space',
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              AdminSettings.text(
-                                homeConfig['hero_subtitle'],
-                                'Select what you are looking for to get started:',
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-                    ),
-
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
                           responsive.horizontalPadding,
                           16,
                           responsive.horizontalPadding,
-                          0,
+                          24,
                         ),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            if (features.isExposed(FeatureId.events))
-                              ActionChip(
-                                avatar: const Icon(
-                                  Icons.event_outlined,
-                                  size: 18,
-                                ),
-                                label: Text(l10n.events),
-                                onPressed: () =>
-                                    context.push(AppRoutes.eventsList),
-                              ),
-                            if (features.isExposed(FeatureId.courses))
-                              ActionChip(
-                                avatar: const Icon(
-                                  Icons.school_outlined,
-                                  size: 18,
-                                ),
-                                label: Text(l10n.courses),
-                                onPressed: () =>
-                                    context.push(AppRoutes.coursesList),
-                              ),
-                            if (features.isExposed(FeatureId.maps))
-                              ActionChip(
-                                avatar: const Icon(
-                                  Icons.map_outlined,
-                                  size: 18,
-                                ),
-                                label: Text(l10n.viewOnMap),
-                                onPressed: () => context.push(AppRoutes.map),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    if (responsive.isCompact)
-                      SliverToBoxAdapter(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final width = constraints.maxWidth;
-                            final cardWidth = (width * 0.61).clamp(
-                              200.0,
-                              280.0,
-                            );
-                            final cardHeight = (width * 0.38).clamp(
-                              148.0,
-                              180.0,
-                            );
-                            return SizedBox(
-                              height: cardHeight,
-                              child: ListView.separated(
-                                clipBehavior: Clip.none,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: responsive.horizontalPadding,
-                                ),
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _visibleConfiguredHomeCategories(
-                                  ref,
-                                ).length,
-                                separatorBuilder: (_, _) =>
-                                    SizedBox(width: responsive.gridSpacing),
-                                itemBuilder: (context, index) {
-                                  final section =
-                                      _visibleConfiguredHomeCategories(
-                                        ref,
-                                      )[index];
-                                  return SizedBox(
-                                    width: cardWidth,
-                                    child: _MainSectionHeroCard(
-                                      key: ValueKey('section_${section.id}'),
-                                      category: section,
-                                      isTabletOrWide: false,
-                                      onTap: () =>
-                                          _openConfiguredHomeCategory(section),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                        ),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: responsive.categoryColumns,
-                                mainAxisSpacing: responsive.gridSpacing,
-                                crossAxisSpacing: responsive.gridSpacing,
-                                childAspectRatio:
-                                    responsive.categoryAspectRatio,
-                              ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final visible = _visibleConfiguredHomeCategories(
-                                ref,
-                              );
-                              final section = visible[index];
-                              return _MainSectionHeroCard(
-                                key: ValueKey('section_${section.id}'),
-                                category: section,
-                                isTabletOrWide: responsive.isTabletOrLandscape,
-                                onTap: () =>
-                                    _openConfiguredHomeCategory(section),
-                              );
-                            },
-                            childCount: _visibleConfiguredHomeCategories(
-                              ref,
-                            ).length,
-                          ),
-                        ),
-                      ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                        ),
-                        child: const HomePromoCard(),
-                      ),
-                    ),
-
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 16,
-                        ),
-                        child: HomeRadarCard(
+                        child: HomeV2ActivityCard(
                           locationLabel: area.label,
                           verifiedCount: popularVenuesAsync.maybeWhen(
                             data: (venues) => venues.length,
                             orElse: () => 0,
                           ),
-                          onTap: _showLocationPickerModal,
+                          onLocationTap: _showLocationPickerModal,
                         ),
                       ),
                     ),
-
-                    // Location bar at bottom of first screen
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: responsive.horizontalPadding,
-                          vertical: 24,
+                    SliverList(
+                      delegate: SliverChildListDelegate([
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            responsive.horizontalPadding,
+                            0,
+                            responsive.horizontalPadding,
+                            16,
+                          ),
+                          child: HomeV2SpaceDiscovery(
+                            locationLabel: area.label,
+                            venues: popularVenuesAsync,
+                            onViewAll: () => context.push(AppRoutes.search),
+                            onVenueTap: (venue) => context.push(
+                              AppRoutes.venueDetails.replaceAll(
+                                ':id',
+                                venue.id,
+                              ),
+                            ),
+                            onRetry: () =>
+                                ref.invalidate(nearbyVenuesProvider),
+                          ),
                         ),
-                        child: LocationFooterCard(
-                          area: area,
-                          onTap: _showLocationPickerModal,
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            responsive.horizontalPadding,
+                            0,
+                            responsive.horizontalPadding,
+                            24,
+                          ),
+                          child: HomeV2ActivitySection(
+                            onBookingsTap: () =>
+                                context.push(AppRoutes.bookings),
+                            onSavedTap: () => context.push(AppRoutes.saved),
+                          ),
                         ),
-                      ),
+                      ]),
                     ),
                   ]
                   // =========================================================
@@ -1153,7 +1051,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             message: err.toString(),
                             onRetry: () {
                               if (selectedCatalog == null) {
-                                ref.invalidate(popularVenuesProvider);
+                                ref.invalidate(nearbyVenuesProvider);
                               } else {
                                 ref.invalidate(
                                   moduleVenuesProvider(
@@ -1575,6 +1473,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 class _TopHeaderBar extends StatelessWidget {
   const _TopHeaderBar({
     required this.user,
+    required this.locationLabel,
     required this.responsive,
     required this.showAssistant,
     required this.showNotifications,
@@ -1584,9 +1483,11 @@ class _TopHeaderBar extends StatelessWidget {
     required this.onNotificationsTap,
     required this.onAssistantTap,
     required this.onCheckInTap,
+    required this.onLocationTap,
   });
 
   final dynamic user;
+  final String locationLabel;
   final ResponsiveInfo responsive;
   final bool showAssistant;
   final bool showNotifications;
@@ -1596,6 +1497,7 @@ class _TopHeaderBar extends StatelessWidget {
   final VoidCallback onNotificationsTap;
   final VoidCallback onAssistantTap;
   final VoidCallback onCheckInTap;
+  final VoidCallback onLocationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1657,6 +1559,51 @@ class _TopHeaderBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (locationLabel.isNotEmpty)
+                        InkWell(
+                          onTap: onLocationTap,
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 126),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.location_on_rounded,
+                                  size: 17,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    locationLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 17,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       if (user == null)
                         FilledButton.tonalIcon(
                           onPressed: onLoginTap,
@@ -1754,151 +1701,6 @@ class _TopHeaderBar extends StatelessWidget {
 
 /// Large, eye-catching, extremely simple Hero Card for the 4 Main Sections on the first screen.
 /// Adapts dynamically on phone single-column, tablet 2-column, and extra-wide landscape 4-column layouts.
-class _MainSectionHeroCard extends StatelessWidget {
-  const _MainSectionHeroCard({
-    super.key,
-    required this.category,
-    required this.isTabletOrWide,
-    required this.onTap,
-  });
-
-  final HomeCategoryItem category;
-  final bool isTabletOrWide;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(isTabletOrWide ? 22 : 18),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-          ),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background Image
-            AppNetworkImage(
-              url: category.configuration.imageUrl,
-              fit: BoxFit.cover,
-            ),
-
-            // High-Contrast Gradient Scrim
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black.withValues(alpha: 0.90),
-                    Colors.black.withValues(alpha: 0.74),
-                    Colors.black.withValues(alpha: 0.35),
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-            ),
-
-            // Content
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTabletOrWide ? 18 : 16,
-                vertical: 12,
-              ),
-              child: Row(
-                children: [
-                  // Emoji Badge
-                  Container(
-                    width: isTabletOrWide ? 56 : 48,
-                    height: isTabletOrWide ? 56 : 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      category.configuration.icon.isNotEmpty
-                          ? category.configuration.icon
-                          : '✨',
-                      style: TextStyle(fontSize: isTabletOrWide ? 28 : 24),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-
-                  // Text Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          category.title,
-                          style: TextStyle(
-                            fontSize: isTabletOrWide ? 18 : 16.5,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          category.configuration.sectionId.isNotEmpty
-                              ? (CustomerSection.fromId(
-                                      category.configuration.sectionId,
-                                    )?.subtitle ??
-                                    'Explore available spaces near you')
-                              : 'Explore available spaces near you',
-                          style: TextStyle(
-                            fontSize: isTabletOrWide ? 12 : 11.5,
-                            color: Colors.white.withValues(alpha: 0.85),
-                            height: 1.25,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // Circular Action Arrow
-                  Container(
-                    width: isTabletOrWide ? 42 : 36,
-                    height: isTabletOrWide ? 42 : 36,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.brand,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Voice Booking Banner
 class _VoiceBookingBanner extends StatelessWidget {
   const _VoiceBookingBanner({required this.onTap});
 
