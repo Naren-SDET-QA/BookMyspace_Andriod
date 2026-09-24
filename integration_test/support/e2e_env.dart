@@ -12,6 +12,8 @@ abstract final class E2eTags {
   static const booking = 'booking';
   static const owner = 'owner';
   static const negative = 'negative';
+  static const payment = 'payment';
+  static const admin = 'admin';
 }
 
 abstract final class E2eEnv {

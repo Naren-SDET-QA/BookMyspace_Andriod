@@ -104,9 +104,12 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.keep),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.requestRefund),
+          TestId(
+            E2eIds.bookingRefundConfirm,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(l10n.requestRefund),
+            ),
           ),
         ],
       ),
@@ -180,9 +183,18 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                   child: TabBar(
                     onTap: (index) => setState(() => _selectedTab = index),
                     tabs: [
-                      Tab(text: l10n.upcomingEvents),
-                      Tab(text: l10n.statusCompleted),
-                      Tab(text: l10n.statusCancelled),
+                      TestId(
+                        E2eIds.bookingsTabUpcoming,
+                        child: Tab(text: l10n.upcomingEvents),
+                      ),
+                      TestId(
+                        E2eIds.bookingsTabCompleted,
+                        child: Tab(text: l10n.statusCompleted),
+                      ),
+                      TestId(
+                        E2eIds.bookingsTabCancelled,
+                        child: Tab(text: l10n.statusCancelled),
+                      ),
                     ],
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
@@ -429,7 +441,10 @@ class _BookingCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  BookingStatusBadge(status: booking.status),
+                  TestId(
+                    E2eIds.bookingStatus(booking.id, booking.status.dbValue),
+                    child: BookingStatusBadge(status: booking.status),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -507,10 +522,13 @@ class _BookingCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: onRefund,
-                    icon: const Icon(Icons.currency_rupee_rounded, size: 18),
-                    label: Text(l10n.requestRefund),
+                  child: TestId(
+                    E2eIds.bookingRefund(booking.id),
+                    child: OutlinedButton.icon(
+                      onPressed: onRefund,
+                      icon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                      label: Text(l10n.requestRefund),
+                    ),
                   ),
                 ),
               ],
@@ -518,10 +536,13 @@ class _BookingCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: onPay,
-                    icon: const Icon(Icons.payment_rounded, size: 18),
-                    label: Text(l10n.payNow),
+                  child: TestId(
+                    E2eIds.bookingPay(booking.id),
+                    child: FilledButton.icon(
+                      onPressed: onPay,
+                      icon: const Icon(Icons.payment_rounded, size: 18),
+                      label: Text(l10n.payNow),
+                    ),
                   ),
                 ),
               ],

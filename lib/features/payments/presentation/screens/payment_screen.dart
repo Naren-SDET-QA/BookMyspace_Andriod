@@ -266,18 +266,24 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         _PaymentPhase.error => _buildError(context, l10n),
       },
       bottomNavigationBar: _phase == _PaymentPhase.idle
-          ? _PayBar(
-              total: _booking.totalAmount,
-              method: _paymentMethod,
-              onConfirm: _holdExpired
-                  ? null
-                  : _paymentMethod == _PaymentMethod.online
-                  ? _pay
-                  : _payAtVenue,
+          ? _holdExpiredMarker(
+              _PayBar(
+                total: _booking.totalAmount,
+                method: _paymentMethod,
+                onConfirm: _holdExpired
+                    ? null
+                    : _paymentMethod == _PaymentMethod.online
+                    ? _pay
+                    : _payAtVenue,
+              ),
             )
           : null,
     );
   }
+
+  /// Marks the pay bar for E2E once the server hold has expired.
+  Widget _holdExpiredMarker(Widget payBar) =>
+      _holdExpired ? TestId(E2eIds.holdExpired, child: payBar) : payBar;
 
   Widget _buildIdle(BuildContext context) {
     // The payment-method and promo controls live in a fixed (non-scrolling)
@@ -332,10 +338,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
+                TestId(
+                  E2eIds.paymentMessage,
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               ],
@@ -347,8 +356,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   Widget _buildVerifying(BuildContext context, AppLocalizations l10n) {
-    return Center(
-      child: Padding(
+    return TestId(
+      E2eIds.paymentVerifying,
+      child: Center(
+        child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -363,12 +374,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildDone(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Center(
+    return TestId(
+      _confirmed ? E2eIds.bookingSuccess : E2eIds.paymentPending,
+      child: Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -400,22 +414,28 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () {
-                ref.invalidate(myBookingsProvider);
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-              child: Text(l10n.done),
+            TestId(
+              E2eIds.paymentDone,
+              child: FilledButton(
+                onPressed: () {
+                  ref.invalidate(myBookingsProvider);
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                child: Text(l10n.done),
+              ),
             ),
           ],
         ),
+      ),
       ),
     );
   }
 
   Widget _buildError(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Center(
+    return TestId(
+      E2eIds.paymentError,
+      child: Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -433,12 +453,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l10n.done),
+            TestId(
+              E2eIds.paymentDone,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l10n.done),
+              ),
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -563,12 +587,15 @@ class _PayBar extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: FilledButton.icon(
-                onPressed: onConfirm,
-                icon: Icon(
-                  online ? Icons.lock_rounded : Icons.storefront_rounded,
+              child: TestId(
+                E2eIds.paymentPay,
+                child: FilledButton.icon(
+                  onPressed: onConfirm,
+                  icon: Icon(
+                    online ? Icons.lock_rounded : Icons.storefront_rounded,
+                  ),
+                  label: Text(online ? l10n.payNow : l10n.confirmBooking),
                 ),
-                label: Text(online ? l10n.payNow : l10n.confirmBooking),
               ),
             ),
           ],
@@ -605,7 +632,9 @@ class _PaymentMethodCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: online
+                  child: TestId(
+                    E2eIds.paymentMethodOnline,
+                    child: online
                       ? FilledButton.icon(
                           onPressed: () => onChanged(_PaymentMethod.online),
                           icon: const Icon(Icons.lock_rounded, size: 18),
@@ -616,10 +645,13 @@ class _PaymentMethodCard extends StatelessWidget {
                           icon: const Icon(Icons.lock_rounded, size: 18),
                           label: Text(l10n.onlinePayment),
                         ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: online
+                  child: TestId(
+                    E2eIds.paymentMethodVenue,
+                    child: online
                       ? OutlinedButton.icon(
                           onPressed: () =>
                               onChanged(_PaymentMethod.payAtVenue),
@@ -638,6 +670,7 @@ class _PaymentMethodCard extends StatelessWidget {
                           ),
                           label: Text(l10n.payAtVenue),
                         ),
+                  ),
                 ),
               ],
             ),

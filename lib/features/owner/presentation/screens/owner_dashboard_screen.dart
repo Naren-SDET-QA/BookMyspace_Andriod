@@ -7,6 +7,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../domain/owner.dart';
 import '../owner_providers.dart';
 
@@ -19,7 +20,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final owner = ref.watch(currentOwnerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.ownerDashboard)),
+      appBar: AppBar(
+        title: TestId(
+          E2eIds.ownerDashboard,
+          child: Text(l10n.ownerDashboard),
+        ),
+      ),
       body: owner.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
@@ -37,20 +43,26 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 children: [
                   _OwnerCard(owner: ownerData),
                   const SizedBox(height: 24),
-                  _QuickAction(
-                    icon: Icons.receipt_long_rounded,
-                    label: l10n.ownerBookings,
-                    onTap: () => context.push(AppRoutes.ownerBookings),
+                  TestId(
+                    E2eIds.ownerActionBookings,
+                    child: _QuickAction(
+                      icon: Icons.receipt_long_rounded,
+                      label: l10n.ownerBookings,
+                      onTap: () => context.push(AppRoutes.ownerBookings),
+                    ),
                   ),
                   _QuickAction(
                     icon: Icons.calendar_month_rounded,
                     label: l10n.ownerCalendar,
                     onTap: () => context.push(AppRoutes.ownerCalendar),
                   ),
-                  _QuickAction(
-                    icon: Icons.storefront_rounded,
-                    label: l10n.myVenues,
-                    onTap: () => context.push(AppRoutes.ownerVenues),
+                  TestId(
+                    E2eIds.ownerActionVenues,
+                    child: _QuickAction(
+                      icon: Icons.storefront_rounded,
+                      label: l10n.myVenues,
+                      onTap: () => context.push(AppRoutes.ownerVenues),
+                    ),
                   ),
                   _QuickAction(
                     icon: Icons.school_rounded,

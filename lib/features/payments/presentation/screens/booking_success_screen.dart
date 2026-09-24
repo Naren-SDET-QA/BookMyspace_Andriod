@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../booking/domain/booking.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 
@@ -32,7 +33,9 @@ class BookingSuccessScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
-        child: ListView(
+        child: TestId(
+          E2eIds.bookingSuccess,
+          child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
           children: [
             Center(
@@ -215,6 +218,7 @@ class BookingSuccessScreen extends StatelessWidget {
               child: Text(l10n.exploreMoreSpaces),
             ),
           ],
+        ),
         ),
       ),
     );

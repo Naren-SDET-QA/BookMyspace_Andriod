@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../home/domain/customer_section_catalog.dart';
 import '../../../admin/presentation/admin_moderation_providers.dart';
 import '../../../venues/domain/venue.dart';
@@ -51,7 +52,10 @@ class OwnerVenuesScreen extends ConsumerWidget {
             : ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: items.length,
-                itemBuilder: (context, i) => _VenueTile(venue: items[i]),
+                itemBuilder: (context, i) => TestId(
+                  E2eIds.ownerVenueCard(items[i].id),
+                  child: _VenueTile(venue: items[i]),
+                ),
               ),
       ),
     );
@@ -112,7 +116,12 @@ class _VenueTile extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Container(
+                TestId(
+                  E2eIds.ownerVenueState(
+                    venue.id,
+                    venue.isActive ? 'published' : 'unpublished',
+                  ),
+                  child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 2,
@@ -131,6 +140,7 @@ class _VenueTile extends ConsumerWidget {
                           : theme.colorScheme.error,
                       fontWeight: FontWeight.w700,
                     ),
+                  ),
                   ),
                 ),
               ],
@@ -183,24 +193,30 @@ class _VenueTile extends ConsumerWidget {
                   ),
                   child: const Text('Media'),
                 ),
-                TextButton(
-                  onPressed: () => context.push(
-                    AppRoutes.ownerVenueAvailabilityPath(venue.id),
+                TestId(
+                  E2eIds.ownerVenueAvailability(venue.id),
+                  child: TextButton(
+                    onPressed: () => context.push(
+                      AppRoutes.ownerVenueAvailabilityPath(venue.id),
+                    ),
+                    child: const Text('Hours & slots'),
                   ),
-                  child: const Text('Hours & slots'),
                 ),
                 TextButton(
                   onPressed: () => context.push('/venues/${venue.id}'),
                   child: const Text('Preview'),
                 ),
-                TextButton(
-                  onPressed: () async {
-                    await ref
-                        .read(ownerVenueRepositoryProvider)
-                        .setPublished(venue.id, !venue.isActive);
-                    ref.invalidate(myVenuesProvider);
-                  },
-                  child: Text(venue.isActive ? 'Unpublish' : 'Publish'),
+                TestId(
+                  E2eIds.ownerVenuePublish(venue.id),
+                  child: TextButton(
+                    onPressed: () async {
+                      await ref
+                          .read(ownerVenueRepositoryProvider)
+                          .setPublished(venue.id, !venue.isActive);
+                      ref.invalidate(myVenuesProvider);
+                    },
+                    child: Text(venue.isActive ? 'Unpublish' : 'Publish'),
+                  ),
                 ),
                 TextButton(
                   onPressed: () async {

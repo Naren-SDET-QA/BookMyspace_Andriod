@@ -44,8 +44,46 @@ abstract final class E2eIds {
   static const bookingHistory = 'booking_history';
   static const bookingCancelConfirm = 'booking_cancel_confirm';
 
-  // Checkout.
+  // Booking history.
+  static const bookingsTabUpcoming = 'bookings_tab_upcoming';
+  static const bookingsTabCompleted = 'bookings_tab_completed';
+  static const bookingsTabCancelled = 'bookings_tab_cancelled';
+  static const bookingRefundConfirm = 'booking_refund_confirm';
+
+  // Checkout / payment.
   static const checkoutSummary = 'checkout_summary';
+  static const paymentMethodOnline = 'payment_method_online';
+  static const paymentMethodVenue = 'payment_method_venue';
+  static const paymentPay = 'payment_pay';
+  static const paymentMessage = 'payment_message';
+  static const paymentVerifying = 'payment_verifying';
+  static const paymentPending = 'payment_pending';
+  static const paymentError = 'payment_error';
+  static const paymentDone = 'payment_done';
+  static const holdExpired = 'hold_expired';
+  static const bookingSuccess = 'booking_success';
+
+  // Shared error state (ErrorView).
+  static const errorRetry = 'error_retry';
+
+  // Role entry points on the profile screen.
+  static const profileOwnerDashboard = 'profile_owner_dashboard';
+  static const profileAdminDashboard = 'profile_admin_dashboard';
+
+  // Owner.
+  static const ownerDashboard = 'owner_dashboard';
+  static const ownerActionBookings = 'owner_action_bookings';
+  static const ownerActionVenues = 'owner_action_venues';
+  static const ownerDecisionConfirm = 'owner_decision_confirm';
+  static const availabilityAddSlot = 'availability_add_slot';
+  static const availabilitySlotLabel = 'availability_slot_label';
+  static const availabilitySlotStart = 'availability_slot_start';
+  static const availabilitySlotEnd = 'availability_slot_end';
+  static const availabilitySlotPrice = 'availability_slot_price';
+  static const availabilitySlotSave = 'availability_slot_save';
+
+  // Admin.
+  static const adminDashboard = 'admin_dashboard';
 
   /// Bottom-navigation destination, e.g. `nav_home`, `nav_search`.
   static String nav(String destinationId) => 'nav_$destinationId';
@@ -61,6 +99,44 @@ abstract final class E2eIds {
 
   /// The cancel action on a booking-history card.
   static String bookingCancel(String bookingId) => 'booking_cancel_$bookingId';
+
+  /// The refund action on a booking-history card.
+  static String bookingRefund(String bookingId) => 'booking_refund_$bookingId';
+
+  /// The pay action on a booking-history card.
+  static String bookingPay(String bookingId) => 'booking_pay_$bookingId';
+
+  /// A booking's lifecycle status badge. The backend status value is part of
+  /// the id (e.g. `booking_status_b1_pending_owner_approval`), so suites
+  /// assert state without reading localized text.
+  static String bookingStatus(String bookingId, String dbStatus) =>
+      'booking_status_${bookingId}_$dbStatus';
+
+  /// A booking card on the owner's bookings screen.
+  static String ownerBookingCard(String bookingId) =>
+      'owner_booking_card_$bookingId';
+
+  /// Owner approve / reject actions for a booking awaiting sign-off.
+  static String ownerBookingApprove(String bookingId) =>
+      'owner_booking_approve_$bookingId';
+  static String ownerBookingReject(String bookingId) =>
+      'owner_booking_reject_$bookingId';
+
+  /// A listing card on the owner's venues screen, and its actions.
+  static String ownerVenueCard(String venueId) => 'owner_venue_card_$venueId';
+  static String ownerVenuePublish(String venueId) =>
+      'owner_venue_publish_$venueId';
+  static String ownerVenueAvailability(String venueId) =>
+      'owner_venue_availability_$venueId';
+
+  /// Publication state of an owner listing (`published` / `unpublished`).
+  static String ownerVenueState(String venueId, String state) =>
+      'owner_venue_state_${venueId}_$state';
+
+  /// An owner time slot row (by label) and its active toggle state.
+  static String availabilitySlot(String label) => 'availability_slot_$label';
+  static String availabilitySlotState(String label, String state) =>
+      'availability_slot_state_${label}_$state';
 }
 
 /// Attaches a stable end-to-end [id] to [child] without changing it.

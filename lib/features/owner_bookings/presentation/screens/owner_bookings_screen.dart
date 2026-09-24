@@ -8,6 +8,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../domain/owner_booking_repository.dart';
 import '../../../booking/domain/booking.dart';
 import '../../../booking/presentation/widgets/booking_status_badge.dart';
@@ -91,9 +92,12 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.cancel),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(title),
+          TestId(
+            E2eIds.ownerDecisionConfirm,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(title),
+            ),
           ),
         ],
       ),
@@ -178,7 +182,9 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
               itemCount: list.length,
               itemBuilder: (context, i) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _OwnerBookingCard(
+                child: TestId(
+                  E2eIds.ownerBookingCard(list[i].id),
+                  child: _OwnerBookingCard(
                   booking: list[i],
                   onTap: list[i].canViewInvoice
                       ? () => context.push(
@@ -213,6 +219,7 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
                           OwnerBookingDecision.reject,
                         )
                       : null,
+                  ),
                 ),
               ),
             ),
@@ -299,7 +306,10 @@ class _OwnerBookingCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  BookingStatusBadge(status: booking.status),
+                  TestId(
+                    E2eIds.bookingStatus(booking.id, booking.status.dbValue),
+                    child: BookingStatusBadge(status: booking.status),
+                  ),
                 ],
               ),
               if (customerName.isNotEmpty) ...[
@@ -373,18 +383,24 @@ class _OwnerBookingCard extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     if (onApprove != null)
-                      FilledButton(
-                        onPressed: onApprove,
-                        child: Text(l10n.approveBooking),
+                      TestId(
+                        E2eIds.ownerBookingApprove(booking.id),
+                        child: FilledButton(
+                          onPressed: onApprove,
+                          child: Text(l10n.approveBooking),
+                        ),
                       ),
                     if (onReject != null)
-                      OutlinedButton(
-                        onPressed: onReject,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.error,
-                          side: BorderSide(color: theme.colorScheme.error),
+                      TestId(
+                        E2eIds.ownerBookingReject(booking.id),
+                        child: OutlinedButton(
+                          onPressed: onReject,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                            side: BorderSide(color: theme.colorScheme.error),
+                          ),
+                          child: Text(l10n.rejectBooking),
                         ),
-                        child: Text(l10n.rejectBooking),
                       ),
                     if (onConfirm != null)
                       FilledButton.tonal(

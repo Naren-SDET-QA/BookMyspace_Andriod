@@ -88,6 +88,21 @@ class BaseRobot {
     return true;
   }
 
+  /// Taps [id] and pumps briefly without settling, so a request started by
+  /// the tap is still in flight afterwards (duplicate-submission checks).
+  /// A disabled control simply ignores the tap.
+  Future<void> tapWithoutSettling(String id) async {
+    final finder = (await waitFor(id)).first;
+    await tester.tap(finder, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+
+  /// Pops the current route with the app bar back button.
+  Future<void> back() async {
+    await tester.pageBack();
+    await settle();
+  }
+
   Future<void> enterText(String id, String text) async {
     final field = find
         .descendant(of: await waitFor(id), matching: find.byType(EditableText))

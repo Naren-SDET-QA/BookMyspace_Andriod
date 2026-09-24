@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../providers/owner_venue_providers.dart';
 import '../../domain/owner_availability.dart';
 
@@ -50,22 +51,34 @@ class _OwnerAvailabilityScreenState
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: label,
-              decoration: const InputDecoration(labelText: 'Slot name'),
+            TestId(
+              E2eIds.availabilitySlotLabel,
+              child: TextField(
+                controller: label,
+                decoration: const InputDecoration(labelText: 'Slot name'),
+              ),
             ),
-            TextField(
-              controller: start,
-              decoration: const InputDecoration(labelText: 'Start (HH:MM)'),
+            TestId(
+              E2eIds.availabilitySlotStart,
+              child: TextField(
+                controller: start,
+                decoration: const InputDecoration(labelText: 'Start (HH:MM)'),
+              ),
             ),
-            TextField(
-              controller: end,
-              decoration: const InputDecoration(labelText: 'End (HH:MM)'),
+            TestId(
+              E2eIds.availabilitySlotEnd,
+              child: TextField(
+                controller: end,
+                decoration: const InputDecoration(labelText: 'End (HH:MM)'),
+              ),
             ),
-            TextField(
-              controller: price,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Price'),
+            TestId(
+              E2eIds.availabilitySlotPrice,
+              child: TextField(
+                controller: price,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Price'),
+              ),
             ),
           ],
         ),
@@ -74,7 +87,9 @@ class _OwnerAvailabilityScreenState
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          TestId(
+            E2eIds.availabilitySlotSave,
+            child: FilledButton(
             onPressed: () {
               final amount = double.tryParse(price.text.trim());
               if (amount == null) {
@@ -108,6 +123,7 @@ class _OwnerAvailabilityScreenState
               }
             },
             child: const Text('Save'),
+          ),
           ),
         ],
       ),
@@ -196,10 +212,13 @@ class _OwnerAvailabilityScreenState
             ),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: () => _editSlot(),
-                icon: const Icon(Icons.add),
-                label: const Text('Add time slot'),
+              child: TestId(
+                E2eIds.availabilityAddSlot,
+                child: FilledButton.icon(
+                  onPressed: () => _editSlot(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add time slot'),
+                ),
               ),
             ),
             if (slots.isEmpty)
@@ -208,23 +227,35 @@ class _OwnerAvailabilityScreenState
                 child: Text('No time slots yet. Add your first time slot.'),
               ),
             for (final slot in slots)
-              SwitchListTile(
-                title: Text(slot.label),
-                subtitle: Text(
-                  '${slot.startTime} – ${slot.endTime} · ₹${slot.priceAmount.toStringAsFixed(0)}',
+              // Both ids sit outside the tile's merged semantics so web can
+              // see them. The state id re-keys the tile on toggle; that is
+              // not observable because every toggle reloads the whole list.
+              TestId(
+                E2eIds.availabilitySlot(slot.label),
+                child: TestId(
+                  E2eIds.availabilitySlotState(
+                    slot.label,
+                    slot.isActive ? 'active' : 'inactive',
+                  ),
+                  child: SwitchListTile(
+                    title: Text(slot.label),
+                    subtitle: Text(
+                      '${slot.startTime} – ${slot.endTime} · ₹${slot.priceAmount.toStringAsFixed(0)}',
+                    ),
+                    value: slot.isActive,
+                    secondary: IconButton(
+                      icon: const Icon(Icons.edit),
+                      tooltip: 'Edit slot',
+                      onPressed: () => _editSlot(slot),
+                    ),
+                    onChanged: (active) async {
+                      await ref
+                          .read(ownerAvailabilityRepositoryProvider)
+                          .setSlotActive(widget.venueId, slot.id!, active);
+                      if (mounted) setState(_load);
+                    },
+                  ),
                 ),
-                value: slot.isActive,
-                secondary: IconButton(
-                  icon: const Icon(Icons.edit),
-                  tooltip: 'Edit slot',
-                  onPressed: () => _editSlot(slot),
-                ),
-                onChanged: (active) async {
-                  await ref
-                      .read(ownerAvailabilityRepositoryProvider)
-                      .setSlotActive(widget.venueId, slot.id!, active);
-                  if (mounted) setState(_load);
-                },
               ),
           ],
         );

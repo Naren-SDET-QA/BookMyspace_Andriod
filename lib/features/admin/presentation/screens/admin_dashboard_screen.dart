@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/responsive_layout.dart';
+import '../../../../core/widgets/test_id.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -129,7 +130,12 @@ class AdminDashboardScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin dashboard')),
+      appBar: AppBar(
+        title: const TestId(
+          E2eIds.adminDashboard,
+          child: Text('Admin dashboard'),
+        ),
+      ),
       body: ResponsiveLayoutBuilder(
         builder: (context, responsive) {
           final columns = responsive.isCompact

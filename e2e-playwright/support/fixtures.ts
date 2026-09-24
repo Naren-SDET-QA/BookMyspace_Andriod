@@ -12,6 +12,14 @@ export const Fixtures = {
   availableSlotId: 's1',
   unavailableSlotId: 's2',
   seededBookingId: 'b1',
+  ownerEmail: 'e2e.owner@bookmyspace.test',
+  adminEmail: 'e2e.admin@bookmyspace.test',
+  approvalBookingId: 'b-approval',
+  confirmedBookingId: 'b-confirmed',
+  staleHoldBookingId: 'b-stale',
+  /** First booking created in a mock session (`e2e-bk-<n>`). */
+  firstCreatedBookingId: 'e2e-bk-1',
+  newSlotLabel: 'E2E',
   /** Function halls require an event type before a hold can be taken. */
   eventType: 'Wedding',
 } as const;
@@ -24,4 +32,24 @@ export type MockScenario =
   | 'invalidLogin'
   | 'invalidOtp'
   | 'networkFailure'
-  | 'slotTaken';
+  | 'slotTaken'
+  | 'flakyAvailability'
+  | 'slowHold'
+  | 'cancelFails'
+  | 'confirmedBooking'
+  | 'staleHold'
+  | 'payFails'
+  | 'payCancelledThenPaid'
+  | 'payApprovedWhileVerifying'
+  | 'orderFailsOnce'
+  | 'ownerSignedIn'
+  | 'adminSignedIn';
+
+/** Backend `booking_status` values, as encoded in `Ids.bookingStatus`. */
+export const Status = {
+  pending: 'pending',
+  pendingOwnerApproval: 'pending_owner_approval',
+  confirmed: 'confirmed',
+  cancelled: 'cancelled',
+  rejected: 'rejected',
+} as const;

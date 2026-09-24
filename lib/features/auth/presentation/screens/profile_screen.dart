@@ -329,11 +329,14 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push(AppRoutes.settings),
                 ),
                 if (user?.isOwner == true)
-                  _ProfileMenuTile(
-                    icon: Icons.storefront_outlined,
-                    title: l10n.ownerDashboard,
-                    subtitle: 'List your spaces, halls, and classes',
-                    onTap: () => context.push(AppRoutes.ownerDashboard),
+                  TestId(
+                    E2eIds.profileOwnerDashboard,
+                    child: _ProfileMenuTile(
+                      icon: Icons.storefront_outlined,
+                      title: l10n.ownerDashboard,
+                      subtitle: 'List your spaces, halls, and classes',
+                      onTap: () => context.push(AppRoutes.ownerDashboard),
+                    ),
                   ),
                 if (user?.isOwner == true)
                   _ProfileMenuTile(
@@ -350,11 +353,14 @@ class ProfileScreen extends ConsumerWidget {
                     onTap: () => context.push(AppRoutes.checkIn),
                   ),
                 if (user?.isAdmin == true)
-                  _ProfileMenuTile(
-                    icon: Icons.admin_panel_settings_outlined,
-                    title: l10n.admin,
-                    subtitle: 'Approvals, categories, payments and audit',
-                    onTap: () => context.push(AppRoutes.adminDashboard),
+                  TestId(
+                    E2eIds.profileAdminDashboard,
+                    child: _ProfileMenuTile(
+                      icon: Icons.admin_panel_settings_outlined,
+                      title: l10n.admin,
+                      subtitle: 'Approvals, categories, payments and audit',
+                      onTap: () => context.push(AppRoutes.adminDashboard),
+                    ),
                   ),
                 if (user?.isAdmin == true)
                   _ProfileMenuTile(

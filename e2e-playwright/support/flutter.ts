@@ -111,4 +111,20 @@ export class FlutterApp {
   async expectNotShown(id: string): Promise<void> {
     await expect(this.byId(id)).toHaveCount(0);
   }
+
+  /** Asserts the router location (hash URL strategy), e.g. `/profile`. */
+  async expectLocation(route: string): Promise<void> {
+    const escaped = route.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+    await expect(this.page).toHaveURL(new RegExp(`#${escaped}$`));
+  }
+
+  /**
+   * Pops the current route with the app bar's automatic back button.
+   * go_router `push` does not add browser history entries, so browser back
+   * is not equivalent. The button is framework-generated (Material "Back"
+   * tooltip), not app copy, so this is the one role/name locator we use.
+   */
+  async back(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Back', exact: true }).first().click();
+  }
 }
