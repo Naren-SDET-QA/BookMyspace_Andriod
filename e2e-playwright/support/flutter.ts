@@ -56,6 +56,22 @@ export class FlutterApp {
     await (await this.waitFor(id)).click();
   }
 
+  /**
+   * Taps [id] where the app is expected to IGNORE the tap (a disabled control).
+   *
+   * Flutter web gives a disabled control no pointer target of its own, so
+   * Playwright's actionability check always sees the canvas "intercepting"
+   * and never clicks. This sends a real pointer click at the element's
+   * position without that check, and Flutter's own hit-testing decides. If
+   * the control were wrongly enabled, the tap would take effect and the
+   * caller's assertion would fail — unlike a synthetic event dispatched to
+   * the semantics container, which carries no tap action at all.
+   */
+  async tapExpectingNoEffect(id: string): Promise<void> {
+    await (await this.waitFor(id)).click({ force: true });
+    await this.waitForFrames(1);
+  }
+
   /** Taps [id] only if it appears within [ms]; returns whether it did. */
   async tapIfShown(id: string, ms = 2_000): Promise<boolean> {
     try {
@@ -125,6 +141,13 @@ export class FlutterApp {
    * tooltip), not app copy, so this is the one role/name locator we use.
    */
   async back(): Promise<void> {
-    await this.page.getByRole('button', { name: 'Back', exact: true }).first().click();
+    // Let any running route transition finish first: while it runs, Flutter
+    // keeps re-creating the button's semantics node, so a normal click never
+    // sees a stable element. Then dispatch the tap to the settled node.
+    await this.waitForFrames(30);
+    const button = this.page.getByRole('button', { name: 'Back', exact: true }).first();
+    await button.waitFor({ state: 'visible' });
+    await button.dispatchEvent('click');
+    await this.waitForFrames(30);
   }
 }

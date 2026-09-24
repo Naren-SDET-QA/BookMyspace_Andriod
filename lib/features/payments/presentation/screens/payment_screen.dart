@@ -360,20 +360,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       E2eIds.paymentVerifying,
       child: Center(
         child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            Text(
-              l10n.verifyingPayment,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              Text(
+                l10n.verifyingPayment,
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -383,50 +383,50 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     return TestId(
       _confirmed ? E2eIds.bookingSuccess : E2eIds.paymentPending,
       child: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _confirmed
-                  ? Icons.check_circle_rounded
-                  : Icons.pending_actions_rounded,
-              size: 72,
-              color: _confirmed ? Colors.green : theme.colorScheme.tertiary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _confirmed ? l10n.paymentSuccess : l10n.paymentPending,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _confirmed
+                    ? Icons.check_circle_rounded
+                    : Icons.pending_actions_rounded,
+                size: 72,
+                color: _confirmed ? Colors.green : theme.colorScheme.tertiary,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _confirmed
-                  ? '${l10n.bookingConfirmed} ${_booking.bookingRef}'
-                  : l10n.paymentPendingMessage,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 16),
+              Text(
+                _confirmed ? l10n.paymentSuccess : l10n.paymentPending,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TestId(
-              E2eIds.paymentDone,
-              child: FilledButton(
-                onPressed: () {
-                  ref.invalidate(myBookingsProvider);
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                child: Text(l10n.done),
+              const SizedBox(height: 8),
+              Text(
+                _confirmed
+                    ? '${l10n.bookingConfirmed} ${_booking.bookingRef}'
+                    : l10n.paymentPendingMessage,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              TestId(
+                E2eIds.paymentDone,
+                child: FilledButton(
+                  onPressed: () {
+                    ref.invalidate(myBookingsProvider);
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  child: Text(l10n.done),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -436,33 +436,33 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     return TestId(
       E2eIds.paymentError,
       child: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 72,
-              color: theme.colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage ?? l10n.paymentFailed,
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TestId(
-              E2eIds.paymentDone,
-              child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(l10n.done),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 72,
+                color: theme.colorScheme.error,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage ?? l10n.paymentFailed,
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              TestId(
+                E2eIds.paymentDone,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text(l10n.done),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -635,16 +635,16 @@ class _PaymentMethodCard extends StatelessWidget {
                   child: TestId(
                     E2eIds.paymentMethodOnline,
                     child: online
-                      ? FilledButton.icon(
-                          onPressed: () => onChanged(_PaymentMethod.online),
-                          icon: const Icon(Icons.lock_rounded, size: 18),
-                          label: Text(l10n.onlinePayment),
-                        )
-                      : OutlinedButton.icon(
-                          onPressed: () => onChanged(_PaymentMethod.online),
-                          icon: const Icon(Icons.lock_rounded, size: 18),
-                          label: Text(l10n.onlinePayment),
-                        ),
+                        ? FilledButton.icon(
+                            onPressed: () => onChanged(_PaymentMethod.online),
+                            icon: const Icon(Icons.lock_rounded, size: 18),
+                            label: Text(l10n.onlinePayment),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: () => onChanged(_PaymentMethod.online),
+                            icon: const Icon(Icons.lock_rounded, size: 18),
+                            label: Text(l10n.onlinePayment),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -652,24 +652,24 @@ class _PaymentMethodCard extends StatelessWidget {
                   child: TestId(
                     E2eIds.paymentMethodVenue,
                     child: online
-                      ? OutlinedButton.icon(
-                          onPressed: () =>
-                              onChanged(_PaymentMethod.payAtVenue),
-                          icon: const Icon(
-                            Icons.storefront_rounded,
-                            size: 18,
+                        ? OutlinedButton.icon(
+                            onPressed: () =>
+                                onChanged(_PaymentMethod.payAtVenue),
+                            icon: const Icon(
+                              Icons.storefront_rounded,
+                              size: 18,
+                            ),
+                            label: Text(l10n.payAtVenue),
+                          )
+                        : FilledButton.icon(
+                            onPressed: () =>
+                                onChanged(_PaymentMethod.payAtVenue),
+                            icon: const Icon(
+                              Icons.storefront_rounded,
+                              size: 18,
+                            ),
+                            label: Text(l10n.payAtVenue),
                           ),
-                          label: Text(l10n.payAtVenue),
-                        )
-                      : FilledButton.icon(
-                          onPressed: () =>
-                              onChanged(_PaymentMethod.payAtVenue),
-                          icon: const Icon(
-                            Icons.storefront_rounded,
-                            size: 18,
-                          ),
-                          label: Text(l10n.payAtVenue),
-                        ),
                   ),
                 ),
               ],

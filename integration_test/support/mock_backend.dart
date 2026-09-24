@@ -88,9 +88,9 @@ class MockBackend {
     ownerBookings = MockOwnerBookingRepository(bookings: store);
     owner = E2eOwnerRepository(auth);
     ownerVenues.venues.add(
-      MockVenueRepository.defaultVenues.firstWhere(
-        (v) => v.id == E2eFixtures.venueId,
-      ).copyWith(isActive: true),
+      MockVenueRepository.defaultVenues
+          .firstWhere((v) => v.id == E2eFixtures.venueId)
+          .copyWith(isActive: true),
     );
   }
 
@@ -210,7 +210,8 @@ class MockBackend {
     // account switch. Keep that dependency; the data stays in [store].
     bookingRepositoryProvider.overrideWith((ref) {
       ref.watch(currentUserProvider);
-      return booking;
+      // A new instance per user, as in production (see the class docs).
+      return E2eUserBookingRepository(booking);
     }),
     paymentRepositoryProvider.overrideWithValue(payments),
     checkoutServiceProvider.overrideWithValue(checkout),

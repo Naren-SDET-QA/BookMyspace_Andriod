@@ -122,25 +122,25 @@ class _VenueTile extends ConsumerWidget {
                     venue.isActive ? 'published' : 'unpublished',
                   ),
                   child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: venue.isActive
-                        ? AppTheme.brand.withValues(alpha: 0.12)
-                        : theme.colorScheme.error.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    venue.resolvedListingStatus,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: venue.isActive
-                          ? AppTheme.brand
-                          : theme.colorScheme.error,
-                      fontWeight: FontWeight.w700,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
                     ),
-                  ),
+                    decoration: BoxDecoration(
+                      color: venue.isActive
+                          ? AppTheme.brand.withValues(alpha: 0.12)
+                          : theme.colorScheme.error.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      venue.resolvedListingStatus,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: venue.isActive
+                            ? AppTheme.brand
+                            : theme.colorScheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -188,9 +188,8 @@ class _VenueTile extends ConsumerWidget {
                   child: const Text('Edit'),
                 ),
                 TextButton(
-                  onPressed: () => context.push(
-                    '/owner/venues/${venue.id}/media',
-                  ),
+                  onPressed: () =>
+                      context.push('/owner/venues/${venue.id}/media'),
                   child: const Text('Media'),
                 ),
                 TestId(

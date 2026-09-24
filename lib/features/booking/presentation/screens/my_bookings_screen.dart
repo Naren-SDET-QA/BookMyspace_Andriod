@@ -150,26 +150,42 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(message: e.toString(), onRetry: _refresh),
         data: (list) {
+          // Every backend status belongs to exactly one tab, so no booking
+          // disappears from history (e.g. awaiting owner approval after pay
+          // at venue, or rejected/refunded after an owner decision).
           final filtered = switch (_selectedTab) {
-            0 => list
-                .where(
-                  (booking) =>
-                      booking.status == BookingStatus.confirmed ||
-                      booking.status == BookingStatus.pending ||
-                      booking.status == BookingStatus.held,
-                )
-                .toList(),
-            1 => list
-                .where((booking) => booking.status == BookingStatus.completed)
-                .toList(),
-            _ => list
-                .where((booking) => booking.status == BookingStatus.cancelled)
-                .toList(),
+            0 =>
+              list
+                  .where(
+                    (booking) =>
+                        booking.status == BookingStatus.confirmed ||
+                        booking.status == BookingStatus.pending ||
+                        booking.status == BookingStatus.held ||
+                        booking.status == BookingStatus.pendingOwnerApproval,
+                  )
+                  .toList(),
+            1 =>
+              list
+                  .where(
+                    (booking) =>
+                        booking.status == BookingStatus.completed ||
+                        booking.status == BookingStatus.noShow,
+                  )
+                  .toList(),
+            _ =>
+              list
+                  .where(
+                    (booking) =>
+                        booking.status == BookingStatus.cancelled ||
+                        booking.status == BookingStatus.rejected ||
+                        booking.status == BookingStatus.refunded,
+                  )
+                  .toList(),
           };
-          if (list.isEmpty || filtered.isEmpty) {
+          if (list.isEmpty) {
             return EmptyState(
               icon: Icons.receipt_long_rounded,
-              title: list.isEmpty ? l10n.noBookings : _emptyTabTitle(l10n),
+              title: l10n.noBookings,
               message: l10n.noBookingsMessage,
             );
           }
@@ -202,56 +218,69 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                 ),
               ),
               Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: TestId(
-                    E2eIds.bookingHistory,
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _BookingCard(
-                          booking: filtered[i],
-                    onShowPass:
-                        (filtered[i].status == BookingStatus.confirmed ||
-                            filtered[i].status == BookingStatus.completed)
-                        ? () => _showEntryPass(filtered[i])
-                        : null,
-                    onInvoice: filtered[i].canViewInvoice
-                        ? () => context.push(
-                            '/bookings/${filtered[i].id}/invoice',
-                            extra: filtered[i],
-                          )
-                        : null,
-                    onCancel: filtered[i].canCancel
-                        ? () => _cancelBooking(filtered[i])
-                        : null,
-                    onRefund: filtered[i].canRefund
-                        ? () => _requestRefund(filtered[i])
-                        : null,
-                    onPay:
-                        filtered[i].canPay &&
-                            isCheckoutExposed(ref.watch(featureRegistryProvider))
-                        ? () => context.push(
-                            AppRoutes.paymentFlow.replaceFirst(':id', filtered[i].id),
-                            extra: filtered[i],
-                          )
-                        : null,
-                    onBookAgain: filtered[i].canBookAgain
-                        ? () => context.push(
-                            AppRoutes.venueDetails.replaceFirst(
-                              ':id',
-                              filtered[i].venueId,
+                child: filtered.isEmpty
+                    ? EmptyState(
+                        icon: Icons.receipt_long_rounded,
+                        title: _emptyTabTitle(l10n),
+                        message: l10n.noBookingsMessage,
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _refresh,
+                        child: TestId(
+                          E2eIds.bookingHistory,
+                          child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _BookingCard(
+                                booking: filtered[i],
+                                onShowPass:
+                                    (filtered[i].status ==
+                                            BookingStatus.confirmed ||
+                                        filtered[i].status ==
+                                            BookingStatus.completed)
+                                    ? () => _showEntryPass(filtered[i])
+                                    : null,
+                                onInvoice: filtered[i].canViewInvoice
+                                    ? () => context.push(
+                                        '/bookings/${filtered[i].id}/invoice',
+                                        extra: filtered[i],
+                                      )
+                                    : null,
+                                onCancel: filtered[i].canCancel
+                                    ? () => _cancelBooking(filtered[i])
+                                    : null,
+                                onRefund: filtered[i].canRefund
+                                    ? () => _requestRefund(filtered[i])
+                                    : null,
+                                onPay:
+                                    filtered[i].canPay &&
+                                        isCheckoutExposed(
+                                          ref.watch(featureRegistryProvider),
+                                        )
+                                    ? () => context.push(
+                                        AppRoutes.paymentFlow.replaceFirst(
+                                          ':id',
+                                          filtered[i].id,
+                                        ),
+                                        extra: filtered[i],
+                                      )
+                                    : null,
+                                onBookAgain: filtered[i].canBookAgain
+                                    ? () => context.push(
+                                        AppRoutes.venueDetails.replaceFirst(
+                                          ':id',
+                                          filtered[i].venueId,
+                                        ),
+                                      )
+                                    : null,
+                              ),
                             ),
-                          )
-                        : null,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
               ),
             ],
           );

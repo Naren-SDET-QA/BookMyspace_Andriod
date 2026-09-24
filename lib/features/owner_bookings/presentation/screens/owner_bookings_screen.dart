@@ -32,19 +32,18 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
     await ref.read(ownerBookingsProvider.future);
   }
 
-  Future<void> _applyStatus(
-    Booking booking,
-    OwnerBookingAction action,
-  ) async {
+  Future<void> _applyStatus(Booking booking, OwnerBookingAction action) async {
     final l10n = AppLocalizations.of(context);
     final actionLabel = _actionLabel(action, l10n);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(actionLabel),
-        content: Text('${booking.venueName} · '
-            '${DateFormat.yMMMd().format(booking.bookDate)} · '
-            '${booking.displayStart} – ${booking.displayEnd}'),
+        content: Text(
+          '${booking.venueName} · '
+          '${DateFormat.yMMMd().format(booking.bookDate)} · '
+          '${booking.displayStart} – ${booking.displayEnd}',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -185,40 +184,43 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
                 child: TestId(
                   E2eIds.ownerBookingCard(list[i].id),
                   child: _OwnerBookingCard(
-                  booking: list[i],
-                  onTap: list[i].canViewInvoice
-                      ? () => context.push(
-                          '/bookings/${list[i].id}/invoice',
-                          extra: list[i],
-                        )
-                      : null,
-                  onConfirm: list[i].status == BookingStatus.pending
-                      ? () => _applyStatus(list[i], OwnerBookingAction.confirm)
-                      : null,
-                  onComplete: list[i].status == BookingStatus.confirmed
-                      ? () => _applyStatus(list[i], OwnerBookingAction.complete)
-                      : null,
-                  onNoShow: list[i].status == BookingStatus.confirmed
-                      ? () => _applyStatus(list[i], OwnerBookingAction.noShow)
-                      : null,
-                  onCancel: list[i].status == BookingStatus.pending ||
-                          list[i].status == BookingStatus.confirmed
-                      ? () => _applyStatus(list[i], OwnerBookingAction.cancel)
-                      : null,
-                  onApprove: list[i].status ==
-                          BookingStatus.pendingOwnerApproval
-                      ? () => _applyDecision(
-                          list[i],
-                          OwnerBookingDecision.approve,
-                        )
-                      : null,
-                  onReject: list[i].status ==
-                          BookingStatus.pendingOwnerApproval
-                      ? () => _applyDecision(
-                          list[i],
-                          OwnerBookingDecision.reject,
-                        )
-                      : null,
+                    booking: list[i],
+                    onTap: list[i].canViewInvoice
+                        ? () => context.push(
+                            '/bookings/${list[i].id}/invoice',
+                            extra: list[i],
+                          )
+                        : null,
+                    onConfirm: list[i].status == BookingStatus.pending
+                        ? () =>
+                              _applyStatus(list[i], OwnerBookingAction.confirm)
+                        : null,
+                    onComplete: list[i].status == BookingStatus.confirmed
+                        ? () =>
+                              _applyStatus(list[i], OwnerBookingAction.complete)
+                        : null,
+                    onNoShow: list[i].status == BookingStatus.confirmed
+                        ? () => _applyStatus(list[i], OwnerBookingAction.noShow)
+                        : null,
+                    onCancel:
+                        list[i].status == BookingStatus.pending ||
+                            list[i].status == BookingStatus.confirmed
+                        ? () => _applyStatus(list[i], OwnerBookingAction.cancel)
+                        : null,
+                    onApprove:
+                        list[i].status == BookingStatus.pendingOwnerApproval
+                        ? () => _applyDecision(
+                            list[i],
+                            OwnerBookingDecision.approve,
+                          )
+                        : null,
+                    onReject:
+                        list[i].status == BookingStatus.pendingOwnerApproval
+                        ? () => _applyDecision(
+                            list[i],
+                            OwnerBookingDecision.reject,
+                          )
+                        : null,
                   ),
                 ),
               ),
@@ -342,7 +344,10 @@ class _OwnerBookingCard extends StatelessWidget {
                     label: '${booking.displayStart} – ${booking.displayEnd}',
                   ),
                   if (booking.slotLabel.isNotEmpty)
-                    _InfoChip(icon: Icons.layers_rounded, label: booking.slotLabel),
+                    _InfoChip(
+                      icon: Icons.layers_rounded,
+                      label: booking.slotLabel,
+                    ),
                   if (booking.paymentMethod == 'pay_at_venue')
                     _InfoChip(
                       icon: Icons.storefront_rounded,

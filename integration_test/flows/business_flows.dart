@@ -113,10 +113,9 @@ void _authBoundaryFlows() {
     {E2eTags.critical, E2eTags.auth, E2eTags.owner},
     (tester) async {
       final backend = await pumpMockApp(tester, MockScenario.signedOut);
-      await AuthRobot(tester).signInWithPassword(
-        E2eFixtures.owner.email,
-        E2eFixtures.mockPassword,
-      );
+      await AuthRobot(
+        tester,
+      ).signInWithPassword(E2eFixtures.owner.email, E2eFixtures.mockPassword);
       final nav = NavigationRobot(tester);
       await nav.expectSignedInShell();
       await nav.open(ShellTab.profile);
@@ -155,7 +154,9 @@ void _authBoundaryFlows() {
       await nav.reveal(E2eIds.profileAdminDashboard);
       await nav.tap(E2eIds.profileAdminDashboard);
       await nav.waitFor(E2eIds.adminDashboard);
-      expect(currentLocation(tester), AppRoutes.adminDashboard);
+      // The dashboard is pushed over the profile tab (go_router `push` keeps
+      // the router location at /profile), so assert what is on screen.
+      nav.expectNotShown(E2eIds.logout);
     },
   );
 }
@@ -177,7 +178,10 @@ void _ownerFlows() {
       final owner = OwnerRobot(tester);
       await owner.expectDashboard();
       await owner.openBookings();
-      await owner.expectBooking(id, _status(BookingStatus.pendingOwnerApproval));
+      await owner.expectBooking(
+        id,
+        _status(BookingStatus.pendingOwnerApproval),
+      );
       await owner.approve(id);
       await owner.expectBooking(id, _status(BookingStatus.confirmed));
       owner.expectNotShown(E2eIds.ownerBookingApprove(id));
@@ -214,67 +218,66 @@ void _ownerFlows() {
     },
   );
 
-  e2eFlow(
-    'owner unpublishes and republishes a listing',
-    {E2eTags.owner},
-    (tester) async {
-      final backend = await pumpMockApp(
-        tester,
-        MockScenario.ownerSignedIn,
-        initialLocation: AppRoutes.ownerDashboard,
-      );
-      const venue = E2eFixtures.venueId;
-      final owner = OwnerRobot(tester);
-      await owner.expectDashboard();
-      await owner.openVenues();
-      await owner.expectVenueState(venue, 'published');
-      await owner.togglePublished(venue);
-      await owner.expectVenueState(venue, 'unpublished');
-      expect(backend.ownerVenues.venues.single.isActive, isFalse);
-      await owner.togglePublished(venue);
-      await owner.expectVenueState(venue, 'published');
-      expect(backend.ownerVenues.venues.single.isActive, isTrue);
-    },
-  );
+  e2eFlow('owner unpublishes and republishes a listing', {E2eTags.owner}, (
+    tester,
+  ) async {
+    final backend = await pumpMockApp(
+      tester,
+      MockScenario.ownerSignedIn,
+      initialLocation: AppRoutes.ownerDashboard,
+    );
+    const venue = E2eFixtures.venueId;
+    final owner = OwnerRobot(tester);
+    await owner.expectDashboard();
+    await owner.openVenues();
+    await owner.expectVenueState(venue, 'published');
+    await owner.togglePublished(venue);
+    await owner.expectVenueState(venue, 'unpublished');
+    expect(backend.ownerVenues.venues.single.isActive, isFalse);
+    await owner.togglePublished(venue);
+    await owner.expectVenueState(venue, 'published');
+    expect(backend.ownerVenues.venues.single.isActive, isTrue);
+  });
 
-  e2eFlow(
-    'owner adds a time slot and deactivates it',
-    {E2eTags.owner},
-    (tester) async {
-      final backend = await pumpMockApp(
-        tester,
-        MockScenario.ownerSignedIn,
-        initialLocation: AppRoutes.ownerDashboard,
-      );
-      const label = E2eFixtures.newSlotLabel;
-      final owner = OwnerRobot(tester);
-      await owner.expectDashboard();
-      await owner.openVenues();
-      await owner.openAvailability(E2eFixtures.venueId);
-      await owner.addSlot(
-        label: label,
-        start: '10:00',
-        end: '12:00',
-        price: '5000',
-      );
-      await owner.expectSlot(label, 'active');
-      final saved = backend.ownerAvailability.slotsByVenue[E2eFixtures.venueId]!
-          .single;
-      expect(saved.label, label);
-      expect(saved.startTime, '10:00:00');
-      expect(saved.endTime, '12:00:00');
-      expect(saved.priceAmount, 5000);
-      expect(saved.isActive, isTrue);
+  e2eFlow('owner adds a time slot and deactivates it', {E2eTags.owner}, (
+    tester,
+  ) async {
+    final backend = await pumpMockApp(
+      tester,
+      MockScenario.ownerSignedIn,
+      initialLocation: AppRoutes.ownerDashboard,
+    );
+    const label = E2eFixtures.newSlotLabel;
+    final owner = OwnerRobot(tester);
+    await owner.expectDashboard();
+    await owner.openVenues();
+    await owner.openAvailability(E2eFixtures.venueId);
+    await owner.addSlot(
+      label: label,
+      start: '10:00',
+      end: '12:00',
+      price: '5000',
+    );
+    await owner.expectSlot(label, 'active');
+    final saved =
+        backend.ownerAvailability.slotsByVenue[E2eFixtures.venueId]!.single;
+    expect(saved.label, label);
+    expect(saved.startTime, '10:00:00');
+    expect(saved.endTime, '12:00:00');
+    expect(saved.priceAmount, 5000);
+    expect(saved.isActive, isTrue);
 
-      await owner.toggleSlot(label);
-      await owner.expectSlot(label, 'inactive');
-      expect(
-        backend.ownerAvailability.slotsByVenue[E2eFixtures.venueId]!.single
-            .isActive,
-        isFalse,
-      );
-    },
-  );
+    await owner.toggleSlot(label);
+    await owner.expectSlot(label, 'inactive');
+    expect(
+      backend
+          .ownerAvailability
+          .slotsByVenue[E2eFixtures.venueId]!
+          .single
+          .isActive,
+      isFalse,
+    );
+  });
 
   e2eFlow(
     'owner cannot save a time slot that ends before it starts',
@@ -297,9 +300,7 @@ void _ownerFlows() {
       );
       // Validation keeps the dialog open and nothing reaches the backend.
       owner.expectShown(E2eIds.availabilitySlotSave);
-      owner.expectNotShown(
-        E2eIds.availabilitySlot(E2eFixtures.newSlotLabel),
-      );
+      owner.expectNotShown(E2eIds.availabilitySlot(E2eFixtures.newSlotLabel));
       expect(backend.ownerAvailability.saveSlotCalls, 0);
     },
   );
@@ -345,7 +346,10 @@ void _lifecycleAndPaymentFlows() {
       // History shows the booking as awaiting the owner.
       await payment.done();
       await nav.open(ShellTab.bookings);
-      await history.expectStatus(id, _status(BookingStatus.pendingOwnerApproval));
+      await history.expectStatus(
+        id,
+        _status(BookingStatus.pendingOwnerApproval),
+      );
 
       // Owner signs in and approves it.
       await nav.open(ShellTab.profile);
@@ -362,7 +366,10 @@ void _lifecycleAndPaymentFlows() {
       final owner = OwnerRobot(tester);
       await owner.expectDashboard();
       await owner.openBookings();
-      await owner.expectBooking(id, _status(BookingStatus.pendingOwnerApproval));
+      await owner.expectBooking(
+        id,
+        _status(BookingStatus.pendingOwnerApproval),
+      );
       await owner.approve(id);
       await owner.expectBooking(id, _status(BookingStatus.confirmed));
       expect(backend.statusOf(id), BookingStatus.confirmed);

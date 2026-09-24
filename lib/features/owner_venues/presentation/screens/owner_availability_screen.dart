@@ -34,104 +34,10 @@ class _OwnerAvailabilityScreenState
   }
 
   Future<void> _editSlot([OwnerTimeSlot? existing]) async {
-    final label = TextEditingController(text: existing?.label ?? '');
-    final start = TextEditingController(
-      text: existing?.startTime.substring(0, 5) ?? '09:00',
-    );
-    final end = TextEditingController(
-      text: existing?.endTime.substring(0, 5) ?? '10:00',
-    );
-    final price = TextEditingController(
-      text: existing?.priceAmount.toStringAsFixed(0) ?? '0',
-    );
     final value = await showDialog<OwnerTimeSlot>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(existing == null ? 'Add time slot' : 'Edit time slot'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TestId(
-              E2eIds.availabilitySlotLabel,
-              child: TextField(
-                controller: label,
-                decoration: const InputDecoration(labelText: 'Slot name'),
-              ),
-            ),
-            TestId(
-              E2eIds.availabilitySlotStart,
-              child: TextField(
-                controller: start,
-                decoration: const InputDecoration(labelText: 'Start (HH:MM)'),
-              ),
-            ),
-            TestId(
-              E2eIds.availabilitySlotEnd,
-              child: TextField(
-                controller: end,
-                decoration: const InputDecoration(labelText: 'End (HH:MM)'),
-              ),
-            ),
-            TestId(
-              E2eIds.availabilitySlotPrice,
-              child: TextField(
-                controller: price,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Price'),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TestId(
-            E2eIds.availabilitySlotSave,
-            child: FilledButton(
-            onPressed: () {
-              final amount = double.tryParse(price.text.trim());
-              if (amount == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter a valid price.')),
-                );
-                return;
-              }
-              try {
-                OwnerTimeSlot.validate(
-                  label: label.text,
-                  startTime: start.text,
-                  endTime: end.text,
-                  priceAmount: amount,
-                );
-                Navigator.pop(
-                  context,
-                  OwnerTimeSlot(
-                    id: existing?.id,
-                    label: label.text.trim(),
-                    startTime: '${start.text.trim()}:00',
-                    endTime: '${end.text.trim()}:00',
-                    priceAmount: amount,
-                    isActive: existing?.isActive ?? true,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('$e')));
-              }
-            },
-            child: const Text('Save'),
-          ),
-          ),
-        ],
-      ),
+      builder: (context) => _SlotEditorDialog(existing: existing),
     );
-    label.dispose();
-    start.dispose();
-    end.dispose();
-    price.dispose();
     if (value == null || !mounted) return;
     await ref
         .read(ownerAvailabilityRepositoryProvider)
@@ -262,4 +168,125 @@ class _OwnerAvailabilityScreenState
       },
     ),
   );
+}
+
+/// Add/edit time-slot dialog. It owns its text controllers, so they are
+/// disposed only when the dialog route is removed, after its closing
+/// animation has finished rebuilding the fields.
+class _SlotEditorDialog extends StatefulWidget {
+  const _SlotEditorDialog({this.existing});
+
+  final OwnerTimeSlot? existing;
+
+  @override
+  State<_SlotEditorDialog> createState() => _SlotEditorDialogState();
+}
+
+class _SlotEditorDialogState extends State<_SlotEditorDialog> {
+  late final label = TextEditingController(text: widget.existing?.label ?? '');
+  late final start = TextEditingController(
+    text: widget.existing?.startTime.substring(0, 5) ?? '09:00',
+  );
+  late final end = TextEditingController(
+    text: widget.existing?.endTime.substring(0, 5) ?? '10:00',
+  );
+  late final price = TextEditingController(
+    text: widget.existing?.priceAmount.toStringAsFixed(0) ?? '0',
+  );
+
+  OwnerTimeSlot? get existing => widget.existing;
+
+  @override
+  void dispose() {
+    label.dispose();
+    start.dispose();
+    end.dispose();
+    price.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(existing == null ? 'Add time slot' : 'Edit time slot'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TestId(
+            E2eIds.availabilitySlotLabel,
+            child: TextField(
+              controller: label,
+              decoration: const InputDecoration(labelText: 'Slot name'),
+            ),
+          ),
+          TestId(
+            E2eIds.availabilitySlotStart,
+            child: TextField(
+              controller: start,
+              decoration: const InputDecoration(labelText: 'Start (HH:MM)'),
+            ),
+          ),
+          TestId(
+            E2eIds.availabilitySlotEnd,
+            child: TextField(
+              controller: end,
+              decoration: const InputDecoration(labelText: 'End (HH:MM)'),
+            ),
+          ),
+          TestId(
+            E2eIds.availabilitySlotPrice,
+            child: TextField(
+              controller: price,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Price'),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TestId(
+          E2eIds.availabilitySlotSave,
+          child: FilledButton(
+            onPressed: () {
+              final amount = double.tryParse(price.text.trim());
+              if (amount == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid price.')),
+                );
+                return;
+              }
+              try {
+                OwnerTimeSlot.validate(
+                  label: label.text,
+                  startTime: start.text,
+                  endTime: end.text,
+                  priceAmount: amount,
+                );
+                Navigator.pop(
+                  context,
+                  OwnerTimeSlot(
+                    id: existing?.id,
+                    label: label.text.trim(),
+                    startTime: '${start.text.trim()}:00',
+                    endTime: '${end.text.trim()}:00',
+                    priceAmount: amount,
+                    isActive: existing?.isActive ?? true,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('$e')));
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ),
+      ],
+    );
+  }
 }

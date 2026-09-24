@@ -36,189 +36,189 @@ class BookingSuccessScreen extends StatelessWidget {
         child: TestId(
           E2eIds.bookingSuccess,
           child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
-          children: [
-            Center(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.4, end: 1),
-                duration: const Duration(milliseconds: 450),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) =>
-                    Transform.scale(scale: value, child: child),
-                child: Icon(
-                  Icons.check_circle_rounded,
-                  size: 88,
-                  color: Colors.green.shade600,
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+            children: [
+              Center(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.4, end: 1),
+                  duration: const Duration(milliseconds: 450),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) =>
+                      Transform.scale(scale: value, child: child),
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    size: 88,
+                    color: Colors.green.shade600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.bookingSuccessTitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (booking.venueName.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
               Text(
-                booking.venueName,
+                l10n.bookingSuccessTitle,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-            const SizedBox(height: 20),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.bookingRef,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+              if (booking.venueName.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  booking.venueName,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.bookingRef,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                          Text(
-                            booking.bookingRef,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                            Text(
+                              booking.bookingRef,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: l10n.copy,
-                      icon: const Icon(Icons.copy_rounded),
-                      onPressed: () async {
-                        await Clipboard.setData(
-                          ClipboardData(text: booking.bookingRef),
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.copiedToClipboard)),
+                      IconButton(
+                        tooltip: l10n.copy,
+                        icon: const Icon(Icons.copy_rounded),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                            ClipboardData(text: booking.bookingRef),
                           );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (booking.slotLabel.isNotEmpty)
-                      _InfoRow(
-                        icon: Icons.schedule_rounded,
-                        text: booking.slotLabel,
-                      ),
-                    if (booking.slotLabel.isNotEmpty)
-                      const SizedBox(height: 8),
-                    _InfoRow(
-                      icon: Icons.event_rounded,
-                      text: DateFormat.yMMMd().format(booking.bookDate),
-                    ),
-                    if (booking.venueCity.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      _InfoRow(
-                        icon: Icons.place_rounded,
-                        text: booking.venueCity,
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.copiedToClipboard)),
+                            );
+                          }
+                        },
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              color: AppTheme.brand.withValues(alpha: 0.06),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _PriceRow(
-                      label: l10n.basePrice,
-                      value: formatInr(booking.amount),
-                    ),
-                    _PriceRow(
-                      label: l10n.taxRate,
-                      value: formatInr(booking.taxAmount),
-                    ),
-                    if (booking.discountAmount > 0)
-                      _PriceRow(
-                        label: l10n.discount,
-                        value: '-${formatInr(booking.discountAmount)}',
-                      ),
-                    const Divider(height: 24),
-                    _PriceRow(
-                      label: l10n.total,
-                      value: formatInr(booking.totalAmount),
-                      emphasize: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (booking.paymentMethod.isNotEmpty ||
-                booking.paymentRef.isNotEmpty) ...[
               const SizedBox(height: 12),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _PriceRow(
-                        label: l10n.payMethod,
-                        value: booking.isOffline
-                            ? l10n.offlinePayment
-                            : l10n.onlinePayment,
-                      ),
-                      if (booking.paymentRef.isNotEmpty)
-                        _PriceRow(
-                          label: l10n.paymentRef,
-                          value: booking.paymentRef,
+                      if (booking.slotLabel.isNotEmpty)
+                        _InfoRow(
+                          icon: Icons.schedule_rounded,
+                          text: booking.slotLabel,
                         ),
+                      if (booking.slotLabel.isNotEmpty)
+                        const SizedBox(height: 8),
+                      _InfoRow(
+                        icon: Icons.event_rounded,
+                        text: DateFormat.yMMMd().format(booking.bookDate),
+                      ),
+                      if (booking.venueCity.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _InfoRow(
+                          icon: Icons.place_rounded,
+                          text: booking.venueCity,
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              Card(
+                color: AppTheme.brand.withValues(alpha: 0.06),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _PriceRow(
+                        label: l10n.basePrice,
+                        value: formatInr(booking.amount),
+                      ),
+                      _PriceRow(
+                        label: l10n.taxRate,
+                        value: formatInr(booking.taxAmount),
+                      ),
+                      if (booking.discountAmount > 0)
+                        _PriceRow(
+                          label: l10n.discount,
+                          value: '-${formatInr(booking.discountAmount)}',
+                        ),
+                      const Divider(height: 24),
+                      _PriceRow(
+                        label: l10n.total,
+                        value: formatInr(booking.totalAmount),
+                        emphasize: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (booking.paymentMethod.isNotEmpty ||
+                  booking.paymentRef.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        _PriceRow(
+                          label: l10n.payMethod,
+                          value: booking.isOffline
+                              ? l10n.offlinePayment
+                              : l10n.onlinePayment,
+                        ),
+                        if (booking.paymentRef.isNotEmpty)
+                          _PriceRow(
+                            label: l10n.paymentRef,
+                            value: booking.paymentRef,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/bookings/${booking.id}/invoice'),
+                icon: const Icon(Icons.receipt_long_rounded),
+                label: Text(l10n.viewInvoice),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () {
+                  context.go(AppRoutes.bookings);
+                },
+                child: Text(l10n.myBookings),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  context.go(AppRoutes.home);
+                },
+                child: Text(l10n.exploreMoreSpaces),
+              ),
             ],
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: () =>
-                  context.push('/bookings/${booking.id}/invoice'),
-              icon: const Icon(Icons.receipt_long_rounded),
-              label: Text(l10n.viewInvoice),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () {
-                context.go(AppRoutes.bookings);
-              },
-              child: Text(l10n.myBookings),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                context.go(AppRoutes.home);
-              },
-              child: Text(l10n.exploreMoreSpaces),
-            ),
-          ],
-        ),
+          ),
         ),
       ),
     );

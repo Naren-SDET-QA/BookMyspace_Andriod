@@ -53,7 +53,8 @@ test.describe('auth & role boundaries (mock)', () => {
     await app.tap(Ids.profileOwnerDashboard);
     await app.expectShown(Ids.ownerDashboard);
     await app.expectShown(Ids.ownerActionBookings);
-    await app.expectLocation('/owner');
+    // Pushed over the profile tab: go_router `push` does not change the URL.
+    await app.expectNotShown(Ids.logout);
   });
 
   test('owner is redirected away from the admin area', { tag: ['@auth', '@owner', '@admin', '@negative'] }, async ({ app }) => {
@@ -69,6 +70,7 @@ test.describe('auth & role boundaries (mock)', () => {
     await app.reveal(Ids.profileAdminDashboard);
     await app.tap(Ids.profileAdminDashboard);
     await app.expectShown(Ids.adminDashboard);
-    await app.expectLocation('/admin');
+    // Pushed over the profile tab: go_router `push` does not change the URL.
+    await app.expectNotShown(Ids.logout);
   });
 });

@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:bookmyspace/features/auth/domain/auth_repository.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
+import 'package:bookmyspace/features/booking/domain/booking_repository.dart';
 import 'package:bookmyspace/features/owner/domain/owner.dart';
 import 'package:bookmyspace/features/owner_venues/domain/owner_availability.dart';
 import 'package:bookmyspace/features/owner_venues/domain/owner_availability_repository.dart';
@@ -78,6 +79,12 @@ class E2eAuthRepository implements AuthRepository {
   int signInCount = 0;
   int verifyCount = 0;
   int signOutCount = 0;
+
+  /// Closes the auth streams. The harness calls this when a test tears down.
+  Future<void> dispose() async {
+    await _controller.close();
+    await _recovery.close();
+  }
 
   AuthUser _account(String email) =>
       directory[email.trim().toLowerCase()] ??
@@ -160,9 +167,7 @@ class E2eAuthRepository implements AuthRepository {
   @override
   Future<AuthUser> updateProfile({String? fullName, String? avatarUrl}) async {
     final current = _user ?? const AuthUser(id: 'mock-user');
-    return _emit(
-      current.copyWith(fullName: fullName, avatarUrl: avatarUrl),
-    );
+    return _emit(current.copyWith(fullName: fullName, avatarUrl: avatarUrl));
   }
 }
 
@@ -274,6 +279,82 @@ class E2eBookingRepository extends MockBookingRepository {
     );
     if (updated == null) throw Exception('Booking not found: $bookingId');
   }
+}
+
+/// A per-session view of [E2eBookingRepository], mirroring production.
+///
+/// Production builds a new `CachingBookingRepository` whenever the signed-in
+/// user changes, and that new instance is what makes Riverpod refresh
+/// `myBookingsProvider` after an account switch. Returning the same shared
+/// instance would not notify dependents, so history would stay stale. This
+/// wrapper is created per user and delegates to the one shared store.
+class E2eUserBookingRepository implements BookingRepository {
+  E2eUserBookingRepository(this._shared);
+
+  final E2eBookingRepository _shared;
+
+  @override
+  Future<List<SlotAvailability>> availableTimeSlots({
+    required String venueId,
+    required DateTime date,
+  }) => _shared.availableTimeSlots(venueId: venueId, date: date);
+
+  @override
+  Future<BookingHold> acquireHold({
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    int holdMinutes = 10,
+  }) => _shared.acquireHold(
+    venueId: venueId,
+    slotId: slotId,
+    bookDate: bookDate,
+    amount: amount,
+    holdMinutes: holdMinutes,
+  );
+
+  @override
+  Future<Booking> createBooking({
+    required BookingHold hold,
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    required double taxAmount,
+    required double totalAmount,
+    Map<String, dynamic> metadata = const {},
+  }) => _shared.createBooking(
+    hold: hold,
+    venueId: venueId,
+    slotId: slotId,
+    bookDate: bookDate,
+    amount: amount,
+    taxAmount: taxAmount,
+    totalAmount: totalAmount,
+    metadata: metadata,
+  );
+
+  @override
+  Future<Booking> bookingById(String bookingId) =>
+      _shared.bookingById(bookingId);
+
+  @override
+  Future<List<Booking>> myBookings() => _shared.myBookings();
+
+  @override
+  Future<void> cancelBooking(String bookingId) =>
+      _shared.cancelBooking(bookingId);
+
+  @override
+  Future<Booking> applyCoupon({
+    required String bookingId,
+    required String code,
+  }) => _shared.applyCoupon(bookingId: bookingId, code: code);
+
+  @override
+  Future<Booking> removeCoupon(String bookingId) =>
+      _shared.removeCoupon(bookingId);
 }
 
 /// Payment repository over the shared booking store, following the server

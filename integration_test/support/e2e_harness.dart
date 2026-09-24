@@ -29,6 +29,7 @@ Future<MockBackend> pumpMockApp(
   String initialLocation = AppRoutes.shell,
 }) async {
   final backend = MockBackend.forScenario(scenario);
+  addTearDown(backend.auth.dispose);
   await tester.pumpWidget(
     buildMockApp(backend, initialLocation: initialLocation),
   );

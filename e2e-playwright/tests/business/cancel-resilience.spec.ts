@@ -73,7 +73,8 @@ test.describe('failures, retries & duplicate submission (mock)', () => {
   test('an unavailable slot cannot be booked', { tag: ['@booking', '@negative'] }, async ({ app }) => {
     await app.open(`/venues/${Fixtures.venueId}`, 'signedIn');
     await app.tap(Ids.bookNow);
-    await app.tap(Ids.slot(Fixtures.unavailableSlotId));
+    // Booked slot: its tile has no onTap (booking_screen `_SlotTile`).
+    await app.tapExpectingNoEffect(Ids.slot(Fixtures.unavailableSlotId));
     await app.expectNotShown(Ids.bookingConfirm);
   });
 
@@ -85,7 +86,8 @@ test.describe('failures, retries & duplicate submission (mock)', () => {
     await app.tap(Ids.bookingConfirm);
     await app.tapIfShown(Ids.bookingConfirmDialog, 500);
     // Hold request in flight (1.5 s): press confirm again.
-    await app.byId(Ids.bookingConfirm).first().click();
+    // Confirm is disabled while `confirming` (booking_screen confirm bar).
+    await app.tapExpectingNoEffect(Ids.bookingConfirm);
     await page.waitForTimeout(300);
     await app.expectNotShown(Ids.bookingConfirmDialog);
     await app.expectShown(Ids.checkoutSummary);

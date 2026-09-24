@@ -21,10 +21,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: TestId(
-          E2eIds.ownerDashboard,
-          child: Text(l10n.ownerDashboard),
-        ),
+        title: TestId(E2eIds.ownerDashboard, child: Text(l10n.ownerDashboard)),
       ),
       body: owner.when(
         loading: () => const Center(child: CircularProgressIndicator()),
