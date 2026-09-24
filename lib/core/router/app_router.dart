@@ -106,6 +106,7 @@ import '../modular/feature_id.dart';
 import '../modular/feature_providers.dart';
 import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
+import '../widgets/test_id.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {
@@ -1016,11 +1017,14 @@ class _AppShell extends ConsumerWidget {
         },
         destinations: [
           for (final item in visible)
-            NavigationDestination(
-              key: ValueKey('shell_${item.id}'),
-              icon: Icon(_shellIcon(item.id, selected: false)),
-              selectedIcon: Icon(_shellIcon(item.id, selected: true)),
-              label: _shellLabel(item.id, l10n),
+            TestId(
+              E2eIds.nav(item.id),
+              child: NavigationDestination(
+                key: ValueKey('shell_${item.id}'),
+                icon: Icon(_shellIcon(item.id, selected: false)),
+                selectedIcon: Icon(_shellIcon(item.id, selected: true)),
+                label: _shellLabel(item.id, l10n),
+              ),
             ),
         ],
       ),

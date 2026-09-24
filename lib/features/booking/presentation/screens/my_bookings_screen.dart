@@ -10,6 +10,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../notifications/domain/notification.dart';
 import '../../../notifications/presentation/notification_providers.dart';
 import '../../../payments/presentation/payment_providers.dart';
@@ -62,9 +63,12 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.keep),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.cancel),
+          TestId(
+            E2eIds.bookingCancelConfirm,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(l10n.cancel),
+            ),
           ),
         ],
       ),
@@ -188,47 +192,50 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _refresh,
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _BookingCard(
-                        booking: filtered[i],
-                  onShowPass:
-                      (filtered[i].status == BookingStatus.confirmed ||
-                          filtered[i].status == BookingStatus.completed)
-                      ? () => _showEntryPass(filtered[i])
-                      : null,
-                  onInvoice: filtered[i].canViewInvoice
-                      ? () => context.push(
-                          '/bookings/${filtered[i].id}/invoice',
-                          extra: filtered[i],
-                        )
-                      : null,
-                  onCancel: filtered[i].canCancel
-                      ? () => _cancelBooking(filtered[i])
-                      : null,
-                  onRefund: filtered[i].canRefund
-                      ? () => _requestRefund(filtered[i])
-                      : null,
-                  onPay:
-                      filtered[i].canPay &&
-                          isCheckoutExposed(ref.watch(featureRegistryProvider))
-                      ? () => context.push(
-                          AppRoutes.paymentFlow.replaceFirst(':id', filtered[i].id),
-                          extra: filtered[i],
-                        )
-                      : null,
-                  onBookAgain: filtered[i].canBookAgain
-                      ? () => context.push(
-                          AppRoutes.venueDetails.replaceFirst(
-                            ':id',
-                            filtered[i].venueId,
-                          ),
-                        )
-                      : null,
+                  child: TestId(
+                    E2eIds.bookingHistory,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _BookingCard(
+                          booking: filtered[i],
+                    onShowPass:
+                        (filtered[i].status == BookingStatus.confirmed ||
+                            filtered[i].status == BookingStatus.completed)
+                        ? () => _showEntryPass(filtered[i])
+                        : null,
+                    onInvoice: filtered[i].canViewInvoice
+                        ? () => context.push(
+                            '/bookings/${filtered[i].id}/invoice',
+                            extra: filtered[i],
+                          )
+                        : null,
+                    onCancel: filtered[i].canCancel
+                        ? () => _cancelBooking(filtered[i])
+                        : null,
+                    onRefund: filtered[i].canRefund
+                        ? () => _requestRefund(filtered[i])
+                        : null,
+                    onPay:
+                        filtered[i].canPay &&
+                            isCheckoutExposed(ref.watch(featureRegistryProvider))
+                        ? () => context.push(
+                            AppRoutes.paymentFlow.replaceFirst(':id', filtered[i].id),
+                            extra: filtered[i],
+                          )
+                        : null,
+                    onBookAgain: filtered[i].canBookAgain
+                        ? () => context.push(
+                            AppRoutes.venueDetails.replaceFirst(
+                              ':id',
+                              filtered[i].venueId,
+                            ),
+                          )
+                        : null,
+                        ),
                       ),
                     ),
                   ),
@@ -387,144 +394,150 @@ class _BookingCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final name = booking.venueName.isEmpty ? l10n.venues : booking.venueName;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (booking.slotLabel.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+    return TestId(
+      E2eIds.bookingCard(booking.id),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          booking.slotLabel,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        if (booking.slotLabel.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            booking.slotLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
+                  ),
+                  BookingStatusBadge(status: booking.status),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _InfoChip(
+                    icon: Icons.calendar_today_rounded,
+                    label: DateFormat.yMMMd().format(booking.bookDate),
+                  ),
+                  const SizedBox(width: 12),
+                  _InfoChip(
+                    icon: Icons.schedule_rounded,
+                    label: '${booking.displayStart} – ${booking.displayEnd}',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    booking.bookingRef,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    formatInr(booking.totalAmount),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppTheme.brand,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              if (onShowPass != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    onPressed: onShowPass,
+                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                    label: Text(l10n.viewEntryPass),
                   ),
                 ),
-                BookingStatusBadge(status: booking.status),
               ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _InfoChip(
-                  icon: Icons.calendar_today_rounded,
-                  label: DateFormat.yMMMd().format(booking.bookDate),
-                ),
-                const SizedBox(width: 12),
-                _InfoChip(
-                  icon: Icons.schedule_rounded,
-                  label: '${booking.displayStart} – ${booking.displayEnd}',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  booking.bookingRef,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  formatInr(booking.totalAmount),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w700,
+              if (onInvoice != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onInvoice,
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: Text(l10n.viewInvoice),
                   ),
                 ),
               ],
-            ),
-            if (onShowPass != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonalIcon(
-                  onPressed: onShowPass,
-                  icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                  label: Text(l10n.viewEntryPass),
+              if (onCancel != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: TestId(
+                    E2eIds.bookingCancel(booking.id),
+                    child: OutlinedButton.icon(
+                      onPressed: onCancel,
+                      icon: const Icon(Icons.cancel_outlined, size: 18),
+                      label: Text(l10n.cancelBooking),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-            if (onInvoice != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onInvoice,
-                  icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                  label: Text(l10n.viewInvoice),
+              ],
+              if (onRefund != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onRefund,
+                    icon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                    label: Text(l10n.requestRefund),
+                  ),
                 ),
-              ),
-            ],
-            if (onCancel != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onCancel,
-                  icon: const Icon(Icons.cancel_outlined, size: 18),
-                  label: Text(l10n.cancelBooking),
+              ],
+              if (onPay != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onPay,
+                    icon: const Icon(Icons.payment_rounded, size: 18),
+                    label: Text(l10n.payNow),
+                  ),
                 ),
-              ),
-            ],
-            if (onRefund != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onRefund,
-                  icon: const Icon(Icons.currency_rupee_rounded, size: 18),
-                  label: Text(l10n.requestRefund),
+              ],
+              if (onBookAgain != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onBookAgain,
+                    icon: const Icon(Icons.replay_rounded, size: 18),
+                    label: Text(l10n.bookAgain),
+                  ),
                 ),
-              ),
+              ],
             ],
-            if (onPay != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onPay,
-                  icon: const Icon(Icons.payment_rounded, size: 18),
-                  label: Text(l10n.payNow),
-                ),
-              ),
-            ],
-            if (onBookAgain != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onBookAgain,
-                  icon: const Icon(Icons.replay_rounded, size: 18),
-                  label: Text(l10n.bookAgain),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

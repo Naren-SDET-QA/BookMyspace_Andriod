@@ -12,6 +12,7 @@ import '../../../../core/offline/map_tile_cache.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../home/domain/customer_section_catalog.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
@@ -177,14 +178,17 @@ class _VenueDetailsBody extends ConsumerWidget {
           ),
           actions: [
             favorite.when(
-              data: (isFav) => IconButton(
-                onPressed: () =>
-                    ref.read(toggleFavoriteProvider(venue.id).future),
-                icon: Icon(
-                  isFav ?? false
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
-                  color: isFav ?? false ? AppTheme.accent : null,
+              data: (isFav) => TestId(
+                E2eIds.venueFavorite,
+                child: IconButton(
+                  onPressed: () =>
+                      ref.read(toggleFavoriteProvider(venue.id).future),
+                  icon: Icon(
+                    isFav ?? false
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    color: isFav ?? false ? AppTheme.accent : null,
+                  ),
                 ),
               ),
               loading: () => const IconButton(
@@ -643,11 +647,14 @@ class _BookingBar extends StatelessWidget {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: FilledButton.icon(
-          onPressed: () =>
-              context.push('/venues/${venue.id}/book', extra: venue),
-          icon: const Icon(Icons.event_available_rounded),
-          label: Text('$cta · ${formatInr(venue.price)}'),
+        child: TestId(
+          E2eIds.bookNow,
+          child: FilledButton.icon(
+            onPressed: () =>
+                context.push('/venues/${venue.id}/book', extra: venue),
+            icon: const Icon(Icons.event_available_rounded),
+            label: Text('$cta · ${formatInr(venue.price)}'),
+          ),
         ),
       ),
     );

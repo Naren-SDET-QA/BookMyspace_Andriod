@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../auth_providers.dart';
 import '../otp_controller.dart';
 
@@ -283,53 +284,62 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   if (canOtp)
-                    SegmentedButton<_OtpChannel>(
-                      segments: [
-                        if (emailOtp)
-                          ButtonSegment(
-                            value: _OtpChannel.email,
-                            label: Text(l10n.email),
-                          ),
-                        if (phoneOtp)
-                          ButtonSegment(
-                            value: _OtpChannel.phone,
-                            label: Text(l10n.phone),
-                          ),
-                      ],
-                      selected: {_channel},
-                      onSelectionChanged: (s) => _toggleChannel(),
-                    ),
-                  if (canOtp) const SizedBox(height: 16),
-                  if (canOtp)
-                    TextFormField(
-                      controller: _contactController,
-                      enabled: !_busy && !_otpSent,
-                      keyboardType: isEmail
-                          ? TextInputType.emailAddress
-                          : TextInputType.phone,
-                      autocorrect: false,
-                      decoration: InputDecoration(
-                        labelText: isEmail ? l10n.email : l10n.phone,
-                        prefixIcon: Icon(
-                          isEmail ? Icons.mail_outline : Icons.phone_outlined,
-                        ),
-                        border: const OutlineInputBorder(),
+                    TestId(
+                      E2eIds.otpChannel,
+                      child: SegmentedButton<_OtpChannel>(
+                        segments: [
+                          if (emailOtp)
+                            ButtonSegment(
+                              value: _OtpChannel.email,
+                              label: Text(l10n.email),
+                            ),
+                          if (phoneOtp)
+                            ButtonSegment(
+                              value: _OtpChannel.phone,
+                              label: Text(l10n.phone),
+                            ),
+                        ],
+                        selected: {_channel},
+                        onSelectionChanged: (s) => _toggleChannel(),
                       ),
-                      validator: _validateContact,
                     ),
                   if (canOtp) const SizedBox(height: 16),
                   if (canOtp)
-                    FilledButton.tonalIcon(
-                      onPressed: _busy || (_otpSent && !_otpState.canResend)
-                          ? null
-                          : _sendOtp,
-                      icon: _busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.sms_outlined),
-                      label: Text(_otpSent ? l10n.resendOtp : l10n.sendOtp),
+                    TestId(
+                      E2eIds.otpContact,
+                      child: TextFormField(
+                        controller: _contactController,
+                        enabled: !_busy && !_otpSent,
+                        keyboardType: isEmail
+                            ? TextInputType.emailAddress
+                            : TextInputType.phone,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          labelText: isEmail ? l10n.email : l10n.phone,
+                          prefixIcon: Icon(
+                            isEmail ? Icons.mail_outline : Icons.phone_outlined,
+                          ),
+                          border: const OutlineInputBorder(),
+                        ),
+                        validator: _validateContact,
+                      ),
+                    ),
+                  if (canOtp) const SizedBox(height: 16),
+                  if (canOtp)
+                    TestId(
+                      E2eIds.otpSend,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _busy || (_otpSent && !_otpState.canResend)
+                            ? null
+                            : _sendOtp,
+                        icon: _busy
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.sms_outlined),
+                        label: Text(_otpSent ? l10n.resendOtp : l10n.sendOtp),
+                      ),
                     ),
                   if (_otpSent && canOtp) ...[
                     const SizedBox(height: 8),
@@ -343,30 +353,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      key: _otpInputKey,
-                      controller: _otpController,
-                      enabled: !_otpBusy,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      decoration: InputDecoration(
-                        labelText: l10n.otpPlaceholder,
-                        prefixIcon: const Icon(Icons.verified_outlined),
-                        border: const OutlineInputBorder(),
-                        counterText: '',
+                    TestId(
+                      E2eIds.otpCode,
+                      child: TextFormField(
+                        key: _otpInputKey,
+                        controller: _otpController,
+                        enabled: !_otpBusy,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: InputDecoration(
+                          labelText: l10n.otpPlaceholder,
+                          prefixIcon: const Icon(Icons.verified_outlined),
+                          border: const OutlineInputBorder(),
+                          counterText: '',
+                        ),
+                        validator: _validateOtp,
+                        onFieldSubmitted: (_) => _verifyOtp(),
                       ),
-                      validator: _validateOtp,
-                      onFieldSubmitted: (_) => _verifyOtp(),
                     ),
                     const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _otpBusy ? null : _verifyOtp,
-                      child: _otpBusy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.verifyOtp),
+                    TestId(
+                      E2eIds.otpSubmit,
+                      child: FilledButton(
+                        onPressed: _otpBusy ? null : _verifyOtp,
+                        child: _otpBusy
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(l10n.verifyOtp),
+                      ),
                     ),
                     TextButton(
                       onPressed: _otpState.canResend && !_busy
@@ -381,59 +397,77 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                   if (password) ...[
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordEmailController,
-                      decoration: InputDecoration(labelText: l10n.email),
+                    TestId(
+                      E2eIds.loginEmail,
+                      child: TextFormField(
+                        controller: _passwordEmailController,
+                        decoration: InputDecoration(labelText: l10n.email),
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: l10n.password,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _showPassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                    TestId(
+                      E2eIds.loginPassword,
+                      child: TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: l10n.password,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () =>
+                                setState(() => _showPassword = !_showPassword),
                           ),
-                          onPressed: () =>
-                              setState(() => _showPassword = !_showPassword),
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    FilledButton(
-                      onPressed: _busy ? null : _passwordLogin,
-                      child: Text(l10n.login),
+                    TestId(
+                      E2eIds.loginSubmit,
+                      child: FilledButton(
+                        onPressed: _busy ? null : _passwordLogin,
+                        child: Text(l10n.login),
+                      ),
                     ),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => context.push(AppRoutes.forgotPassword),
-                        child: Text(l10n.forgotPassword),
+                      child: TestId(
+                        E2eIds.loginForgotPassword,
+                        child: TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => context.push(AppRoutes.forgotPassword),
+                          child: Text(l10n.forgotPassword),
+                        ),
                       ),
                     ),
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 16),
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
+                    TestId(
+                      E2eIds.loginError,
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
                       ),
                     ),
                   ],
                   const SizedBox(height: 24),
                   if (authConfig.signupEnabled)
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => context.push(AppRoutes.unifiedRegistration),
-                      child: Text(l10n.createProfile),
+                    TestId(
+                      E2eIds.loginRegister,
+                      child: TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => context.push(AppRoutes.unifiedRegistration),
+                        child: Text(l10n.createProfile),
+                      ),
                     ),
                   TextButton(
                     onPressed: _busy ? null : () => context.go(AppRoutes.shell),

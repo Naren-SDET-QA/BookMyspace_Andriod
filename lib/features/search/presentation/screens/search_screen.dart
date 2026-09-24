@@ -13,6 +13,7 @@ import '../../../../core/widgets/configurable_banner.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../home/domain/customer_section_catalog.dart';
 import '../../../home/presentation/customer_section_providers.dart';
 import '../../../admin/presentation/admin_settings_providers.dart';
@@ -266,20 +267,23 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    onChanged: _onQueryChanged,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: _applySearch,
-                    decoration: InputDecoration(
-                      hintText: l10n.searchHint,
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: query.hasFilters
-                          ? IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: _clearFilters,
-                            )
-                          : null,
+                  child: TestId(
+                    E2eIds.searchInput,
+                    child: TextField(
+                      controller: _controller,
+                      onChanged: _onQueryChanged,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: _applySearch,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchHint,
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: query.hasFilters
+                            ? IconButton(
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: _clearFilters,
+                              )
+                            : null,
+                      ),
                     ),
                   ),
                 ),

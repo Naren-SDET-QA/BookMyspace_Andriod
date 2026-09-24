@@ -1,0 +1,20 @@
+{
+  "name": "bookmyspace-e2e-playwright",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Web E2E for BookMySpace (Flutter web), driven through Flutter semantics identifiers.",
+  "scripts": {
+    "build:web:mock": "cd .. && flutter build web --release -t integration_test/web_mock_main.dart --output build/e2e_web_mock",
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:critical": "playwright test --grep @critical",
+    "test:regression": "playwright test",
+    "report": "playwright show-report reports/html"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

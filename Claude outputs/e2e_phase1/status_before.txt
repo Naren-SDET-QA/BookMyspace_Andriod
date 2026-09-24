@@ -1,0 +1,14 @@
+ M analysis_options.yaml
+ D ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+ M pubspec.lock
+?? .cursor/
+?? "Claude outputs/"
+?? RUNTIME_VERIFICATION_REPORT.md
+?? analyze.txt
+?? e2e-playwright/
+?? lib/core/widgets/animated_category_chip.dart
+?? node_modules/
+?? run_step14_verify.sh
+?? supabase/migrations/20260921180000_education_configurable_modules.sql
+?? test-results-baseline.txt
+?? test-results.txt

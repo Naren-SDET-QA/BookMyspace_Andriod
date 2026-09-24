@@ -16,6 +16,7 @@ import '../../../../core/validators/app_validators.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/errors/app_exceptions.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../home/domain/customer_section_catalog.dart';
 import '../../../venues/domain/category_configuration.dart';
@@ -352,9 +353,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       onPressed: () => Navigator.pop(context, false),
                       child: Text(l10n.cancel),
                     ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(l10n.confirm),
+                    TestId(
+                      E2eIds.bookingConfirmDialog,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(l10n.confirm),
+                      ),
                     ),
                   ],
                 ),
@@ -663,21 +667,27 @@ class _SlotList extends ConsumerWidget {
             title: l10n.noSlotsForDate,
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: slots.length,
-          itemBuilder: (context, i) {
-            final slot = slots[i];
-            final isSelected = selectedSlot?.slotId == slot.slotId;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _SlotTile(
-                slot: slot,
-                isSelected: isSelected,
-                onTap: slot.isAvailable ? () => onSelected(slot) : null,
-              ),
-            );
-          },
+        return TestId(
+          E2eIds.slotPicker,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: slots.length,
+            itemBuilder: (context, i) {
+              final slot = slots[i];
+              final isSelected = selectedSlot?.slotId == slot.slotId;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: TestId(
+                  E2eIds.slot(slot.slotId),
+                  child: _SlotTile(
+                    slot: slot,
+                    isSelected: isSelected,
+                    onTap: slot.isAvailable ? () => onSelected(slot) : null,
+                  ),
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -841,16 +851,19 @@ class _ConfirmBar extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: FilledButton.icon(
-                onPressed: confirming ? null : onConfirm,
-                icon: confirming
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.lock_rounded),
-                label: Text(l10n.confirmBooking),
+              child: TestId(
+                E2eIds.bookingConfirm,
+                child: FilledButton.icon(
+                  onPressed: confirming ? null : onConfirm,
+                  icon: confirming
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.lock_rounded),
+                  label: Text(l10n.confirmBooking),
+                ),
               ),
             ),
           ],
@@ -889,10 +902,13 @@ class _SignInRequiredBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            FilledButton.icon(
-              onPressed: onSignIn,
-              icon: const Icon(Icons.login_rounded),
-              label: Text(l10n.signInToContinue),
+            TestId(
+              E2eIds.bookingSignIn,
+              child: FilledButton.icon(
+                onPressed: onSignIn,
+                icon: const Icon(Icons.login_rounded),
+                label: Text(l10n.signInToContinue),
+              ),
             ),
           ],
         ),

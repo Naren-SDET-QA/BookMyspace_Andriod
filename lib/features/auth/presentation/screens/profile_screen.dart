@@ -9,6 +9,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/responsive_layout.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../domain/auth_user.dart';
 import '../auth_providers.dart';
@@ -385,25 +386,28 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // Sign out button
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await ref.read(authNotifierProvider.notifier).signOut();
-                    if (context.mounted) {
-                      context.go(AppRoutes.login);
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    foregroundColor: theme.colorScheme.error,
-                    side: BorderSide(color: theme.colorScheme.error),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                TestId(
+                  E2eIds.logout,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await ref.read(authNotifierProvider.notifier).signOut();
+                      if (context.mounted) {
+                        context.go(AppRoutes.login);
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text(
-                    'Sign Out',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text(
+                      'Sign Out',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),

@@ -6,6 +6,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
 import 'venue_badges.dart';
@@ -22,142 +23,145 @@ class VenueCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () =>
-            context.push(AppRoutes.venueDetails.replaceAll(':id', venue.id)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 150,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: favorite.when(
-                      data: (isFav) => FavoriteButton(
-                        isFavorite: isFav ?? false,
-                        onPressed: () =>
-                            ref.read(toggleFavoriteProvider(venue.id).future),
-                      ),
-                      loading: () => const FavoriteButton(
-                        isFavorite: false,
-                        onPressed: null,
-                      ),
-                      error: (_, _) => const FavoriteButton(
-                        isFavorite: false,
-                        onPressed: null,
-                      ),
-                    ),
-                  ),
-                  if (venue.distanceKm != null)
+    return TestId(
+      E2eIds.venueCard(venue.id),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          onTap: () =>
+              context.push(AppRoutes.venueDetails.replaceAll(':id', venue.id)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
                     Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: _LabelChip(
-                        icon: Icons.near_me_outlined,
-                        label: formatDistance(venue.distanceKm),
-                      ),
-                    ),
-                  if (venue.avgRating > 0)
-                    Positioned(
+                      top: 8,
                       right: 8,
-                      bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                      child: favorite.when(
+                        data: (isFav) => FavoriteButton(
+                          isFavorite: isFav ?? false,
+                          onPressed: () =>
+                              ref.read(toggleFavoriteProvider(venue.id).future),
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(10),
+                        loading: () => const FavoriteButton(
+                          isFavorite: false,
+                          onPressed: null,
                         ),
-                        child: RatingBadge(
-                          rating: venue.avgRating,
-                          count: venue.ratingCount,
+                        error: (_, _) => const FavoriteButton(
+                          isFavorite: false,
+                          onPressed: null,
                         ),
                       ),
                     ),
-                ],
+                    if (venue.distanceKm != null)
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: _LabelChip(
+                          icon: Icons.near_me_outlined,
+                          label: formatDistance(venue.distanceKm),
+                        ),
+                      ),
+                    if (venue.avgRating > 0)
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: RatingBadge(
+                            rating: venue.avgRating,
+                            count: venue.ratingCount,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          venue.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            venue.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      if (venue.isVerified) const VerifiedBadge(),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          venue.city.isNotEmpty
-                              ? venue.city
-                              : venue.addressLine1,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      if (venue.capacity > 0) ...[
-                        const SizedBox(width: 8),
+                        if (venue.isVerified) const VerifiedBadge(),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
                         Icon(
-                          Icons.groups_rounded,
+                          Icons.location_on_outlined,
                           size: 14,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 2),
-                        Text(
-                          '${venue.capacity}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: Text(
+                            venue.city.isNotEmpty
+                                ? venue.city
+                                : venue.addressLine1,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
+                        if (venue.capacity > 0) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.groups_rounded,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${venue.capacity}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${l10n.pricing} ${formatInr(venue.price)}',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: AppTheme.brand,
-                      fontWeight: FontWeight.w700,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      '${l10n.pricing} ${formatInr(venue.price)}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: AppTheme.brand,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -190,152 +194,155 @@ class FunctionHallListCard extends ConsumerWidget {
       extra: venue,
     );
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final horizontal = constraints.maxWidth >= 560;
-          final image = SizedBox(
-            width: horizontal ? 220 : double.infinity,
-            height: horizontal ? 180 : 170,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: favorite.when(
-                    data: (value) => FavoriteButton(
-                      isFavorite: value ?? false,
-                      onPressed: () => ref
-                          .read(toggleFavoriteProvider(venue.id).future),
-                    ),
-                    loading: () => const FavoriteButton(
-                      isFavorite: false,
-                      onPressed: null,
-                    ),
-                    error: (_, _) => const FavoriteButton(
-                      isFavorite: false,
-                      onPressed: null,
-                    ),
-                  ),
-                ),
-                if (venue.distanceKm != null)
+    return TestId(
+      E2eIds.venueCard(venue.id),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        margin: EdgeInsets.zero,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontal = constraints.maxWidth >= 560;
+            final image = SizedBox(
+              width: horizontal ? 220 : double.infinity,
+              height: horizontal ? 180 : 170,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
                   Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: _LabelChip(
-                      icon: Icons.near_me_outlined,
-                      label: formatDistance(venue.distanceKm),
+                    top: 8,
+                    right: 8,
+                    child: favorite.when(
+                      data: (value) => FavoriteButton(
+                        isFavorite: value ?? false,
+                        onPressed: () => ref
+                            .read(toggleFavoriteProvider(venue.id).future),
+                      ),
+                      loading: () => const FavoriteButton(
+                        isFavorite: false,
+                        onPressed: null,
+                      ),
+                      error: (_, _) => const FavoriteButton(
+                        isFavorite: false,
+                        onPressed: null,
+                      ),
                     ),
                   ),
-              ],
-            ),
-          );
-
-          final details = Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        venue.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                  if (venue.distanceKm != null)
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: _LabelChip(
+                        icon: Icons.near_me_outlined,
+                        label: formatDistance(venue.distanceKm),
                       ),
                     ),
-                    if (venue.isVerified) const VerifiedBadge(),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  [
-                    if (venue.city.isNotEmpty) venue.city,
-                    if (venue.state.isNotEmpty) venue.state,
-                  ].join(', '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                ],
+              ),
+            );
+
+            final details = Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          venue.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (venue.isVerified) const VerifiedBadge(),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 5,
-                  children: [
-                    if (category != null && category.isNotEmpty)
-                      _InfoPill(icon: Icons.category_outlined, label: category),
-                    if (venue.avgRating > 0)
-                      _InfoPill(
-                        icon: Icons.star_rounded,
-                        label: '${venue.avgRating.toStringAsFixed(1)} (${venue.ratingCount})',
-                      ),
-                    if (venue.capacity > 0)
-                      _InfoPill(
-                        icon: Icons.groups_outlined,
-                        label: '${venue.capacity} guests',
-                      ),
-                    ...facilities.map(
-                      (item) => _InfoPill(icon: Icons.check_circle_outline, label: item),
+                  const SizedBox(height: 5),
+                  Text(
+                    [
+                      if (venue.city.isNotEmpty) venue.city,
+                      if (venue.state.isNotEmpty) venue.state,
+                    ].join(', '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        venue.price > 0 ? formatInr(venue.price) : 'Price on request',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: AppTheme.brand,
-                          fontWeight: FontWeight.w800,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      if (category != null && category.isNotEmpty)
+                        _InfoPill(icon: Icons.category_outlined, label: category),
+                      if (venue.avgRating > 0)
+                        _InfoPill(
+                          icon: Icons.star_rounded,
+                          label: '${venue.avgRating.toStringAsFixed(1)} (${venue.ratingCount})',
+                        ),
+                      if (venue.capacity > 0)
+                        _InfoPill(
+                          icon: Icons.groups_outlined,
+                          label: '${venue.capacity} guests',
+                        ),
+                      ...facilities.map(
+                        (item) => _InfoPill(icon: Icons.check_circle_outline, label: item),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          venue.price > 0 ? formatInr(venue.price) : 'Price on request',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: AppTheme.brand,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                    OutlinedButton(
-                      onPressed: openDetails,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      OutlinedButton(
+                        onPressed: openDetails,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        minimumSize: const Size(0, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: const Text('View Details'),
                       ),
-                      child: const Text('View Details'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: startBooking,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: startBooking,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        minimumSize: const Size(0, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: const Text('Book Now'),
                       ),
-                      child: const Text('Book Now'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
+                    ],
+                  ),
+                ],
+              ),
+            );
 
-          return horizontal
-              ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [image, Expanded(child: details)])
-              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [image, details]);
-        },
+            return horizontal
+                ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [image, Expanded(child: details)])
+                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [image, details]);
+          },
+        ),
       ),
     );
   }
@@ -367,143 +374,146 @@ class HotelListCard extends ConsumerWidget {
       extra: venue,
     );
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final horizontal = constraints.maxWidth >= 560;
-          final image = SizedBox(
-            width: horizontal ? 230 : double.infinity,
-            height: horizontal ? 190 : 180,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: favorite.when(
-                    data: (value) => FavoriteButton(
-                      isFavorite: value ?? false,
-                      onPressed: () => ref
-                          .read(toggleFavoriteProvider(venue.id).future),
-                    ),
-                    loading: () => const FavoriteButton(
-                      isFavorite: false,
-                      onPressed: null,
-                    ),
-                    error: (_, _) => const FavoriteButton(
-                      isFavorite: false,
-                      onPressed: null,
-                    ),
-                  ),
-                ),
-                if (venue.images.length > 1)
+    return TestId(
+      E2eIds.venueCard(venue.id),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        margin: EdgeInsets.zero,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontal = constraints.maxWidth >= 560;
+            final image = SizedBox(
+              width: horizontal ? 230 : double.infinity,
+              height: horizontal ? 190 : 180,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
                   Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: _LabelChip(
-                      icon: Icons.photo_library_outlined,
-                      label: '1/${venue.images.length}',
+                    top: 8,
+                    right: 8,
+                    child: favorite.when(
+                      data: (value) => FavoriteButton(
+                        isFavorite: value ?? false,
+                        onPressed: () => ref
+                            .read(toggleFavoriteProvider(venue.id).future),
+                      ),
+                      loading: () => const FavoriteButton(
+                        isFavorite: false,
+                        onPressed: null,
+                      ),
+                      error: (_, _) => const FavoriteButton(
+                        isFavorite: false,
+                        onPressed: null,
+                      ),
                     ),
                   ),
-              ],
-            ),
-          );
-          final content = Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        venue.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                  if (venue.images.length > 1)
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: _LabelChip(
+                        icon: Icons.photo_library_outlined,
+                        label: '1/${venue.images.length}',
                       ),
                     ),
-                    if (venue.isVerified) const VerifiedBadge(),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  [
-                    if (venue.city.isNotEmpty) venue.city,
-                    if (venue.state.isNotEmpty) venue.state,
-                  ].join(' • '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                ],
+              ),
+            );
+            final content = Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          venue.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (venue.isVerified) const VerifiedBadge(),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 5,
-                  children: [
-                    if (venue.avgRating > 0)
-                      _InfoPill(
-                        icon: Icons.star_rounded,
-                        label: '${venue.avgRating.toStringAsFixed(1)} (${venue.ratingCount})',
-                      ),
-                    ...facilities.map(
-                      (item) => _InfoPill(icon: Icons.check_circle_outline, label: item),
+                  const SizedBox(height: 5),
+                  Text(
+                    [
+                      if (venue.city.isNotEmpty) venue.city,
+                      if (venue.state.isNotEmpty) venue.state,
+                    ].join(' • '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        venue.price > 0 ? '${formatInr(venue.price)} / night' : 'Price on request',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: AppTheme.brand,
-                          fontWeight: FontWeight.w800,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      if (venue.avgRating > 0)
+                        _InfoPill(
+                          icon: Icons.star_rounded,
+                          label: '${venue.avgRating.toStringAsFixed(1)} (${venue.ratingCount})',
+                        ),
+                      ...facilities.map(
+                        (item) => _InfoPill(icon: Icons.check_circle_outline, label: item),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          venue.price > 0 ? '${formatInr(venue.price)} / night' : 'Price on request',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: AppTheme.brand,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                    OutlinedButton(
-                      onPressed: details,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      OutlinedButton(
+                        onPressed: details,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        minimumSize: const Size(0, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: const Text('View Hotel'),
                       ),
-                      child: const Text('View Hotel'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: book,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: book,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        minimumSize: const Size(0, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: const Text('Book Stay'),
                       ),
-                      child: const Text('Book Stay'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-          return horizontal
-              ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [image, Expanded(child: content)])
-              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [image, content]);
-        },
+                    ],
+                  ),
+                ],
+              ),
+            );
+            return horizontal
+                ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [image, Expanded(child: content)])
+                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [image, content]);
+          },
+        ),
       ),
     );
   }
@@ -591,209 +601,212 @@ class HotelStyleVenueCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+    return TestId(
+      E2eIds.venueCard(venue.id),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
         ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 130,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
-                  if (venue.avgRating > 0)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1B7A4C),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 13,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              venue.avgRating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: favorite.when(
-                      data: (isFav) => FavoriteButton(
-                        isFavorite: isFav ?? false,
-                        onPressed: () =>
-                            ref.read(toggleFavoriteProvider(venue.id).future),
-                      ),
-                      loading: () => const FavoriteButton(
-                        isFavorite: false,
-                        onPressed: null,
-                      ),
-                      error: (_, _) => const FavoriteButton(
-                        isFavorite: false,
-                        onPressed: null,
-                      ),
-                    ),
-                  ),
-                  if (venue.ratingCount > 0)
-                    Positioned(
-                      bottom: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${venue.ratingCount} ratings',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 130,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
+                    if (venue.avgRating > 0)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
                           ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          venue.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1B7A4C),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                        ),
-                      ),
-                      if (venue.isVerified) const VerifiedBadge(),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 13,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          venue.city.isNotEmpty
-                              ? venue.city
-                              : venue.addressLine1,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: RichText(
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          text: TextSpan(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              TextSpan(
-                                text: venue.pricingBaseAmount > 0
-                                    ? '₹${venue.pricingBaseAmount.toInt()}'
-                                    : 'Price on request',
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15,
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 13,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                venue.avgRating.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              if (venue.pricingBaseAmount > 0)
-                                TextSpan(
-                                  text: ' / night',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: onBookTap,
-                        style: FilledButton.styleFrom(
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: favorite.when(
+                        data: (isFav) => FavoriteButton(
+                          isFavorite: isFav ?? false,
+                          onPressed: () =>
+                              ref.read(toggleFavoriteProvider(venue.id).future),
+                        ),
+                        loading: () => const FavoriteButton(
+                          isFavorite: false,
+                          onPressed: null,
+                        ),
+                        error: (_, _) => const FavoriteButton(
+                          isFavorite: false,
+                          onPressed: null,
+                        ),
+                      ),
+                    ),
+                    if (venue.ratingCount > 0)
+                      Positioned(
+                        bottom: 8,
+                        left: 8,
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
+                            horizontal: 8,
+                            vertical: 3,
                           ),
-                          minimumSize: const Size(0, 36),
-                          shape: RoundedRectangleBorder(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                        ),
-                        child: const Text(
-                          'Book Now',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                          child: Text(
+                            '${venue.ratingCount} ratings',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            venue.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (venue.isVerified) const VerifiedBadge(),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 13,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 2),
+                        Expanded(
+                          child: Text(
+                            venue.city.isNotEmpty
+                                ? venue.city
+                                : venue.addressLine1,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: RichText(
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: venue.pricingBaseAmount > 0
+                                      ? '₹${venue.pricingBaseAmount.toInt()}'
+                                      : 'Price on request',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                if (venue.pricingBaseAmount > 0)
+                                  TextSpan(
+                                    text: ' / night',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: onBookTap,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 36),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'Book Now',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

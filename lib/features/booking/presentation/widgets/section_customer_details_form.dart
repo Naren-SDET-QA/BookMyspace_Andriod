@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/validators/app_validators.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../home/domain/customer_section_catalog.dart';
 
 /// Collects only the details required for the selected section, at booking time.
@@ -61,16 +62,19 @@ class SectionCustomerDetailsForm extends StatelessWidget {
           ],
           if (fields.contains(CustomerDetailField.eventType)) ...[
             const SizedBox(height: 8),
-            TextFormField(
-              initialValue: details.eventType,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: l10n.eventType,
-                isDense: true,
+            TestId(
+              E2eIds.bookingEventType,
+              child: TextFormField(
+                initialValue: details.eventType,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: l10n.eventType,
+                  isDense: true,
+                ),
+                validator: (v) =>
+                    AppValidators.required(v, fieldName: 'Event type'),
+                onChanged: (v) => onChanged(details.copyWith(eventType: v)),
               ),
-              validator: (v) =>
-                  AppValidators.required(v, fieldName: 'Event type'),
-              onChanged: (v) => onChanged(details.copyWith(eventType: v)),
             ),
           ],
           if (fields.contains(CustomerDetailField.idNumber)) ...[

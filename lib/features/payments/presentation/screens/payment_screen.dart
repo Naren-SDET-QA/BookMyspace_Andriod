@@ -8,6 +8,7 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../booking/domain/booking.dart';
 import '../../../booking/presentation/booking_providers.dart';
 import '../../../booking/presentation/widgets/booking_hold_countdown.dart';
@@ -290,7 +291,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             children: [
-              _SummaryCard(booking: _booking),
+              TestId(
+                E2eIds.checkoutSummary,
+                child: _SummaryCard(booking: _booking),
+              ),
               if (_booking.holdExpiresAt != null && _booking.canPay) ...[
                 const SizedBox(height: 12),
                 BookingHoldCountdown(
