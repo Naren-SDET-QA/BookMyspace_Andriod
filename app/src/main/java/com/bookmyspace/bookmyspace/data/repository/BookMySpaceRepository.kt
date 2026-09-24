@@ -2808,7 +2808,7 @@ object BookMySpaceRepository {
                 startDate = System.currentTimeMillis() - 86400000L,
                 expiryDate = System.currentTimeMillis() + (90L * 24L * 3600L * 1000L),
                 isActive = true,
-                idempotencyKey = "idemp_sub_002_init"
+                idempotencyKey = "fixture-subscription-002"
             ),
             "inst_owner_003" to InstituteListingSubscription(
                 ownerId = "inst_owner_003",
@@ -2817,7 +2817,7 @@ object BookMySpaceRepository {
                 startDate = System.currentTimeMillis() - 172800000L,
                 expiryDate = System.currentTimeMillis() + (365L * 24L * 3600L * 1000L),
                 isActive = true,
-                idempotencyKey = "idemp_sub_003_init"
+                idempotencyKey = "fixture-subscription-003"
             )
         )
     )

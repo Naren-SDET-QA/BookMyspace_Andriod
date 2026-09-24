@@ -35,9 +35,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if ([string]::IsNullOrWhiteSpace($SupabaseUrl)) { $SupabaseUrl = 'http://127.0.0.1:54321' }
-if ([string]::IsNullOrWhiteSpace($AnonKey)) { $AnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH' }
-if ([string]::IsNullOrWhiteSpace($MailpitBase)) { $MailpitBase = 'http://127.0.0.1:54324' }
+if ([string]::IsNullOrWhiteSpace($SupabaseUrl)) {
+  throw 'BMS_SUPABASE_URL (or -SupabaseUrl) is required.'
+}
+if ([string]::IsNullOrWhiteSpace($AnonKey)) {
+  throw 'BMS_SUPABASE_ANON_KEY (or -AnonKey) is required.'
+}
+if ([string]::IsNullOrWhiteSpace($OtpCode) -and [string]::IsNullOrWhiteSpace($MailpitBase)) {
+  throw 'BMS_MAILPIT_URL (or -MailpitBase) is required when -OtpCode is not supplied.'
+}
 
 $headers = @{ apikey = $AnonKey; 'Content-Type' = 'application/json' }
 
