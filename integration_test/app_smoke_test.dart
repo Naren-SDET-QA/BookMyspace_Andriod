@@ -78,6 +78,12 @@ void main() {
     await tester.tap(find.textContaining('Book Now'));
     await tester.pumpAndSettle();
     expect(find.text('Morning'), findsOneWidget);
-    expect(find.text('Continue'), findsWidgets);
+    // The booking CTA only appears once a slot is selected; for a signed-in
+    // user it is "Confirm booking". Stop before confirming (no payment).
+    await tester.ensureVisible(find.text('Morning'));
+    await tester.tap(find.text('Morning'));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm booking'), findsOneWidget);
+    expect(find.text('Sign in to continue'), findsNothing);
   });
 }

@@ -1,4 +1,10 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
+import 'package:bookmyspace/core/modular/feature_id.dart';
+import 'package:bookmyspace/core/modular/feature_providers.dart';
+import 'package:bookmyspace/core/modular/feature_registry.dart';
+import 'package:bookmyspace/core/modular/plugins/ai_provider_plugin.dart';
+import 'package:bookmyspace/core/modular/provider_registry.dart';
+import 'package:bookmyspace/core/modular/register_default_plugins.dart';
 import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/domain/auth_configuration.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
@@ -102,7 +108,29 @@ class MockBackend {
     notificationRepositoryProvider.overrideWithValue(
       MockNotificationRepository(),
     ),
+    providerRegistryProvider.overrideWith(_offlinePluginRegistry),
   ];
+}
+
+/// The production plugin registry, except the flutter_map plugin is not
+/// exposed, so map surfaces render nothing and never request OpenStreetMap
+/// tiles. E2E must not depend on the network: a tile request still in flight
+/// when a test ends fails that test with a SocketException.
+ProviderRegistry _offlinePluginRegistry(Ref ref) {
+  final features = ref.watch(featureRegistryProvider);
+  final plugins = ProviderRegistry(
+    features: FeatureRegistry({
+      for (final id in FeatureId.values)
+        id: id == FeatureId.maps
+            ? features.configOf(id).copyWith(enabled: false)
+            : features.configOf(id),
+    }),
+  );
+  registerDefaultPlugins(
+    plugins,
+    aiFactory: () => SupabaseAiProvider(ref.read(supabaseProvider)),
+  );
+  return plugins;
 }
 
 /// The production router and screens, driven by [MockBackend].
