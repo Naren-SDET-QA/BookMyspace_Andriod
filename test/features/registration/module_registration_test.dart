@@ -1,6 +1,6 @@
+import 'package:bookmyspace/features/registration/domain/module_progress.dart';
+import 'package:bookmyspace/features/registration/domain/module_registration.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../../lib/features/registration/domain/module_registration.dart';
-import '../../../lib/features/registration/domain/module_progress.dart';
 
 void main() {
   test('feature configuration preserves server flags', () {

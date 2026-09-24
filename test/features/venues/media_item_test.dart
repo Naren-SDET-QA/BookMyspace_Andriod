@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:bookmyspace/features/venues/domain/media_item.dart';
 
-import '../../../lib/features/venues/domain/media_item.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('parses generic media metadata and preserves media kind', () {

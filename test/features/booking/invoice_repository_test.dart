@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:bookmyspace/features/booking/domain/invoice_repository.dart';
 
-import '../../../lib/features/booking/domain/invoice_repository.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('parses a server-generated invoice artifact and signed URL', () {

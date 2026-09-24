@@ -1,5 +1,5 @@
+import 'package:bookmyspace/features/ai/domain/booking_intent.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../../lib/features/ai/domain/booking_intent.dart';
 
 void main() {
   const parser = BookingIntentParser();

@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:bookmyspace/features/promotions/domain/promotion.dart';
 
-import '../../../lib/features/promotions/domain/promotion.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final category = DateTime(2026, 8, 26, 10);

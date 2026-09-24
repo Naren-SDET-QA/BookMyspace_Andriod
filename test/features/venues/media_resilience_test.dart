@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:bookmyspace/features/venues/domain/media_resilience.dart';
 
-import '../../../lib/features/venues/domain/media_resilience.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('retries transient failures at most three times', () async {
