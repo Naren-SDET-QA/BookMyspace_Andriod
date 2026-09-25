@@ -45,8 +45,7 @@ class PushNotificationService {
 
   static const String androidChannelName =
       'com.bookmyspace.bookmyspace/android_push';
-  final MethodChannel _androidChannel =
-      const MethodChannel(androidChannelName);
+  final MethodChannel _androidChannel = const MethodChannel(androidChannelName);
 
   final NotificationRepository _repository;
   final FlutterSecureStorage _storage;
@@ -263,8 +262,8 @@ class PushNotificationService {
       // Always empty until a Firebase project file and the messaging
       // dependency are present; the native side reports why.
       final tokenResult = await _androidChannel.invokeMethod<Map>('getToken');
-      _remotePushConfigured =
-          tokenResult?['remotePushConfigured'] as bool? ?? _remotePushConfigured;
+      _remotePushConfigured = tokenResult?['remotePushConfigured'] as bool? ??
+          _remotePushConfigured;
       final token = tokenResult?['token'] as String?;
       if (token != null && token.isNotEmpty) {
         _currentDeviceToken = token;

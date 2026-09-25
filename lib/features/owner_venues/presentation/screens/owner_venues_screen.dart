@@ -446,19 +446,22 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => CreateVenueScreen(existingVenue: venue),
+                            builder: (_) =>
+                                CreateVenueScreen(existingVenue: venue),
                           ),
                         );
                       },
                     ),
                     TextButton.icon(
-                      icon: const Icon(Icons.dashboard_customize_outlined, size: 16),
+                      icon: const Icon(Icons.dashboard_customize_outlined,
+                          size: 16),
                       label: const Text('Sections',
                           style: TextStyle(fontSize: 12.5)),
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => OwnerVenueSectionsScreen(venue: venue),
+                            builder: (_) =>
+                                OwnerVenueSectionsScreen(venue: venue),
                           ),
                         );
                       },

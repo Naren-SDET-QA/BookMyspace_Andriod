@@ -105,7 +105,8 @@ void main() {
       ]);
     });
 
-    test('breaks an order tie on declaration order so the bar stays stable', () {
+    test('breaks an order tie on declaration order so the bar stays stable',
+        () {
       const config = NavTabsConfig([
         NavTabConfig(tab: NavTab.courses, order: 10),
         NavTabConfig(tab: NavTab.home, order: 10),
@@ -130,7 +131,8 @@ void main() {
       final expected =
           NavTabsConfig.defaults.visible.map((e) => e.tab).toList();
       expect(NavTabsConfig.fromJson(null).visible.map((e) => e.tab), expected);
-      expect(NavTabsConfig.fromJson('nope').visible.map((e) => e.tab), expected);
+      expect(
+          NavTabsConfig.fromJson('nope').visible.map((e) => e.tab), expected);
       expect(
         NavTabsConfig.fromJson({'tabs': 'nope'}).visible.map((e) => e.tab),
         expected,
@@ -140,7 +142,9 @@ void main() {
         expected,
       );
       expect(
-        NavTabsConfig.fromJson({'tabs': [1, 2]}).visible.map((e) => e.tab),
+        NavTabsConfig.fromJson({
+          'tabs': [1, 2]
+        }).visible.map((e) => e.tab),
         expected,
       );
     });
@@ -191,7 +195,8 @@ void main() {
             .enabled,
         isFalse,
       );
-      expect(NavTabConfig.fromJson({'tab': 'home'}, NavTab.home).label, isEmpty);
+      expect(
+          NavTabConfig.fromJson({'tab': 'home'}, NavTab.home).label, isEmpty);
     });
 
     test('toJson round-trips through fromJson', () {

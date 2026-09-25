@@ -15,6 +15,7 @@ class _BannerSlide {
     required this.subtitle,
     this.code,
     this.claim = false,
+    this.imageUrl,
   });
 
   final String headline;
@@ -23,6 +24,12 @@ class _BannerSlide {
 
   /// True when [subtitle] is a real monetary/percentage offer.
   final bool claim;
+
+  /// Real per-banner image from the CMS record, when the banner has one.
+  /// Never fabricated: coupon-sourced and default slides have no backing
+  /// image field, so this stays null for those and the slide falls back to
+  /// the animated color background instead of a made-up picture.
+  final String? imageUrl;
 }
 
 /// Premium promotional banner. Uses live coupon records when present;
@@ -67,7 +74,11 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
     if (widget.cmsBanners.isNotEmpty) {
       return [
         for (final banner in widget.cmsBanners)
-          _BannerSlide(headline: banner.title, subtitle: banner.subtitle),
+          _BannerSlide(
+            headline: banner.title,
+            subtitle: banner.subtitle,
+            imageUrl: banner.imageUrl,
+          ),
       ];
     }
     if (widget.coupons.isEmpty) {
@@ -164,6 +175,15 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
       .toString()
       .contains('TestWidgetsFlutterBinding');
 
+  /// Slide changed (by autoplay, swipe, or dot tap alike). The slide index
+  /// and everything else about the carousel is unaffected.
+  void _onPageChanged(int i) {
+    if (i == _index) return;
+    setState(() {
+      _index = i;
+    });
+  }
+
   /// Admin colours win when set. With a photo backdrop the gradient becomes a
   /// scrim so the copy stays legible.
   List<Color> _backdropColors(
@@ -178,7 +198,9 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
           ? [style.backgroundColors.first, style.backgroundColors.first]
           : style.backgroundColors;
       if (!hasImage) return base;
-      return [for (final color in base) color.withValues(alpha: 0.82)];
+      return [
+        for (final color in base) color.withValues(alpha: 0.82),
+      ];
     }
     if (hasImage) {
       return [
@@ -249,9 +271,8 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
         builder: (context, _) {
           final glowT = Curves.easeInOut.transform(_glow.value);
           final radius = BorderRadius.circular(style.radius);
-          final backdrop = widget.images.isNotEmpty
-              ? widget.images.first
-              : null;
+          final backdrop =
+              widget.images.isNotEmpty ? widget.images.first : null;
           return Container(
             height: style.height ?? 156,
             decoration: BoxDecoration(
@@ -335,9 +356,8 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                         height: 180,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(
-                            alpha: 0.10 + glowT * 0.06,
-                          ),
+                          color: Colors.white
+                              .withValues(alpha: 0.10 + glowT * 0.06),
                         ),
                       ),
                     ),
@@ -345,9 +365,44 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
                   PageView.builder(
                     controller: _pageController,
                     itemCount: slides.length,
-                    onPageChanged: (i) => setState(() => _index = i),
-                    itemBuilder: (context, i) =>
-                        _BannerCopy(slide: slides[i], arrow: _arrow.value),
+                    onPageChanged: _onPageChanged,
+                    itemBuilder: (context, i) {
+                      final slide = slides[i];
+                      final hasImage =
+                          slide.imageUrl != null && slide.imageUrl!.isNotEmpty;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Real per-banner image (CMS-authored), when this
+                          // slide has one -- each banner shows its own
+                          // picture instead of every slide looking the
+                          // same. Slides with no backing image (coupons,
+                          // the no-data fallback) simply skip this and show
+                          // the animated color background underneath.
+                          if (hasImage) ...[
+                            AppNetworkImage(
+                              url: slide.imageUrl!,
+                              fit: BoxFit.cover,
+                            ),
+                            // Scrim so the existing white text/CTA stay
+                            // readable over an arbitrary photo.
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Color(0xB3000000),
+                                    Color(0x40000000),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          _BannerCopy(slide: slide, arrow: _arrow.value),
+                        ],
+                      );
+                    },
                   ),
                   if (slides.length > 1)
                     Positioned(
@@ -488,7 +543,7 @@ class _ParticlePainter extends CustomPainter {
       final x = (seed * 1.7 + progress * (0.18 + (i % 3) * 0.04)) % 1.0;
       final y =
           ((0.2 + seed) + math.sin((progress + seed) * math.pi * 2) * 0.08) %
-          1.0;
+              1.0;
       final r = 1.6 + (i % 4) * 0.7 + glow * 0.6;
       paint.color = Colors.white.withValues(
         alpha: 0.12 + (i % 5) * 0.04 + glow * 0.08,

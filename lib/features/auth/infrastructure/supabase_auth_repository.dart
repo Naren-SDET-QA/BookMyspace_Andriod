@@ -35,7 +35,13 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> signInWithEmailOtp(String email) {
     _ensureConfigured();
-    return _client.auth.signInWithOtp(email: email);
+    return _client.auth.signInWithOtp(
+      email: email,
+      // OTP email templates can also contain a magic link. Configure the
+      // native callback so either form returns to the app and lets the
+      // Supabase SDK restore the session before routing.
+      emailRedirectTo: kIsWeb ? null : oauthRedirectTo,
+    );
   }
 
   @override
@@ -89,11 +95,6 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<AuthUser> signInWithGoogle() {
     return _signInWithOAuth(supabase.OAuthProvider.google);
-  }
-
-  @override
-  Future<AuthUser> signInWithApple() {
-    return _signInWithOAuth(supabase.OAuthProvider.apple);
   }
 
   @override
@@ -203,8 +204,6 @@ class SupabaseAuthRepository implements AuthRepository {
     switch (provider) {
       case supabase.OAuthProvider.google:
         return 'Google';
-      case supabase.OAuthProvider.apple:
-        return 'Apple';
       default:
         return provider.name;
     }
@@ -222,6 +221,15 @@ class SupabaseAuthRepository implements AuthRepository {
       return errors.AuthCancelledException('$label sign-in was cancelled.');
     }
     if (error is supabase.AuthException) {
+      final raw = error.message.toLowerCase();
+      if (raw.contains('provider is not enabled') ||
+          raw.contains('unsupported provider')) {
+        return errors.AuthException(
+          '$label sign-in is not available right now. Please try another '
+          'sign-in method or contact support.',
+          code: error.code ?? 'provider_disabled',
+        );
+      }
       return errors.AuthException(error.message, code: error.code);
     }
     return errors.mapError(error);

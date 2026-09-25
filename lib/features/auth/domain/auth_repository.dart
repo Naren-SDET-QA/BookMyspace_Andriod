@@ -29,9 +29,6 @@ abstract interface class AuthRepository {
   /// Signs in with Google.
   Future<AuthUser> signInWithGoogle();
 
-  /// Signs in with Apple.
-  Future<AuthUser> signInWithApple();
-
   /// Signs out of the current device.
   Future<void> signOut();
 

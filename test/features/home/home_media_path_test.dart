@@ -72,7 +72,8 @@ void main() {
 
     test('accepts only image extensions', () {
       for (final allowed in const ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
-        expect(HomeMediaPath.isAllowedExtension(allowed), isTrue, reason: allowed);
+        expect(HomeMediaPath.isAllowedExtension(allowed), isTrue,
+            reason: allowed);
       }
       // Case and surrounding noise are normalised away first.
       expect(HomeMediaPath.isAllowedExtension('PNG'), isTrue);

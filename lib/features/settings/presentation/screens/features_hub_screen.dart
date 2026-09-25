@@ -59,7 +59,7 @@ class FeaturesHubScreen extends ConsumerWidget {
                   module.enabled ? l10n.onLabel : l10n.offLabel,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: module.enabled
-                        ? AppColors.primaryDark
+                        ? AppColors.violetDeep
                         : theme.colorScheme.outline,
                   ),
                 ),

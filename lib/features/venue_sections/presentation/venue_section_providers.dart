@@ -19,9 +19,8 @@ final venueSectionTypesProvider =
 
 /// Live draft sections for one venue, scoped by RLS to its own owner (or an
 /// admin). Another owner's venue simply never emits anything visible here.
-final ownerVenueSectionsProvider =
-    StreamProvider.autoDispose.family<List<VenueSection>, String>(
-        (ref, venueId) {
+final ownerVenueSectionsProvider = StreamProvider.autoDispose
+    .family<List<VenueSection>, String>((ref, venueId) {
   return ref
       .watch(venueSectionRepositoryProvider)
       .ownerVenueSectionsStream(venueId);
@@ -35,8 +34,9 @@ final publishedVenueSectionsProvider = FutureProvider.autoDispose
 });
 
 /// Adds a section type instance to a venue.
-final addVenueSectionProvider = FutureProvider.autoDispose.family<VenueSection,
-    ({String venueId, VenueSectionType type})>((ref, params) async {
+final addVenueSectionProvider = FutureProvider.autoDispose
+    .family<VenueSection, ({String venueId, VenueSectionType type})>(
+        (ref, params) async {
   final section = await ref.watch(venueSectionRepositoryProvider).addSection(
         venueId: params.venueId,
         type: params.type,
@@ -46,9 +46,8 @@ final addVenueSectionProvider = FutureProvider.autoDispose.family<VenueSection,
 });
 
 /// Saves draft edits for one section.
-final updateVenueSectionProvider =
-    FutureProvider.autoDispose.family<VenueSection, VenueSection>(
-        (ref, section) async {
+final updateVenueSectionProvider = FutureProvider.autoDispose
+    .family<VenueSection, VenueSection>((ref, section) async {
   final updated =
       await ref.watch(venueSectionRepositoryProvider).updateSection(section);
   ref.invalidate(ownerVenueSectionsProvider(section.venueId));
@@ -76,9 +75,8 @@ final reorderVenueSectionsProvider = FutureProvider.autoDispose
 });
 
 /// Publishes every current draft for a venue.
-final publishVenueSectionsProvider =
-    FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
-        (ref, venueId) async {
+final publishVenueSectionsProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, venueId) async {
   final result = await ref.watch(venueSectionRepositoryProvider).publish(
         venueId,
       );

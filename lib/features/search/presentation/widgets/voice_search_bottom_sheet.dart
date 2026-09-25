@@ -58,6 +58,8 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
     'Gents PG near Hitec City',
     'Football turf with lights',
     'Clear filters',
+    'Coding bootcamp in Hyderabad',
+    'Dance class near me',
   ];
 
   @override
@@ -195,11 +197,11 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppTheme.brand.withValues(alpha: 0.12),
+                      color: AppTheme.violet.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child:
-                        const Icon(Icons.mic, color: AppTheme.brand, size: 20),
+                        const Icon(Icons.mic, color: AppTheme.violet, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -236,7 +238,7 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                         height: 120 * scale,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.brand
+                          color: AppTheme.violet
                               .withValues(alpha: 0.15 * (1.0 - (scale - 1.0))),
                         ),
                       );
@@ -265,7 +267,7 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                               ]
                             : isSuccess
                                 ? [Colors.green, Colors.teal]
-                                : [AppTheme.brand, AppTheme.brandDark],
+                                : [AppTheme.violet, AppTheme.violetDeep],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -275,7 +277,7 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                                   ? theme.colorScheme.error
                                   : isSuccess
                                       ? Colors.green
-                                      : AppTheme.brand)
+                                      : AppTheme.violet)
                               .withValues(alpha: 0.4),
                           blurRadius: 16,
                           spreadRadius: isListening ? 4 : 1,
@@ -316,7 +318,7 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                     width: 4,
                     height: barHeight,
                     decoration: BoxDecoration(
-                      color: AppTheme.brand,
+                      color: AppTheme.violet,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   );
@@ -444,7 +446,7 @@ class _VoiceSearchBottomSheetState extends ConsumerState<VoiceSearchBottomSheet>
                 ),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: AppTheme.brand,
+                  backgroundColor: AppTheme.violet,
                 ),
               ),
             ),

@@ -221,7 +221,6 @@ class _QrCameraScannerState extends State<QrCameraScanner> {
               fit: StackFit.expand,
               children: [
                 const ColoredBox(color: Color(0xFF121212)),
-
                 if (!_pluginUnavailable)
                   MobileScanner(
                     controller: controller,
@@ -234,11 +233,8 @@ class _QrCameraScannerState extends State<QrCameraScanner> {
                     placeholderBuilder: (context) =>
                         const ColoredBox(color: Color(0xFF121212)),
                   ),
-
                 _ScannerReticle(isLive: isLive),
-
                 if (failure != null) _ScannerNotice(message: failure),
-
                 if (isLive)
                   Positioned(
                     left: 12,

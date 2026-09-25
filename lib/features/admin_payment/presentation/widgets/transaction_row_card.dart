@@ -73,7 +73,8 @@ class TransactionRowCard extends StatelessWidget {
               if (transaction.hasReconciliationException)
                 PaymentStatusChip(
                   label: transaction.reconciliationFlag,
-                  tone: toneForReconciliationFlag(transaction.reconciliationFlag),
+                  tone:
+                      toneForReconciliationFlag(transaction.reconciliationFlag),
                 ),
               if (!transaction.webhookReceived)
                 PaymentStatusChip(

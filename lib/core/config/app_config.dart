@@ -129,6 +129,7 @@ class AppConfig {
     }
     return environment.apiBaseUrl;
   }
+
   static String get appName => 'BookMySpace';
 
   /// Host-only view of [supabaseUrl] for diagnostics. Never includes keys.

@@ -64,6 +64,25 @@ class AppLocalizations {
     'bookNow': 'Book Now',
     'search': 'Search',
     'searchHint': 'Search venues, cities or categories...',
+    'courseSearchHint': 'Search courses or institutes...',
+    'seeAll': 'See all',
+    'linkCopied': 'Link copied to clipboard',
+    'share': 'Share',
+    'downloadBrochure': 'Download brochure',
+    'whatYouLearn': 'What you\'ll learn',
+    'faq': 'Frequently asked questions',
+    'off': 'OFF',
+    'featuredInstitutes': 'Featured Institutes',
+    'popularCourses': 'Popular Courses',
+    'upcomingBatches': 'Upcoming Batches',
+    'watchDemoClass': 'Watch Demo Class',
+    'typeAllInstitutes': 'All',
+    'typePrivate': 'Private',
+    'typeStateGovernment': 'State Government',
+    'typeCentralGovernment': 'Central Government',
+    'typeUniversity': 'University',
+    'typeNgo': 'NGO',
+    'typeOther': 'Other',
     'filters': 'Filters',
     'clearFilters': 'Clear Filters',
     'apply': 'Apply',
@@ -133,6 +152,9 @@ class AppLocalizations {
     'modeHybrid': 'Hybrid',
     'settings': 'Settings',
     'themeMode': 'Theme Mode',
+    'filterAllCourses': 'All',
+    'home3dEffects': 'Color & 3D effects',
+    'home3dEffectsSubtitle': 'Depth and color effects on Home spotlight cards',
     'language': 'Language',
     'support': 'Support',
     'privacyPolicy': 'Privacy Policy',
@@ -186,6 +208,84 @@ class AppLocalizations {
     'onboardingTitle3': 'Seamless & Secure',
     'onboardingSubtitle3':
         'Pay securely with instant tax invoices and easy booking management.',
+    'adminPaymentOperations': 'Payment Operations',
+    'adminPaymentHealth': 'Payment Health',
+    'adminTransactionLedger': 'Transaction Ledger',
+    'paymentHealthHealthy': 'Healthy',
+    'paymentHealthWarning': 'Warning',
+    'paymentHealthAttention': 'Attention',
+    'paymentHealthCritical': 'Critical',
+    'paymentHealthUnavailable': 'No data',
+    'totalTransactions': 'Total Transactions',
+    'capturedPayments': 'Captured',
+    'pendingPayments': 'Pending',
+    'failedPayments': 'Failed',
+    'refundedPayments': 'Refunded',
+    'paymentSuccessRate': 'Success Rate',
+    'reconciliationExceptions': 'Reconciliation Exceptions',
+    'webhookMissing': 'Webhook Missing',
+    'readOnlyLabel': 'Read-only',
+    'noTransactionsInPeriod': 'No transactions in this period',
+    'noTransactionsInPeriodMessage':
+        'There is no payment activity for the selected filters.',
+    'searchByReferenceOrOrderId':
+        'Search by booking reference, order ID or payment ID',
+    'filterByStatus': 'Filter by status',
+    'filterByVenue': 'Filter by venue',
+    'dateRangeLabel': 'Date range',
+    'paymentStatusLabel': 'Payment status',
+    'bookingStatusLabel': 'Booking status',
+    'approvalStatusLabel': 'Approval status',
+    'webhookStatusLabel': 'Webhook status',
+    'permissionDeniedAdminPayments':
+        "You don't have permission to view Admin Payment Operations.",
+    'adminPaymentsLoadError': 'Payment operations data could not be loaded.',
+    'columnReference': 'Reference',
+    'columnVenue': 'Venue',
+    'columnAmount': 'Amount',
+    'columnCreatedAt': 'Created',
+
+    // Education / institutes
+    'education': 'Education',
+    'institutes': 'Institutes',
+    'noInstitutes': 'No institutes yet',
+    'noInstitutesMessage': 'Institutes and courses are coming soon.',
+    'instituteDetails': 'Institute Details',
+    'coursesByInstitute': 'Courses offered',
+    'aboutInstitute': 'About',
+    'faculty': 'Faculty',
+    'contactInstitute': 'Contact Institute',
+    'location': 'Location',
+    'timings': 'Timings',
+    'viewOnMap': 'View on map',
+    'myCourses': 'My Courses',
+    'noMyCourses': 'No enrollments yet',
+    'noMyCoursesMessage':
+        'Courses you enroll in will appear here with batch and invoice details.',
+    'discount': 'Discount',
+    'totalPayable': 'Total payable',
+    'feeBreakdown': 'Fee breakdown',
+    'demoAndRegistration': 'Demo & registration',
+    'registerForDemo': 'Register for Demo',
+    'demoRequestSubmitted': 'Demo request submitted.',
+    'studentName': 'Student name',
+    'mobileNumber': 'Mobile number',
+    'preferredBatch': 'Preferred batch',
+    'note': 'Note',
+    'submit': 'Submit',
+    'feedback': 'Feedback',
+    'noFeedback': 'No feedback yet',
+    'writeFeedback': 'Write feedback',
+    'feedbackSubmitted': 'Thanks for your feedback.',
+    'yourRating': 'Your rating',
+    'invoice': 'Invoice',
+    'viewInvoice': 'View invoice',
+    'invoiceNumber': 'Invoice',
+    'issuedOn': 'Issued on',
+    'netAmount': 'Net amount',
+    'educationUnavailable': 'Education is unavailable',
+    'educationUnavailableMessage':
+        'This optional module is currently disabled by the administrator.',
 
     // --- AI booking assistant ---
     'aiAssistantTitle': 'AI booking assistant',
@@ -239,42 +339,6 @@ class AppLocalizations {
     'aiCityChennai': 'Chennai',
     'aiCityPune': 'Pune',
     'aiCityKolkata': 'Kolkata',
-    'adminPaymentOperations': 'Payment Operations',
-    'adminPaymentHealth': 'Payment Health',
-    'adminTransactionLedger': 'Transaction Ledger',
-    'paymentHealthHealthy': 'Healthy',
-    'paymentHealthWarning': 'Warning',
-    'paymentHealthAttention': 'Attention',
-    'paymentHealthCritical': 'Critical',
-    'paymentHealthUnavailable': 'No data',
-    'totalTransactions': 'Total Transactions',
-    'capturedPayments': 'Captured',
-    'pendingPayments': 'Pending',
-    'failedPayments': 'Failed',
-    'refundedPayments': 'Refunded',
-    'paymentSuccessRate': 'Success Rate',
-    'reconciliationExceptions': 'Reconciliation Exceptions',
-    'webhookMissing': 'Webhook Missing',
-    'readOnlyLabel': 'Read-only',
-    'noTransactionsInPeriod': 'No transactions in this period',
-    'noTransactionsInPeriodMessage':
-        'There is no payment activity for the selected filters.',
-    'searchByReferenceOrOrderId':
-        'Search by booking reference, order ID or payment ID',
-    'filterByStatus': 'Filter by status',
-    'filterByVenue': 'Filter by venue',
-    'dateRangeLabel': 'Date range',
-    'paymentStatusLabel': 'Payment status',
-    'bookingStatusLabel': 'Booking status',
-    'approvalStatusLabel': 'Approval status',
-    'webhookStatusLabel': 'Webhook status',
-    'permissionDeniedAdminPayments':
-        "You don't have permission to view Admin Payment Operations.",
-    'adminPaymentsLoadError': 'Payment operations data could not be loaded.',
-    'columnReference': 'Reference',
-    'columnVenue': 'Venue',
-    'columnAmount': 'Amount',
-    'columnCreatedAt': 'Created',
     'adminThemeTitle': 'Theme Customizer',
     'adminThemeSubtitle':
         'Configure the global customer app theme without replacing the BookMySpace design system.',
@@ -357,6 +421,25 @@ class AppLocalizations {
     'bookNow': 'ఇప్పుడు బుక్ చేయండి',
     'search': 'శోధన',
     'searchHint': 'వేదికలు, నగరాలు లేదా వర్గాలను వెతకండి...',
+    'courseSearchHint': 'కోర్సులు లేదా సంస్థలను వెతకండి...',
+    'seeAll': 'అన్నీ చూడండి',
+    'linkCopied': 'లింక్ కాపీ చేయబడింది',
+    'share': 'షేర్ చేయండి',
+    'downloadBrochure': 'బ్రోచర్ డౌన్‌లోడ్ చేయండి',
+    'whatYouLearn': 'మీరు నేర్చుకునేవి',
+    'faq': 'తరచుగా అడిగే ప్రశ్నలు',
+    'off': 'తగ్గింపు',
+    'featuredInstitutes': 'ప్రత్యేక సంస్థలు',
+    'popularCourses': 'ప్రసిద్ధ కోర్సులు',
+    'upcomingBatches': 'రాబోయే బ్యాచ్‌లు',
+    'watchDemoClass': 'డెమో క్లాస్ చూడండి',
+    'typeAllInstitutes': 'అన్నీ',
+    'typePrivate': 'ప్రైవేట్',
+    'typeStateGovernment': 'రాష్ట్ర ప్రభుత్వం',
+    'typeCentralGovernment': 'కేంద్ర ప్రభుత్వం',
+    'typeUniversity': 'విశ్వవిద్యాలయం',
+    'typeNgo': 'ఎన్జీవో',
+    'typeOther': 'ఇతర',
     'filters': 'ఫిల్టర్లు',
     'clearFilters': 'ఫిల్టర్లు తీసివేయి',
     'apply': 'వర్తింపజేయి',
@@ -425,6 +508,10 @@ class AppLocalizations {
     'modeHybrid': 'హైబ్రిడ్',
     'settings': 'సెట్టింగ్‌లు',
     'themeMode': 'థీమ్',
+    'filterAllCourses': 'అన్నీ',
+    'home3dEffects': 'రంగు & 3D ప్రభావాలు',
+    'home3dEffectsSubtitle':
+        'హోమ్ స్పాట్‌లైట్ కార్డులపై లోతు మరియు రంగు ప్రభావాలు',
     'language': 'భాష',
     'support': 'సహాయం',
     'privacyPolicy': 'గోప్యతా విధానం',
@@ -478,6 +565,42 @@ class AppLocalizations {
     'onboardingTitle3': 'సురక్షితం మరియు సులభం',
     'onboardingSubtitle3':
         'సురక్షితంగా చెల్లించి టాక్స్ ఇన్‌వాయిస్‌లు మరియు బుకింగ్ నిర్వహణ పొందండి.',
+    'adminPaymentOperations': 'పేమెంట్ ఆపరేషన్స్',
+    'adminPaymentHealth': 'పేమెంట్ హెల్త్',
+    'adminTransactionLedger': 'ట్రాన్సాక్షన్ లెడ్జర్',
+    'paymentHealthHealthy': 'ఆరోగ్యంగా ఉంది',
+    'paymentHealthWarning': 'హెచ్చరిక',
+    'paymentHealthAttention': 'దృష్టి అవసరం',
+    'paymentHealthCritical': 'తీవ్రమైనది',
+    'paymentHealthUnavailable': 'డేటా లేదు',
+    'totalTransactions': 'మొత్తం లావాదేవీలు',
+    'capturedPayments': 'క్యాప్చర్ అయినవి',
+    'pendingPayments': 'పెండింగ్‌లో ఉన్నవి',
+    'failedPayments': 'విఫలమైనవి',
+    'refundedPayments': 'రీఫండ్ చేయబడినవి',
+    'paymentSuccessRate': 'విజయ శాతం',
+    'reconciliationExceptions': 'సరిపోలిక మినహాయింపులు',
+    'webhookMissing': 'వెబ్‌హుక్ లేదు',
+    'readOnlyLabel': 'చదవడానికి మాత్రమే',
+    'noTransactionsInPeriod': 'ఈ కాలంలో లావాదేవీలు లేవు',
+    'noTransactionsInPeriodMessage':
+        'ఎంచుకున్న ఫిల్టర్‌లకు పేమెంట్ కార్యకలాపం లేదు.',
+    'searchByReferenceOrOrderId':
+        'బుకింగ్ రిఫరెన్స్, ఆర్డర్ ఐడీ లేదా పేమెంట్ ఐడీ ద్వారా వెతకండి',
+    'filterByStatus': 'స్థితి ద్వారా ఫిల్టర్ చేయండి',
+    'filterByVenue': 'వేదిక ద్వారా ఫిల్టర్ చేయండి',
+    'dateRangeLabel': 'తేదీ పరిధి',
+    'paymentStatusLabel': 'పేమెంట్ స్థితి',
+    'bookingStatusLabel': 'బుకింగ్ స్థితి',
+    'approvalStatusLabel': 'ఆమోద స్థితి',
+    'webhookStatusLabel': 'వెబ్‌హుక్ స్థితి',
+    'permissionDeniedAdminPayments':
+        'అడ్మిన్ పేమెంట్ ఆపరేషన్స్ చూడటానికి మీకు అనుమతి లేదు.',
+    'adminPaymentsLoadError': 'పేమెంట్ ఆపరేషన్స్ డేటా లోడ్ కాలేదు.',
+    'columnReference': 'రిఫరెన్స్',
+    'columnVenue': 'వేదిక',
+    'columnAmount': 'మొత్తం',
+    'columnCreatedAt': 'సృష్టించినది',
 
     // --- AI booking assistant ---
     'aiAssistantTitle': 'AI బుకింగ్ సహాయకుడు',
@@ -532,42 +655,6 @@ class AppLocalizations {
     'aiCityChennai': 'చెన్నై',
     'aiCityPune': 'పూనే',
     'aiCityKolkata': 'కోల్‌కతా',
-    'adminPaymentOperations': 'పేమెంట్ ఆపరేషన్స్',
-    'adminPaymentHealth': 'పేమెంట్ హెల్త్',
-    'adminTransactionLedger': 'ట్రాన్సాక్షన్ లెడ్జర్',
-    'paymentHealthHealthy': 'ఆరోగ్యంగా ఉంది',
-    'paymentHealthWarning': 'హెచ్చరిక',
-    'paymentHealthAttention': 'దృష్టి అవసరం',
-    'paymentHealthCritical': 'తీవ్రమైనది',
-    'paymentHealthUnavailable': 'డేటా లేదు',
-    'totalTransactions': 'మొత్తం లావాదేవీలు',
-    'capturedPayments': 'క్యాప్చర్ అయినవి',
-    'pendingPayments': 'పెండింగ్‌లో ఉన్నవి',
-    'failedPayments': 'విఫలమైనవి',
-    'refundedPayments': 'రీఫండ్ చేయబడినవి',
-    'paymentSuccessRate': 'విజయ శాతం',
-    'reconciliationExceptions': 'సరిపోలిక మినహాయింపులు',
-    'webhookMissing': 'వెబ్‌హుక్ లేదు',
-    'readOnlyLabel': 'చదవడానికి మాత్రమే',
-    'noTransactionsInPeriod': 'ఈ కాలంలో లావాదేవీలు లేవు',
-    'noTransactionsInPeriodMessage':
-        'ఎంచుకున్న ఫిల్టర్‌లకు పేమెంట్ కార్యకలాపం లేదు.',
-    'searchByReferenceOrOrderId':
-        'బుకింగ్ రిఫరెన్స్, ఆర్డర్ ఐడీ లేదా పేమెంట్ ఐడీ ద్వారా వెతకండి',
-    'filterByStatus': 'స్థితి ద్వారా ఫిల్టర్ చేయండి',
-    'filterByVenue': 'వేదిక ద్వారా ఫిల్టర్ చేయండి',
-    'dateRangeLabel': 'తేదీ పరిధి',
-    'paymentStatusLabel': 'పేమెంట్ స్థితి',
-    'bookingStatusLabel': 'బుకింగ్ స్థితి',
-    'approvalStatusLabel': 'ఆమోద స్థితి',
-    'webhookStatusLabel': 'వెబ్‌హుక్ స్థితి',
-    'permissionDeniedAdminPayments':
-        'అడ్మిన్ పేమెంట్ ఆపరేషన్స్ చూడటానికి మీకు అనుమతి లేదు.',
-    'adminPaymentsLoadError': 'పేమెంట్ ఆపరేషన్స్ డేటా లోడ్ కాలేదు.',
-    'columnReference': 'రిఫరెన్స్',
-    'columnVenue': 'వేదిక',
-    'columnAmount': 'మొత్తం',
-    'columnCreatedAt': 'సృష్టించినది',
     'adminThemeTitle': 'థీమ్ అనుకూలీకరణ',
     'adminThemeSubtitle':
         'BookMySpace డిజైన్ వ్యవస్థను మార్చకుండా కస్టమర్ యాప్ గ్లోబల్ థీమ్‌ను మార్చండి.',
@@ -651,6 +738,25 @@ class AppLocalizations {
     'bookNow': 'अभी बुक करें',
     'search': 'खोज',
     'searchHint': 'स्थान, शहर या श्रेणियाँ खोजें...',
+    'courseSearchHint': 'कोर्स या संस्थान खोजें...',
+    'seeAll': 'सभी देखें',
+    'linkCopied': 'लिंक कॉपी हो गया',
+    'share': 'शेयर करें',
+    'downloadBrochure': 'ब्रोशर डाउनलोड करें',
+    'whatYouLearn': 'आप क्या सीखेंगे',
+    'faq': 'अक्सर पूछे जाने वाले प्रश्न',
+    'off': 'छूट',
+    'featuredInstitutes': 'प्रमुख संस्थान',
+    'popularCourses': 'लोकप्रिय कोर्स',
+    'upcomingBatches': 'आगामी बैच',
+    'watchDemoClass': 'डेमो क्लास देखें',
+    'typeAllInstitutes': 'सभी',
+    'typePrivate': 'निजी',
+    'typeStateGovernment': 'राज्य सरकार',
+    'typeCentralGovernment': 'केंद्र सरकार',
+    'typeUniversity': 'विश्वविद्यालय',
+    'typeNgo': 'एनजीओ',
+    'typeOther': 'अन्य',
     'filters': 'फ़िल्टर',
     'clearFilters': 'फ़िल्टर हटाएँ',
     'apply': 'लागू करें',
@@ -720,6 +826,9 @@ class AppLocalizations {
     'modeHybrid': 'हाइब्रिड',
     'settings': 'सेटिंग्स',
     'themeMode': 'थीम',
+    'filterAllCourses': 'सभी',
+    'home3dEffects': 'रंग और 3D प्रभाव',
+    'home3dEffectsSubtitle': 'होम स्पॉटलाइट कार्ड पर गहराई और रंग प्रभाव',
     'language': 'भाषा',
     'support': 'सहायता',
     'privacyPolicy': 'गोपनीयता नीति',
@@ -773,6 +882,42 @@ class AppLocalizations {
     'onboardingTitle3': 'सरल और सुरक्षित',
     'onboardingSubtitle3':
         'सुरक्षित भुगतान, टैक्स इनवॉइस और आसान बुकिंग प्रबंधन.',
+    'adminPaymentOperations': 'भुगतान संचालन',
+    'adminPaymentHealth': 'भुगतान स्वास्थ्य',
+    'adminTransactionLedger': 'लेन-देन लेजर',
+    'paymentHealthHealthy': 'स्वस्थ',
+    'paymentHealthWarning': 'चेतावनी',
+    'paymentHealthAttention': 'ध्यान देने योग्य',
+    'paymentHealthCritical': 'गंभीर',
+    'paymentHealthUnavailable': 'डेटा उपलब्ध नहीं',
+    'totalTransactions': 'कुल लेन-देन',
+    'capturedPayments': 'कैप्चर किए गए',
+    'pendingPayments': 'लंबित',
+    'failedPayments': 'विफल',
+    'refundedPayments': 'रिफंड किए गए',
+    'paymentSuccessRate': 'सफलता दर',
+    'reconciliationExceptions': 'सुलह अपवाद',
+    'webhookMissing': 'वेबहुक अनुपलब्ध',
+    'readOnlyLabel': 'केवल पढ़ने के लिए',
+    'noTransactionsInPeriod': 'इस अवधि में कोई लेन-देन नहीं',
+    'noTransactionsInPeriodMessage':
+        'चयनित फ़िल्टर के लिए कोई भुगतान गतिविधि नहीं है।',
+    'searchByReferenceOrOrderId':
+        'बुकिंग संदर्भ, ऑर्डर आईडी या भुगतान आईडी से खोजें',
+    'filterByStatus': 'स्थिति के अनुसार फ़िल्टर करें',
+    'filterByVenue': 'स्थान के अनुसार फ़िल्टर करें',
+    'dateRangeLabel': 'दिनांक सीमा',
+    'paymentStatusLabel': 'भुगतान स्थिति',
+    'bookingStatusLabel': 'बुकिंग स्थिति',
+    'approvalStatusLabel': 'अनुमोदन स्थिति',
+    'webhookStatusLabel': 'वेबहुक स्थिति',
+    'permissionDeniedAdminPayments':
+        'आपको एडमिन भुगतान संचालन देखने की अनुमति नहीं है।',
+    'adminPaymentsLoadError': 'भुगतान संचालन डेटा लोड नहीं हो सका।',
+    'columnReference': 'संदर्भ',
+    'columnVenue': 'स्थान',
+    'columnAmount': 'राशि',
+    'columnCreatedAt': 'बनाया गया',
 
     // --- AI booking assistant ---
     'aiAssistantTitle': 'AI बुकिंग सहायक',
@@ -826,42 +971,6 @@ class AppLocalizations {
     'aiCityChennai': 'चेन्नई',
     'aiCityPune': 'पुणे',
     'aiCityKolkata': 'कोलकाता',
-    'adminPaymentOperations': 'भुगतान संचालन',
-    'adminPaymentHealth': 'भुगतान स्वास्थ्य',
-    'adminTransactionLedger': 'लेन-देन लेजर',
-    'paymentHealthHealthy': 'स्वस्थ',
-    'paymentHealthWarning': 'चेतावनी',
-    'paymentHealthAttention': 'ध्यान देने योग्य',
-    'paymentHealthCritical': 'गंभीर',
-    'paymentHealthUnavailable': 'डेटा उपलब्ध नहीं',
-    'totalTransactions': 'कुल लेन-देन',
-    'capturedPayments': 'कैप्चर किए गए',
-    'pendingPayments': 'लंबित',
-    'failedPayments': 'विफल',
-    'refundedPayments': 'रिफंड किए गए',
-    'paymentSuccessRate': 'सफलता दर',
-    'reconciliationExceptions': 'सुलह अपवाद',
-    'webhookMissing': 'वेबहुक अनुपलब्ध',
-    'readOnlyLabel': 'केवल पढ़ने के लिए',
-    'noTransactionsInPeriod': 'इस अवधि में कोई लेन-देन नहीं',
-    'noTransactionsInPeriodMessage':
-        'चयनित फ़िल्टर के लिए कोई भुगतान गतिविधि नहीं है।',
-    'searchByReferenceOrOrderId':
-        'बुकिंग संदर्भ, ऑर्डर आईडी या भुगतान आईडी से खोजें',
-    'filterByStatus': 'स्थिति के अनुसार फ़िल्टर करें',
-    'filterByVenue': 'स्थान के अनुसार फ़िल्टर करें',
-    'dateRangeLabel': 'दिनांक सीमा',
-    'paymentStatusLabel': 'भुगतान स्थिति',
-    'bookingStatusLabel': 'बुकिंग स्थिति',
-    'approvalStatusLabel': 'अनुमोदन स्थिति',
-    'webhookStatusLabel': 'वेबहुक स्थिति',
-    'permissionDeniedAdminPayments':
-        'आपको एडमिन भुगतान संचालन देखने की अनुमति नहीं है।',
-    'adminPaymentsLoadError': 'भुगतान संचालन डेटा लोड नहीं हो सका।',
-    'columnReference': 'संदर्भ',
-    'columnVenue': 'स्थान',
-    'columnAmount': 'राशि',
-    'columnCreatedAt': 'बनाया गया',
     'adminThemeTitle': 'थीम कस्टमाइज़र',
     'adminThemeSubtitle':
         'BookMySpace डिज़ाइन सिस्टम बदले बिना ग्राहक ऐप की वैश्विक थीम कॉन्फ़िगर करें।',
@@ -944,6 +1053,25 @@ class AppLocalizations {
     'bookNow': 'ಈಗ ಬುಕ್ ಮಾಡಿ',
     'search': 'ಹುಡುಕು',
     'searchHint': 'ಸ್ಥಳ, ನಗರ ಅಥವಾ ವರ್ಗ ಹುಡುಕಿ...',
+    'courseSearchHint': 'ಕೋರ್ಸ್‌ಗಳು ಅಥವಾ ಸಂಸ್ಥೆಗಳನ್ನು ಹುಡುಕಿ...',
+    'seeAll': 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ',
+    'linkCopied': 'ಲಿಂಕ್ ನಕಲಿಸಲಾಗಿದೆ',
+    'share': 'ಹಂಚಿಕೊಳ್ಳಿ',
+    'downloadBrochure': 'ಬ್ರೋಷರ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
+    'whatYouLearn': 'ನೀವು ಕಲಿಯುವುದು',
+    'faq': 'ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು',
+    'off': 'ರಿಯಾಯಿತಿ',
+    'featuredInstitutes': 'ಪ್ರಮುಖ ಸಂಸ್ಥೆಗಳು',
+    'popularCourses': 'ಜನಪ್ರಿಯ ಕೋರ್ಸ್‌ಗಳು',
+    'upcomingBatches': 'ಮುಂಬರುವ ಬ್ಯಾಚ್‌ಗಳು',
+    'watchDemoClass': 'ಡೆಮೊ ತರಗತಿ ವೀಕ್ಷಿಸಿ',
+    'typeAllInstitutes': 'ಎಲ್ಲಾ',
+    'typePrivate': 'ಖಾಸಗಿ',
+    'typeStateGovernment': 'ರಾಜ್ಯ ಸರ್ಕಾರ',
+    'typeCentralGovernment': 'ಕೇಂದ್ರ ಸರ್ಕಾರ',
+    'typeUniversity': 'ವಿಶ್ವವಿದ್ಯಾಲಯ',
+    'typeNgo': 'ಎನ್‌ಜಿಒ',
+    'typeOther': 'ಇತರೆ',
     'filters': 'ಫಿಲ್ಟರ್‌ಗಳು',
     'clearFilters': 'ಫಿಲ್ಟರ್ ತೆರವುಗೊಳಿಸಿ',
     'apply': 'ಅನ್ವಯಿಸಿ',
@@ -1012,6 +1140,10 @@ class AppLocalizations {
     'modeHybrid': 'ಹೈಬ್ರಿಡ್',
     'settings': 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
     'themeMode': 'ಥೀಮ್',
+    'filterAllCourses': 'ಎಲ್ಲಾ',
+    'home3dEffects': 'ಬಣ್ಣ ಮತ್ತು 3D ಪರಿಣಾಮಗಳು',
+    'home3dEffectsSubtitle':
+        'ಹೋಮ್ ಸ್ಪಾಟ್‌ಲೈಟ್ ಕಾರ್ಡ್‌ಗಳ ಮೇಲೆ ಆಳ ಮತ್ತು ಬಣ್ಣ ಪರಿಣಾಮಗಳು',
     'language': 'ಭಾಷೆ',
     'support': 'ಸಹಾಯ',
     'privacyPolicy': 'ಗೌಪ್ಯತಾ ನೀತಿ',
@@ -1065,6 +1197,42 @@ class AppLocalizations {
     'onboardingTitle3': 'ಸುಲಭ ಮತ್ತು ಸುರಕ್ಷಿತ',
     'onboardingSubtitle3':
         'ಸುರಕ್ಷಿತ ಪಾವತಿ, ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಮತ್ತು ಸುಲಭ ಬುಕಿಂಗ್ ನಿರ್ವಹಣೆ.',
+    'adminPaymentOperations': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳು',
+    'adminPaymentHealth': 'ಪಾವತಿ ಆರೋಗ್ಯ',
+    'adminTransactionLedger': 'ವಹಿವಾಟು ಲೆಡ್ಜರ್',
+    'paymentHealthHealthy': 'ಆರೋಗ್ಯಕರ',
+    'paymentHealthWarning': 'ಎಚ್ಚರಿಕೆ',
+    'paymentHealthAttention': 'ಗಮನ ಅಗತ್ಯ',
+    'paymentHealthCritical': 'ನಿರ್ಣಾಯಕ',
+    'paymentHealthUnavailable': 'ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ',
+    'totalTransactions': 'ಒಟ್ಟು ವಹಿವಾಟುಗಳು',
+    'capturedPayments': 'ಸೆರೆಹಿಡಿಯಲಾಗಿದೆ',
+    'pendingPayments': 'ಬಾಕಿ ಇದೆ',
+    'failedPayments': 'ವಿಫಲವಾಗಿದೆ',
+    'refundedPayments': 'ಮರುಪಾವತಿಸಲಾಗಿದೆ',
+    'paymentSuccessRate': 'ಯಶಸ್ಸಿನ ದರ',
+    'reconciliationExceptions': 'ಸಮನ್ವಯ ವಿನಾಯಿತಿಗಳು',
+    'webhookMissing': 'ವೆಬ್‌ಹುಕ್ ಕಾಣೆಯಾಗಿದೆ',
+    'readOnlyLabel': 'ಓದಲು ಮಾತ್ರ',
+    'noTransactionsInPeriod': 'ಈ ಅವಧಿಯಲ್ಲಿ ವಹಿವಾಟುಗಳಿಲ್ಲ',
+    'noTransactionsInPeriodMessage':
+        'ಆಯ್ಕೆಮಾಡಿದ ಫಿಲ್ಟರ್‌ಗಳಿಗೆ ಯಾವುದೇ ಪಾವತಿ ಚಟುವಟಿಕೆ ಇಲ್ಲ.',
+    'searchByReferenceOrOrderId':
+        'ಬುಕಿಂಗ್ ಉಲ್ಲೇಖ, ಆರ್ಡರ್ ಐಡಿ ಅಥವಾ ಪಾವತಿ ಐಡಿ ಮೂಲಕ ಹುಡುಕಿ',
+    'filterByStatus': 'ಸ್ಥಿತಿಯ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
+    'filterByVenue': 'ಸ್ಥಳದ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
+    'dateRangeLabel': 'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿ',
+    'paymentStatusLabel': 'ಪಾವತಿ ಸ್ಥಿತಿ',
+    'bookingStatusLabel': 'ಬುಕಿಂಗ್ ಸ್ಥಿತಿ',
+    'approvalStatusLabel': 'ಅನುಮೋದನೆ ಸ್ಥಿತಿ',
+    'webhookStatusLabel': 'ವೆಬ್‌ಹುಕ್ ಸ್ಥಿತಿ',
+    'permissionDeniedAdminPayments':
+        'ಅಡ್ಮಿನ್ ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳನ್ನು ವೀಕ್ಷಿಸಲು ನಿಮಗೆ ಅನುಮತಿ ಇಲ್ಲ.',
+    'adminPaymentsLoadError': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳ ಡೇಟಾ ಲೋಡ್ ಆಗಲಿಲ್ಲ.',
+    'columnReference': 'ಉಲ್ಲೇಖ',
+    'columnVenue': 'ಸ್ಥಳ',
+    'columnAmount': 'ಮೊತ್ತ',
+    'columnCreatedAt': 'ರಚಿಸಲಾಗಿದೆ',
 
     // --- AI booking assistant ---
     'aiAssistantTitle': 'AI ಬುಕಿಂಗ್ ಸಹಾಯಕ',
@@ -1119,42 +1287,6 @@ class AppLocalizations {
     'aiCityChennai': 'ಚೆನ್ನೈ',
     'aiCityPune': 'ಪುಣೆ',
     'aiCityKolkata': 'ಕೋಲ್ಕತ್ತಾ',
-    'adminPaymentOperations': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳು',
-    'adminPaymentHealth': 'ಪಾವತಿ ಆರೋಗ್ಯ',
-    'adminTransactionLedger': 'ವಹಿವಾಟು ಲೆಡ್ಜರ್',
-    'paymentHealthHealthy': 'ಆರೋಗ್ಯಕರ',
-    'paymentHealthWarning': 'ಎಚ್ಚರಿಕೆ',
-    'paymentHealthAttention': 'ಗಮನ ಅಗತ್ಯ',
-    'paymentHealthCritical': 'ನಿರ್ಣಾಯಕ',
-    'paymentHealthUnavailable': 'ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ',
-    'totalTransactions': 'ಒಟ್ಟು ವಹಿವಾಟುಗಳು',
-    'capturedPayments': 'ಸೆರೆಹಿಡಿಯಲಾಗಿದೆ',
-    'pendingPayments': 'ಬಾಕಿ ಇದೆ',
-    'failedPayments': 'ವಿಫಲವಾಗಿದೆ',
-    'refundedPayments': 'ಮರುಪಾವತಿಸಲಾಗಿದೆ',
-    'paymentSuccessRate': 'ಯಶಸ್ಸಿನ ದರ',
-    'reconciliationExceptions': 'ಸಮನ್ವಯ ವಿನಾಯಿತಿಗಳು',
-    'webhookMissing': 'ವೆಬ್‌ಹುಕ್ ಕಾಣೆಯಾಗಿದೆ',
-    'readOnlyLabel': 'ಓದಲು ಮಾತ್ರ',
-    'noTransactionsInPeriod': 'ಈ ಅವಧಿಯಲ್ಲಿ ವಹಿವಾಟುಗಳಿಲ್ಲ',
-    'noTransactionsInPeriodMessage':
-        'ಆಯ್ಕೆಮಾಡಿದ ಫಿಲ್ಟರ್‌ಗಳಿಗೆ ಯಾವುದೇ ಪಾವತಿ ಚಟುವಟಿಕೆ ಇಲ್ಲ.',
-    'searchByReferenceOrOrderId':
-        'ಬುಕಿಂಗ್ ಉಲ್ಲೇಖ, ಆರ್ಡರ್ ಐಡಿ ಅಥವಾ ಪಾವತಿ ಐಡಿ ಮೂಲಕ ಹುಡುಕಿ',
-    'filterByStatus': 'ಸ್ಥಿತಿಯ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
-    'filterByVenue': 'ಸ್ಥಳದ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
-    'dateRangeLabel': 'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿ',
-    'paymentStatusLabel': 'ಪಾವತಿ ಸ್ಥಿತಿ',
-    'bookingStatusLabel': 'ಬುಕಿಂಗ್ ಸ್ಥಿತಿ',
-    'approvalStatusLabel': 'ಅನುಮೋದನೆ ಸ್ಥಿತಿ',
-    'webhookStatusLabel': 'ವೆಬ್‌ಹುಕ್ ಸ್ಥಿತಿ',
-    'permissionDeniedAdminPayments':
-        'ಅಡ್ಮಿನ್ ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳನ್ನು ವೀಕ್ಷಿಸಲು ನಿಮಗೆ ಅನುಮತಿ ಇಲ್ಲ.',
-    'adminPaymentsLoadError': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳ ಡೇಟಾ ಲೋಡ್ ಆಗಲಿಲ್ಲ.',
-    'columnReference': 'ಉಲ್ಲೇಖ',
-    'columnVenue': 'ಸ್ಥಳ',
-    'columnAmount': 'ಮೊತ್ತ',
-    'columnCreatedAt': 'ರಚಿಸಲಾಗಿದೆ',
     'adminThemeTitle': 'ಥೀಮ್ ಕಸ್ಟಮೈಸರ್',
     'adminThemeSubtitle':
         'BookMySpace ವಿನ್ಯಾಸ ವ್ಯವಸ್ಥೆಯನ್ನು ಬದಲಾಯಿಸದೆ ಗ್ರಾಹಕ ಆ್ಯಪ್‌ನ ಜಾಗತಿಕ ಥೀಮ್ ಅನ್ನು ಹೊಂದಿಸಿ.',
@@ -1238,6 +1370,25 @@ class AppLocalizations {
     'bookNow': 'இப்போது முன்பதிவு',
     'search': 'தேடல்',
     'searchHint': 'இடங்கள், நகரங்கள் அல்லது வகைகளைத் தேடுங்கள்...',
+    'courseSearchHint': 'பாடநெறிகள் அல்லது நிறுவனங்களைத் தேடுங்கள்...',
+    'seeAll': 'அனைத்தையும் காண்க',
+    'linkCopied': 'இணைப்பு நகலெடுக்கப்பட்டது',
+    'share': 'பகிர்',
+    'downloadBrochure': 'சுற்றறிக்கையைப் பதிவிறக்கு',
+    'whatYouLearn': 'நீங்கள் கற்பவை',
+    'faq': 'அடிக்கடி கேட்கப்படும் கேள்விகள்',
+    'off': 'தள்ளுபடி',
+    'featuredInstitutes': 'சிறப்பு நிறுவனங்கள்',
+    'popularCourses': 'பிரபலமான பாடநெறிகள்',
+    'upcomingBatches': 'வரவிருக்கும் தொகுப்புகள்',
+    'watchDemoClass': 'டெமோ வகுப்பைப் பார்க்க',
+    'typeAllInstitutes': 'அனைத்தும்',
+    'typePrivate': 'தனியார்',
+    'typeStateGovernment': 'மாநில அரசு',
+    'typeCentralGovernment': 'மத்திய அரசு',
+    'typeUniversity': 'பல்கலைக்கழகம்',
+    'typeNgo': 'தன்னார்வ தொண்டு நிறுவனம்',
+    'typeOther': 'மற்றவை',
     'filters': 'வடிகட்டிகள்',
     'clearFilters': 'வடிகட்டிகளை அழி',
     'apply': 'பயன்படுத்து',
@@ -1306,6 +1457,10 @@ class AppLocalizations {
     'modeHybrid': 'ஹைப்ரிட்',
     'settings': 'அமைப்புகள்',
     'themeMode': 'தீம்',
+    'filterAllCourses': 'அனைத்தும்',
+    'home3dEffects': 'நிறம் & 3D விளைவுகள்',
+    'home3dEffectsSubtitle':
+        'ஹோம் ஸ்பாட்லைட் கார்டுகளில் ஆழம் மற்றும் நிற விளைவுகள்',
     'language': 'மொழி',
     'support': 'உதவி',
     'privacyPolicy': 'தனியுரிமைக் கொள்கை',
@@ -1359,6 +1514,42 @@ class AppLocalizations {
     'onboardingTitle3': 'எளிதானதும் பாதுகாப்பானதும்',
     'onboardingSubtitle3':
         'பாதுகாப்பான கட்டணம், வரி விலைப்பட்டியல் மற்றும் எளிய முன்பதிவு நிர்வாகம்.',
+    'adminPaymentOperations': 'கட்டண செயல்பாடுகள்',
+    'adminPaymentHealth': 'கட்டண ஆரோக்கியம்',
+    'adminTransactionLedger': 'பரிவர்த்தனை பேரேடு',
+    'paymentHealthHealthy': 'ஆரோக்கியமானது',
+    'paymentHealthWarning': 'எச்சரிக்கை',
+    'paymentHealthAttention': 'கவனம் தேவை',
+    'paymentHealthCritical': 'மிக முக்கியமானது',
+    'paymentHealthUnavailable': 'தரவு இல்லை',
+    'totalTransactions': 'மொத்த பரிவர்த்தனைகள்',
+    'capturedPayments': 'பிடிக்கப்பட்டவை',
+    'pendingPayments': 'நிலுவையில் உள்ளவை',
+    'failedPayments': 'தோல்வியடைந்தவை',
+    'refundedPayments': 'திரும்பப் பெறப்பட்டவை',
+    'paymentSuccessRate': 'வெற்றி விகிதம்',
+    'reconciliationExceptions': 'சமரசம் விதிவிலக்குகள்',
+    'webhookMissing': 'வெப்ஹுக் இல்லை',
+    'readOnlyLabel': 'படிக்க மட்டும்',
+    'noTransactionsInPeriod': 'இந்த காலகட்டத்தில் பரிவர்த்தனைகள் இல்லை',
+    'noTransactionsInPeriodMessage':
+        'தேர்ந்தெடுக்கப்பட்ட வடிப்பான்களுக்கு கட்டண செயல்பாடு இல்லை.',
+    'searchByReferenceOrOrderId':
+        'முன்பதிவு குறிப்பு, ஆர்டர் ஐடி அல்லது கட்டண ஐடி மூலம் தேடுங்கள்',
+    'filterByStatus': 'நிலையின் அடிப்படையில் வடிகட்டவும்',
+    'filterByVenue': 'இடத்தின் அடிப்படையில் வடிகட்டவும்',
+    'dateRangeLabel': 'தேதி வரம்பு',
+    'paymentStatusLabel': 'கட்டண நிலை',
+    'bookingStatusLabel': 'முன்பதிவு நிலை',
+    'approvalStatusLabel': 'ஒப்புதல் நிலை',
+    'webhookStatusLabel': 'வெப்ஹுக் நிலை',
+    'permissionDeniedAdminPayments':
+        'நிர்வாக கட்டண செயல்பாடுகளை பார்க்க உங்களுக்கு அனுமதி இல்லை.',
+    'adminPaymentsLoadError': 'கட்டண செயல்பாடு தரவை ஏற்ற முடியவில்லை.',
+    'columnReference': 'குறிப்பு',
+    'columnVenue': 'இடம்',
+    'columnAmount': 'தொகை',
+    'columnCreatedAt': 'உருவாக்கப்பட்டது',
 
     // --- AI booking assistant ---
     'aiAssistantTitle': 'AI முன்பதிவு உதவியாளர்',
@@ -1413,42 +1604,6 @@ class AppLocalizations {
     'aiCityChennai': 'சென்னை',
     'aiCityPune': 'புனே',
     'aiCityKolkata': 'கொல்கத்தா',
-    'adminPaymentOperations': 'கட்டண செயல்பாடுகள்',
-    'adminPaymentHealth': 'கட்டண ஆரோக்கியம்',
-    'adminTransactionLedger': 'பரிவர்த்தனை பேரேடு',
-    'paymentHealthHealthy': 'ஆரோக்கியமானது',
-    'paymentHealthWarning': 'எச்சரிக்கை',
-    'paymentHealthAttention': 'கவனம் தேவை',
-    'paymentHealthCritical': 'மிக முக்கியமானது',
-    'paymentHealthUnavailable': 'தரவு இல்லை',
-    'totalTransactions': 'மொத்த பரிவர்த்தனைகள்',
-    'capturedPayments': 'பிடிக்கப்பட்டவை',
-    'pendingPayments': 'நிலுவையில் உள்ளவை',
-    'failedPayments': 'தோல்வியடைந்தவை',
-    'refundedPayments': 'திரும்பப் பெறப்பட்டவை',
-    'paymentSuccessRate': 'வெற்றி விகிதம்',
-    'reconciliationExceptions': 'சமரசம் விதிவிலக்குகள்',
-    'webhookMissing': 'வெப்ஹுக் இல்லை',
-    'readOnlyLabel': 'படிக்க மட்டும்',
-    'noTransactionsInPeriod': 'இந்த காலகட்டத்தில் பரிவர்த்தனைகள் இல்லை',
-    'noTransactionsInPeriodMessage':
-        'தேர்ந்தெடுக்கப்பட்ட வடிப்பான்களுக்கு கட்டண செயல்பாடு இல்லை.',
-    'searchByReferenceOrOrderId':
-        'முன்பதிவு குறிப்பு, ஆர்டர் ஐடி அல்லது கட்டண ஐடி மூலம் தேடுங்கள்',
-    'filterByStatus': 'நிலையின் அடிப்படையில் வடிகட்டவும்',
-    'filterByVenue': 'இடத்தின் அடிப்படையில் வடிகட்டவும்',
-    'dateRangeLabel': 'தேதி வரம்பு',
-    'paymentStatusLabel': 'கட்டண நிலை',
-    'bookingStatusLabel': 'முன்பதிவு நிலை',
-    'approvalStatusLabel': 'ஒப்புதல் நிலை',
-    'webhookStatusLabel': 'வெப்ஹுக் நிலை',
-    'permissionDeniedAdminPayments':
-        'நிர்வாக கட்டண செயல்பாடுகளை பார்க்க உங்களுக்கு அனுமதி இல்லை.',
-    'adminPaymentsLoadError': 'கட்டண செயல்பாடு தரவை ஏற்ற முடியவில்லை.',
-    'columnReference': 'குறிப்பு',
-    'columnVenue': 'இடம்',
-    'columnAmount': 'தொகை',
-    'columnCreatedAt': 'உருவாக்கப்பட்டது',
     'adminThemeTitle': 'தீம் தனிப்பயனாக்கி',
     'adminThemeSubtitle':
         'BookMySpace வடிவமைப்பு அமைப்பை மாற்றாமல் வாடிக்கையாளர் பயன்பாட்டின் உலகளாவிய தீமை அமைக்கவும்.',
@@ -1619,6 +1774,25 @@ class AppLocalizations {
   String get bookNow => _t('bookNow');
   String get search => _t('search');
   String get searchHint => _t('searchHint');
+  String get courseSearchHint => _t('courseSearchHint');
+  String get seeAll => _t('seeAll');
+  String get linkCopied => _t('linkCopied');
+  String get share => _t('share');
+  String get downloadBrochure => _t('downloadBrochure');
+  String get whatYouLearn => _t('whatYouLearn');
+  String get faq => _t('faq');
+  String get off => _t('off');
+  String get featuredInstitutes => _t('featuredInstitutes');
+  String get popularCourses => _t('popularCourses');
+  String get upcomingBatches => _t('upcomingBatches');
+  String get watchDemoClass => _t('watchDemoClass');
+  String get typeAllInstitutes => _t('typeAllInstitutes');
+  String get typePrivate => _t('typePrivate');
+  String get typeStateGovernment => _t('typeStateGovernment');
+  String get typeCentralGovernment => _t('typeCentralGovernment');
+  String get typeUniversity => _t('typeUniversity');
+  String get typeNgo => _t('typeNgo');
+  String get typeOther => _t('typeOther');
   String get filters => _t('filters');
   String get clearFilters => _t('clearFilters');
   String get apply => _t('apply');
@@ -1685,6 +1859,9 @@ class AppLocalizations {
   String get modeOnline => _t('modeOnline');
   String get modeOffline => _t('modeOffline');
   String get modeHybrid => _t('modeHybrid');
+  String get filterAllCourses => _t('filterAllCourses');
+  String get home3dEffects => _t('home3dEffects');
+  String get home3dEffectsSubtitle => _t('home3dEffectsSubtitle');
   String get settings => _t('settings');
   String get themeMode => _t('themeMode');
   String get language => _t('language');
@@ -1735,6 +1912,45 @@ class AppLocalizations {
   String get onboardingTitle3 => _t('onboardingTitle3');
   String get onboardingSubtitle3 => _t('onboardingSubtitle3');
 
+  // Education / institutes
+  String get education => _t('education');
+  String get institutes => _t('institutes');
+  String get noInstitutes => _t('noInstitutes');
+  String get noInstitutesMessage => _t('noInstitutesMessage');
+  String get instituteDetails => _t('instituteDetails');
+  String get coursesByInstitute => _t('coursesByInstitute');
+  String get aboutInstitute => _t('aboutInstitute');
+  String get faculty => _t('faculty');
+  String get contactInstitute => _t('contactInstitute');
+  String get location => _t('location');
+  String get timings => _t('timings');
+  String get viewOnMap => _t('viewOnMap');
+  String get myCourses => _t('myCourses');
+  String get noMyCourses => _t('noMyCourses');
+  String get noMyCoursesMessage => _t('noMyCoursesMessage');
+  String get discount => _t('discount');
+  String get totalPayable => _t('totalPayable');
+  String get feeBreakdown => _t('feeBreakdown');
+  String get demoAndRegistration => _t('demoAndRegistration');
+  String get registerForDemo => _t('registerForDemo');
+  String get demoRequestSubmitted => _t('demoRequestSubmitted');
+  String get studentName => _t('studentName');
+  String get mobileNumber => _t('mobileNumber');
+  String get preferredBatch => _t('preferredBatch');
+  String get note => _t('note');
+  String get submit => _t('submit');
+  String get feedback => _t('feedback');
+  String get noFeedback => _t('noFeedback');
+  String get writeFeedback => _t('writeFeedback');
+  String get feedbackSubmitted => _t('feedbackSubmitted');
+  String get yourRating => _t('yourRating');
+  String get invoice => _t('invoice');
+  String get viewInvoice => _t('viewInvoice');
+  String get invoiceNumber => _t('invoiceNumber');
+  String get issuedOn => _t('issuedOn');
+  String get netAmount => _t('netAmount');
+  String get educationUnavailable => _t('educationUnavailable');
+  String get educationUnavailableMessage => _t('educationUnavailableMessage');
   // --- AI booking assistant ---
   String get aiAssistantTitle => _t('aiAssistantTitle');
   String get aiAssistantSubtitle => _t('aiAssistantSubtitle');

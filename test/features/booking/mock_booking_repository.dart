@@ -5,17 +5,19 @@ class MockBookingRepository implements BookingRepository {
   MockBookingRepository({
     this.bookings = const [],
     this.ownerBookings = const [],
+    this.slots = const [],
   });
 
   List<Booking> bookings;
   List<Booking> ownerBookings;
+  List<SlotAvailability> slots;
 
   @override
   Future<List<SlotAvailability>> availableTimeSlots({
     required String venueId,
     required DateTime date,
   }) async =>
-      const [];
+      slots;
 
   @override
   Future<BookingHold> acquireHold({
@@ -36,6 +38,7 @@ class MockBookingRepository implements BookingRepository {
     required DateTime bookDate,
     required double amount,
     int approvalMinutes = 120,
+    String? couponCode,
   }) async {
     return Booking(
       id: 'b-request-1',
@@ -97,6 +100,32 @@ class MockBookingRepository implements BookingRepository {
 
   @override
   Future<List<Booking>> myBookings() async => bookings;
+
+  // Phase 9XM-3: minimal mock support for the new bounded/paginated/by-id
+  // repository methods, added so this mock keeps implementing
+  // BookingRepository after the interface grew these methods. Behavior
+  // mirrors myBookings() as closely as makes sense for a test double.
+  @override
+  Future<List<Booking>> recentBookings({int limit = 5}) async =>
+      bookings.take(limit).toList();
+
+  @override
+  Future<List<Booking>> myBookingsPage({
+    required int offset,
+    required int limit,
+  }) async {
+    if (offset >= bookings.length) return const [];
+    final end = (offset + limit).clamp(0, bookings.length);
+    return bookings.sublist(offset, end);
+  }
+
+  @override
+  Future<Booking?> bookingById(String bookingId) async {
+    for (final booking in bookings) {
+      if (booking.id == bookingId) return booking;
+    }
+    return null;
+  }
 
   @override
   Future<List<Booking>> ownerVenueBookings() async => ownerBookings;

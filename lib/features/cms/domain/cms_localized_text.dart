@@ -126,7 +126,9 @@ class CmsLocalizedText {
   }
 
   @override
-  int get hashCode => Object.hash(base, Object.hashAllUnordered(
+  int get hashCode => Object.hash(
+      base,
+      Object.hashAllUnordered(
         overrides.entries.map((e) => Object.hash(e.key, e.value)),
       ));
 

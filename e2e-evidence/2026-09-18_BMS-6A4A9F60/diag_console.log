@@ -1,0 +1,26 @@
+[warning] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading
+[debug] Injecting <script> tag. Using callback.
+[info] DDC is about to load 1/2 scripts with pool size = 1000
+[info] DDC is about to load 1417/1417 scripts with pool size = 1000
+[log] [WebPush] Service worker registered with scope: http://127.0.0.1:8099/
+[log] Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+[error] Failed to load resource: the server responded with a status of 403 ()
+[warning] Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+[log] BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+[log] supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+[warning] Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+[warning] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading
+[debug] Updating service worker.
+[log] [WebPush] Service worker registered with scope: http://127.0.0.1:8099/
+[error] Failed to load resource: the server responded with a status of 403 ()
+[warning] Exception while loading service worker: Error: prepareServiceWorker took more than 4000ms to resolve. Moving on.
+    at http://127.0.0.1:8099/flutter_bootstrap.js:1:3775
+[debug] Injecting <script> tag. Using callback.
+[info] DDC is about to load 1/2 scripts with pool size = 1000
+[info] DDC is about to load 1417/1417 scripts with pool size = 1000
+[warning] Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+[log] Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+[warning] Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+[log] BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+[log] supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+[warning] Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts

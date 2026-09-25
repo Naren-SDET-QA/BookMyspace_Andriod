@@ -228,14 +228,17 @@ void main() {
     repo.dispose();
   });
 
-  testWidgets('renders Google and Apple sign-in buttons', (tester) async {
+  testWidgets('renders Google sign-in button and no Apple sign-in', (
+    tester,
+  ) async {
     final repo = MockAuthRepository();
     await _pumpLogin(tester, repo);
 
     expect(find.byKey(const Key('google-sign-in')), findsOneWidget);
-    expect(find.byKey(const Key('apple-sign-in')), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Continue with Apple'), findsOneWidget);
+    expect(find.byKey(const Key('apple-sign-in')), findsNothing);
+    expect(find.text('Continue with Apple'), findsNothing);
+    expect(find.byIcon(Icons.apple_rounded), findsNothing);
     expect(find.text('Send code'), findsOneWidget);
     expect(find.text('Email'), findsWidgets);
     expect(find.text('Phone'), findsWidgets);
@@ -255,42 +258,13 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsWidgets);
 
     await tester.tap(find.byKey(const Key('google-sign-in')));
-    await tester.tap(find.byKey(const Key('apple-sign-in')));
     await tester.tap(find.byKey(const Key('otp-submit')));
     await tester.pump();
 
     expect(repo.googleCount, 1);
-    expect(repo.appleCount, 0);
     expect(repo.signInCount, 0);
 
     repo.delayedGoogle!.complete(
-      const AuthUser(id: 'mock-user', email: 'mock@test.com'),
-    );
-    await tester.pumpAndSettle();
-    expect(repo.currentUser?.email, 'mock@test.com');
-    repo.dispose();
-  });
-
-  testWidgets('shows Apple loading state and ignores duplicate taps', (
-    tester,
-  ) async {
-    final repo = MockAuthRepository()..delayedApple = Completer<AuthUser>();
-    await _pumpLogin(tester, repo);
-
-    await tester.tap(find.byKey(const Key('apple-sign-in')));
-    await tester.pump();
-
-    expect(find.text('Connecting to Apple...'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsWidgets);
-
-    await tester.tap(find.byKey(const Key('apple-sign-in')));
-    await tester.tap(find.byKey(const Key('google-sign-in')));
-    await tester.pump();
-
-    expect(repo.appleCount, 1);
-    expect(repo.googleCount, 0);
-
-    repo.delayedApple!.complete(
       const AuthUser(id: 'mock-user', email: 'mock@test.com'),
     );
     await tester.pumpAndSettle();
@@ -312,20 +286,6 @@ void main() {
     repo.dispose();
   });
 
-  testWidgets('shows a muted message when Apple sign-in is cancelled', (
-    tester,
-  ) async {
-    final repo = MockAuthRepository()..cancelApple = true;
-    await _pumpLogin(tester, repo);
-
-    await tester.tap(find.byKey(const Key('apple-sign-in')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Apple sign-in was cancelled.'), findsOneWidget);
-    expect(repo.currentUser, isNull);
-    repo.dispose();
-  });
-
   testWidgets('surfaces Google sign-in errors', (tester) async {
     final repo = MockAuthRepository()..failGoogle = true;
     await _pumpLogin(tester, repo);
@@ -334,18 +294,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Google sign-in failed'), findsOneWidget);
-    expect(repo.currentUser, isNull);
-    repo.dispose();
-  });
-
-  testWidgets('surfaces Apple sign-in errors', (tester) async {
-    final repo = MockAuthRepository()..failApple = true;
-    await _pumpLogin(tester, repo);
-
-    await tester.tap(find.byKey(const Key('apple-sign-in')));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Apple sign-in failed'), findsOneWidget);
     expect(repo.currentUser, isNull);
     repo.dispose();
   });

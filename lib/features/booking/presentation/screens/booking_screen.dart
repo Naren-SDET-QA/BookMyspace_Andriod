@@ -7,12 +7,16 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/responsive_layout.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
+import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
+import '../../../venues/presentation/widgets/listing_availability.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
+import '../../../offers/domain/coupon.dart';
+import '../../../offers/presentation/coupon_providers.dart';
 
 /// Booking flow: pick a date, pick an available slot, and submit an owner
 /// approval request.
@@ -34,63 +38,201 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   DateTime? _selectedDate;
   SlotAvailability? _selectedSlot;
   bool _confirming = false;
+  final Map<String, String> _extraValues = {};
+  final TextEditingController _couponController = TextEditingController();
+  Coupon? _appliedCoupon;
+  String? _couponError;
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
+    final prefs = ref.read(discoveryBookingPrefsProvider);
+    _selectedDate = prefs.day;
+    if (prefs.guests > 0) {
+      _extraValues['guests'] = '${prefs.guests}';
+    }
+  }
+
+  /// Live slot price, used for coupon minimum-amount validation.
+  double? get slotPrice => _selectedSlot?.priceAmount;
+
+  @override
+  void dispose() {
+    _couponController.dispose();
+    super.dispose();
+  }
+
+  /// Validates the entered code against the venue's active public coupons
+  /// (`public.coupons`, RLS-gated to active rows).
+  ///
+  /// This is a UX gate only. The server remains the sole authority for the
+  /// booking total: `request_venue_booking` recomputes base, tax and total
+  /// from the live slot and currently books at full price (the RPC accepts no
+  /// coupon parameter), so the coupon is recorded as a request note and the
+  /// confirm dialog states that the applied offer is settled at payment time.
+  void _applyCoupon() {
+    final coupons = ref.read(activeCouponsProvider).valueOrNull ?? const [];
+    final code = _couponController.text.trim().toUpperCase();
+    if (code.isEmpty) return;
+    final match = coupons.cast<Coupon?>().firstWhere(
+          (c) => c!.code.toUpperCase() == code,
+          orElse: () => null,
+        );
+    String? error;
+    if (match == null) {
+      error = 'Invalid or expired coupon code';
+    } else {
+      final price = slotPrice;
+      final min = match.minBookingAmount;
+      final floor = (min == null || min <= 0) ? 0.0 : min;
+      if (price != null && price < floor) {
+        error =
+            'Requires a minimum booking of \${formatInr(floor)} for this slot';
+      }
+    }
+    setState(() {
+      _appliedCoupon = error == null ? match : null;
+      _couponError = error;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final date = _selectedDate;
+    final template = widget.venue.listingTemplate;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.bookNow)),
+      appBar: AppBar(title: Text(template.ctaBook)),
       body: date == null
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _VenueHeader(venue: widget.venue),
-                const Divider(height: 1),
-                _DateStrip(
-                  selected: date,
-                  onSelected: (d) {
-                    setState(() {
-                      _selectedDate = d;
-                      _selectedSlot = null;
-                    });
-                  },
-                ),
-                Expanded(
-                  child: _SlotList(
-                    venueId: widget.venue.id,
-                    date: date,
-                    selectedSlot: _selectedSlot,
-                    onSelected: (slot) => setState(() {
-                      _selectedSlot = slot;
-                    }),
-                  ),
-                ),
-              ],
+          : ResponsiveLayoutBuilder(
+              builder: (context, responsive) {
+                final extras = _BookingExtraFields(
+                  fields: template.bookingFields,
+                  values: _extraValues,
+                  onChanged: (key, value) =>
+                      setState(() => _extraValues[key] = value),
+                );
+                final couponWidget = _CouponField(
+                  controller: _couponController,
+                  appliedCoupon: _appliedCoupon,
+                  errorText: _couponError,
+                  onApply: _applyCoupon,
+                  onRemove: () => setState(() {
+                    _appliedCoupon = null;
+                    _couponError = null;
+                    _couponController.clear();
+                  }),
+                );
+                final slots = ListingSlotList(
+                  venueId: widget.venue.id,
+                  date: date,
+                  selectedSlot: _selectedSlot,
+                  onSelected: (slot) => setState(() => _selectedSlot = slot),
+                );
+                if (responsive.isExpanded || responsive.isExtraWide) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          children: [
+                            _VenueHeader(venue: widget.venue),
+                            extras,
+                            couponWidget,
+                            ListingDateStrip(
+                              selected: date,
+                              onSelected: (d) {
+                                setState(() {
+                                  _selectedDate = d;
+                                  _selectedSlot = null;
+                                });
+                              },
+                            ),
+                            Expanded(child: slots),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        width: 320,
+                        child: _selectedSlot == null
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Text('Select an available slot'),
+                                ),
+                              )
+                            : _ConfirmBar(
+                                venue: widget.venue,
+                                date: date,
+                                slot: _selectedSlot!,
+                                confirming: _confirming,
+                                ctaLabel: template.ctaBook,
+                                onConfirm: () => _confirmBooking(date),
+                              ),
+                      ),
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    _VenueHeader(venue: widget.venue),
+                    extras,
+                    couponWidget,
+                    const Divider(height: 1),
+                    ListingDateStrip(
+                      selected: date,
+                      onSelected: (d) {
+                        setState(() {
+                          _selectedDate = d;
+                          _selectedSlot = null;
+                        });
+                      },
+                    ),
+                    Expanded(child: slots),
+                  ],
+                );
+              },
             ),
-      bottomNavigationBar: _selectedSlot != null
+      bottomNavigationBar: _selectedSlot != null &&
+              date != null &&
+              MediaQuery.sizeOf(context).width < 840
           ? _ConfirmBar(
               venue: widget.venue,
-              date: date!,
+              date: date,
               slot: _selectedSlot!,
               confirming: _confirming,
+              ctaLabel: template.ctaBook,
               onConfirm: () => _confirmBooking(date),
             )
           : null,
     );
   }
 
+  String? _missingRequiredField() {
+    for (final field in widget.venue.listingTemplate.bookingFields) {
+      if (!field.required || !field.isActive) continue;
+      if (field.type == ListingFieldType.date ||
+          field.type == ListingFieldType.slot) {
+        continue;
+      }
+      final value = _extraValues[field.key]?.trim() ?? '';
+      if (value.isEmpty) return field.label;
+    }
+    return null;
+  }
+
   Future<void> _confirmBooking(DateTime date) async {
     final slot = _selectedSlot;
     if (slot == null || _confirming) return;
     final l10n = AppLocalizations.of(context);
+    final missing = _missingRequiredField();
+    if (missing != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter $missing')),
+      );
+      return;
+    }
     final repo = ref.read(bookingRepositoryProvider);
 
     final taxRate = widget.venue.taxRate;
@@ -115,8 +257,22 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               label: l10n.selectTimeSlot,
               value: '${slot.displayStart} – ${slot.displayEnd}',
             ),
+            for (final field in widget.venue.listingTemplate.bookingFields)
+              if (field.type != ListingFieldType.date &&
+                  field.type != ListingFieldType.slot &&
+                  (_extraValues[field.key]?.trim().isNotEmpty ?? false))
+                _SummaryRow(
+                  label: field.label,
+                  value: _extraValues[field.key]!.trim(),
+                ),
             const Divider(height: 24),
             _SummaryRow(label: l10n.basePrice, value: formatInr(amount)),
+            if (_appliedCoupon != null)
+              _SummaryRow(
+                label: 'Coupon',
+                value: '\${_appliedCoupon!.code} (settled at payment)',
+                discountRow: true,
+              ),
             _SummaryRow(label: l10n.taxRate, value: formatInr(tax)),
             const Divider(height: 24),
             _SummaryRow(
@@ -148,6 +304,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         slotId: slot.slotId,
         bookDate: date,
         amount: amount,
+        couponCode: _appliedCoupon?.code,
       );
       ref.invalidate(myBookingsProvider);
       if (!mounted) return;
@@ -162,6 +319,83 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     } finally {
       if (mounted) setState(() => _confirming = false);
     }
+  }
+}
+
+class _BookingExtraFields extends StatelessWidget {
+  const _BookingExtraFields({
+    required this.fields,
+    required this.values,
+    required this.onChanged,
+  });
+
+  final List<ListingFieldDefinition> fields;
+  final Map<String, String> values;
+  final void Function(String key, String value) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final extras = fields
+        .where((field) =>
+            field.type != ListingFieldType.date &&
+            field.type != ListingFieldType.slot)
+        .toList(growable: false);
+    if (extras.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: extras.map((field) {
+          final value = values[field.key] ?? '';
+          if (field.type == ListingFieldType.dropdown) {
+            return SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<String>(
+                key: Key('booking_field_${field.key}'),
+                initialValue: field.options.contains(value) ? value : null,
+                decoration: InputDecoration(
+                  labelText: field.label,
+                ),
+                items: field.options
+                    .map(
+                      (option) => DropdownMenuItem(
+                        value: option,
+                        child: Text(option),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (next) => onChanged(field.key, next ?? ''),
+              ),
+            );
+          }
+          if (field.type == ListingFieldType.toggle) {
+            return FilterChip(
+              key: Key('booking_field_${field.key}'),
+              label: Text(field.label),
+              selected: value == 'true',
+              onSelected: (selected) =>
+                  onChanged(field.key, selected ? 'true' : 'false'),
+            );
+          }
+          return SizedBox(
+            width: 160,
+            child: TextFormField(
+              key: Key('booking_field_${field.key}'),
+              initialValue: value,
+              keyboardType: field.type == ListingFieldType.number
+                  ? TextInputType.number
+                  : TextInputType.text,
+              decoration: InputDecoration(
+                labelText: field.label,
+                hintText: field.placeholder,
+              ),
+              onChanged: (next) => onChanged(field.key, next),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }
 
@@ -208,284 +442,13 @@ class _VenueHeader extends StatelessWidget {
               avatar: const Icon(
                 Icons.people_alt_rounded,
                 size: 18,
-                color: AppTheme.brand,
+                color: AppTheme.violet,
               ),
               label: Text('${venue.capacity}'),
             ),
         ],
       ),
     );
-  }
-}
-
-class _DateStrip extends StatelessWidget {
-  const _DateStrip({required this.selected, required this.onSelected});
-
-  final DateTime selected;
-  final ValueChanged<DateTime> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final dates = List.generate(
-      14,
-      (i) => DateTime(today.year, today.month, today.day + i),
-    );
-
-    return SizedBox(
-      height: 76,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        scrollDirection: Axis.horizontal,
-        itemCount: dates.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final date = dates[i];
-          final isSelected = date.year == selected.year &&
-              date.month == selected.month &&
-              date.day == selected.day;
-          return _DateChip(
-            date: date,
-            isSelected: isSelected,
-            onTap: () => onSelected(date),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _DateChip extends StatelessWidget {
-  const _DateChip({
-    required this.date,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final DateTime date;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dayName = DateFormat('EEE').format(date);
-    final dayNum = DateFormat('d').format(date);
-    final month = DateFormat('MMM').format(date);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 60,
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.brand : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color:
-                isSelected ? AppTheme.brand : theme.colorScheme.outlineVariant,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              dayName,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: isSelected
-                    ? Colors.white
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              dayNum,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: isSelected ? Colors.white : theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              month,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: isSelected
-                    ? Colors.white70
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SlotList extends ConsumerWidget {
-  const _SlotList({
-    required this.venueId,
-    required this.date,
-    required this.selectedSlot,
-    required this.onSelected,
-  });
-
-  final String venueId;
-  final DateTime date;
-  final SlotAvailability? selectedSlot;
-  final ValueChanged<SlotAvailability> onSelected;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final availability = ref.watch(
-      slotAvailabilityProvider(
-        SlotAvailabilityQuery(venueId: venueId, date: date),
-      ),
-    );
-
-    return availability.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => ErrorView(
-        message: e.toString(),
-        onRetry: () => ref.invalidate(
-          slotAvailabilityProvider(
-            SlotAvailabilityQuery(venueId: venueId, date: date),
-          ),
-        ),
-      ),
-      data: (slots) {
-        if (slots.isEmpty) {
-          return EmptyState(
-            icon: Icons.event_busy_rounded,
-            title: l10n.noSlotsForDate,
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: slots.length,
-          itemBuilder: (context, i) {
-            final slot = slots[i];
-            final isSelected = selectedSlot?.slotId == slot.slotId;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _SlotTile(
-                slot: slot,
-                isSelected: isSelected,
-                onTap: slot.isAvailable ? () => onSelected(slot) : null,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _SlotTile extends StatelessWidget {
-  const _SlotTile({
-    required this.slot,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final SlotAvailability slot;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final enabled = slot.isAvailable;
-
-    return Material(
-      color: isSelected
-          ? AppTheme.brand.withValues(alpha: 0.08)
-          : theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: isSelected ? AppTheme.brand : theme.colorScheme.outlineVariant,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      slot.label,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${slot.displayStart} – ${slot.displayEnd}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (!enabled)
-                Text(
-                  _reasonLabel(slot.reason),
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      formatInr(slot.priceAmount),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppTheme.brand,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isSelected
-                              ? Icons.radio_button_checked_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          size: 18,
-                          color: isSelected
-                              ? AppTheme.brand
-                              : theme.colorScheme.outline,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _reasonLabel(String reason) {
-    return switch (reason) {
-      'booked' => 'Booked',
-      'held' => 'Unavailable',
-      'blocked' => 'Blocked',
-      'closed' => 'Closed',
-      'inactive' => 'Closed',
-      _ => 'Unavailable',
-    };
   }
 }
 
@@ -496,6 +459,7 @@ class _ConfirmBar extends StatelessWidget {
     required this.slot,
     required this.confirming,
     required this.onConfirm,
+    this.ctaLabel,
   });
 
   final Venue venue;
@@ -503,6 +467,7 @@ class _ConfirmBar extends StatelessWidget {
   final SlotAvailability slot;
   final bool confirming;
   final VoidCallback onConfirm;
+  final String? ctaLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +494,7 @@ class _ConfirmBar extends StatelessWidget {
                 Text(
                   formatInr(total),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.brand,
+                        color: AppTheme.violet,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -546,7 +511,7 @@ class _ConfirmBar extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.lock_rounded),
-                label: Text(l10n.confirmBooking),
+                label: Text(ctaLabel ?? l10n.confirmBooking),
               ),
             ),
           ],
@@ -561,11 +526,13 @@ class _SummaryRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.emphasize = false,
+    this.discountRow = false,
   });
 
   final String label;
   final String value;
   final bool emphasize;
+  final bool discountRow;
 
   @override
   Widget build(BuildContext context) {
@@ -581,9 +548,11 @@ class _SummaryRow extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: emphasize
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurfaceVariant,
+                color: discountRow
+                    ? Colors.green.shade700
+                    : (emphasize
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -596,8 +565,87 @@ class _SummaryRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: emphasize ? AppTheme.brand : null,
+                color: discountRow
+                    ? Colors.green.shade700
+                    : (emphasize ? AppTheme.violet : null),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Coupon code entry widget — validates against activeCouponsProvider client-side.
+class _CouponField extends ConsumerWidget {
+  const _CouponField({
+    required this.controller,
+    required this.onApply,
+    required this.onRemove,
+    this.appliedCoupon,
+    this.errorText,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onApply;
+  final VoidCallback onRemove;
+  final Coupon? appliedCoupon;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    if (appliedCoupon != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: Row(
+          children: [
+            const Icon(Icons.local_offer_rounded,
+                size: 16, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '\${appliedCoupon!.code} — \${appliedCoupon!.valueLabel} applied',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: Colors.green.shade700),
+              ),
+            ),
+            TextButton(
+              onPressed: onRemove,
+              style:
+                  TextButton.styleFrom(foregroundColor: Colors.red.shade400),
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                hintText: 'Coupon code',
+                prefixIcon: const Icon(Icons.local_offer_outlined, size: 20),
+                errorText: errorText,
+                isDense: true,
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => onApply(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: EdgeInsets.only(top: errorText != null ? 0 : 0),
+            child: OutlinedButton(
+              onPressed: onApply,
+              child: const Text('Apply'),
             ),
           ),
         ],

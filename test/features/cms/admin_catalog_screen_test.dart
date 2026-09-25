@@ -158,7 +158,8 @@ void main() {
 
   testWidgets('a rejected publish keeps the draft instead of losing work',
       (tester) async {
-    final repo = FakeFlagRepository()..saveError = Exception('row-level security');
+    final repo = FakeFlagRepository()
+      ..saveError = Exception('row-level security');
     await tester.pumpWidget(_app(repo));
     await tester.pumpAndSettle();
 
@@ -253,8 +254,7 @@ void main() {
     expect(find.text('Add facility type'), findsOneWidget);
   });
 
-  testWidgets('adding a new facility type via the dialog',
-      (tester) async {
+  testWidgets('adding a new facility type via the dialog', (tester) async {
     final repo = FakeFlagRepository();
     await tester.pumpWidget(_app(repo));
     await tester.pumpAndSettle();
@@ -291,8 +291,7 @@ void main() {
     expect(published.facilityTypeFor('stays')!.title.base, 'Stays');
   });
 
-  testWidgets('adding a section under a facility type',
-      (tester) async {
+  testWidgets('adding a section under a facility type', (tester) async {
     final repo = FakeFlagRepository();
     await tester.pumpWidget(_app(repo));
     await tester.pumpAndSettle();
@@ -358,8 +357,7 @@ void main() {
     expect(repo.saved, isEmpty);
   });
 
-  testWidgets('switching language shows translation fields',
-      (tester) async {
+  testWidgets('switching language shows translation fields', (tester) async {
     await tester.pumpWidget(_app(FakeFlagRepository()));
     await tester.pumpAndSettle();
 
@@ -401,8 +399,7 @@ void main() {
     expect(find.text('New facility type'), findsOneWidget);
   });
 
-  testWidgets('the preview shows only enabled entries',
-      (tester) async {
+  testWidgets('the preview shows only enabled entries', (tester) async {
     final repo = FakeFlagRepository();
     await tester.pumpWidget(_app(repo));
     tester.view.physicalSize = const Size(1600, 1200);
@@ -421,8 +418,7 @@ void main() {
     }
   });
 
-  testWidgets('the back button on mobile returns to the tree',
-      (tester) async {
+  testWidgets('the back button on mobile returns to the tree', (tester) async {
     await tester.pumpWidget(_app(FakeFlagRepository()));
     await tester.pumpAndSettle();
 

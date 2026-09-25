@@ -100,8 +100,7 @@ class NavTabsConfig {
 
   /// Every destination in admin order, whether enabled or not.
   List<NavTabConfig> get ordered {
-    final list = [...tabs]
-      ..sort((a, b) {
+    final list = [...tabs]..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         // Tie-break on declaration order so a duplicated `order` still yields a
         // stable bar instead of one that shuffles between rebuilds.

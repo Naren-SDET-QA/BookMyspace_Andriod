@@ -5,13 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/router/search_route.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../home/presentation/discovery_location.dart';
+import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
@@ -111,6 +115,82 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     context.go(SearchRouteParams.locationFor(query));
   }
 
+  void _showGuestPicker(int current) {
+    int guests = current;
+    showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AlertDialog(
+          title: const Text('Number of Guests'),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: guests > 1
+                    ? () => setModalState(() => guests--)
+                    : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '$guests',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: guests < 500
+                    ? () => setModalState(() => guests++)
+                    : null,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, guests),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    ).then((picked) {
+      if (picked != null && mounted) {
+        ref.read(discoveryBookingPrefsProvider.notifier).setGuests(picked);
+      }
+    });
+  }
+
+  String _searchDateLabel(DateTime date) {
+    final now = DateTime.now();
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return 'Today';
+    }
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
   void _onQueryChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
@@ -128,6 +208,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     VoiceSearchBottomSheet.show(
       context,
       onFilterApplied: (voiceResult) {
+        if (voiceResult.categorySlug == 'institutes_classes') {
+          final query = voiceResult.cleanedSearchQuery.trim();
+          context.go(
+            query.isEmpty
+                ? AppRoutes.education
+                : '${AppRoutes.education}?q=${Uri.encodeQueryComponent(query)}',
+          );
+          return;
+        }
         final newQuery = voiceResult.toVenueSearchQuery();
         if (voiceResult.isClearCommand) {
           _controller.clear();
@@ -190,6 +279,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final query = _effectiveQuery();
     final results = ref.watch(searchResultsProvider(query));
     final categories = ref.watch(venueCategoriesProvider);
+    final bookingPrefs = ref.watch(discoveryBookingPrefsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -230,7 +320,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ),
                           IconButton(
                             icon: const Icon(Icons.mic_rounded,
-                                color: AppTheme.brand),
+                                color: AppTheme.violet),
                             onPressed: _openVoiceSearch,
                             tooltip: 'Voice Search',
                           ),
@@ -264,7 +354,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ? Icons.my_location_rounded
                         : Icons.location_on_outlined,
                     size: 18,
-                    color: AppTheme.brand,
+                    color: AppTheme.violet,
                   ),
                   label: Text(
                     [
@@ -273,13 +363,47 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       if (query.pincode != null &&
                           query.pincode!.trim().isNotEmpty)
                         'PIN ${query.pincode!.trim()}',
-                      if (query.hasCoordinates)
-                        '${query.radiusKm ?? 10} km',
+                      if (query.hasCoordinates) '${query.radiusKm ?? 10} km',
                     ].join(' • '),
                   ),
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.event_rounded, size: 18),
+                  label: Text(_searchDateLabel(bookingPrefs.day)),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: bookingPrefs.day,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null && mounted) {
+                      ref
+                          .read(discoveryBookingPrefsProvider.notifier)
+                          .setDate(picked);
+                    }
+                  },
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.person_rounded, size: 18),
+                  label: Text(
+                    bookingPrefs.guests == 1
+                        ? '1 Guest'
+                        : '\${bookingPrefs.guests} Guests',
+                  ),
+                  onPressed: () => _showGuestPicker(bookingPrefs.guests),
+                ),
+              ],
+            ),
+          ),
           SizedBox(
             height: 48,
             child: ListView(
@@ -325,12 +449,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         'Try a different keyword, category or price range.',
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: venues.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) =>
-                      VenueCard(venue: venues[i], entranceIndex: i),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final responsive =
+                        ResponsiveInfo.fromConstraints(constraints);
+                    if (responsive.resultsColumns <= 1) {
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: venues.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, i) =>
+                            VenueCard(venue: venues[i], entranceIndex: i),
+                      );
+                    }
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: responsive.resultsColumns,
+                        mainAxisSpacing: responsive.gridSpacing,
+                        crossAxisSpacing: responsive.gridSpacing,
+                        childAspectRatio: 0.78,
+                      ),
+                      itemCount: venues.length,
+                      itemBuilder: (context, i) =>
+                          VenueCard(venue: venues[i], entranceIndex: i),
+                    );
+                  },
                 );
               },
               loading: () => const ListSkeleton(),
@@ -367,12 +511,14 @@ class _FilterSheetState extends State<_FilterSheet> {
   late final TextEditingController _minController;
   late final TextEditingController _maxController;
   String? _categorySlug;
+  String? _facility;
 
   @override
   void initState() {
     super.initState();
     _sortBy = widget.initial.sortBy;
     _categorySlug = widget.initial.categorySlug;
+    _facility = widget.initial.facility;
     _minController = TextEditingController(
       text: widget.initial.minPrice?.toStringAsFixed(0) ?? '',
     );
@@ -401,6 +547,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     final updated = widget.initial.copyWith(
       sortBy: _sortBy,
       categorySlug: () => _categorySlug,
+      facility: () => _facility,
       minPrice: () => double.tryParse(_minController.text),
       maxPrice: () => double.tryParse(_maxController.text),
     );
@@ -439,6 +586,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     setState(() {
                       _sortBy = VenueSortBy.relevance;
                       _categorySlug = null;
+                      _facility = null;
                       _minController.clear();
                       _maxController.clear();
                     });
@@ -509,13 +657,55 @@ class _FilterSheetState extends State<_FilterSheet> {
                             label: c.name,
                             emoji: c.icon,
                             selected: _categorySlug == c.slug,
-                            onTap: () =>
-                                setState(() => _categorySlug = c.slug),
+                            onTap: () => setState(() {
+                              _categorySlug = c.slug;
+                              _facility = null;
+                            }),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
+                    if (_categoryFilterGroups(widget.categories, _categorySlug)
+                        .isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      ..._categoryFilterGroups(
+                        widget.categories,
+                        _categorySlug,
+                      ).map((group) {
+                        if (group.type == ListingFilterType.range) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(group.label,
+                                  style: theme.textTheme.titleSmall),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: group.options
+                                    .map(
+                                      (option) => AnimatedCategoryChip(
+                                        label: option,
+                                        selected: _facility == option,
+                                        onTap: () => setState(() {
+                                          _facility = _facility == option
+                                              ? null
+                                              : option;
+                                        }),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
                     Text(l10n.pricing, style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     Row(
@@ -565,6 +755,17 @@ class _FilterSheetState extends State<_FilterSheet> {
       ),
     );
   }
+}
+
+List<ListingFilterGroup> _categoryFilterGroups(
+  List<VenueCategory> categories,
+  String? slug,
+) {
+  if (slug == null) return const [];
+  for (final category in categories) {
+    if (category.slug == slug) return category.listingTemplate.filterGroups;
+  }
+  return const [];
 }
 
 class _SortChip extends StatelessWidget {

@@ -74,11 +74,13 @@ void main() {
 
     test('discloses that platform fees could not be itemised', () {
       final statement = ReceiptStatement(
-        serverResult(document: serverDocument(omissions: const ['platform_fee'])),
+        serverResult(
+            document: serverDocument(omissions: const ['platform_fee'])),
       );
 
       expect(
-        statement.notes.any((note) => note.contains('Platform fees are not itemised')),
+        statement.notes
+            .any((note) => note.contains('Platform fees are not itemised')),
         isTrue,
       );
     });
@@ -114,8 +116,7 @@ void main() {
 
     test('always states the document is a frozen snapshot', () {
       for (final issued in [true, false]) {
-        final statement =
-            ReceiptStatement(serverResult(receiptIssued: issued));
+        final statement = ReceiptStatement(serverResult(receiptIssued: issued));
         expect(
           statement.notes.any((n) => n.contains('immutable snapshot')),
           isTrue,
@@ -135,7 +136,8 @@ void main() {
     test('names both figures when they disagree', () {
       final statement = ReceiptStatement(
         serverResult(
-          document: serverDocument(base: 1500, tax: 270, discount: 0, total: 1900),
+          document:
+              serverDocument(base: 1500, tax: 270, discount: 0, total: 1900),
         ),
       );
 

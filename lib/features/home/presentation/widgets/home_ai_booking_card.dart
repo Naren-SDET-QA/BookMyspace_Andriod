@@ -97,8 +97,9 @@ class _HomeAiBookingCardState extends State<HomeAiBookingCard>
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final style = widget.style;
-    final colors =
-        style.backgroundColors.isEmpty ? _defaultGradient : style.backgroundColors;
+    final colors = style.backgroundColors.isEmpty
+        ? _defaultGradient
+        : style.backgroundColors;
     final radius = style.radius;
 
     return Semantics(

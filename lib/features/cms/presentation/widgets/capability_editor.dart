@@ -31,82 +31,89 @@ class CapabilityEditor extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-        _SectionHeader(title: 'Capabilities'),
-        const SizedBox(height: 12),
-        _CapacityField(
-          capacity: capabilities.capacity,
-          constraints: constraints?.capacity,
-          readOnly: readOnly,
-          onChanged: (v) => _update(capabilities: FacilityCapabilities(
-            capacity: v,
-            seating: capabilities.seating,
-            availability: capabilities.availability,
-            timeSlots: capabilities.timeSlots,
-            amenities: capabilities.amenities,
-            interactionMode: capabilities.interactionMode,
-            approvalRequired: capabilities.approvalRequired,
-          )),
-        ),
-        const SizedBox(height: 16),
-        _SeatingField(
-          seating: capabilities.seating ?? const [],
-          constraints: constraints?.seating,
-          readOnly: readOnly,
-          onChanged: (v) => _update(capabilities: FacilityCapabilities(
+          _SectionHeader(title: 'Capabilities'),
+          const SizedBox(height: 12),
+          _CapacityField(
             capacity: capabilities.capacity,
-            seating: v.isEmpty ? null : v,
-            availability: capabilities.availability,
-            timeSlots: capabilities.timeSlots,
-            amenities: capabilities.amenities,
-            interactionMode: capabilities.interactionMode,
-            approvalRequired: capabilities.approvalRequired,
-          )),
-        ),
-        const SizedBox(height: 16),
-        _AmenitiesField(
-          amenities: capabilities.amenities ?? const [],
-          constraints: constraints?.amenities,
-          readOnly: readOnly,
-          onChanged: (v) => _update(capabilities: FacilityCapabilities(
-            capacity: capabilities.capacity,
-            seating: capabilities.seating,
-            availability: capabilities.availability,
-            timeSlots: capabilities.timeSlots,
-            amenities: v.isEmpty ? null : v,
-            interactionMode: capabilities.interactionMode,
-            approvalRequired: capabilities.approvalRequired,
-          )),
-        ),
-        const SizedBox(height: 16),
-        _InteractionModeField(
-          mode: capabilities.interactionMode ?? InteractionMode.informationOnly,
-          allowedModes: constraints?.allowedModes,
-          readOnly: readOnly,
-          onChanged: (v) => _update(capabilities: FacilityCapabilities(
-            capacity: capabilities.capacity,
-            seating: capabilities.seating,
-            availability: capabilities.availability,
-            timeSlots: capabilities.timeSlots,
-            amenities: capabilities.amenities,
-            interactionMode: v,
-            approvalRequired: capabilities.approvalRequired,
-          )),
-        ),
-        const SizedBox(height: 16),
-        if (!isOwner || (constraints?.lockApprovalRequired != true))
-          _ApprovalField(
-            required: capabilities.approvalRequired ?? false,
-            readOnly: readOnly || (isOwner && constraints?.lockApprovalRequired == true),
-            onChanged: (v) => _update(capabilities: FacilityCapabilities(
-              capacity: capabilities.capacity,
+            constraints: constraints?.capacity,
+            readOnly: readOnly,
+            onChanged: (v) => _update(
+                capabilities: FacilityCapabilities(
+              capacity: v,
               seating: capabilities.seating,
               availability: capabilities.availability,
               timeSlots: capabilities.timeSlots,
               amenities: capabilities.amenities,
               interactionMode: capabilities.interactionMode,
-              approvalRequired: v,
+              approvalRequired: capabilities.approvalRequired,
             )),
           ),
+          const SizedBox(height: 16),
+          _SeatingField(
+            seating: capabilities.seating ?? const [],
+            constraints: constraints?.seating,
+            readOnly: readOnly,
+            onChanged: (v) => _update(
+                capabilities: FacilityCapabilities(
+              capacity: capabilities.capacity,
+              seating: v.isEmpty ? null : v,
+              availability: capabilities.availability,
+              timeSlots: capabilities.timeSlots,
+              amenities: capabilities.amenities,
+              interactionMode: capabilities.interactionMode,
+              approvalRequired: capabilities.approvalRequired,
+            )),
+          ),
+          const SizedBox(height: 16),
+          _AmenitiesField(
+            amenities: capabilities.amenities ?? const [],
+            constraints: constraints?.amenities,
+            readOnly: readOnly,
+            onChanged: (v) => _update(
+                capabilities: FacilityCapabilities(
+              capacity: capabilities.capacity,
+              seating: capabilities.seating,
+              availability: capabilities.availability,
+              timeSlots: capabilities.timeSlots,
+              amenities: v.isEmpty ? null : v,
+              interactionMode: capabilities.interactionMode,
+              approvalRequired: capabilities.approvalRequired,
+            )),
+          ),
+          const SizedBox(height: 16),
+          _InteractionModeField(
+            mode:
+                capabilities.interactionMode ?? InteractionMode.informationOnly,
+            allowedModes: constraints?.allowedModes,
+            readOnly: readOnly,
+            onChanged: (v) => _update(
+                capabilities: FacilityCapabilities(
+              capacity: capabilities.capacity,
+              seating: capabilities.seating,
+              availability: capabilities.availability,
+              timeSlots: capabilities.timeSlots,
+              amenities: capabilities.amenities,
+              interactionMode: v,
+              approvalRequired: capabilities.approvalRequired,
+            )),
+          ),
+          const SizedBox(height: 16),
+          if (!isOwner || (constraints?.lockApprovalRequired != true))
+            _ApprovalField(
+              required: capabilities.approvalRequired ?? false,
+              readOnly: readOnly ||
+                  (isOwner && constraints?.lockApprovalRequired == true),
+              onChanged: (v) => _update(
+                  capabilities: FacilityCapabilities(
+                capacity: capabilities.capacity,
+                seating: capabilities.seating,
+                availability: capabilities.availability,
+                timeSlots: capabilities.timeSlots,
+                amenities: capabilities.amenities,
+                interactionMode: capabilities.interactionMode,
+                approvalRequired: v,
+              )),
+            ),
         ],
       ),
     );

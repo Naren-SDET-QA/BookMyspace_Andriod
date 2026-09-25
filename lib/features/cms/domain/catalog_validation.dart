@@ -212,8 +212,7 @@ class CatalogValidator {
       _checkNodeKey(issues, seenTypeKeys, type.key, 'facility type');
       _checkTitle(issues, type.key, type.title.base, 'Facility type');
       _checkLocalized(issues, type.key, type.title, type.description);
-      _checkCapabilities(
-          issues, type.key, type.capabilities, type.constraints);
+      _checkCapabilities(issues, type.key, type.capabilities, type.constraints);
 
       if (type.sections.isEmpty) {
         issues.add(CatalogIssue(
@@ -257,7 +256,8 @@ class CatalogValidator {
           _checkNodeKey(issues, seenSubsectionKeys, sub.key, 'subsection');
           _checkTitle(issues, sub.key, sub.title.base, 'Subsection');
           _checkLocalized(issues, sub.key, sub.title, sub.description);
-          _checkCapabilities(issues, sub.key, sub.capabilities, sub.constraints);
+          _checkCapabilities(
+              issues, sub.key, sub.capabilities, sub.constraints);
         }
         _checkCapabilities(
             issues, section.key, section.capabilities, section.constraints);

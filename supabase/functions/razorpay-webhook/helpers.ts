@@ -12,6 +12,14 @@ export type RazorpayWebhookEvent = {
         amount?: unknown;
       };
     };
+    refund?: {
+      entity?: {
+        id?: unknown;
+        payment_id?: unknown;
+        amount?: unknown;
+        status?: unknown;
+      };
+    };
   };
 };
 
@@ -47,6 +55,13 @@ export function deriveRazorpayEventId(
   const payloadEventId = nonEmptyString(event.id);
   if (payloadEventId) return payloadEventId;
 
+  // Refund events carry their own provider-issued id, which is the most
+  // specific identity available and is checked before falling back to the
+  // payment/order composite (which refund events may not even carry).
+  const refundEntity = event.payload?.refund?.entity;
+  const refundId = nonEmptyString(refundEntity?.id);
+  if (refundId) return refundId;
+
   const paymentEntity = event.payload?.payment?.entity;
   const paymentId = nonEmptyString(paymentEntity?.id) ?? "unknown-payment";
   const orderId = nonEmptyString(paymentEntity?.order_id) ?? "unknown-order";
@@ -69,5 +84,18 @@ export function confirmationRpcArgs(input: {
     p_user_id: input.userId,
     p_payment_ref: input.paymentId,
     p_payment_method: "Razorpay",
+  };
+}
+
+export function extractRefundEntity(event: RazorpayWebhookEvent): {
+  id?: string;
+  paymentId?: string;
+  status?: string;
+} {
+  const entity = event.payload?.refund?.entity;
+  return {
+    id: nonEmptyString(entity?.id),
+    paymentId: nonEmptyString(entity?.payment_id),
+    status: nonEmptyString(entity?.status),
   };
 }

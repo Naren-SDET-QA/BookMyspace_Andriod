@@ -1,3 +1,5 @@
+import 'listing_template.dart';
+
 /// Sorting options for venue discovery.
 enum VenueSortBy {
   relevance,
@@ -23,6 +25,7 @@ class VenueCategory {
     this.supportedLanguages = const ['en'],
     this.nameTranslations = const {},
     this.descriptionTranslations = const {},
+    this.listingConfig,
   });
 
   final String id;
@@ -38,6 +41,14 @@ class VenueCategory {
   final List<String> supportedLanguages;
   final Map<String, String> nameTranslations;
   final Map<String, String> descriptionTranslations;
+  final ListingTemplateConfig? listingConfig;
+
+  /// Resolved template: admin overlay on top of slug defaults.
+  ListingTemplateConfig get listingTemplate => ListingTemplateConfig.resolve(
+        slug: slug,
+        parentSection: parentSection,
+        stored: listingConfig,
+      );
 
   factory VenueCategory.fromJson(Map<String, dynamic> json) {
     final metadata = json['metadata'] is Map
@@ -68,6 +79,9 @@ class VenueCategory {
         json['name_i18n'] ?? metadata['localized_names'],
       ),
       descriptionTranslations: _stringMap(json['description_i18n']),
+      listingConfig: ListingTemplateConfig.tryParse(
+        json['listing_config'] ?? metadata['listing'],
+      ),
     );
   }
 
@@ -88,6 +102,7 @@ class VenueCategory {
         'metadata': {
           'active': isActive,
           if (parentSection != null) 'parent_section': parentSection,
+          if (listingConfig != null) 'listing': listingConfig!.toJson(),
         },
       };
 
@@ -107,6 +122,7 @@ class VenueCategory {
     List<String>? supportedLanguages,
     Map<String, String>? nameTranslations,
     Map<String, String>? descriptionTranslations,
+    ListingTemplateConfig? listingConfig,
   }) {
     return VenueCategory(
       id: id ?? this.id,
@@ -123,6 +139,7 @@ class VenueCategory {
       nameTranslations: nameTranslations ?? this.nameTranslations,
       descriptionTranslations:
           descriptionTranslations ?? this.descriptionTranslations,
+      listingConfig: listingConfig ?? this.listingConfig,
     );
   }
 }
@@ -367,6 +384,10 @@ class Venue {
     this.facilities = const [],
     this.operatingHours = const [],
     this.distanceKm,
+    this.rules = '',
+    this.cancellationPolicy,
+    this.originalPrice,
+    this.contactPhone = '',
   });
 
   final String id;
@@ -394,6 +415,29 @@ class Venue {
   final List<VenueFacility> facilities;
   final List<VenueOperatingHours> operatingHours;
   final double? distanceKm;
+  final String rules;
+  final Map<String, dynamic>? cancellationPolicy;
+  final double? originalPrice;
+  final String contactPhone;
+
+  ListingTemplateConfig get listingTemplate => ListingTemplateConfig.resolve(
+        slug: category?.slug,
+        parentSection: category?.parentSection,
+        stored: category?.listingConfig,
+      );
+
+  String get cancellationSummary {
+    final policy = cancellationPolicy;
+    if (policy == null || policy.isEmpty) return '';
+    for (final key in const ['summary', 'text', 'description', 'policy']) {
+      final value = policy[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return '';
+  }
+
+  bool get hasDiscount =>
+      originalPrice != null && originalPrice! > price && price > 0;
 
   String get addressLine1 => address.isNotEmpty ? address : city;
   String get addressLine2 => '$city, $state $pincode'.trim();
@@ -497,6 +541,14 @@ class Venue {
       facilities: facilitiesList,
       operatingHours: hoursList,
       distanceKm: (json['distance_km'] as num?)?.toDouble(),
+      rules: json['rules'] as String? ?? '',
+      cancellationPolicy: json['cancellation_policy'] is Map
+          ? Map<String, dynamic>.from(json['cancellation_policy'] as Map)
+          : null,
+      originalPrice: (json['original_price'] as num?)?.toDouble() ??
+          (json['list_price'] as num?)?.toDouble(),
+      contactPhone:
+          json['contact_phone'] as String? ?? json['phone'] as String? ?? '',
     );
   }
 
@@ -524,6 +576,10 @@ class Venue {
     List<VenueFacility>? facilities,
     List<VenueOperatingHours>? operatingHours,
     double? distanceKm,
+    String? rules,
+    Map<String, dynamic>? cancellationPolicy,
+    double? originalPrice,
+    String? contactPhone,
   }) {
     return Venue(
       id: id ?? this.id,
@@ -549,6 +605,10 @@ class Venue {
       facilities: facilities ?? this.facilities,
       operatingHours: operatingHours ?? this.operatingHours,
       distanceKm: distanceKm ?? this.distanceKm,
+      rules: rules ?? this.rules,
+      cancellationPolicy: cancellationPolicy ?? this.cancellationPolicy,
+      originalPrice: originalPrice ?? this.originalPrice,
+      contactPhone: contactPhone ?? this.contactPhone,
     );
   }
 }
@@ -566,6 +626,7 @@ class VenueSearchQuery {
     this.longitude,
     this.radiusKm,
     this.pincode,
+    this.facility,
     this.limit = 24,
     this.offset = 0,
   });
@@ -580,6 +641,7 @@ class VenueSearchQuery {
   final double? longitude;
   final int? radiusKm;
   final String? pincode;
+  final String? facility;
   final int limit;
   final int offset;
 
@@ -593,7 +655,8 @@ class VenueSearchQuery {
       maxPrice != null ||
       sortBy != VenueSortBy.relevance ||
       hasCoordinates ||
-      pincode != null;
+      pincode != null ||
+      facility != null;
 
   VenueSearchQuery copyWith({
     String? query,
@@ -606,6 +669,7 @@ class VenueSearchQuery {
     double? Function()? longitude,
     int? Function()? radiusKm,
     String? Function()? pincode,
+    String? Function()? facility,
     int? limit,
     int? offset,
   }) {
@@ -620,6 +684,7 @@ class VenueSearchQuery {
       longitude: longitude != null ? longitude() : this.longitude,
       radiusKm: radiusKm != null ? radiusKm() : this.radiusKm,
       pincode: pincode != null ? pincode() : this.pincode,
+      facility: facility != null ? facility() : this.facility,
       limit: limit ?? this.limit,
       offset: offset ?? this.offset,
     );
@@ -639,6 +704,7 @@ class VenueSearchQuery {
             longitude == other.longitude &&
             radiusKm == other.radiusKm &&
             pincode == other.pincode &&
+            facility == other.facility &&
             limit == other.limit &&
             offset == other.offset;
   }
@@ -655,7 +721,21 @@ class VenueSearchQuery {
         longitude,
         radiusKm,
         pincode,
+        facility,
         limit,
         offset,
       );
+}
+
+/// Masks a venue's direct contact number for display before the customer has
+/// a booking the owner accepted (reference parity with the Android privacy
+/// rule "numbers unlock on booking confirmation").
+///
+/// Keeps the last two digits so the value still reads as a real number while
+/// remaining undialable; the digits shown are never enough to reconstruct it.
+String maskContactPhone(String raw) {
+  final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.length < 4) return '';
+  final head = digits.substring(0, digits.length - 2);
+  return '${'•' * (head.length - 2)}••${digits.substring(digits.length - 2)}';
 }

@@ -50,9 +50,8 @@ class _FullRender extends StatelessWidget {
       items.add(_InfoRow(
         icon: Icons.chair_outlined,
         label: 'Seating',
-        value: capabilities.seating!
-            .map((s) => s.replaceAll('_', ' '))
-            .join(', '),
+        value:
+            capabilities.seating!.map((s) => s.replaceAll('_', ' ')).join(', '),
       ));
     }
 

@@ -297,12 +297,12 @@ class _BlockEditorState extends State<_BlockEditor> {
                   _Swatch(
                     label: entry.key,
                     colors: entry.value,
-                    selected: _matches(block.style.backgroundColors,
-                        entry.value),
+                    selected:
+                        _matches(block.style.backgroundColors, entry.value),
                     onTap: () => widget.onChanged(
                       block.copyWith(
-                        style: block.style
-                            .copyWith(backgroundColors: entry.value),
+                        style:
+                            block.style.copyWith(backgroundColors: entry.value),
                       ),
                     ),
                   ),

@@ -75,11 +75,13 @@ void main() {
     expect(find.text(te.aiText('aiReplyDiscover')), findsOneWidget);
     // Exact chip text, so the composer's hint placeholder cannot satisfy it.
     expect(
-      find.text('${te.aiText('aiSlotCategory')}: ${te.aiText('aiCatBadminton')}'),
+      find.text(
+          '${te.aiText('aiSlotCategory')}: ${te.aiText('aiCatBadminton')}'),
       findsOneWidget,
     );
     expect(
-      find.text('${te.aiText('aiSlotLocation')}: ${te.aiText('aiCityHyderabad')}'),
+      find.text(
+          '${te.aiText('aiSlotLocation')}: ${te.aiText('aiCityHyderabad')}'),
       findsOneWidget,
     );
     expect(find.text(te.aiShowResults), findsOneWidget);

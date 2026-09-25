@@ -81,7 +81,8 @@ void main() {
       });
 
       final rows = items.rows();
-      expect(rows.map((row) => row.label), ['Base amount', 'Discount', 'Taxes']);
+      expect(
+          rows.map((row) => row.label), ['Base amount', 'Discount', 'Taxes']);
 
       final discount = rows[1];
       expect(discount.isCredit, isTrue);

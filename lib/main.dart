@@ -21,6 +21,12 @@ Future<void> main() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
+    // Keep redirect-based Auth flows on the current PKCE flow explicitly.
+    // This is the secure default in current supabase_flutter releases and
+    // makes the callback/session contract clear for mobile deep links.
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,
+    ),
   );
 
   final authRepository = SupabaseAuthRepository(

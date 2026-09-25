@@ -111,7 +111,8 @@ void main() {
         ),
       );
 
-      expect(latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
+      expect(
+          latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
     });
 
     test('renders a statement when no payment was captured', () async {
@@ -125,7 +126,8 @@ void main() {
         ),
       );
 
-      expect(latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
+      expect(
+          latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
     });
 
     test('renders when the breakdown does not reconcile', () async {
@@ -135,7 +137,8 @@ void main() {
         ),
       );
 
-      expect(latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
+      expect(
+          latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
     });
 
     test('renders a venue with almost nothing recorded', () async {
@@ -156,7 +159,8 @@ void main() {
         ),
       );
 
-      expect(latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
+      expect(
+          latin1.decode(bytes, allowInvalid: true).startsWith('%PDF-'), isTrue);
     });
 
     test('is deterministic apart from the generated-on stamp', () async {

@@ -683,7 +683,7 @@ CatalogContent _buildDefaults() {
       description: CmsLocalizedText(base: section.subtitle),
       iconId: _sectionIconIds[section.id] ?? CmsIcon.fallbackId,
       emoji: section.emoji,
-      media: CmsMediaRef.fromJson(section.imageUrl),
+      media: CmsMediaRef.fromJson(section.fallbackImageUrl),
       order: typeOrder,
       searchAliases: section.searchAliases,
       subsections: subsections,

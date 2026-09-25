@@ -71,9 +71,7 @@ void main() {
       final block = const HomeBlockConfig(
         kind: HomeBlockKind.spotlight,
         title: 'Top-rated spaces',
-      )
-          .withTitle('te', 'అత్యుత్తమ స్థలాలు')
-          .withSubtitle('ta', 'உங்களுக்காக');
+      ).withTitle('te', 'అత్యుత్తమ స్థలాలు').withSubtitle('ta', 'உங்களுக்காக');
 
       final restored = HomeBlockConfig.fromJson(block.toJson(), block.kind);
       expect(restored.titleFor('te'), 'అత్యుత్తమ స్థలాలు');

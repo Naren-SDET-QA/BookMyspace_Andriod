@@ -167,8 +167,7 @@ void main() {
     });
 
     test('parses the documented date and time formats', () {
-      final expected =
-          DateTime(2026, 9, 16, 9).millisecondsSinceEpoch;
+      final expected = DateTime(2026, 9, 16, 9).millisecondsSinceEpoch;
 
       expect(
         service.calculate1HourReminderTimeMillis('2026-09-16', '10:00 AM'),
@@ -219,8 +218,7 @@ void main() {
       expect(service.activeScheduledReminders, isEmpty);
     });
 
-    test('logoutCleanup clears the token, reminders and stored keys',
-        () async {
+    test('logoutCleanup clears the token, reminders and stored keys', () async {
       await service.initialize();
       await service.schedule1HourReminder(_booking());
 

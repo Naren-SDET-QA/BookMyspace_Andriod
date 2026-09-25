@@ -38,10 +38,32 @@ void main() {
       // Guards against a default referencing an id nobody added to the
       // registry, which would silently repaint a section as a generic box.
       const used = [
-        'hall', 'turf', 'home', 'school', 'hotel',
-        'ring', 'banquet', 'convention', 'party', 'celebration', 'toast',
-        'crown', 'garden', 'gym', 'desk', 'camera', 'person', 'backpack',
-        'sofa', 'book', 'pencil', 'computer', 'music', 'clock', 'bed', 'palm',
+        'hall',
+        'turf',
+        'home',
+        'school',
+        'hotel',
+        'ring',
+        'banquet',
+        'convention',
+        'party',
+        'celebration',
+        'toast',
+        'crown',
+        'garden',
+        'gym',
+        'desk',
+        'camera',
+        'person',
+        'backpack',
+        'sofa',
+        'book',
+        'pencil',
+        'computer',
+        'music',
+        'clock',
+        'bed',
+        'palm',
       ];
       for (final id in used) {
         expect(CmsIcon.isKnown(id), isTrue, reason: 'missing icon id: $id');
@@ -134,8 +156,8 @@ void main() {
     test('accepts absolute http and https urls', () {
       expect(CmsMediaRef.fromJson('https://cdn.example/a.jpg').url,
           'https://cdn.example/a.jpg');
-      expect(CmsMediaRef.fromJson('http://cdn.example/a.jpg').isNotEmpty,
-          isTrue);
+      expect(
+          CmsMediaRef.fromJson('http://cdn.example/a.jpg').isNotEmpty, isTrue);
     });
 
     test('rejects non-http schemes and malformed values', () {
@@ -147,8 +169,8 @@ void main() {
       expect(CmsMediaRef.fromJson(42), CmsMediaRef.none);
       expect(CmsMediaRef.fromJson(const {'url': 'javascript:x'}),
           CmsMediaRef.none);
-      expect(CmsMediaRef.fromJson(const {'path': 'home/a.jpg'}),
-          CmsMediaRef.none,
+      expect(
+          CmsMediaRef.fromJson(const {'path': 'home/a.jpg'}), CmsMediaRef.none,
           reason: 'a path without a usable url is not a reference');
     });
 

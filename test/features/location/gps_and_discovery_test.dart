@@ -128,7 +128,8 @@ void main() {
     expect((await service.requestCurrentLocation()).isSuccess, isTrue);
   });
 
-  test('discovery location merges into Search only when the route has none', () {
+  test('discovery location merges into Search only when the route has none',
+      () {
     const gps = DiscoveryLocation(
       city: 'Hyderabad',
       latitude: 17.385,

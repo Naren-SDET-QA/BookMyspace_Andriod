@@ -228,8 +228,8 @@ void main() {
     expect(paintFinder, findsOneWidget);
     final paintBox = tester.renderObject<RenderBox>(paintFinder);
     final paintSize = paintBox.size;
-    final paintOrigin =
-        paintBox.localToGlobal(Offset.zero) - boundary.localToGlobal(Offset.zero);
+    final paintOrigin = paintBox.localToGlobal(Offset.zero) -
+        boundary.localToGlobal(Offset.zero);
 
     final pixels = raw!.buffer.asUint8List();
     final width = raster!.width;
@@ -273,8 +273,9 @@ void main() {
         if (paintedDark != image.isDark(row, col)) {
           mismatched++;
           if (examples.length < 5) {
-            examples.add('($row,$col) painted=${paintedDark ? 'dark' : 'light'} '
-                'expected=${image.isDark(row, col) ? 'dark' : 'light'}');
+            examples
+                .add('($row,$col) painted=${paintedDark ? 'dark' : 'light'} '
+                    'expected=${image.isDark(row, col) ? 'dark' : 'light'}');
           }
         }
       }

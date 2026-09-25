@@ -52,7 +52,8 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       await action(ReceiptStatement(result));
     } catch (error) {
       if (mounted) {
-        setState(() => _actionError = 'The document could not be prepared. $error');
+        setState(
+            () => _actionError = 'The document could not be prepared. $error');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -106,7 +107,8 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           final statement = ReceiptStatement(result);
           return Column(
             children: [
-              if (_actionError != null) _ActionErrorBanner(message: _actionError!),
+              if (_actionError != null)
+                _ActionErrorBanner(message: _actionError!),
               Expanded(child: _ReceiptBody(statement: statement)),
               _ActionBar(
                 busy: _busy,
@@ -134,7 +136,8 @@ class _ActionErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFB45309)),
+          const Icon(Icons.warning_amber_rounded,
+              size: 18, color: Color(0xFFB45309)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -178,7 +181,8 @@ class _ReceiptBody extends StatelessWidget {
                       title: 'DOCUMENT',
                       children: [
                         _KeyValue('Booking reference', document.bookingRef),
-                        _KeyValue('Booking status', _titleCase(document.status)),
+                        _KeyValue(
+                            'Booking status', _titleCase(document.status)),
                         _KeyValue('Issued on', _dateTime(document.issuedAt)),
                         _KeyValue('Currency', document.currency),
                       ],
@@ -187,7 +191,8 @@ class _ReceiptBody extends StatelessWidget {
                     _SectionCard(
                       title: 'BILLED TO',
                       children: [
-                        _KeyValue('Name', _orDash(document.guest.name), bold: true),
+                        _KeyValue('Name', _orDash(document.guest.name),
+                            bold: true),
                         if (_present(document.guest.email))
                           _KeyValue('Email', document.guest.email!),
                         if (_present(document.guest.phone))
@@ -198,7 +203,8 @@ class _ReceiptBody extends StatelessWidget {
                     _SectionCard(
                       title: 'VENUE',
                       children: [
-                        _KeyValue('Name', _orDash(document.venue.name), bold: true),
+                        _KeyValue('Name', _orDash(document.venue.name),
+                            bold: true),
                         if (document.venue.formattedAddress.isNotEmpty)
                           _KeyValue('Address', document.venue.formattedAddress),
                       ],
@@ -239,7 +245,8 @@ class _ReceiptBody extends StatelessWidget {
                               ? document.paymentMethod!.toUpperCase()
                               : '—',
                         ),
-                        _KeyValue('Provider', _orDash(document.paymentProvider)),
+                        _KeyValue(
+                            'Provider', _orDash(document.paymentProvider)),
                         _KeyValue('Reference', _orDash(document.paymentRef)),
                       ],
                     ),
@@ -272,7 +279,8 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = statement.isReceipt ? AppTheme.brand : const Color(0xFFB45309);
+    final accent =
+        statement.isReceipt ? AppTheme.brand : const Color(0xFFB45309);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(

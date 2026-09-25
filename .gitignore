@@ -2,7 +2,6 @@
 .gradle/
 .aistudio/
 android/.gradle/
-app/build/
 
 # Flutter/Dart
 .dart_tool/
@@ -37,3 +36,7 @@ key.properties
 node_modules/
 analyze.txt
 supabase/.temp/
+
+# Local key files (never commit real keys)
+.google_maps_key.env
+ios/Flutter/GoogleMapsKey.xcconfig

@@ -24,7 +24,9 @@ void main() {
     expect(health.hasExceptions, isFalse);
   });
 
-  test('never fabricates a success rate when there is no captured/failed activity', () {
+  test(
+      'never fabricates a success rate when there is no captured/failed activity',
+      () {
     final health = PaymentHealth.fromJson({
       'range_from': '2026-08-14T00:00:00Z',
       'range_to': '2026-09-13T00:00:00Z',

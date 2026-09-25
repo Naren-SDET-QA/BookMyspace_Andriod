@@ -22,7 +22,7 @@ class EventCard extends StatelessWidget {
 
     return GlassmorphicCard(
       borderRadius: 18,
-      accentGradient: AppTheme.brandGradient,
+      accentGradient: AppTheme.violetGradient,
       onTap: () =>
           context.push(AppRoutes.eventDetails.replaceAll(':id', event.id)),
       child: Column(
@@ -41,7 +41,7 @@ class EventCard extends StatelessWidget {
                   child: _Pill(
                     text: event.isFree ? 'Free' : formatInr(event.ticketPrice),
                     background: event.isFree
-                        ? AppTheme.brand
+                        ? AppTheme.violet
                         : Colors.black.withValues(alpha: 0.65),
                   ),
                 ),
@@ -115,9 +115,8 @@ class EventCard extends StatelessWidget {
                       ? '${event.seatsLeft} seats left'
                       : 'Sold Out',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: event.seatsLeft > 0
-                        ? AppTheme.brand
-                        : AppTheme.accent,
+                    color:
+                        event.seatsLeft > 0 ? AppTheme.brand : AppTheme.accent,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

@@ -87,8 +87,8 @@ void main() {
 
     test('an absent or malformed list yields no videos', () {
       expect(
-        HomeBlockConfig.fromJson(const {'kind': 'spotlight'},
-                HomeBlockKind.spotlight)
+        HomeBlockConfig.fromJson(
+                const {'kind': 'spotlight'}, HomeBlockKind.spotlight)
             .videos,
         isEmpty,
       );
@@ -135,8 +135,7 @@ void main() {
       expect(find.text('Watch · 2'), findsOneWidget);
     });
 
-    testWidgets('opens the first link the platform can handle',
-        (tester) async {
+    testWidgets('opens the first link the platform can handle', (tester) async {
       Uri? opened;
       await tester.pumpWidget(
         _app(

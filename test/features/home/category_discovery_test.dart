@@ -81,11 +81,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('Explore Verified Spaces'), findsOneWidget);
-    expect(
-      find.textContaining('Five master categories'),
-      findsOneWidget,
-    );
+    expect(find.text('Explore categories'), findsOneWidget);
+    expect(find.text('All Categories'), findsOneWidget);
+    expect(find.text('Function Halls'), findsWidgets);
     expect(find.text('Function Halls & Celebrations'), findsWidgets);
     expect(find.byKey(const Key('function-halls-matrix')), findsOneWidget);
     expect(find.text('Marriage Halls'), findsOneWidget);

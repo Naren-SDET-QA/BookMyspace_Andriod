@@ -118,8 +118,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Add subsection'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-        find.widgetWithText(TextFormField, 'Name'), 'Wi-Fi');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Name'), 'Wi-Fi');
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Delete Wi-Fi'));

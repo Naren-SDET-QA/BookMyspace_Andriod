@@ -19,15 +19,11 @@ class MockAuthRepository implements AuthRepository {
   bool failSignOut = false;
   bool queueSignOutEvent = false;
   bool cancelGoogle = false;
-  bool cancelApple = false;
   bool failGoogle = false;
-  bool failApple = false;
   Completer<AuthUser>? delayedGoogle;
-  Completer<AuthUser>? delayedApple;
   int signInCount = 0;
   int authStateChangesCallCount = 0;
   int googleCount = 0;
-  int appleCount = 0;
   int verifyCount = 0;
   int deleteAccountCount = 0;
   bool failDeleteAccount = false;
@@ -40,21 +36,6 @@ class MockAuthRepository implements AuthRepository {
   Stream<AuthUser?> authStateChanges() {
     authStateChangesCallCount++;
     return _controller.stream;
-  }
-
-  @override
-  Future<AuthUser> signInWithApple() async {
-    appleCount++;
-    if (cancelApple) {
-      throw const AuthCancelledException('Apple sign-in was cancelled.');
-    }
-    if (failApple) {
-      throw Exception('Apple sign-in failed');
-    }
-    if (delayedApple != null) {
-      return _completeSocial(await delayedApple!.future);
-    }
-    return _completeSocial();
   }
 
   @override

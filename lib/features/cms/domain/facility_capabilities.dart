@@ -239,7 +239,8 @@ class CapabilityConstraints {
   }
 
   Map<String, dynamic> toJson() => {
-        if (capacity != null && !capacity!.isEmpty) 'capacity': capacity!.toJson(),
+        if (capacity != null && !capacity!.isEmpty)
+          'capacity': capacity!.toJson(),
         if (seating != null && !seating!.isEmpty) 'seating': seating!.toJson(),
         if (amenities != null && !amenities!.isEmpty)
           'amenities': amenities!.toJson(),
@@ -462,8 +463,7 @@ class FacilityCapabilities {
       for (int i = 0; i < timeSlots!.length; i++) {
         for (int j = i + 1; j < timeSlots!.length; j++) {
           if (_slotsOverlap(timeSlots![i], timeSlots![j])) {
-            errors.add(
-                'Time slots ${i + 1} and ${j + 1} overlap.');
+            errors.add('Time slots ${i + 1} and ${j + 1} overlap.');
           }
         }
       }
@@ -471,8 +471,8 @@ class FacilityCapabilities {
 
     if (interactionMode != null && constraints?.allowedModes != null) {
       if (!constraints!.allowedModes!.contains(interactionMode)) {
-        errors.add(
-            'Interaction mode "${interactionMode!.name}" is not allowed.');
+        errors
+            .add('Interaction mode "${interactionMode!.name}" is not allowed.');
       }
     }
 
@@ -508,9 +508,8 @@ class FacilityCapabilities {
       availability: AvailabilityConfig.fromJson(json['availability']),
       timeSlots: _readTimeSlots(json['time_slots']),
       amenities: _readStringList(json['amenities']),
-      interactionMode: modes != null
-          ? InteractionMode.fromJson(modes?.toString())
-          : null,
+      interactionMode:
+          modes != null ? InteractionMode.fromJson(modes?.toString()) : null,
       approvalRequired: json['approval_required'] as bool?,
     );
   }

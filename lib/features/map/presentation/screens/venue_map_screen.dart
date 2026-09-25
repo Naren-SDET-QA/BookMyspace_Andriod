@@ -3,11 +3,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_map/flutter_map.dart' as flmap;
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:latlong2/latlong.dart' as fllat;
+import 'package:latlong2/latlong.dart' as ll;
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
@@ -21,6 +21,7 @@ import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
+import '../widgets/osm_tile_layer.dart';
 
 /// Cluster representation for grouping closely situated venue markers.
 class VenueCluster {
@@ -38,11 +39,10 @@ class VenueCluster {
   Venue get singleVenue => venues.first;
 }
 
-/// An interactive live map discovery screen supporting Android, iOS and Web.
+/// An interactive live map discovery screen supporting both iOS and Web.
 ///
 /// Features:
-/// - Cross-platform map: Google Maps on native (Android/iOS), OpenStreetMap
-///   via FlutterMap on Web — `google_maps_flutter` has no Web plugin.
+/// - Real-time Google Maps integration matching Android parity.
 /// - Venue pins with dynamic clustering based on map zoom levels.
 /// - Map/List split view (side-by-side on Web/Desktop, layered sheet on Mobile).
 /// - Category and text search filtering with debounced reactivity.
@@ -68,10 +68,8 @@ class VenueMapScreen extends ConsumerStatefulWidget {
 }
 
 class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
-  // Native (GoogleMap) controller; null on Web.
-  GoogleMapController? _nativeMapController;
-  // Web (FlutterMap) controller; null on native.
-  flmap.MapController? _webMapController;
+  GoogleMapController? _mapController;
+  late final fm.MapController _osmController;
   late final TextEditingController _searchController;
   Timer? _searchDebounce;
   late VenueSearchQuery _query;
@@ -90,15 +88,6 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     return const LatLng(17.3850, 78.4867);
   }
 
-  /// Web-safe center as [fllat.LatLng] for [flmap.FlutterMap].
-  fllat.LatLng get _webMapCenter {
-    final location = ref.read(discoveryLocationProvider);
-    if (location.hasCoordinates) {
-      return fllat.LatLng(location.latitude!, location.longitude!);
-    }
-    return const fllat.LatLng(17.3850, 78.4867);
-  }
-
   // Scroll controller for the list view to scroll selected item into view
   final ScrollController _listScrollController = ScrollController();
 
@@ -115,6 +104,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
       categorySlug: widget.initialCategory,
     );
     _searchController = TextEditingController(text: _query.query);
+    _osmController = fm.MapController();
     _selectedVenueId = widget.initialVenueId;
   }
 
@@ -128,8 +118,8 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     _searchDebounce?.cancel();
     _searchController.dispose();
     _listScrollController.dispose();
-    _nativeMapController?.dispose();
-    // FlutterMap controller has no dispose(); it is managed by the widget tree.
+    _mapController?.dispose();
+    _osmController.dispose();
     super.dispose();
   }
 
@@ -148,24 +138,26 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     });
 
     if (animateMap && venue.latitude != 0.0) {
-      if (!kIsWeb && _nativeMapController != null) {
-        await _nativeMapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(venue.latitude, venue.longitude),
-              zoom: math.max(_currentZoom, 14.5),
-            ),
-          ),
-        );
-      } else if (kIsWeb && _webMapController != null) {
-        _webMapController!.move(
-          fllat.LatLng(venue.latitude, venue.longitude),
-          math.max(_currentZoom, 14.5),
-        );
-      }
+      await _animateTo(
+        LatLng(venue.latitude, venue.longitude),
+        math.max(_currentZoom, 14.5),
+      );
     }
 
     _scrollToVenueInList(venue.id);
+  }
+
+  Future<void> _animateTo(LatLng target, double zoom) async {
+    if (kIsWeb) {
+      _osmController.move(ll.LatLng(target.latitude, target.longitude), zoom);
+      return;
+    }
+    if (_mapController == null) return;
+    await _mapController!.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: target, zoom: zoom),
+      ),
+    );
   }
 
   void _scrollToVenueInList(String venueId) {
@@ -275,15 +267,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
               snippet: 'Tap or zoom in to explore',
             ),
             onTap: () {
-              // Zoom into the cluster
-              _nativeMapController?.animateCamera(
-                CameraUpdate.newCameraPosition(
-                  CameraPosition(
-                    target: cluster.position,
-                    zoom: _currentZoom + 2.0,
-                  ),
-                ),
-              );
+              unawaited(_animateTo(cluster.position, _currentZoom + 2.0));
             },
           ),
         );
@@ -291,6 +275,88 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     }
 
     return markers;
+  }
+
+  List<fm.Marker> _buildOsmMarkers(List<VenueCluster> clusters) {
+    final markers = <fm.Marker>[];
+
+    for (final cluster in clusters) {
+      if (cluster.isSingle) {
+        final venue = cluster.singleVenue;
+        final isSelected = venue.id == _selectedVenueId;
+        markers.add(
+          fm.Marker(
+            key: ValueKey('venue-${venue.id}'),
+            point: ll.LatLng(venue.latitude, venue.longitude),
+            width: isSelected ? 44 : 36,
+            height: isSelected ? 44 : 36,
+            alignment: Alignment.bottomCenter,
+            child: GestureDetector(
+              onTap: () => _selectVenue(venue, animateMap: false),
+              child: Icon(
+                Icons.location_on,
+                color: isSelected ? AppTheme.cyan : AppTheme.violet,
+                size: isSelected ? 44 : 36,
+              ),
+            ),
+          ),
+        );
+      } else {
+        final count = cluster.venues.length;
+        markers.add(
+          fm.Marker(
+            key: ValueKey(cluster.id),
+            point: ll.LatLng(cluster.position.latitude, cluster.position.longitude),
+            width: 44,
+            height: 44,
+            child: GestureDetector(
+              onTap: () {
+                unawaited(_animateTo(cluster.position, _currentZoom + 2.0));
+              },
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.spotlightAmber,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return markers;
+  }
+
+  LatLng _initialTarget(List<Venue> venues) {
+    if (_selectedVenueId != null) {
+      final selected =
+          venues.where((v) => v.id == _selectedVenueId).firstOrNull;
+      if (selected != null && selected.latitude != 0.0) {
+        return LatLng(selected.latitude, selected.longitude);
+      }
+    }
+    final firstWithCoords = venues.where((v) => v.latitude != 0.0).firstOrNull;
+    if (firstWithCoords != null) {
+      return LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
+    }
+    return _mapCenter;
   }
 
   @override
@@ -328,15 +394,11 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             icon: const Icon(Icons.my_location_rounded),
             tooltip: 'Re-center Map',
             onPressed: () {
-              if (!kIsWeb) {
-                _nativeMapController?.animateCamera(
-                  CameraUpdate.newCameraPosition(
-                    CameraPosition(target: _mapCenter, zoom: 12.0),
-                  ),
-                );
-              } else {
-                _webMapController?.move(_webMapCenter, 12.0);
-              }
+              _mapController?.animateCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(target: _mapCenter, zoom: 12.0),
+                ),
+              );
             },
           ),
         ],
@@ -370,7 +432,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                           // Left side: Interactive Map (55% width)
                           Expanded(
                             flex: 55,
-                            child: _buildMap(markers, venues),
+                            child: _buildLiveMap(markers, clusters, venues),
                           ),
                           // Vertical divider
                           const VerticalDivider(width: 1, thickness: 1),
@@ -387,7 +449,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                         children: [
                           Expanded(
                             flex: 55,
-                            child: _buildMap(markers, venues),
+                            child: _buildLiveMap(markers, clusters, venues),
                           ),
                           const Divider(height: 1, thickness: 1),
                           Expanded(
@@ -413,8 +475,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                   ),
                   error: (e, _) => ErrorView(
                     message: e.toString(),
-                    onRetry: () =>
-                        ref.invalidate(searchResultsProvider(query)),
+                    onRetry: () => ref.invalidate(searchResultsProvider(query)),
                   ),
                 ),
               ),
@@ -523,119 +584,37 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     );
   }
 
-  /// Platform-branched map widget: [flmap.FlutterMap] on Web (OpenStreetMap
-  /// tiles), [GoogleMap] on Android/iOS. `google_maps_flutter` has no Web
-  /// plugin, so the unconditional `GoogleMap` crashed the screen on Web.
-  Widget _buildMap(Set<Marker> markers, List<Venue> venues) {
-    return kIsWeb
-        ? _buildFlutterMap(markers, venues)
-        : _buildGoogleMap(markers, venues);
-  }
-
-  /// Web map using [flmap.FlutterMap] with OpenStreetMap tiles — the same
-  /// engine the venue-details mini-map already uses, so the visual is
-  /// consistent across the app on every platform.
-  Widget _buildFlutterMap(Set<Marker> gmMarkers, List<Venue> venues) {
-    fllat.LatLng initialTarget = _webMapCenter;
-    if (_selectedVenueId != null) {
-      final selected =
-          venues.where((v) => v.id == _selectedVenueId).firstOrNull;
-      if (selected != null && selected.latitude != 0.0) {
-        initialTarget =
-            fllat.LatLng(selected.latitude, selected.longitude);
-      }
-    } else if (venues.isNotEmpty) {
-      final firstWithCoords =
-          venues.where((v) => v.latitude != 0.0).firstOrNull;
-      if (firstWithCoords != null) {
-        initialTarget =
-            fllat.LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
-      }
-    }
-
-    // Convert GoogleMap markers to FlutterMap markers.
-    final flMarkers = gmMarkers.map((gm) {
-      final isSelected = gm.markerId.value == _selectedVenueId;
-      return flmap.Marker(
-        point: fllat.LatLng(gm.position.latitude, gm.position.longitude),
-        width: 40,
-        height: 40,
-        child: GestureDetector(
-          onTap: () {
-            // Find the venue or cluster and handle tap
-            final venue = venues
-                .where((v) => v.id == gm.markerId.value)
-                .firstOrNull;
-            if (venue != null) {
-              _selectVenue(venue, animateMap: true);
-            } else {
-              // Cluster tap — zoom in
-              _webMapController?.move(
-                fllat.LatLng(gm.position.latitude, gm.position.longitude),
-                _currentZoom + 2.0,
-              );
+  Widget _buildLiveMap(
+    Set<Marker> googleMarkers,
+    List<VenueCluster> clusters,
+    List<Venue> venues,
+  ) {
+    final initialTarget = _initialTarget(venues);
+    if (kIsWeb) {
+      return fm.FlutterMap(
+        mapController: _osmController,
+        options: fm.MapOptions(
+          initialCenter: ll.LatLng(
+            initialTarget.latitude,
+            initialTarget.longitude,
+          ),
+          initialZoom: _currentZoom,
+          onMapReady: () {
+            if (mounted && !_isMapReady) {
+              setState(() => _isMapReady = true);
             }
           },
-          child: Icon(
-            isSelected ? Icons.location_on : Icons.location_pin,
-            color: isSelected
-                ? Colors.cyan
-                : Colors.deepPurple,
-            size: 36,
-          ),
+          onPositionChanged: (camera, hasGesture) {
+            _currentZoom = camera.zoom;
+            if (hasGesture && mounted) setState(() {});
+          },
         ),
+        children: [
+          const OsmTileLayer(),
+          fm.MarkerLayer(markers: _buildOsmMarkers(clusters)),
+          const OsmAttribution(),
+        ],
       );
-    }).toList();
-
-    return Stack(
-      children: [
-        flmap.FlutterMap(
-          mapController: _webMapController ??= flmap.MapController(),
-          options: flmap.MapOptions(
-            initialCenter: initialTarget,
-            initialZoom: _currentZoom,
-            interactionOptions: const flmap.InteractionOptions(
-              flags: flmap.InteractiveFlag.drag |
-                  flmap.InteractiveFlag.pinchZoom |
-                  flmap.InteractiveFlag.doubleTapZoom,
-            ),
-            onPositionChanged: (position, hasGesture) {
-              _currentZoom = position.zoom;
-            },
-            onMapReady: () {
-              setState(() => _isMapReady = true);
-            },
-          ),
-          children: [
-            flmap.TileLayer(
-              urlTemplate:
-                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.bookmyspace.app',
-            ),
-            flmap.MarkerLayer(markers: flMarkers),
-          ],
-        ),
-        if (!_isMapReady)
-          const Center(child: CircularProgressIndicator()),
-      ],
-    );
-  }
-
-  Widget _buildGoogleMap(Set<Marker> markers, List<Venue> venues) {
-    LatLng initialTarget = _mapCenter;
-    if (_selectedVenueId != null) {
-      final selected =
-          venues.where((v) => v.id == _selectedVenueId).firstOrNull;
-      if (selected != null && selected.latitude != 0.0) {
-        initialTarget = LatLng(selected.latitude, selected.longitude);
-      }
-    } else if (venues.isNotEmpty) {
-      final firstWithCoords =
-          venues.where((v) => v.latitude != 0.0).firstOrNull;
-      if (firstWithCoords != null) {
-        initialTarget =
-            LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
-      }
     }
 
     return Stack(
@@ -645,14 +624,14 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             target: initialTarget,
             zoom: _currentZoom,
           ),
-          markers: markers,
+          markers: googleMarkers,
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: true,
           mapToolbarEnabled: false,
           compassEnabled: true,
           onMapCreated: (controller) {
-            _nativeMapController = controller;
+            _mapController = controller;
             setState(() {
               _isMapReady = true;
             });
@@ -661,7 +640,6 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             _currentZoom = position.zoom;
           },
           onCameraIdle: () {
-            // Recompute clusters on zoom change
             if (mounted) setState(() {});
           },
         ),
@@ -712,7 +690,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppTheme.brand.withValues(alpha: 0.25),
+                        color: AppTheme.violet.withValues(alpha: 0.25),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),

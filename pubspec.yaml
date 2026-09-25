@@ -61,11 +61,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  integration_test:
+    sdk: flutter
   # Declared so tests can swap in the in-memory storage platform that
   # flutter_secure_storage ships for exactly this purpose. Without it, push
   # service tests would hit an unregistered MethodChannel and could only
   # exercise the paths that swallow storage errors.
   flutter_secure_storage_platform_interface: ^1.1.2
+  mocktail: ^1.0.4
 
 flutter:
   uses-material-design: true

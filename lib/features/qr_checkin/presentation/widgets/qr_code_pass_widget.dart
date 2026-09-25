@@ -100,7 +100,7 @@ class QrCodePassWidget extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.qr_code, size: 13, color: AppTheme.brand),
+              const Icon(Icons.qr_code, size: 13, color: AppTheme.violet),
               const SizedBox(width: 4),
               Text(
                 'TOKEN: ${payload.token}',
@@ -215,7 +215,8 @@ class _QrMatrixPainter extends CustomPainter {
     final symbolOriginX = originX + _quietZone * cell;
     final symbolOriginY = originY + _quietZone * cell;
 
-    final badgeLeft = symbolOriginX + (symbolModules / 2) * cell - badgeSide / 2;
+    final badgeLeft =
+        symbolOriginX + (symbolModules / 2) * cell - badgeSide / 2;
     final badgeTop = symbolOriginY + (symbolModules / 2) * cell - badgeSide / 2;
     final badgeRect = Rect.fromLTWH(badgeLeft, badgeTop, badgeSide, badgeSide);
     final rounded = RRect.fromRectAndRadius(

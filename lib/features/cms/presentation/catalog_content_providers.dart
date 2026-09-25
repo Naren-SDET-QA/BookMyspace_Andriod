@@ -32,8 +32,7 @@ final catalogContentProvider = Provider<CatalogContent>((ref) {
 });
 
 /// Enabled facility types in admin order.
-final visibleFacilityTypesProvider =
-    Provider<List<CatalogFacilityType>>((ref) {
+final visibleFacilityTypesProvider = Provider<List<CatalogFacilityType>>((ref) {
   final visible = ref.watch(catalogContentProvider).visible;
   // An admin who disabled every facility type would otherwise be left with an
   // empty discovery surface. Same guard as `visibleNavTabsProvider`.
@@ -90,13 +89,13 @@ class CatalogContentController {
   Future<void> resetToDefaults() async {
     final flag = _ref.read(moduleFlagProvider(catalogContentFlagKey));
     await _ref.read(featureFlagRepositoryProvider).saveFlag(
-          key: catalogContentFlagKey,
-          enabled: true,
-          platforms: flag.platforms.isEmpty
-              ? const ['ios', 'android', 'web']
-              : flag.platforms,
-          config: const <String, dynamic>{},
-        );
+      key: catalogContentFlagKey,
+      enabled: true,
+      platforms: flag.platforms.isEmpty
+          ? const ['ios', 'android', 'web']
+          : flag.platforms,
+      config: const <String, dynamic>{},
+    );
     _ref.invalidate(featureFlagsProvider);
   }
 }

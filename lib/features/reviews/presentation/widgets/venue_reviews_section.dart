@@ -9,17 +9,36 @@ import '../../../auth/presentation/auth_providers.dart';
 import '../../domain/review.dart';
 import '../review_providers.dart';
 
-/// Venue-details reviews block: list, empty, error/retry, and add-review.
-class VenueReviewsSection extends ConsumerWidget {
-  const VenueReviewsSection({super.key, required this.venueId});
+/// Venue-details reviews block: rating breakdown, star filters, list,
+/// empty, error/retry, and add-review.
+class VenueReviewsSection extends ConsumerStatefulWidget {
+  const VenueReviewsSection({
+    super.key,
+    required this.venueId,
+    this.avgRating,
+    this.ratingCount,
+  });
 
   final String venueId;
 
+  /// Venue-row aggregate (real data from the listing). When null the
+  /// breakdown computes the average from the fetched reviews instead.
+  final double? avgRating;
+  final int? ratingCount;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VenueReviewsSection> createState() =>
+      _VenueReviewsSectionState();
+}
+
+class _VenueReviewsSectionState extends ConsumerState<VenueReviewsSection> {
+  int? _starFilter;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final reviews = ref.watch(venueReviewsProvider(venueId));
-    final myReview = ref.watch(myReviewProvider(venueId));
+    final reviews = ref.watch(venueReviewsProvider(widget.venueId));
+    final myReview = ref.watch(myReviewProvider(widget.venueId));
     final signedIn = ref.watch(currentUserProvider) != null;
 
     return Column(
@@ -35,16 +54,28 @@ class VenueReviewsSection extends ConsumerWidget {
             ),
             const Spacer(),
             if (signedIn && myReview.valueOrNull == null)
-              TextButton.icon(
-                onPressed: () => _showReviewSheet(context, ref),
-                icon: const Icon(Icons.rate_review_outlined, size: 18),
-                label: const Text('Write a review'),
+              Flexible(
+                child: TextButton.icon(
+                  onPressed: () => _showReviewSheet(context),
+                  icon: const Icon(Icons.rate_review_outlined, size: 18),
+                  label: const Text(
+                    'Write a review',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               )
             else if (!signedIn)
-              TextButton.icon(
-                onPressed: () => context.push(AppRoutes.login),
-                icon: const Icon(Icons.login_rounded, size: 18),
-                label: const Text('Sign in to review'),
+              Flexible(
+                child: TextButton.icon(
+                  onPressed: () => context.push(AppRoutes.login),
+                  icon: const Icon(Icons.login_rounded, size: 18),
+                  label: const Text(
+                    'Sign in to review',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
           ],
         ),
@@ -56,7 +87,7 @@ class VenueReviewsSection extends ConsumerWidget {
           ),
           error: (error, _) => _ReviewError(
             message: error.toString(),
-            onRetry: () => ref.invalidate(venueReviewsProvider(venueId)),
+            onRetry: () => ref.invalidate(venueReviewsProvider(widget.venueId)),
           ),
           data: (items) {
             if (items.isEmpty) {
@@ -70,9 +101,35 @@ class VenueReviewsSection extends ConsumerWidget {
                 ),
               );
             }
+            final filtered = _starFilter == null
+                ? items
+                : items
+                    .where((review) => review.rating == _starFilter)
+                    .toList(growable: false);
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final review in items) _ReviewTile(review: review),
+                _ReviewsSummaryCard(
+                  reviews: items,
+                  avgRating: widget.avgRating,
+                  ratingCount: widget.ratingCount,
+                  selectedStar: _starFilter,
+                  onSelectStar: (star) => setState(() => _starFilter = star),
+                ),
+                const SizedBox(height: 10),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'No ${_starFilter}★ reviews found.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                else
+                  for (final review in filtered) _ReviewTile(review: review),
               ],
             );
           },
@@ -81,11 +138,187 @@ class VenueReviewsSection extends ConsumerWidget {
     );
   }
 
-  Future<void> _showReviewSheet(BuildContext context, WidgetRef ref) {
+  Future<void> _showReviewSheet(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _WriteReviewSheet(venueId: venueId),
+      builder: (_) => _WriteReviewSheet(venueId: widget.venueId),
+    );
+  }
+}
+
+/// Score box + 5★ distribution bars + star filter chips, mirroring the
+/// reference review header. Computed from fetched reviews only.
+class _ReviewsSummaryCard extends StatelessWidget {
+  const _ReviewsSummaryCard({
+    required this.reviews,
+    required this.onSelectStar,
+    this.avgRating,
+    this.ratingCount,
+    this.selectedStar,
+  });
+
+  final List<Review> reviews;
+  final double? avgRating;
+  final int? ratingCount;
+  final int? selectedStar;
+  final ValueChanged<int?> onSelectStar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final counts = <int, int>{
+      for (var star = 1; star <= 5; star++)
+        star: reviews.where((r) => r.rating == star).length,
+    };
+    final total = reviews.length;
+    final average = (avgRating != null && avgRating! > 0)
+        ? avgRating!
+        : (total == 0
+            ? 0.0
+            : reviews.map((r) => r.rating).reduce((a, b) => a + b) / total);
+
+    return GlassmorphicCard(
+      borderRadius: 16,
+      isInteractive: false,
+      enableEntrance: false,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Ratings & reviews',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.violet.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$total verified reviews',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppTheme.violetDeep,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Column(
+                children: [
+                  Text(
+                    average.toStringAsFixed(1),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.violet,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      for (var i = 0; i < 5; i++)
+                        Icon(
+                          (i + 1) <= average.round()
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 14,
+                          color: AppTheme.accent,
+                        ),
+                    ],
+                  ),
+                  Text(
+                    'out of 5.0',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    for (var star = 5; star >= 1; star--)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              child: Text(
+                                '$star★',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: LinearProgressIndicator(
+                                  value: total == 0 ? 0 : counts[star]! / total,
+                                  minHeight: 6,
+                                  color: AppTheme.accent,
+                                  backgroundColor:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            SizedBox(
+                              width: 18,
+                              child: Text(
+                                '${counts[star]}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              FilterChip(
+                visualDensity: VisualDensity.compact,
+                selected: selectedStar == null,
+                label: Text('All ($total)'),
+                onSelected: (_) => onSelectStar(null),
+              ),
+              for (var star = 5; star >= 1; star--)
+                FilterChip(
+                  visualDensity: VisualDensity.compact,
+                  selected: selectedStar == star,
+                  label: Text('$star★ (${counts[star]})'),
+                  onSelected: (_) =>
+                      onSelectStar(selectedStar == star ? null : star),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -137,11 +370,11 @@ class _ReviewTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor: AppTheme.brand.withValues(alpha: 0.16),
+                  backgroundColor: AppTheme.violet.withValues(alpha: 0.16),
                   child: Text(
                     name[0].toUpperCase(),
                     style: const TextStyle(
-                      color: AppTheme.brandDark,
+                      color: AppTheme.violetDeep,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -159,7 +392,7 @@ class _ReviewTile extends StatelessWidget {
                   const Text(
                     'Verified',
                     style: TextStyle(
-                      color: AppTheme.brand,
+                      color: AppTheme.violet,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),

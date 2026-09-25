@@ -439,7 +439,8 @@ class AiBookingEngine {
 
   // --- Slot extraction ------------------------------------------------------
 
-  static List<AiIntentChip> _chipsFor(VoiceFilterResult parsed, String keyword) {
+  static List<AiIntentChip> _chipsFor(
+      VoiceFilterResult parsed, String keyword) {
     final chips = <AiIntentChip>[];
 
     final category = _categoryFor(parsed);

@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart'
     show BusinessException, NotFoundException, mapError;
+import '../domain/listing_template.dart';
 import '../../../core/firebase/error_logger.dart';
 import '../../../core/network/retry.dart';
 import '../domain/venue.dart';
@@ -20,8 +22,9 @@ class SupabaseVenueRepository implements VenueRepository {
 
   static const String _venueSelect = '''
     *,
-    venue_categories (id, slug, name, icon),
-    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order)
+    venue_categories (id, slug, name, icon, metadata, parent_section, is_active, description, image_url),
+    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+    venue_facilities (facility, is_available)
   ''';
 
   @override
@@ -37,29 +40,50 @@ class SupabaseVenueRepository implements VenueRepository {
   }
 
   @override
+  Future<VenueCategory> getCategory(String id) async {
+    try {
+      final row = await _client
+          .from('venue_categories')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+      if (row == null) {
+        throw const NotFoundException('Category not found.');
+      }
+      return VenueCategory.fromJson(row);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
   Future<VenueCategory> addCategory({
     required String name,
     required String slug,
     String? icon,
     String? parentSection,
     bool isActive = true,
+    ListingTemplateConfig? listingConfig = null,
   }) async {
     try {
       _validateNameAndSlug(name, slug);
+      final metadata = <String, dynamic>{
+        'active': isActive,
+        'parent_section': parentSection ?? 'general',
+        if (listingConfig != null) 'listing': listingConfig.toJson(),
+      };
+      final insertData = {
+        'name': name,
+        'slug': slug.trim().toLowerCase(),
+        'icon': icon ?? '🏷️',
+        'is_active': isActive,
+        'parent_section': parentSection ?? 'general',
+        'display_order': await _nextCategoryOrder(),
+        'metadata': metadata,
+      };
       final row = await _client
           .from('venue_categories')
-          .insert({
-            'name': name,
-            'slug': slug.trim().toLowerCase(),
-            'icon': icon ?? '🏷️',
-            'is_active': isActive,
-            'parent_section': parentSection ?? 'general',
-            'display_order': await _nextCategoryOrder(),
-            'metadata': {
-              'active': isActive,
-              'parent_section': parentSection ?? 'general',
-            },
-          })
+          .insert(insertData)
           .select()
           .single();
       final created = VenueCategory.fromJson(row);
@@ -83,6 +107,9 @@ class SupabaseVenueRepository implements VenueRepository {
           : <String, dynamic>{};
       metadata['active'] = category.isActive;
       metadata['parent_section'] = category.parentSection ?? 'general';
+      if (category.listingConfig != null) {
+        metadata['listing'] = category.listingConfig!.toJson();
+      }
       final row = await _client
           .from('venue_categories')
           .update({
@@ -579,26 +606,47 @@ class SupabaseVenueRepository implements VenueRepository {
               return false;
             }
           }
+          if (query.facility != null && query.facility!.trim().isNotEmpty) {
+            final needle = query.facility!.trim().toLowerCase();
+            if (!venue.facilities.any(
+              (item) =>
+                  item.isAvailable && item.facility.toLowerCase() == needle,
+            )) {
+              return false;
+            }
+          }
           return true;
         }).toList();
       }
 
-      String? categoryId;
-      if (query.categorySlug != null) {
-        final catRow = await _client
-            .from('venue_categories')
-            .select('id')
-            .eq('slug', query.categorySlug!)
-            .maybeSingle();
-        categoryId = catRow?['id'] as String?;
-      }
+      // Phase 9XM-1 perf fix: previously this did a separate awaited
+      // round trip to resolve venue_categories.id from the slug, THEN
+      // filtered venues by that id -- two sequential network calls for
+      // every category-filtered search. PostgREST/Supabase supports
+      // filtering directly on an embedded (!inner-joined) resource's own
+      // columns in the same request, so the slug filter is applied
+      // in-line against the joined venue_categories relationship below,
+      // collapsing this to a single query. All other filters, ordering,
+      // pagination, and the response shape (Venue.fromJson mapping) are
+      // unchanged.
+      //
+      // NOTE (documented, deliberate, narrow behavior difference): the
+      // previous code silently skipped the category filter entirely if
+      // the slug matched no row in venue_categories (categoryId stayed
+      // null), returning all active venues that have *any* category.
+      // With the single-query filter below, a category slug that matches
+      // no row now correctly returns zero results instead of silently
+      // ignoring the filter. This only affects the edge case of a
+      // nonexistent/stale category slug, which the UI does not produce
+      // today (slugs always come from the categories list itself).
 
       // Use inner join syntax on venue_categories when filtering by category to avoid PostgREST 42803 grouping errors
       final selectClause = (query.categorySlug != null)
           ? '''
             *,
-            venue_categories!inner (id, slug, name, icon),
-            venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order)
+            venue_categories!inner (id, slug, name, icon, metadata, parent_section, is_active, description, image_url),
+            venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+            venue_facilities (facility, is_available)
           '''
           : _venueSelect;
 
@@ -608,9 +656,8 @@ class SupabaseVenueRepository implements VenueRepository {
       if (query.query.trim().isNotEmpty) {
         builder = builder.textSearch('search_document', query.query.trim());
       }
-      if (categoryId != null && categoryId.isNotEmpty) {
-        // Explicitly cast category_id UUID parameter for PostgREST
-        builder = builder.filter('category_id', 'eq', categoryId);
+      if (query.categorySlug != null) {
+        builder = builder.eq('venue_categories.slug', query.categorySlug!);
       }
       if (query.pincode != null && query.pincode!.trim().isNotEmpty) {
         final pin = query.pincode!.trim();
@@ -644,17 +691,27 @@ class SupabaseVenueRepository implements VenueRepository {
           ),
       };
 
-      // Log exact SQL executed for function hall / category searches
-      if (query.categorySlug != null) {
-        final executedSql =
-            "SELECT $selectClause FROM venues WHERE is_active = true"
-            " AND category_id = '${categoryId ?? ''}'::uuid"
+      // Log exact SQL executed for function hall / category searches.
+      // Phase 9XL perf fix: this diagnostic string-build + log call ran on
+      // EVERY category-filtered search request in production, even though
+      // nothing consumes it outside local debugging. Gating it behind
+      // kDebugMode removes that per-request CPU/string-alloc/log overhead
+      // in release builds without changing search results or behavior.
+      if (kDebugMode && query.categorySlug != null) {
+        // Phase 9XM-1: updated to reflect the single-query slug filter;
+        // `categoryId` no longer exists (no separate lookup is made).
+        // Diagnostic-only -- gated by kDebugMode since Phase 9XL, never
+        // affects query results.
+        final executedSql = "SELECT $selectClause FROM venues"
+            " INNER JOIN venue_categories ON venue_categories.id = venues.category_id"
+            " WHERE venues.is_active = true"
+            " AND venue_categories.slug = '${query.categorySlug}'"
             "${query.query.trim().isNotEmpty ? " AND search_document @@ to_tsquery('${query.query.trim()}')" : ""}"
             "${query.city != null && query.city!.trim().isNotEmpty ? " AND city ILIKE '%${query.city!.trim()}%'" : ""}"
             " ORDER BY $orderColumn ${ascending ? 'ASC' : 'DESC'} LIMIT ${query.limit.clamp(1, 50)};";
 
         ErrorLogger.logMessage(
-          'Executing PostgREST Category Search SQL [slug=${query.categorySlug}, category_id=${categoryId ?? 'NULL'}]: $executedSql',
+          'Executing PostgREST Category Search SQL (Phase 9XM-1 single-query slug filter) [slug=${query.categorySlug}]: $executedSql',
           context: 'SupabaseVenueRepository.search',
         );
       }
@@ -664,10 +721,20 @@ class SupabaseVenueRepository implements VenueRepository {
       final rows = await builder
           .order(orderColumn, ascending: ascending)
           .range(start, start + pageSize - 1);
-      return rows
-          .whereType<Map<String, dynamic>>()
-          .map(Venue.fromJson)
-          .toList();
+      var results =
+          rows.whereType<Map<String, dynamic>>().map(Venue.fromJson).toList();
+      if (query.facility != null && query.facility!.trim().isNotEmpty) {
+        final needle = query.facility!.trim().toLowerCase();
+        results = results
+            .where(
+              (venue) => venue.facilities.any(
+                (item) =>
+                    item.isAvailable && item.facility.toLowerCase() == needle,
+              ),
+            )
+            .toList();
+      }
+      return results;
     } catch (e) {
       throw mapError(e);
     }
@@ -676,10 +743,12 @@ class SupabaseVenueRepository implements VenueRepository {
   @override
   Future<Venue> venueById(String id) async {
     try {
+      // _venueSelect already embeds venue_facilities; PostgREST rejects a
+      // duplicate embed of the same relation in one select (error 42803).
       final row = await _client
           .from('venues')
           .select(
-            '$_venueSelect, venue_facilities (facility, is_available), '
+            '$_venueSelect, '
             'venue_operating_hours (day_of_week, opens_at, closes_at, is_closed)',
           )
           .eq('id', id)

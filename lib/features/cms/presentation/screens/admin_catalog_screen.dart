@@ -445,8 +445,7 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= _wideBreakpoint;
     final locale = ref.watch(localeProvider);
-    final previewLanguage =
-        _language.isEmpty ? locale.languageCode : _language;
+    final previewLanguage = _language.isEmpty ? locale.languageCode : _language;
 
     final tree = _CatalogTree(
       content: content,
@@ -533,8 +532,7 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
         children: [
           if (_isDirty)
             MaterialBanner(
-              backgroundColor:
-                  Theme.of(context).colorScheme.secondaryContainer,
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
               content: const Text(
                 'You have unpublished changes. Customers still see the '
                 'previously published catalogue.',
@@ -657,16 +655,14 @@ class _CatalogTree extends StatelessWidget {
   final void Function(List<CatalogNode>, int, int) onReorder;
 
   String _label(CatalogNode node) {
-    final resolved = language.isEmpty
-        ? node.title.base
-        : node.title.resolve(language);
+    final resolved =
+        language.isEmpty ? node.title.base : node.title.resolve(language);
     return resolved.trim().isEmpty ? node.key : resolved;
   }
 
   @override
   Widget build(BuildContext context) {
-    final types = [...content.facilityTypes]
-      ..sort((a, b) {
+    final types = [...content.facilityTypes]..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
       });
@@ -728,13 +724,12 @@ class _FacilityTypeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sections = [...type.sections]
-      ..sort((a, b) {
+    final sections = [...type.sections]..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
       });
-    final isSelected = selection?.typeKey == type.key &&
-        selection?.sectionKey == null;
+    final isSelected =
+        selection?.typeKey == type.key && selection?.sectionKey == null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -824,8 +819,7 @@ class _SectionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subs = [...section.subsections]
-      ..sort((a, b) {
+    final subs = [...section.subsections]..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
       });
@@ -1210,8 +1204,7 @@ class _NodeEditor extends StatelessWidget {
         if (!isTranslating) ...[
           _IconPicker(
             value: node.iconId,
-            onChanged: (value) =>
-                _write(_copyScalars(node, iconId: value)),
+            onChanged: (value) => _write(_copyScalars(node, iconId: value)),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -1292,14 +1285,14 @@ class _NodeEditor extends StatelessWidget {
                   : 'Hidden. Its content is kept and can be switched back on.',
             ),
             value: node.enabled,
-            onChanged: (value) =>
-                _write(_copyScalars(node, enabled: value)),
+            onChanged: (value) => _write(_copyScalars(node, enabled: value)),
           ),
           const SizedBox(height: 16),
           CapabilityEditor(
             capabilities: node.capabilities ?? const FacilityCapabilities(),
             constraints: node.constraints,
-            onChanged: (FacilityCapabilities caps) => _write(_copyWithCapabilities(node, caps)),
+            onChanged: (FacilityCapabilities caps) =>
+                _write(_copyWithCapabilities(node, caps)),
           ),
           if (node is CatalogSection) ...[
             const SizedBox(height: 8),
@@ -1376,7 +1369,7 @@ class _IconPicker extends StatelessWidget {
     final selected = CmsIcon.isKnown(value) ? value : CmsIcon.fallbackId;
 
     return DropdownButtonFormField<String>(
-      value: selected,
+      initialValue: selected,
       isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Icon',
@@ -1464,10 +1457,11 @@ class _CatalogPreview extends StatelessWidget {
               ),
             )
           else
-            for (final type in types) _PreviewFacilityType(
-              type: type,
-              languageCode: languageCode,
-            ),
+            for (final type in types)
+              _PreviewFacilityType(
+                type: type,
+                languageCode: languageCode,
+              ),
         ],
       ),
     );

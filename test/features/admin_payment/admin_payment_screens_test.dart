@@ -52,7 +52,8 @@ PaymentTransaction _tx({String reconciliationFlag = 'ok'}) {
 
 void main() {
   group('AdminPaymentHealthScreen', () {
-    testWidgets('shows a loading indicator before data arrives', (tester) async {
+    testWidgets('shows a loading indicator before data arrives',
+        (tester) async {
       final repo = FakeAdminPaymentRepository();
       await tester.pumpWidget(
         _wrap(const AdminPaymentHealthScreen(), repo: repo),
@@ -60,7 +61,8 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('shows an empty state when there is no activity in range', (tester) async {
+    testWidgets('shows an empty state when there is no activity in range',
+        (tester) async {
       final repo = FakeAdminPaymentRepository();
       await tester.pumpWidget(
         _wrap(const AdminPaymentHealthScreen(), repo: repo),
@@ -69,7 +71,8 @@ void main() {
       expect(find.byIcon(Icons.query_stats_outlined), findsOneWidget);
     });
 
-    testWidgets('shows real metric values, never a fabricated number', (tester) async {
+    testWidgets('shows real metric values, never a fabricated number',
+        (tester) async {
       final health = PaymentHealth.fromJson({
         'range_from': '2026-08-14T00:00:00Z',
         'range_to': '2026-09-13T00:00:00Z',
@@ -94,7 +97,8 @@ void main() {
       expect(find.text('0.0%'), findsOneWidget);
     });
 
-    testWidgets('shows an error state with retry on backend failure', (tester) async {
+    testWidgets('shows an error state with retry on backend failure',
+        (tester) async {
       final repo = FakeAdminPaymentRepository(
         healthError: const AuthException('administrator_required'),
       );
@@ -111,7 +115,8 @@ void main() {
       expect(repo.getPaymentHealthCallCount, greaterThanOrEqualTo(1));
     });
 
-    testWidgets('contains no mutation controls anywhere on screen', (tester) async {
+    testWidgets('contains no mutation controls anywhere on screen',
+        (tester) async {
       final health = PaymentHealth.fromJson({
         'range_from': '2026-08-14T00:00:00Z',
         'range_to': '2026-09-13T00:00:00Z',
@@ -151,7 +156,9 @@ void main() {
       expect(find.byIcon(Icons.receipt_long_outlined), findsWidgets);
     });
 
-    testWidgets('renders real ledger rows with no reconciliation exception styling by default', (tester) async {
+    testWidgets(
+        'renders real ledger rows with no reconciliation exception styling by default',
+        (tester) async {
       final repo = FakeAdminPaymentRepository(
         page: PaymentTransactionPage(
           items: [_tx()],
@@ -168,7 +175,8 @@ void main() {
       expect(find.text('BMS-ABCDEF'), findsOneWidget);
     });
 
-    testWidgets('shows an error state with retry on backend failure', (tester) async {
+    testWidgets('shows an error state with retry on backend failure',
+        (tester) async {
       final repo = FakeAdminPaymentRepository(
         pageError: const AuthException('administrator_required'),
       );
@@ -180,7 +188,8 @@ void main() {
       expect(find.byType(FilledButton), findsOneWidget);
     });
 
-    testWidgets('sending a search query calls the repository with that filter', (tester) async {
+    testWidgets('sending a search query calls the repository with that filter',
+        (tester) async {
       final repo = FakeAdminPaymentRepository();
       await tester.pumpWidget(
         _wrap(const AdminTransactionLedgerScreen(), repo: repo),

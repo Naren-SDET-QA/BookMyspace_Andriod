@@ -103,7 +103,8 @@ class OwnerFacilityController extends ChangeNotifier {
         if (problem != null) return problem;
 
         if (n.capabilities != null && !n.capabilities!.isEmpty) {
-          final capErrors = n.capabilities!.validate(constraints: n.constraints);
+          final capErrors =
+              n.capabilities!.validate(constraints: n.constraints);
           if (capErrors.isNotEmpty) return capErrors.first;
         }
       }

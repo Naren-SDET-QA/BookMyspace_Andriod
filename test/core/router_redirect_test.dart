@@ -99,6 +99,30 @@ class _RouteTestNotificationRepository implements NotificationRepository {
 }
 
 void main() {
+  test('protected destinations round-trip through login safely', () {
+    final destination = Uri.parse('/bookings?status=pending');
+    final login = Uri.parse(loginLocationFor(destination));
+
+    expect(login.path, AppRoutes.login);
+    expect(
+      login.queryParameters['redirect'],
+      destination.toString(),
+    );
+    expect(
+      authenticatedLocationFromLogin(login),
+      destination.toString(),
+    );
+  });
+
+  test('login never follows an external redirect destination', () {
+    expect(
+      authenticatedLocationFromLogin(
+        Uri.parse('/login?redirect=https%3A%2F%2Fevil.example'),
+      ),
+      AppRoutes.shell,
+    );
+  });
+
   testWidgets('unauth user on shell is redirected to login', (tester) async {
     final uri = await _redirectTo(
       tester,

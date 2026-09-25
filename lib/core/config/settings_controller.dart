@@ -93,6 +93,40 @@ final localeProvider = NotifierProvider<LocaleNotifier, Locale>(
   LocaleNotifier.new,
 );
 
+/// Home screen "Color & 3D" effects toggle -- purely cosmetic, persisted the
+/// same way as [ThemeModeNotifier]/[LocaleNotifier]. Defaults to on. Scoped
+/// deliberately to the Spotlight hero cards this session added; the
+/// category discovery matrix's own tilt effect is a separate, pre-existing
+/// feature that this toggle does not touch.
+class Home3dEffectsNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    _load();
+    return true;
+  }
+
+  bool _loaded = false;
+
+  Future<void> _load() async {
+    final prefs = ref.read(preferencesProvider);
+    final saved = await prefs.read(AppConstants.prefs3dEffectsKey);
+    if (saved != null && !_loaded) {
+      _loaded = true;
+      state = saved == 'true';
+    }
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    await ref
+        .read(preferencesProvider)
+        .write(AppConstants.prefs3dEffectsKey, enabled.toString());
+  }
+}
+
+final home3dEffectsProvider =
+    NotifierProvider<Home3dEffectsNotifier, bool>(Home3dEffectsNotifier.new);
+
 /// Tracks whether onboarding has been completed.
 class OnboardingNotifier extends Notifier<bool> {
   @override

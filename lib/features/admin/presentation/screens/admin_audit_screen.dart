@@ -70,13 +70,13 @@ class _AuditTile extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppTheme.brand.withValues(alpha: 0.12),
+                      color: AppTheme.violet.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       entry.entityType!,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: AppTheme.brand,
+                        color: AppTheme.violet,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

@@ -25,12 +25,16 @@ class OwnerBookingsScreen extends ConsumerStatefulWidget {
 class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
   final Set<String> _updating = <String>{};
   RealtimeChannel? _bookingChannel;
+  // Captured in initState: `ref` must not be used after dispose (debug
+  // builds throw), so dispose() cannot call ref.read for the client.
+  SupabaseClient? _supabaseClient;
 
   @override
   void initState() {
     super.initState();
     try {
       final client = ref.read(supabaseProvider);
+      _supabaseClient = client;
       final user = client.auth.currentUser;
       if (user != null) {
         _bookingChannel = client
@@ -54,8 +58,9 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
   @override
   void dispose() {
     final channel = _bookingChannel;
-    if (channel != null) {
-      unawaited(ref.read(supabaseProvider).removeChannel(channel));
+    final client = _supabaseClient;
+    if (channel != null && client != null) {
+      unawaited(client.removeChannel(channel));
     }
     super.dispose();
   }
@@ -213,7 +218,7 @@ class _OwnerBookingTile extends StatelessWidget {
                 Text(
                   booking.status.dbValue,
                   style: TextStyle(
-                    color: AppTheme.brandDark,
+                    color: AppTheme.violet,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),

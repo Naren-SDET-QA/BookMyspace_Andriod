@@ -4,6 +4,11 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- Google Maps SDK for iOS key. Value comes from the git-ignored
+	     GoogleMapsKey.xcconfig (GOOGLE_MAPS_API_KEY) at build time; empty
+	     when the developer/CI has not supplied one. Read by AppDelegate. -->
+	<key>GMSApiKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>CFBundleDisplayName</key>
 	<string>BookMySpace</string>
 	<key>CFBundleExecutable</key>

@@ -9,20 +9,30 @@ import 'app_theme_config.dart';
 class AppTheme {
   AppTheme._();
 
-  /// Brand colours shared with the native Android BookMySpace design system.
+  /// Brand colours for the dark+purple BookMySpace redesign (Phase: UI
+  /// match to approved reference design). `brand` stays teal and is kept
+  /// for the logo mark / success-adjacent accents; `violet`/`violetDeep`
+  /// are the new primary interactive colour (buttons, active states,
+  /// the location pill, the "Book Now" CTAs) matching the reference.
   static const Color brand = Color(0xFF00C9A7);
   static const Color brandLight = Color(0xFF5EEAD4);
   static const Color brandDark = Color(0xFF00A084);
   static const Color action = Color(0xFF2979FF);
   static const Color accent = Color(0xFFFF6B4A);
   static const Color success = Color(0xFF22C55E);
-  static const Color darkCanvas = Color(0xFF071422);
-  static const Color darkCard = Color(0xFF102433);
+  // Reference-matched dark canvas/card surfaces (near-black navy, not the
+  // previous lighter navy-blue) and the new violet/purple primary accent.
+  static const Color darkCanvas = Color(0xFF0B0E1A);
+  static const Color darkCard = Color(0xFF151A2C);
+  static const Color darkCardElevated = Color(0xFF1C2238);
   static const Color lightCanvas = Color(0xFFF3F7FA);
   static const Color textPrimary = Color(0xFF0B1F33);
   static const Color textSecondary = Color(0xFF475569);
   static const Color cyan = Color(0xFF22D3EE);
   static const Color violetSoft = Color(0xFF818CF8);
+  static const Color violet = Color(0xFF8B5CF6);
+  static const Color violetDeep = Color(0xFF6D28D9);
+  static const Color spotlightAmber = Color(0xFFF59E0B);
 
   static const LinearGradient brandGradient = LinearGradient(
     colors: [brand, cyan],
@@ -44,6 +54,13 @@ class AppTheme {
 
   static const LinearGradient logoGradient = LinearGradient(
     colors: [Color(0xFF10B981), Color(0xFF38BDF8), Color(0xFF818CF8)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Violet gradient for the location pill / primary CTAs in the redesign.
+  static const LinearGradient violetGradient = LinearGradient(
+    colors: [violetDeep, violet],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -190,16 +207,18 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 64,
+        height: 72,
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: isLight ? Colors.white : darkCard,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: scheme.primary.withValues(alpha: isLight ? 0.16 : 0.22),
-        indicatorShape: const StadiumBorder(),
+        indicatorColor: scheme.primary.withValues(alpha: isLight ? 0.12 : 0.22),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
-            fontSize: 10.5,
+            fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
             letterSpacing: -0.1,
             color: selected ? scheme.primary : scheme.onSurfaceVariant,
@@ -208,7 +227,7 @@ class AppTheme {
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            size: 22,
+            size: 24,
             color: selected ? scheme.primary : scheme.onSurfaceVariant,
           );
         }),

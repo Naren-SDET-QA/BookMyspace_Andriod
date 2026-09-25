@@ -247,7 +247,7 @@ void main() {
       );
       expect(
           CatalogValidator.validate(
-        CatalogContent([valid]),
+            CatalogContent([valid]),
           ).where((i) => i.isError),
           isEmpty);
 

@@ -276,7 +276,9 @@ class ReceiptDocument {
   factory ReceiptDocument.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> sub(String key) {
       final value = json[key];
-      return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+      return value is Map
+          ? Map<String, dynamic>.from(value)
+          : <String, dynamic>{};
     }
 
     final omissionsRaw = json['omissions'];

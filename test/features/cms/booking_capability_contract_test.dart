@@ -151,7 +151,8 @@ void main() {
         expect(caps.approvalRequired, true);
       });
 
-      test('bookable mode with approval_required=false allows instant booking', () {
+      test('bookable mode with approval_required=false allows instant booking',
+          () {
         const caps = FacilityCapabilities(
           interactionMode: InteractionMode.bookable,
           approvalRequired: false,
@@ -209,7 +210,8 @@ void main() {
       test('validates seating options against allowed values', () {
         const caps = FacilityCapabilities(seating: ['theater', 'round_table']);
         const constraints = CapabilityConstraints(
-          seating: ListConstraint(allowedValues: ['theater', 'round_table', 'classroom']),
+          seating: ListConstraint(
+              allowedValues: ['theater', 'round_table', 'classroom']),
         );
 
         final errors = caps.validate(constraints: constraints);
@@ -217,7 +219,8 @@ void main() {
       });
 
       test('rejects seating not in allowed values', () {
-        const caps = FacilityCapabilities(seating: ['theater', 'invalid_option']);
+        const caps =
+            FacilityCapabilities(seating: ['theater', 'invalid_option']);
         const constraints = CapabilityConstraints(
           seating: ListConstraint(allowedValues: ['theater', 'round_table']),
         );

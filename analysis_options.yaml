@@ -1,0 +1,8 @@
+# Keep scratch/notes folders out of static analysis; they are not shipped code.
+analyzer:
+  exclude:
+    - "Claude outputs/**"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**

@@ -63,7 +63,8 @@ class HomeVideoPill extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).homeVideoUnavailable)),
+        SnackBar(
+            content: Text(AppLocalizations.of(context).homeVideoUnavailable)),
       );
   }
 

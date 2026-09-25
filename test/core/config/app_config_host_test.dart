@@ -24,7 +24,8 @@ void main() {
     );
   });
 
-  test('mapError turns host lookup failures into a human-readable network error',
+  test(
+      'mapError turns host lookup failures into a human-readable network error',
       () {
     final mapped = mapError(
       Exception(

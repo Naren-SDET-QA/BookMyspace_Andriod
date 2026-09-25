@@ -83,21 +83,22 @@ class ResponsiveInfo {
       categoryAspectRatio = 1.35;
     }
 
-    // Responsive venue/space result cards columns and aspect ratios
+    // Venue result cards: more columns on larger screens, taller on phones
+    // so image + name + price + Book/Call/Chat/Save all fit without overflow.
     final int resultsColumns;
     final double resultsAspectRatio;
     if (isCompact) {
       resultsColumns = 1;
-      resultsAspectRatio = 0.88;
+      resultsAspectRatio = 0.92;
     } else if (isMedium) {
       resultsColumns = 2;
-      resultsAspectRatio = 0.82;
+      resultsAspectRatio = 0.78;
     } else if (isExpanded) {
       resultsColumns = 3;
-      resultsAspectRatio = 0.78;
+      resultsAspectRatio = 0.72;
     } else {
       resultsColumns = 4;
-      resultsAspectRatio = 0.75;
+      resultsAspectRatio = 0.70;
     }
 
     final double horizontalPadding = isCompact

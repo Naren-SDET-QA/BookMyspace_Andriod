@@ -93,6 +93,8 @@ class _OwnerDashboardBody extends ConsumerWidget {
           ),
           orElse: () => const SizedBox.shrink(),
         ),
+        const SizedBox(height: 16),
+        _ReportsCard(),
         const SizedBox(height: 24),
         _QuickAction(
           icon: Icons.add_business_rounded,
@@ -133,7 +135,94 @@ class _OwnerDashboardBody extends ConsumerWidget {
           label: l10n.support,
           onTap: () => context.push(AppRoutes.support),
         ),
+        _QuickAction(
+          icon: Icons.school_rounded,
+          label: 'Institute dashboard',
+          onTap: () => context.push(AppRoutes.ownerInstituteDashboard),
+        ),
+        _QuickAction(
+          icon: Icons.menu_book_rounded,
+          label: 'My courses',
+          onTap: () => context.push(AppRoutes.ownerCourses),
+        ),
       ],
+    );
+  }
+}
+
+/// Daily/weekly report card backed by real bookings from `public.bookings`
+/// (RLS-scoped to the owner's venues) via [ownerReportSummaryProvider].
+class _ReportsCard extends ConsumerWidget {
+  const _ReportsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final summary = ref.watch(ownerReportSummaryProvider);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.summarize_rounded,
+                    size: 20, color: AppTheme.violet),
+                const SizedBox(width: 8),
+                Text('Reports', style: theme.textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 12),
+            summary.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text(
+                'Could not load reports: $error',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.error),
+              ),
+              data: (data) => LayoutBuilder(builder: (context, constraints) {
+                // Two metrics per row on phones, four across on wide
+                // tablets/web windows.
+                final columns = constraints.maxWidth >= 560 ? 4 : 2;
+                const gap = 8.0;
+                final tileWidth =
+                    (constraints.maxWidth - gap * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    SizedBox(
+                      width: tileWidth,
+                      child: _MetricTile(
+                          label: 'Today bookings',
+                          value: '${data.todayBookings}'),
+                    ),
+                    SizedBox(
+                      width: tileWidth,
+                      child: _MetricTile(
+                          label: 'Today revenue',
+                          value: '₹${data.todayRevenue.toStringAsFixed(0)}'),
+                    ),
+                    SizedBox(
+                      width: tileWidth,
+                      child: _MetricTile(
+                          label: 'This week bookings',
+                          value: '${data.weekBookings}'),
+                    ),
+                    SizedBox(
+                      width: tileWidth,
+                      child: _MetricTile(
+                          label: 'This week revenue',
+                          value: '₹${data.weekRevenue.toStringAsFixed(0)}'),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -180,8 +269,8 @@ class _OwnerCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: AppTheme.brand.withValues(alpha: 0.12),
-              child: const Icon(Icons.person_rounded, color: AppTheme.brand),
+              backgroundColor: AppTheme.violet.withValues(alpha: 0.12),
+              child: const Icon(Icons.person_rounded, color: AppTheme.violet),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -234,7 +323,7 @@ class _QuickAction extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(icon, size: 24, color: AppTheme.brand),
+              Icon(icon, size: 24, color: AppTheme.violet),
               const SizedBox(width: 16),
               Text(
                 label,

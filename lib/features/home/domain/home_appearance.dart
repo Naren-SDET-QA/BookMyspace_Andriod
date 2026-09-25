@@ -12,6 +12,7 @@ enum HomeBlockKind {
   categoryMatrix('category_matrix', 'Category 3D matrix'),
   spotlight('spotlight', 'Spotlight carousel'),
   categoryChips('category_chips', 'Listed categories'),
+
   /// Nearest venues by real distance from the reader's selected location.
   ///
   /// "Live" refers to the reader's current position, not to availability —
@@ -60,9 +61,8 @@ class HomeBlockStyle {
   final double? height;
 
   bool get hasGradient => backgroundColors.length > 1;
-  Color? get solidColor => backgroundColors.length == 1
-      ? backgroundColors.first
-      : null;
+  Color? get solidColor =>
+      backgroundColors.length == 1 ? backgroundColors.first : null;
 
   HomeBlockStyle copyWith({
     List<Color>? backgroundColors,

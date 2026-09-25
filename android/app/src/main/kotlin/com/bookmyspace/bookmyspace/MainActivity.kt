@@ -17,6 +17,10 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
 
     private val pushChannel by lazy { AndroidPushChannel(this) { this } }
 
+    // Android counterpart of the iOS `speech_recognition` channel, letting
+    // voice search share one Dart code path across iOS, Android, and Web.
+    private val speechChannel by lazy { AndroidSpeechChannel(this) { this } }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -79,6 +83,8 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
         // because the service registers its handler after this runs. Stash it
         // so Dart can pull it via getInitialNotification.
         pushChannel.captureInitialIntent(intent)
+
+        speechChannel.attach(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -94,6 +100,7 @@ class MainActivity : FlutterActivity(), PaymentResultWithDataListener {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         pushChannel.onPermissionResult(requestCode, grantResults)
+        speechChannel.onPermissionResult(requestCode, grantResults)
     }
 
     override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {

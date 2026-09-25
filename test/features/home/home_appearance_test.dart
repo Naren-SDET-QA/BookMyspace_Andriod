@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('HomeAppearance', () {
-    test('falls back to the shipped defaults for empty or malformed config', () {
+    test('falls back to the shipped defaults for empty or malformed config',
+        () {
       expect(HomeAppearance.fromJson(null).blocks.length,
           HomeAppearance.defaults.blocks.length);
       expect(HomeAppearance.fromJson('nonsense').blocks.length,
@@ -69,7 +70,9 @@ void main() {
       });
       // The unknown entry never becomes a block...
       expect(
-        appearance.blocks.where((b) => b.kind == HomeBlockKind.spotlight).length,
+        appearance.blocks
+            .where((b) => b.kind == HomeBlockKind.spotlight)
+            .length,
         1,
       );
       // ...and the untouched blocks keep their shipped defaults.

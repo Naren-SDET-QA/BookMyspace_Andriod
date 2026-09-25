@@ -1,9 +1,15 @@
+import 'package:bookmyspace/features/venues/domain/listing_template.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:bookmyspace/features/venues/domain/venue_repository.dart';
 
 class MockVenueRepository implements VenueRepository {
   bool failRequests = false;
   final List<String> _favs = [];
+
+  void seedVenue(Venue venue) {
+    _mockVenues.removeWhere((item) => item.id == venue.id);
+    _mockVenues.add(venue);
+  }
 
   final List<Venue> _mockVenues = [
     const Venue(
@@ -101,12 +107,22 @@ class MockVenueRepository implements VenueRepository {
   }
 
   @override
+  Future<VenueCategory> getCategory(String id) async {
+    for (final venue in _mockVenues) {
+      final category = venue.category;
+      if (category != null && category.id == id) return category;
+    }
+    throw UnimplementedError('getCategory not seeded in mock');
+  }
+
+  @override
   Future<VenueCategory> addCategory({
     required String name,
     required String slug,
     String? icon,
     String? parentSection,
     bool isActive = true,
+    ListingTemplateConfig? listingConfig,
   }) async {
     return VenueCategory(
       id: slug,
@@ -246,6 +262,14 @@ class MockVenueRepository implements VenueRepository {
           query.city!.trim().isNotEmpty &&
           v.city.toLowerCase() != query.city!.trim().toLowerCase()) {
         return false;
+      }
+      if (query.facility != null && query.facility!.trim().isNotEmpty) {
+        final needle = query.facility!.trim().toLowerCase();
+        if (!v.facilities.any(
+          (item) => item.isAvailable && item.facility.toLowerCase() == needle,
+        )) {
+          return false;
+        }
       }
       return true;
     }).toList();

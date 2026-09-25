@@ -80,13 +80,14 @@ void main() {
       }
     });
 
-    test('Function Halls keeps all eight subsections', () {
+    test('Function Halls keeps all fourteen shipped subsections', () {
       final node = CatalogContent.defaults.sectionFor('function_halls')!;
-      expect(node.visibleSubsections, hasLength(8));
+      expect(node.visibleSubsections, hasLength(14));
     });
 
     test('defaults survive a serialization round trip unchanged', () {
-      final reparsed = CatalogContent.fromJson(CatalogContent.defaults.toJson());
+      final reparsed =
+          CatalogContent.fromJson(CatalogContent.defaults.toJson());
       expect(reparsed.facilityTypes.length,
           CatalogContent.defaults.facilityTypes.length);
 
@@ -110,13 +111,13 @@ void main() {
     test('missing, wrong-typed and empty payloads yield the defaults', () {
       final expected = CatalogContent.defaults.facilityTypes.length;
       expect(CatalogContent.fromJson(null).facilityTypes, hasLength(expected));
-      expect(
-          CatalogContent.fromJson('nonsense').facilityTypes, hasLength(expected));
+      expect(CatalogContent.fromJson('nonsense').facilityTypes,
+          hasLength(expected));
       expect(CatalogContent.fromJson(42).facilityTypes, hasLength(expected));
-      expect(CatalogContent.fromJson(const []).facilityTypes,
-          hasLength(expected));
-      expect(CatalogContent.fromJson(const {}).facilityTypes,
-          hasLength(expected));
+      expect(
+          CatalogContent.fromJson(const []).facilityTypes, hasLength(expected));
+      expect(
+          CatalogContent.fromJson(const {}).facilityTypes, hasLength(expected));
       expect(
         CatalogContent.fromJson(const {'facility_types': 'nope'}).facilityTypes,
         hasLength(expected),

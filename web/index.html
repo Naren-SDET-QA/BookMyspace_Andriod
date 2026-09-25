@@ -24,8 +24,9 @@
 
   <title>BookMySpace</title>
 
-  <!-- Google Maps JavaScript API for Flutter Web -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=default_maps_key"></script>
+  <!-- Web maps use OSM/CARTO tiles via flutter_map (no Google key needed).
+       Do NOT add a Google Maps script here without also switching the map
+       screen's kIsWeb branch and providing a build-time-injected key. -->
 
   <!-- Razorpay Standard Checkout for Flutter Web (public key only). -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>

@@ -9,6 +9,7 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
   confirmationRpcArgs,
   deriveRazorpayEventId,
+  extractRefundEntity,
   type RazorpayWebhookEvent,
   verifyRazorpaySignature,
 } from "./helpers.ts";
@@ -211,8 +212,79 @@ Deno.serve(async (req) => {
       return jsonResponse({ status: "recorded_failed" });
     }
 
-    // payment.authorized and other notifications are recorded independently
-    // from payment.captured, then marked processed without confirming a booking.
+    if (eventType === "refund.processed" || eventType === "refund.failed") {
+      // Refund-side authority: this is the confirmation source for whether
+      // a refund actually landed. See apply_refund_result() — it is the
+      // only place that moves payments.status to a refunded value, and it
+      // is idempotent/monotonic (a later 'failed' cannot downgrade an
+      // already-'processed' refund, and a repeat delivery of the same
+      // outcome is a no-op), so replayed/duplicate webhook deliveries are
+      // safe by construction.
+      const refundEntity = extractRefundEntity(event);
+      if (!refundEntity.paymentId) {
+        return jsonResponse({ error: "invalid_refund_payload" }, 400);
+      }
+
+      let refundRowId: string | undefined;
+
+      if (refundEntity.id) {
+        const { data } = await supabase
+          .from("refunds")
+          .select("id")
+          .eq("provider_refund_id", refundEntity.id)
+          .maybeSingle();
+        refundRowId = data?.id;
+      }
+
+      if (!refundRowId) {
+        const { data: payment } = await supabase
+          .from("payments")
+          .select("id")
+          .eq("provider_payment_id", refundEntity.paymentId)
+          .maybeSingle();
+        if (payment) {
+          const { data } = await supabase
+            .from("refunds")
+            .select("id")
+            .eq("payment_id", payment.id)
+            .neq("status", "failed")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          refundRowId = data?.id;
+        }
+      }
+
+      if (!refundRowId) {
+        // Nothing in our DB is (still) waiting on this refund — e.g. the
+        // DB-intent row hasn't been created yet, or was already resolved.
+        // Recording the event without acting is safe; there is nothing to
+        // reconcile against. Visible via the webhook_events row itself for
+        // support follow-up if this recurs unexpectedly.
+        await markEventProcessed(supabase, "razorpay", eventId);
+        return jsonResponse({ status: "no_matching_refund" });
+      }
+
+      const { error: applyError } = await supabase.rpc("apply_refund_result", {
+        p_refund_id: refundRowId,
+        p_provider_refund_id: refundEntity.id ?? null,
+        p_status: eventType === "refund.processed" ? "processed" : "failed",
+        p_failure_reason: eventType === "refund.failed"
+          ? "razorpay_refund_failed_webhook"
+          : null,
+      });
+      if (applyError) {
+        return jsonResponse({ error: "refund_apply_failed" }, 500);
+      }
+
+      await markEventProcessed(supabase, "razorpay", eventId);
+      return jsonResponse({
+        status: eventType === "refund.processed" ? "refund_processed" : "refund_failed",
+      });
+    }
+
+    // Other notifications are recorded independently and marked processed
+    // without confirming a booking or refund.
     await markEventProcessed(supabase, "razorpay", eventId);
     return jsonResponse({ status: "ignored" });
   } catch (_) {

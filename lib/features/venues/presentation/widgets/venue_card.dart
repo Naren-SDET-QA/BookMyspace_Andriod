@@ -62,6 +62,31 @@ class VenueCard extends ConsumerWidget {
               fit: StackFit.expand,
               children: [
                 AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
+                if (venue.category != null)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: _LabelChip(
+                      icon: Icons.category_outlined,
+                      label: venue.category!.name,
+                    ),
+                  ),
+                if (venue.hasDiscount)
+                  Positioned(
+                    top: 8,
+                    left: venue.category != null ? 8 : 8,
+                    bottom: null,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        top: venue.category != null ? 36 : 0,
+                      ),
+                      child: _LabelChip(
+                        icon: Icons.local_offer_outlined,
+                        label:
+                            '${(((venue.originalPrice! - venue.price) / venue.originalPrice!) * 100).round()}% OFF',
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 8,
                   right: 8,
@@ -168,12 +193,26 @@ class VenueCard extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  '${l10n.pricing} ${formatInr(venue.price)}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    if (venue.hasDiscount) ...[
+                      Text(
+                        formatInr(venue.originalPrice!),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          decoration: TextDecoration.lineThrough,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      '${l10n.pricing} ${formatInr(venue.price)}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -161,15 +161,16 @@ class _TicketTile extends ConsumerWidget {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: ticket.isResolved
-                        ? AppTheme.brand.withValues(alpha: 0.12)
+                        ? AppTheme.success.withValues(alpha: 0.12)
                         : AppTheme.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     ticket.isResolved ? 'Resolved' : ticket.status.dbValue,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color:
-                          ticket.isResolved ? AppTheme.brand : AppTheme.accent,
+                      color: ticket.isResolved
+                          ? AppTheme.success
+                          : AppTheme.accent,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -208,7 +209,7 @@ class _TicketTile extends ConsumerWidget {
               Text(
                 ticket.adminReply!,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.brand,
+                  color: AppTheme.violet,
                 ),
               ),
             ],

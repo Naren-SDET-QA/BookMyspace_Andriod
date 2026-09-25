@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Shipped facility type keys, taken from the generated defaults rather than
 /// retyped so these tests follow the catalogue if product reorders it.
-String _firstShippedTypeKey() => CatalogContent.defaults.facilityTypes.first.key;
+String _firstShippedTypeKey() =>
+    CatalogContent.defaults.facilityTypes.first.key;
 
 void main() {
   group('facility types', () {
@@ -74,13 +75,14 @@ void main() {
           title: CmsLocalizedText(base: 'Rooftops'),
         ),
       );
-      expect(added.facilityTypeFor(typeKey)!.sections.length,
-          originalCount + 1);
+      expect(
+          added.facilityTypeFor(typeKey)!.sections.length, originalCount + 1);
       expect(added.sectionFor('rooftop_venues')!.title.base, 'Rooftops');
 
       final replaced = added.upsertSection(
         typeKey,
-        added.sectionFor('rooftop_venues')!
+        added
+            .sectionFor('rooftop_venues')!
             .copyWith(title: const CmsLocalizedText(base: 'Terraces')),
       );
       expect(replaced.facilityTypeFor(typeKey)!.sections.length,
@@ -107,8 +109,7 @@ void main() {
         isNotEmpty,
       );
 
-      final after =
-          CatalogContent.defaults.removeSection(typeKey, sectionKey);
+      final after = CatalogContent.defaults.removeSection(typeKey, sectionKey);
       expect(after.sectionFor(sectionKey), isNull);
       expect(after.facilityTypeFor(typeKey), isNotNull,
           reason: 'the parent type survives');

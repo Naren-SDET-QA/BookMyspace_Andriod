@@ -114,11 +114,13 @@ void main() {
       );
 
       expect(intent.kind, AiBookingIntentKind.discoverVenues);
-      expect(_chipFor('badminton courts in Hyderabad under 1000',
-              'aiSlotCategory').valueKey,
+      expect(
+          _chipFor('badminton courts in Hyderabad under 1000', 'aiSlotCategory')
+              .valueKey,
           'aiCatBadminton');
-      expect(_chipFor('badminton courts in Hyderabad under 1000',
-              'aiSlotLocation').valueKey,
+      expect(
+          _chipFor('badminton courts in Hyderabad under 1000', 'aiSlotLocation')
+              .valueKey,
           'aiCityHyderabad');
       expect(
         _chipFor('badminton courts in Hyderabad under 1000', 'aiSlotBudget')

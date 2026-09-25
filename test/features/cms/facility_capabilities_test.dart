@@ -1,19 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bookmyspace/features/cms/domain/facility_capabilities.dart';
 import 'package:bookmyspace/features/cms/domain/catalog_content.dart';
-import 'package:bookmyspace/features/cms/domain/cms_localized_text.dart';
 
 void main() {
   group('InteractionMode', () {
     test('fromJson parses valid values', () {
       expect(InteractionMode.fromJson('bookable'), InteractionMode.bookable);
-      expect(InteractionMode.fromJson('registration'), InteractionMode.registration);
-      expect(InteractionMode.fromJson('informationOnly'), InteractionMode.informationOnly);
+      expect(InteractionMode.fromJson('registration'),
+          InteractionMode.registration);
+      expect(InteractionMode.fromJson('informationOnly'),
+          InteractionMode.informationOnly);
     });
 
     test('fromJson returns informationOnly for null/unknown', () {
       expect(InteractionMode.fromJson(null), InteractionMode.informationOnly);
-      expect(InteractionMode.fromJson('unknown'), InteractionMode.informationOnly);
+      expect(
+          InteractionMode.fromJson('unknown'), InteractionMode.informationOnly);
     });
 
     test('toJson returns name', () {
@@ -75,7 +77,8 @@ void main() {
 
     test('validate checks allowed values', () {
       const c = ListConstraint(allowedValues: ['x', 'y']);
-      expect(c.validate(['x', 'z'], 'Amenities'), '"z" is not allowed for Amenities.');
+      expect(c.validate(['x', 'z'], 'Amenities'),
+          '"z" is not allowed for Amenities.');
     });
 
     test('fromJson/toJson round trip', () {
@@ -199,21 +202,24 @@ void main() {
     test('CatalogSubsection preserves capabilities through copyWith', () {
       const caps = FacilityCapabilities(capacity: 50);
       const sub = CatalogSubsection(key: 'test', capabilities: caps);
-      final copy = sub.copyWith(capabilities: const FacilityCapabilities(capacity: 100));
+      final copy =
+          sub.copyWith(capabilities: const FacilityCapabilities(capacity: 100));
       expect(copy.capabilities?.capacity, 100);
     });
 
     test('CatalogSection preserves capabilities through copyWith', () {
       const caps = FacilityCapabilities(capacity: 100);
       const section = CatalogSection(key: 'test', capabilities: caps);
-      final copy = section.copyWith(capabilities: const FacilityCapabilities(capacity: 200));
+      final copy = section.copyWith(
+          capabilities: const FacilityCapabilities(capacity: 200));
       expect(copy.capabilities?.capacity, 200);
     });
 
     test('CatalogFacilityType preserves capabilities through copyWith', () {
       const caps = FacilityCapabilities(capacity: 200);
       const type = CatalogFacilityType(key: 'test', capabilities: caps);
-      final copy = type.copyWith(capabilities: const FacilityCapabilities(capacity: 300));
+      final copy = type.copyWith(
+          capabilities: const FacilityCapabilities(capacity: 300));
       expect(copy.capabilities?.capacity, 300);
     });
 
