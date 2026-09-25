@@ -181,4 +181,55 @@ void main() {
     );
     expect(redirect, isNull);
   });
+
+  // Added on release/v1.0 in 1f9b1f3 (owner role preserved on hydration).
+  test('venue owner can enter owner routes without redirect', () {
+    final redirect = resolveAppRedirect(
+      location: AppRoutes.ownerDashboard,
+      currentUser: const AuthUser(id: 'u1', role: UserRole.venueOwner),
+      authReady: true,
+    );
+    expect(redirect, isNull);
+  });
+
+  test('venue owner can enter analytics without redirect', () {
+    final redirect = resolveAppRedirect(
+      location: AppRoutes.analytics,
+      currentUser: const AuthUser(id: 'u1', role: UserRole.venueOwner),
+      authReady: true,
+    );
+    expect(redirect, isNull);
+  });
+
+  // '/owner' itself is guarded in-screen by RoleGate after the merge, so the
+  // redirect assertions use a release-only owner route.
+  test('customer is redirected away from owner routes to profile', () {
+    final redirect = resolveAppRedirect(
+      location: AppRoutes.ownerBookingsManager,
+      currentUser: const AuthUser(id: 'u1', role: UserRole.customer),
+      authReady: true,
+    );
+    expect(redirect, AppRoutes.profile);
+  });
+
+  test('authoritative DB role override updates routing behavior', () {
+    const initialUser = AuthUser(id: 'u1', role: UserRole.venueOwner);
+    expect(
+      resolveAppRedirect(
+        location: AppRoutes.ownerBookingsManager,
+        currentUser: initialUser,
+        authReady: true,
+      ),
+      isNull,
+    );
+    final hydratedUser = initialUser.copyWith(role: UserRole.customer);
+    expect(
+      resolveAppRedirect(
+        location: AppRoutes.ownerBookingsManager,
+        currentUser: hydratedUser,
+        authReady: true,
+      ),
+      AppRoutes.profile,
+    );
+  });
 }

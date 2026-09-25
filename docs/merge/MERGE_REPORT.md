@@ -7,11 +7,11 @@ without dropping functionality. `main` is untouched.
 
 | Source | How |
 |---|---|
-| `main` | Base of `merged-all` |
+| old `main` (now `archive/legacy-main-2026-09-25`, `358a1b0`) | Base of `merged-all` |
 | `phase5-14-release` | Already fully contained in `main` |
 | `fix/ios-bookmyspace-ui` | Merged (both Discovery catalogue and Theme admin links kept) |
 | `fix/ios-bookmyspace-ui-buffy` | Merged (Home redesign from buffy, theme customizer from main, l10n union, `app/` and Firebase files kept) |
-| `release/v1.0` (separate git history) | Merged via a graft on the shared upstream seed commit; see "Clashing screens" |
+| `release/v1.0` (separate git history, now also GitHub `main`) | Merged up to `1f9b1f3` via a graft on the shared upstream seed commit; see "Clashing screens" |
 | Local Mac copy (`/Users/aa/BookMyspace_Andriod`) | No unpushed commits. Untracked `animated_category_chip.dart` (theme-aware) and `20260921180000_education_configurable_modules.sql` added. `stash@{0}` (WIP, did not compile) saved as branch `wip/local-stash-home-2up` — not merged. |
 
 Not merged: branches on the separate `upstream` repo
