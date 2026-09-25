@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/router/app_router.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/notifications/onesignal_push_service.dart';
+import '../../../../core/router/app_router.dart';
 import '../../domain/admin_settings.dart';
 import '../admin_settings_providers.dart';
 import '../../../auth/presentation/auth_providers.dart';

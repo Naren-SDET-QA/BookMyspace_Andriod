@@ -19,6 +19,7 @@ import '../../../booking/presentation/booking_providers.dart';
 import '../../../location/presentation/location_providers.dart';
 import '../../../location/presentation/widgets/location_bar.dart';
 import '../../../location/presentation/widgets/location_picker_sheet.dart';
+import '../../../notifications/presentation/notification_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
@@ -40,9 +41,8 @@ import '../customer_section_providers.dart';
 import '../customer_category_preferences_providers.dart';
 import '../widgets/category_carousel.dart';
 import '../widgets/home_discovery_widgets.dart';
-import '../widgets/home_v2_widgets.dart';
 import '../widgets/home_modern_widgets.dart';
-import '../../../notifications/presentation/notification_providers.dart';
+import '../widgets/home_v2_widgets.dart';
 
 /// The 4 primary sections of BookMySpace
 enum MainHomeSection {

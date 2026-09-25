@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../admin/domain/admin_settings.dart';
+import '../../../auth/domain/auth_user.dart';
 import '../../../promotions/domain/promotion.dart';
 import '../../../promotions/presentation/promotion_providers.dart';
 import '../../../venues/domain/venue.dart';
@@ -82,15 +83,15 @@ class ModernHomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatarUrl = () {
       try {
-        return (user?.avatarUrl as String?) ?? '';
+        return (user as AuthUser?)?.avatarUrl ?? '';
       } catch (_) {
         return '';
       }
     }();
     final initial = () {
       try {
-        final name = (user?.fullName as String?) ?? '';
-        final email = (user?.email as String?) ?? '';
+        final name = (user as AuthUser?)?.fullName ?? '';
+        final email = (user as AuthUser?)?.email ?? '';
         final source = name.isNotEmpty ? name : email;
         return source.isEmpty ? 'U' : source[0].toUpperCase();
       } catch (_) {
@@ -770,7 +771,7 @@ class _ModernSectionHeader extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),
@@ -800,7 +801,7 @@ class ModernSpaceRadar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: _cardColor(context),
         borderRadius: BorderRadius.circular(20),
@@ -913,7 +914,7 @@ class _RadarVenueCard extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: _hairline(context),
@@ -1072,7 +1073,7 @@ class ModernActivitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: _cardColor(context),
         borderRadius: BorderRadius.circular(20),
