@@ -73,4 +73,4 @@ release-only owner/admin routes keep the router redirect to `/profile`.
 ## Verification
 
 - `flutter analyze`: 0 errors.
-- `flutter test`: 1488 tests, all passing.
+- `flutter test`: 1496 tests, all passing.
