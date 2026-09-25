@@ -7,9 +7,12 @@ import '../../features/admin/presentation/screens/admin_cms_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/cms/presentation/screens/admin_media_library_screen.dart';
 import '../../features/admin/presentation/screens/admin_directory_screens.dart';
+import '../../features/admin_payment/presentation/screens/admin_payment_health_screen.dart';
+import '../../features/admin_payment/presentation/screens/admin_transaction_ledger_screen.dart';
 import '../../features/integrations/presentation/screens/admin_integrations_screen.dart';
 import '../../features/modules/presentation/screens/admin_modules_screen.dart';
 import '../../features/home/presentation/screens/admin_home_appearance_screen.dart';
+import '../../features/theme/presentation/screens/admin_theme_customizer_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/auth_user.dart';
@@ -89,6 +92,7 @@ abstract class AppRoutes {
   static const adminCategories = '/admin/categories';
   static const adminBookings = '/admin/bookings';
   static const adminPayments = '/admin/payments';
+  static const adminPaymentsLedger = '/admin/payments/ledger';
   static const adminEvents = '/admin/events';
   static const adminCourses = '/admin/courses';
   static const adminSupport = '/admin/support';
@@ -97,6 +101,7 @@ abstract class AppRoutes {
   static const adminIntegrations = '/admin/integrations';
   static const adminModules = '/admin/modules';
   static const adminHomeLayout = '/admin/home-layout';
+  static const adminTheme = '/admin/theme';
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner';
   static const ownerCategories = '/owner/categories';
@@ -117,8 +122,9 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Default initial location for the live app router.
-final routerInitialLocationProvider =
-    Provider<String>((ref) => AppRoutes.shell);
+final routerInitialLocationProvider = Provider<String>(
+  (ref) => AppRoutes.shell,
+);
 
 /// Stable application router. Auth changes refresh redirects without
 /// constructing a new [GoRouter] on every widget rebuild.
@@ -280,9 +286,8 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.courseDetails,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => CourseDetailScreen(
-          courseId: state.pathParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            CourseDetailScreen(courseId: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.analytics,
@@ -354,7 +359,15 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
-          child: AdminPaymentsBlockedScreen(),
+          child: AdminPaymentHealthScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminPaymentsLedger,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminTransactionLedgerScreen(),
         ),
       ),
       GoRoute(
@@ -423,6 +436,14 @@ GoRouter createAppRouter({
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
           child: AdminHomeAppearanceScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminTheme,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminThemeCustomizerScreen(),
         ),
       ),
       GoRoute(
@@ -527,16 +548,14 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.bookingSuccess,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => BookingSuccessScreen(
-          bookingId: state.pathParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            BookingSuccessScreen(bookingId: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.receipt,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => ReceiptScreen(
-          bookingId: state.pathParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            ReceiptScreen(bookingId: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.qrScanner,
@@ -680,8 +699,9 @@ class _AppShell extends ConsumerWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF0F172A)
-                      .withValues(alpha: isDark ? 0.45 : 0.08),
+                  color: const Color(
+                    0xFF0F172A,
+                  ).withValues(alpha: isDark ? 0.45 : 0.08),
                   blurRadius: 22,
                   offset: const Offset(0, 8),
                 ),

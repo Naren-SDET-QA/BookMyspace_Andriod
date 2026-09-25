@@ -76,15 +76,16 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         parent: _entranceController!,
         curve: Curves.easeOut,
       );
-      _slideAnimation = Tween<Offset>(
-        begin: const Offset(0.0, 0.04),
-        end: Offset.zero,
-      ).animate(
-        CurvedAnimation(
-          parent: _entranceController,
-          curve: Curves.easeOutCubic,
-        ),
-      );
+      _slideAnimation =
+          Tween<Offset>(
+            begin: const Offset(0.0, 0.04),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: _entranceController,
+              curve: Curves.easeOutCubic,
+            ),
+          );
 
       if (widget.entranceDelayMs > 0) {
         _entranceDelayTimer = Timer(
@@ -114,27 +115,38 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final appTheme = theme.extension<AppThemeExtension>();
 
     // Glass base tints tailored for light and dark palettes
     final baseColor =
-        widget.surfaceColor ?? (isDark ? AppTheme.darkCard : Colors.white);
-    final glassColor = baseColor.withValues(alpha: widget.surfaceAlpha);
+        widget.surfaceColor ??
+        (isDark
+            ? theme.colorScheme.surfaceContainer
+            : theme.colorScheme.surface);
+    final surfaceAlpha =
+        widget.surfaceColor == null && widget.surfaceAlpha == 0.85
+        ? appTheme?.glassOpacity ?? widget.surfaceAlpha
+        : widget.surfaceAlpha;
+    final glassColor = baseColor.withValues(alpha: surfaceAlpha);
 
     // Accent used for the hover rim/glow: derived from accentGradient when
     // the caller supplies one (e.g. a per-category color), falling back to
     // the app's brand color everywhere else so existing callers look
     // unchanged.
-    final Color hoverAccent = widget.accentGradient is LinearGradient &&
+    final Color hoverAccent =
+        widget.accentGradient is LinearGradient &&
             (widget.accentGradient as LinearGradient).colors.isNotEmpty
         ? (widget.accentGradient as LinearGradient).colors.first
-        : AppTheme.brand;
+        : theme.colorScheme.primary;
 
     // Specular border highlights
     final borderColor = _isHovered
         ? hoverAccent.withValues(alpha: isDark ? 0.6 : 0.45)
         : (isDark
-            ? Colors.white.withValues(alpha: 0.12)
-            : const Color(0xFFE2E8F0));
+              ? Colors.white.withValues(
+                  alpha: appTheme?.glassBorderOpacity ?? 0.12,
+                )
+              : theme.colorScheme.outlineVariant);
 
     // Dynamic rim glow, tinted with the accent color
     final glowColor = _isHovered
@@ -147,20 +159,20 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
       margin: widget.margin,
       transform: widget.isInteractive
           ? (Matrix4.identity()
-            ..setEntry(3, 2, 0.001)
-            ..rotateX(_isHovered ? -widget.tiltIntensity : 0.0)
-            ..translateByDouble(
-              0.0,
-              _isPressed ? 2.0 : (_isHovered ? widget.hoverLift : 0.0),
-              0.0,
-              1.0,
-            )
-            ..scaleByDouble(
-              _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
-              _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
-              _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
-              1.0,
-            ))
+              ..setEntry(3, 2, 0.001)
+              ..rotateX(_isHovered ? -widget.tiltIntensity : 0.0)
+              ..translateByDouble(
+                0.0,
+                _isPressed ? 2.0 : (_isHovered ? widget.hoverLift : 0.0),
+                0.0,
+                1.0,
+              )
+              ..scaleByDouble(
+                _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
+                _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
+                _isPressed ? 0.985 : (_isHovered ? widget.hoverScale : 1.0),
+                1.0,
+              ))
           : Matrix4.identity(),
       transformAlignment: Alignment.center,
       decoration: BoxDecoration(
@@ -176,7 +188,8 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
             color: isDark
                 ? Colors.black.withValues(alpha: _isHovered ? 0.45 : 0.25)
                 : const Color(0xFF0F172A).withValues(
-                    alpha: _isPressed ? 0.04 : (_isHovered ? 0.16 : 0.07)),
+                    alpha: _isPressed ? 0.04 : (_isHovered ? 0.16 : 0.07),
+                  ),
             blurRadius: _isHovered ? 24 : (_isPressed ? 6 : 14),
             offset: Offset(0, _isHovered ? 12 : (_isPressed ? 2 : 6)),
             spreadRadius: _isHovered ? 1.5 : 0,
@@ -192,8 +205,9 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         ],
       ),
       child: ClipRRect(
-        borderRadius:
-            BorderRadius.circular(widget.borderRadius - widget.borderWidth),
+        borderRadius: BorderRadius.circular(
+          widget.borderRadius - widget.borderWidth,
+        ),
         clipBehavior: widget.clipBehavior,
         child: Stack(
           children: [
@@ -268,10 +282,7 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         _slideAnimation != null) {
       return FadeTransition(
         opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: cardContent,
-        ),
+        child: SlideTransition(position: _slideAnimation, child: cardContent),
       );
     }
 

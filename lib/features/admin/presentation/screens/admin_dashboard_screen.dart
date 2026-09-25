@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -14,6 +15,7 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final users = ref.watch(adminUsersProvider);
     final owners = ref.watch(adminOwnersProvider);
     final venues = ref.watch(adminVenuesProvider);
@@ -39,42 +41,27 @@ class AdminDashboardScreen extends ConsumerWidget {
           children: [
             Text(
               'Platform administration',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
             Text(
               'Counts come from rows your administrator role can read. They are not estimates.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                _StatChip(
-                  label: 'Users',
-                  value: _countLabel(users),
-                ),
-                _StatChip(
-                  label: 'Owners',
-                  value: _countLabel(owners),
-                ),
-                _StatChip(
-                  label: 'Venues',
-                  value: _countLabel(venues),
-                ),
-                _StatChip(
-                  label: 'Support',
-                  value: _countLabel(tickets),
-                ),
-                _StatChip(
-                  label: 'Audit',
-                  value: _countLabel(audit),
-                ),
+                _StatChip(label: 'Users', value: _countLabel(users)),
+                _StatChip(label: 'Owners', value: _countLabel(owners)),
+                _StatChip(label: 'Venues', value: _countLabel(venues)),
+                _StatChip(label: 'Support', value: _countLabel(tickets)),
+                _StatChip(label: 'Audit', value: _countLabel(audit)),
               ],
             ),
             const SizedBox(height: 24),
@@ -179,6 +166,12 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminCatalog),
             ),
             _AdminLink(
+              icon: Icons.palette_outlined,
+              title: l10n.adminThemeTitle,
+              subtitle: l10n.adminThemeSubtitle,
+              onTap: () => context.push(AppRoutes.adminTheme),
+            ),
+            _AdminLink(
               icon: Icons.tab_unselected_outlined,
               title: 'Bottom navigation',
               subtitle:
@@ -231,10 +224,7 @@ class _StatChip extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
           ),
           const SizedBox(height: 4),
           Text(label, style: Theme.of(context).textTheme.labelSmall),

@@ -239,6 +239,90 @@ class AppLocalizations {
     'aiCityChennai': 'Chennai',
     'aiCityPune': 'Pune',
     'aiCityKolkata': 'Kolkata',
+    'adminPaymentOperations': 'Payment Operations',
+    'adminPaymentHealth': 'Payment Health',
+    'adminTransactionLedger': 'Transaction Ledger',
+    'paymentHealthHealthy': 'Healthy',
+    'paymentHealthWarning': 'Warning',
+    'paymentHealthAttention': 'Attention',
+    'paymentHealthCritical': 'Critical',
+    'paymentHealthUnavailable': 'No data',
+    'totalTransactions': 'Total Transactions',
+    'capturedPayments': 'Captured',
+    'pendingPayments': 'Pending',
+    'failedPayments': 'Failed',
+    'refundedPayments': 'Refunded',
+    'paymentSuccessRate': 'Success Rate',
+    'reconciliationExceptions': 'Reconciliation Exceptions',
+    'webhookMissing': 'Webhook Missing',
+    'readOnlyLabel': 'Read-only',
+    'noTransactionsInPeriod': 'No transactions in this period',
+    'noTransactionsInPeriodMessage':
+        'There is no payment activity for the selected filters.',
+    'searchByReferenceOrOrderId':
+        'Search by booking reference, order ID or payment ID',
+    'filterByStatus': 'Filter by status',
+    'filterByVenue': 'Filter by venue',
+    'dateRangeLabel': 'Date range',
+    'paymentStatusLabel': 'Payment status',
+    'bookingStatusLabel': 'Booking status',
+    'approvalStatusLabel': 'Approval status',
+    'webhookStatusLabel': 'Webhook status',
+    'permissionDeniedAdminPayments':
+        "You don't have permission to view Admin Payment Operations.",
+    'adminPaymentsLoadError': 'Payment operations data could not be loaded.',
+    'columnReference': 'Reference',
+    'columnVenue': 'Venue',
+    'columnAmount': 'Amount',
+    'columnCreatedAt': 'Created',
+    'adminThemeTitle': 'Theme Customizer',
+    'adminThemeSubtitle':
+        'Configure the global customer app theme without replacing the BookMySpace design system.',
+    'adminThemeColors': 'Colors',
+    'adminThemeLight': 'Light',
+    'adminThemeDark': 'Dark',
+    'adminThemePrimary': 'Primary color',
+    'adminThemeSecondary': 'Secondary color',
+    'adminThemeBackground': 'Background color',
+    'adminThemeSurface': 'Surface color',
+    'adminThemeText': 'Text color',
+    'adminThemeCard': 'Card color',
+    'adminThemeShape': 'Shape & glass',
+    'adminThemeCardRadius': 'Card corner radius',
+    'adminThemeButtonRadius': 'Button corner radius',
+    'adminThemeInputRadius': 'Input corner radius',
+    'adminThemeElevation': 'Card elevation',
+    'adminThemeGlassOpacity': 'Glass opacity',
+    'adminThemeGlassBorderOpacity': 'Glass border opacity',
+    'adminThemeBannerStyle': 'Banner style',
+    'adminThemeButtonStyle': 'Button style',
+    'adminThemeLivePreview': 'Live customer preview',
+    'adminThemePreviewTitle': 'Explore verified spaces',
+    'adminThemePreviewSubtitle': 'Find a trusted place for your next plan.',
+    'adminThemePreviewAction': 'Explore spaces',
+    'adminThemeSaveDraft': 'Save draft',
+    'adminThemePublish': 'Publish',
+    'adminThemeResetDefault': 'Reset to default',
+    'adminThemeDraft': 'Draft',
+    'adminThemePublishedVersion': 'Published version',
+    'adminThemeUnsaved':
+        'Unsaved local changes — save the draft or publish to continue.',
+    'adminThemeDraftSaved': 'Theme draft saved.',
+    'adminThemePublished': 'Theme published for customers.',
+    'adminThemeSaveError': 'Could not save the theme draft',
+    'adminThemePublishError': 'Could not publish the theme',
+    'adminThemeLoadError': 'Could not load the theme configuration',
+    'adminThemeDefaultRestored':
+        'Defaults restored in preview. Save the draft to keep them.',
+    'adminThemeStyleGradient': 'Gradient',
+    'adminThemeStyleSolid': 'Solid',
+    'adminThemeStyleMinimal': 'Minimal',
+    'adminThemeStyleFilled': 'Filled',
+    'adminThemeStyleSoft': 'Soft',
+    'adminThemeStyleOutline': 'Outline',
+    'adminThemeEmpty': 'No saved theme configuration',
+    'adminThemeStartWithDefaults':
+        'Start with the shipped defaults, preview them, then save a draft.',
   };
 
   static const Map<String, String> _te = {
@@ -448,6 +532,91 @@ class AppLocalizations {
     'aiCityChennai': 'చెన్నై',
     'aiCityPune': 'పూనే',
     'aiCityKolkata': 'కోల్‌కతా',
+    'adminPaymentOperations': 'పేమెంట్ ఆపరేషన్స్',
+    'adminPaymentHealth': 'పేమెంట్ హెల్త్',
+    'adminTransactionLedger': 'ట్రాన్సాక్షన్ లెడ్జర్',
+    'paymentHealthHealthy': 'ఆరోగ్యంగా ఉంది',
+    'paymentHealthWarning': 'హెచ్చరిక',
+    'paymentHealthAttention': 'దృష్టి అవసరం',
+    'paymentHealthCritical': 'తీవ్రమైనది',
+    'paymentHealthUnavailable': 'డేటా లేదు',
+    'totalTransactions': 'మొత్తం లావాదేవీలు',
+    'capturedPayments': 'క్యాప్చర్ అయినవి',
+    'pendingPayments': 'పెండింగ్‌లో ఉన్నవి',
+    'failedPayments': 'విఫలమైనవి',
+    'refundedPayments': 'రీఫండ్ చేయబడినవి',
+    'paymentSuccessRate': 'విజయ శాతం',
+    'reconciliationExceptions': 'సరిపోలిక మినహాయింపులు',
+    'webhookMissing': 'వెబ్‌హుక్ లేదు',
+    'readOnlyLabel': 'చదవడానికి మాత్రమే',
+    'noTransactionsInPeriod': 'ఈ కాలంలో లావాదేవీలు లేవు',
+    'noTransactionsInPeriodMessage':
+        'ఎంచుకున్న ఫిల్టర్‌లకు పేమెంట్ కార్యకలాపం లేదు.',
+    'searchByReferenceOrOrderId':
+        'బుకింగ్ రిఫరెన్స్, ఆర్డర్ ఐడీ లేదా పేమెంట్ ఐడీ ద్వారా వెతకండి',
+    'filterByStatus': 'స్థితి ద్వారా ఫిల్టర్ చేయండి',
+    'filterByVenue': 'వేదిక ద్వారా ఫిల్టర్ చేయండి',
+    'dateRangeLabel': 'తేదీ పరిధి',
+    'paymentStatusLabel': 'పేమెంట్ స్థితి',
+    'bookingStatusLabel': 'బుకింగ్ స్థితి',
+    'approvalStatusLabel': 'ఆమోద స్థితి',
+    'webhookStatusLabel': 'వెబ్‌హుక్ స్థితి',
+    'permissionDeniedAdminPayments':
+        'అడ్మిన్ పేమెంట్ ఆపరేషన్స్ చూడటానికి మీకు అనుమతి లేదు.',
+    'adminPaymentsLoadError': 'పేమెంట్ ఆపరేషన్స్ డేటా లోడ్ కాలేదు.',
+    'columnReference': 'రిఫరెన్స్',
+    'columnVenue': 'వేదిక',
+    'columnAmount': 'మొత్తం',
+    'columnCreatedAt': 'సృష్టించినది',
+    'adminThemeTitle': 'థీమ్ అనుకూలీకరణ',
+    'adminThemeSubtitle':
+        'BookMySpace డిజైన్ వ్యవస్థను మార్చకుండా కస్టమర్ యాప్ గ్లోబల్ థీమ్‌ను మార్చండి.',
+    'adminThemeColors': 'రంగులు',
+    'adminThemeLight': 'లైట్',
+    'adminThemeDark': 'డార్క్',
+    'adminThemePrimary': 'ప్రధాన రంగు',
+    'adminThemeSecondary': 'ద్వితీయ రంగు',
+    'adminThemeBackground': 'నేపథ్య రంగు',
+    'adminThemeSurface': 'సర్ఫేస్ రంగు',
+    'adminThemeText': 'టెక్స్ట్ రంగు',
+    'adminThemeCard': 'కార్డ్ రంగు',
+    'adminThemeShape': 'ఆకారం & గ్లాస్',
+    'adminThemeCardRadius': 'కార్డ్ మూలల వ్యాసార్థం',
+    'adminThemeButtonRadius': 'బటన్ మూలల వ్యాసార్థం',
+    'adminThemeInputRadius': 'ఇన్‌పుట్ మూలల వ్యాసార్థం',
+    'adminThemeElevation': 'కార్డ్ ఎలివేషన్',
+    'adminThemeGlassOpacity': 'గ్లాస్ అపాసిటీ',
+    'adminThemeGlassBorderOpacity': 'గ్లాస్ బోర్డర్ అపాసిటీ',
+    'adminThemeBannerStyle': 'బ్యానర్ శైలి',
+    'adminThemeButtonStyle': 'బటన్ శైలి',
+    'adminThemeLivePreview': 'కస్టమర్ లైవ్ ప్రివ్యూ',
+    'adminThemePreviewTitle': 'ధృవీకరించిన స్థలాలను చూడండి',
+    'adminThemePreviewSubtitle':
+        'మీ తదుపరి ప్రణాళికకు నమ్మకమైన స్థలాన్ని కనుగొనండి.',
+    'adminThemePreviewAction': 'స్థలాలను చూడండి',
+    'adminThemeSaveDraft': 'డ్రాఫ్ట్ సేవ్ చేయండి',
+    'adminThemePublish': 'ప్రచురించండి',
+    'adminThemeResetDefault': 'డిఫాల్ట్‌కు రీసెట్ చేయండి',
+    'adminThemeDraft': 'డ్రాఫ్ట్',
+    'adminThemePublishedVersion': 'ప్రచురించిన వెర్షన్',
+    'adminThemeUnsaved':
+        'స్థానిక మార్పులు సేవ్ కాలేదు — డ్రాఫ్ట్ సేవ్ చేయండి లేదా ప్రచురించండి.',
+    'adminThemeDraftSaved': 'థీమ్ డ్రాఫ్ట్ సేవ్ చేయబడింది.',
+    'adminThemePublished': 'కస్టమర్ల కోసం థీమ్ ప్రచురించబడింది.',
+    'adminThemeSaveError': 'థీమ్ డ్రాఫ్ట్‌ను సేవ్ చేయలేకపోయాం',
+    'adminThemePublishError': 'థీమ్‌ను ప్రచురించలేకపోయాం',
+    'adminThemeLoadError': 'థీమ్ కాన్ఫిగరేషన్‌ను లోడ్ చేయలేకపోయాం',
+    'adminThemeDefaultRestored':
+        'ప్రివ్యూలో డిఫాల్ట్‌లు పునరుద్ధరించబడ్డాయి. వాటిని ఉంచడానికి డ్రాఫ్ట్ సేవ్ చేయండి.',
+    'adminThemeStyleGradient': 'గ్రేడియంట్',
+    'adminThemeStyleSolid': 'సాలిడ్',
+    'adminThemeStyleMinimal': 'మినిమల్',
+    'adminThemeStyleFilled': 'ఫిల్డ్',
+    'adminThemeStyleSoft': 'సాఫ్ట్',
+    'adminThemeStyleOutline': 'అవుట్‌లైన్',
+    'adminThemeEmpty': 'సేవ్ చేసిన థీమ్ కాన్ఫిగరేషన్ లేదు',
+    'adminThemeStartWithDefaults':
+        'డిఫాల్ట్‌లతో ప్రారంభించి, ప్రివ్యూ చేసి, తర్వాత డ్రాఫ్ట్ సేవ్ చేయండి.',
   };
 
   static const Map<String, String> _hi = {
@@ -531,7 +700,8 @@ class AppLocalizations {
     'registered': 'पंजीकृत',
     'registerNow': 'अभी पंजीकरण करें',
     'cancelRegistration': 'पंजीकरण रद्द करें',
-    'cancelRegistrationConfirm': 'क्या आप कार्यक्रम पंजीकरण रद्द करना चाहते हैं?',
+    'cancelRegistrationConfirm':
+        'क्या आप कार्यक्रम पंजीकरण रद्द करना चाहते हैं?',
     'registrationCancelled': 'पंजीकरण रद्द हो गया',
     'noCourses': 'कोई कोर्स नहीं',
     'noCoursesMessage': 'नए कोर्स जल्द आ रहे हैं.',
@@ -656,6 +826,90 @@ class AppLocalizations {
     'aiCityChennai': 'चेन्नई',
     'aiCityPune': 'पुणे',
     'aiCityKolkata': 'कोलकाता',
+    'adminPaymentOperations': 'भुगतान संचालन',
+    'adminPaymentHealth': 'भुगतान स्वास्थ्य',
+    'adminTransactionLedger': 'लेन-देन लेजर',
+    'paymentHealthHealthy': 'स्वस्थ',
+    'paymentHealthWarning': 'चेतावनी',
+    'paymentHealthAttention': 'ध्यान देने योग्य',
+    'paymentHealthCritical': 'गंभीर',
+    'paymentHealthUnavailable': 'डेटा उपलब्ध नहीं',
+    'totalTransactions': 'कुल लेन-देन',
+    'capturedPayments': 'कैप्चर किए गए',
+    'pendingPayments': 'लंबित',
+    'failedPayments': 'विफल',
+    'refundedPayments': 'रिफंड किए गए',
+    'paymentSuccessRate': 'सफलता दर',
+    'reconciliationExceptions': 'सुलह अपवाद',
+    'webhookMissing': 'वेबहुक अनुपलब्ध',
+    'readOnlyLabel': 'केवल पढ़ने के लिए',
+    'noTransactionsInPeriod': 'इस अवधि में कोई लेन-देन नहीं',
+    'noTransactionsInPeriodMessage':
+        'चयनित फ़िल्टर के लिए कोई भुगतान गतिविधि नहीं है।',
+    'searchByReferenceOrOrderId':
+        'बुकिंग संदर्भ, ऑर्डर आईडी या भुगतान आईडी से खोजें',
+    'filterByStatus': 'स्थिति के अनुसार फ़िल्टर करें',
+    'filterByVenue': 'स्थान के अनुसार फ़िल्टर करें',
+    'dateRangeLabel': 'दिनांक सीमा',
+    'paymentStatusLabel': 'भुगतान स्थिति',
+    'bookingStatusLabel': 'बुकिंग स्थिति',
+    'approvalStatusLabel': 'अनुमोदन स्थिति',
+    'webhookStatusLabel': 'वेबहुक स्थिति',
+    'permissionDeniedAdminPayments':
+        'आपको एडमिन भुगतान संचालन देखने की अनुमति नहीं है।',
+    'adminPaymentsLoadError': 'भुगतान संचालन डेटा लोड नहीं हो सका।',
+    'columnReference': 'संदर्भ',
+    'columnVenue': 'स्थान',
+    'columnAmount': 'राशि',
+    'columnCreatedAt': 'बनाया गया',
+    'adminThemeTitle': 'थीम कस्टमाइज़र',
+    'adminThemeSubtitle':
+        'BookMySpace डिज़ाइन सिस्टम बदले बिना ग्राहक ऐप की वैश्विक थीम कॉन्फ़िगर करें।',
+    'adminThemeColors': 'रंग',
+    'adminThemeLight': 'लाइट',
+    'adminThemeDark': 'डार्क',
+    'adminThemePrimary': 'प्राथमिक रंग',
+    'adminThemeSecondary': 'द्वितीयक रंग',
+    'adminThemeBackground': 'पृष्ठभूमि रंग',
+    'adminThemeSurface': 'सर्फेस रंग',
+    'adminThemeText': 'टेक्स्ट रंग',
+    'adminThemeCard': 'कार्ड रंग',
+    'adminThemeShape': 'आकार और ग्लास',
+    'adminThemeCardRadius': 'कार्ड कोने का रेडियस',
+    'adminThemeButtonRadius': 'बटन कोने का रेडियस',
+    'adminThemeInputRadius': 'इनपुट कोने का रेडियस',
+    'adminThemeElevation': 'कार्ड एलिवेशन',
+    'adminThemeGlassOpacity': 'ग्लास अपारदर्शिता',
+    'adminThemeGlassBorderOpacity': 'ग्लास बॉर्डर अपारदर्शिता',
+    'adminThemeBannerStyle': 'बैनर शैली',
+    'adminThemeButtonStyle': 'बटन शैली',
+    'adminThemeLivePreview': 'लाइव ग्राहक प्रीव्यू',
+    'adminThemePreviewTitle': 'सत्यापित स्थान खोजें',
+    'adminThemePreviewSubtitle': 'अपनी अगली योजना के लिए भरोसेमंद जगह खोजें।',
+    'adminThemePreviewAction': 'स्थान देखें',
+    'adminThemeSaveDraft': 'ड्राफ्ट सेव करें',
+    'adminThemePublish': 'प्रकाशित करें',
+    'adminThemeResetDefault': 'डिफ़ॉल्ट पर रीसेट करें',
+    'adminThemeDraft': 'ड्राफ्ट',
+    'adminThemePublishedVersion': 'प्रकाशित संस्करण',
+    'adminThemeUnsaved':
+        'स्थानीय बदलाव सेव नहीं हुए — ड्राफ्ट सेव करें या प्रकाशित करें।',
+    'adminThemeDraftSaved': 'थीम ड्राफ्ट सेव हो गया।',
+    'adminThemePublished': 'ग्राहकों के लिए थीम प्रकाशित हो गई।',
+    'adminThemeSaveError': 'थीम ड्राफ्ट सेव नहीं हो सका',
+    'adminThemePublishError': 'थीम प्रकाशित नहीं हो सकी',
+    'adminThemeLoadError': 'थीम कॉन्फ़िगरेशन लोड नहीं हो सका',
+    'adminThemeDefaultRestored':
+        'प्रीव्यू में डिफ़ॉल्ट बहाल हुए। उन्हें रखने के लिए ड्राफ्ट सेव करें।',
+    'adminThemeStyleGradient': 'ग्रेडिएंट',
+    'adminThemeStyleSolid': 'सॉलिड',
+    'adminThemeStyleMinimal': 'मिनिमल',
+    'adminThemeStyleFilled': 'फिल्ड',
+    'adminThemeStyleSoft': 'सॉफ्ट',
+    'adminThemeStyleOutline': 'आउटलाइन',
+    'adminThemeEmpty': 'कोई सेव की गई थीम कॉन्फ़िगरेशन नहीं',
+    'adminThemeStartWithDefaults':
+        'डिफ़ॉल्ट से शुरू करें, प्रीव्यू देखें और फिर ड्राफ्ट सेव करें।',
   };
 
   static const Map<String, String> _kn = {
@@ -865,6 +1119,91 @@ class AppLocalizations {
     'aiCityChennai': 'ಚೆನ್ನೈ',
     'aiCityPune': 'ಪುಣೆ',
     'aiCityKolkata': 'ಕೋಲ್ಕತ್ತಾ',
+    'adminPaymentOperations': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳು',
+    'adminPaymentHealth': 'ಪಾವತಿ ಆರೋಗ್ಯ',
+    'adminTransactionLedger': 'ವಹಿವಾಟು ಲೆಡ್ಜರ್',
+    'paymentHealthHealthy': 'ಆರೋಗ್ಯಕರ',
+    'paymentHealthWarning': 'ಎಚ್ಚರಿಕೆ',
+    'paymentHealthAttention': 'ಗಮನ ಅಗತ್ಯ',
+    'paymentHealthCritical': 'ನಿರ್ಣಾಯಕ',
+    'paymentHealthUnavailable': 'ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ',
+    'totalTransactions': 'ಒಟ್ಟು ವಹಿವಾಟುಗಳು',
+    'capturedPayments': 'ಸೆರೆಹಿಡಿಯಲಾಗಿದೆ',
+    'pendingPayments': 'ಬಾಕಿ ಇದೆ',
+    'failedPayments': 'ವಿಫಲವಾಗಿದೆ',
+    'refundedPayments': 'ಮರುಪಾವತಿಸಲಾಗಿದೆ',
+    'paymentSuccessRate': 'ಯಶಸ್ಸಿನ ದರ',
+    'reconciliationExceptions': 'ಸಮನ್ವಯ ವಿನಾಯಿತಿಗಳು',
+    'webhookMissing': 'ವೆಬ್‌ಹುಕ್ ಕಾಣೆಯಾಗಿದೆ',
+    'readOnlyLabel': 'ಓದಲು ಮಾತ್ರ',
+    'noTransactionsInPeriod': 'ಈ ಅವಧಿಯಲ್ಲಿ ವಹಿವಾಟುಗಳಿಲ್ಲ',
+    'noTransactionsInPeriodMessage':
+        'ಆಯ್ಕೆಮಾಡಿದ ಫಿಲ್ಟರ್‌ಗಳಿಗೆ ಯಾವುದೇ ಪಾವತಿ ಚಟುವಟಿಕೆ ಇಲ್ಲ.',
+    'searchByReferenceOrOrderId':
+        'ಬುಕಿಂಗ್ ಉಲ್ಲೇಖ, ಆರ್ಡರ್ ಐಡಿ ಅಥವಾ ಪಾವತಿ ಐಡಿ ಮೂಲಕ ಹುಡುಕಿ',
+    'filterByStatus': 'ಸ್ಥಿತಿಯ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
+    'filterByVenue': 'ಸ್ಥಳದ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ಮಾಡಿ',
+    'dateRangeLabel': 'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿ',
+    'paymentStatusLabel': 'ಪಾವತಿ ಸ್ಥಿತಿ',
+    'bookingStatusLabel': 'ಬುಕಿಂಗ್ ಸ್ಥಿತಿ',
+    'approvalStatusLabel': 'ಅನುಮೋದನೆ ಸ್ಥಿತಿ',
+    'webhookStatusLabel': 'ವೆಬ್‌ಹುಕ್ ಸ್ಥಿತಿ',
+    'permissionDeniedAdminPayments':
+        'ಅಡ್ಮಿನ್ ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳನ್ನು ವೀಕ್ಷಿಸಲು ನಿಮಗೆ ಅನುಮತಿ ಇಲ್ಲ.',
+    'adminPaymentsLoadError': 'ಪಾವತಿ ಕಾರ್ಯಾಚರಣೆಗಳ ಡೇಟಾ ಲೋಡ್ ಆಗಲಿಲ್ಲ.',
+    'columnReference': 'ಉಲ್ಲೇಖ',
+    'columnVenue': 'ಸ್ಥಳ',
+    'columnAmount': 'ಮೊತ್ತ',
+    'columnCreatedAt': 'ರಚಿಸಲಾಗಿದೆ',
+    'adminThemeTitle': 'ಥೀಮ್ ಕಸ್ಟಮೈಸರ್',
+    'adminThemeSubtitle':
+        'BookMySpace ವಿನ್ಯಾಸ ವ್ಯವಸ್ಥೆಯನ್ನು ಬದಲಾಯಿಸದೆ ಗ್ರಾಹಕ ಆ್ಯಪ್‌ನ ಜಾಗತಿಕ ಥೀಮ್ ಅನ್ನು ಹೊಂದಿಸಿ.',
+    'adminThemeColors': 'ಬಣ್ಣಗಳು',
+    'adminThemeLight': 'ಲೈಟ್',
+    'adminThemeDark': 'ಡಾರ್ಕ್',
+    'adminThemePrimary': 'ಪ್ರಾಥಮಿಕ ಬಣ್ಣ',
+    'adminThemeSecondary': 'ದ್ವಿತೀಯ ಬಣ್ಣ',
+    'adminThemeBackground': 'ಹಿನ್ನೆಲೆ ಬಣ್ಣ',
+    'adminThemeSurface': 'ಸರ್ಫೇಸ್ ಬಣ್ಣ',
+    'adminThemeText': 'ಪಠ್ಯ ಬಣ್ಣ',
+    'adminThemeCard': 'ಕಾರ್ಡ್ ಬಣ್ಣ',
+    'adminThemeShape': 'ಆಕಾರ ಮತ್ತು ಗ್ಲಾಸ್',
+    'adminThemeCardRadius': 'ಕಾರ್ಡ್ ಮೂಲೆ ರೇಡಿಯಸ್',
+    'adminThemeButtonRadius': 'ಬಟನ್ ಮೂಲೆ ರೇಡಿಯಸ್',
+    'adminThemeInputRadius': 'ಇನ್‌ಪುಟ್ ಮೂಲೆ ರೇಡಿಯಸ್',
+    'adminThemeElevation': 'ಕಾರ್ಡ್ ಎಲಿವೇಶನ್',
+    'adminThemeGlassOpacity': 'ಗ್ಲಾಸ್ ಅಪಾಸಿಟಿ',
+    'adminThemeGlassBorderOpacity': 'ಗ್ಲಾಸ್ ಬಾರ್ಡರ್ ಅಪಾಸಿಟಿ',
+    'adminThemeBannerStyle': 'ಬ್ಯಾನರ್ ಶೈಲಿ',
+    'adminThemeButtonStyle': 'ಬಟನ್ ಶೈಲಿ',
+    'adminThemeLivePreview': 'ಲೈವ್ ಗ್ರಾಹಕ ಪೂರ್ವವೀಕ್ಷಣೆ',
+    'adminThemePreviewTitle': 'ಪರಿಶೀಲಿತ ಸ್ಥಳಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ',
+    'adminThemePreviewSubtitle':
+        'ನಿಮ್ಮ ಮುಂದಿನ ಯೋಜನೆಗೆ ನಂಬಲರ್ಹ ಸ್ಥಳವನ್ನು ಹುಡುಕಿ.',
+    'adminThemePreviewAction': 'ಸ್ಥಳಗಳನ್ನು ವೀಕ್ಷಿಸಿ',
+    'adminThemeSaveDraft': 'ಡ್ರಾಫ್ಟ್ ಉಳಿಸಿ',
+    'adminThemePublish': 'ಪ್ರಕಟಿಸಿ',
+    'adminThemeResetDefault': 'ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಿ',
+    'adminThemeDraft': 'ಡ್ರಾಫ್ಟ್',
+    'adminThemePublishedVersion': 'ಪ್ರಕಟಿತ ಆವೃತ್ತಿ',
+    'adminThemeUnsaved':
+        'ಉಳಿಸದ ಸ್ಥಳೀಯ ಬದಲಾವಣೆಗಳು — ಡ್ರಾಫ್ಟ್ ಉಳಿಸಿ ಅಥವಾ ಪ್ರಕಟಿಸಿ.',
+    'adminThemeDraftSaved': 'ಥೀಮ್ ಡ್ರಾಫ್ಟ್ ಉಳಿಸಲಾಗಿದೆ.',
+    'adminThemePublished': 'ಗ್ರಾಹಕರಿಗಾಗಿ ಥೀಮ್ ಪ್ರಕಟಿಸಲಾಗಿದೆ.',
+    'adminThemeSaveError': 'ಥೀಮ್ ಡ್ರಾಫ್ಟ್ ಉಳಿಸಲಾಗಲಿಲ್ಲ',
+    'adminThemePublishError': 'ಥೀಮ್ ಪ್ರಕಟಿಸಲಾಗಲಿಲ್ಲ',
+    'adminThemeLoadError': 'ಥೀಮ್ ಕಾನ್ಫಿಗರೇಶನ್ ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ',
+    'adminThemeDefaultRestored':
+        'ಪೂರ್ವವೀಕ್ಷಣೆಯಲ್ಲಿ ಡೀಫಾಲ್ಟ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಲಾಗಿದೆ. ಉಳಿಸಲು ಡ್ರಾಫ್ಟ್ ಉಳಿಸಿ.',
+    'adminThemeStyleGradient': 'ಗ್ರೇಡಿಯಂಟ್',
+    'adminThemeStyleSolid': 'ಸಾಲಿಡ್',
+    'adminThemeStyleMinimal': 'ಮಿನಿಮಲ್',
+    'adminThemeStyleFilled': 'ಫಿಲ್ಡ್',
+    'adminThemeStyleSoft': 'ಸಾಫ್ಟ್',
+    'adminThemeStyleOutline': 'ಔಟ್‌ಲೈನ್',
+    'adminThemeEmpty': 'ಉಳಿಸಿದ ಥೀಮ್ ಕಾನ್ಫಿಗರೇಶನ್ ಇಲ್ಲ',
+    'adminThemeStartWithDefaults':
+        'ಡೀಫಾಲ್ಟ್‌ಗಳಿಂದ ಪ್ರಾರಂಭಿಸಿ, ಪೂರ್ವವೀಕ್ಷಿಸಿ, ನಂತರ ಡ್ರಾಫ್ಟ್ ಉಳಿಸಿ.',
   };
 
   static const Map<String, String> _ta = {
@@ -1074,8 +1413,172 @@ class AppLocalizations {
     'aiCityChennai': 'சென்னை',
     'aiCityPune': 'புனே',
     'aiCityKolkata': 'கொல்கத்தா',
+    'adminPaymentOperations': 'கட்டண செயல்பாடுகள்',
+    'adminPaymentHealth': 'கட்டண ஆரோக்கியம்',
+    'adminTransactionLedger': 'பரிவர்த்தனை பேரேடு',
+    'paymentHealthHealthy': 'ஆரோக்கியமானது',
+    'paymentHealthWarning': 'எச்சரிக்கை',
+    'paymentHealthAttention': 'கவனம் தேவை',
+    'paymentHealthCritical': 'மிக முக்கியமானது',
+    'paymentHealthUnavailable': 'தரவு இல்லை',
+    'totalTransactions': 'மொத்த பரிவர்த்தனைகள்',
+    'capturedPayments': 'பிடிக்கப்பட்டவை',
+    'pendingPayments': 'நிலுவையில் உள்ளவை',
+    'failedPayments': 'தோல்வியடைந்தவை',
+    'refundedPayments': 'திரும்பப் பெறப்பட்டவை',
+    'paymentSuccessRate': 'வெற்றி விகிதம்',
+    'reconciliationExceptions': 'சமரசம் விதிவிலக்குகள்',
+    'webhookMissing': 'வெப்ஹுக் இல்லை',
+    'readOnlyLabel': 'படிக்க மட்டும்',
+    'noTransactionsInPeriod': 'இந்த காலகட்டத்தில் பரிவர்த்தனைகள் இல்லை',
+    'noTransactionsInPeriodMessage':
+        'தேர்ந்தெடுக்கப்பட்ட வடிப்பான்களுக்கு கட்டண செயல்பாடு இல்லை.',
+    'searchByReferenceOrOrderId':
+        'முன்பதிவு குறிப்பு, ஆர்டர் ஐடி அல்லது கட்டண ஐடி மூலம் தேடுங்கள்',
+    'filterByStatus': 'நிலையின் அடிப்படையில் வடிகட்டவும்',
+    'filterByVenue': 'இடத்தின் அடிப்படையில் வடிகட்டவும்',
+    'dateRangeLabel': 'தேதி வரம்பு',
+    'paymentStatusLabel': 'கட்டண நிலை',
+    'bookingStatusLabel': 'முன்பதிவு நிலை',
+    'approvalStatusLabel': 'ஒப்புதல் நிலை',
+    'webhookStatusLabel': 'வெப்ஹுக் நிலை',
+    'permissionDeniedAdminPayments':
+        'நிர்வாக கட்டண செயல்பாடுகளை பார்க்க உங்களுக்கு அனுமதி இல்லை.',
+    'adminPaymentsLoadError': 'கட்டண செயல்பாடு தரவை ஏற்ற முடியவில்லை.',
+    'columnReference': 'குறிப்பு',
+    'columnVenue': 'இடம்',
+    'columnAmount': 'தொகை',
+    'columnCreatedAt': 'உருவாக்கப்பட்டது',
+    'adminThemeTitle': 'தீம் தனிப்பயனாக்கி',
+    'adminThemeSubtitle':
+        'BookMySpace வடிவமைப்பு அமைப்பை மாற்றாமல் வாடிக்கையாளர் பயன்பாட்டின் உலகளாவிய தீமை அமைக்கவும்.',
+    'adminThemeColors': 'நிறங்கள்',
+    'adminThemeLight': 'வெளிச்சம்',
+    'adminThemeDark': 'இருள்',
+    'adminThemePrimary': 'முதன்மை நிறம்',
+    'adminThemeSecondary': 'இரண்டாம் நிலை நிறம்',
+    'adminThemeBackground': 'பின்னணி நிறம்',
+    'adminThemeSurface': 'சர்ஃபேஸ் நிறம்',
+    'adminThemeText': 'உரை நிறம்',
+    'adminThemeCard': 'கார்டு நிறம்',
+    'adminThemeShape': 'வடிவம் & கிளாஸ்',
+    'adminThemeCardRadius': 'கார்டு மூலை ஆரம்',
+    'adminThemeButtonRadius': 'பட்டன் மூலை ஆரம்',
+    'adminThemeInputRadius': 'உள்ளீட்டு மூலை ஆரம்',
+    'adminThemeElevation': 'கார்டு உயர்வு',
+    'adminThemeGlassOpacity': 'கிளாஸ் ஒளிபுகாநிலை',
+    'adminThemeGlassBorderOpacity': 'கிளாஸ் பார்டர் ஒளிபுகாநிலை',
+    'adminThemeBannerStyle': 'பேனர் பாணி',
+    'adminThemeButtonStyle': 'பட்டன் பாணி',
+    'adminThemeLivePreview': 'நேரடி வாடிக்கையாளர் முன்னோட்டம்',
+    'adminThemePreviewTitle': 'சரிபார்க்கப்பட்ட இடங்களைத் தேடுங்கள்',
+    'adminThemePreviewSubtitle':
+        'உங்கள் அடுத்த திட்டத்திற்கு நம்பகமான இடத்தைக் கண்டறியுங்கள்.',
+    'adminThemePreviewAction': 'இடங்களைப் பார்',
+    'adminThemeSaveDraft': 'வரைவைச் சேமி',
+    'adminThemePublish': 'வெளியிடு',
+    'adminThemeResetDefault': 'இயல்புநிலைக்கு மீட்டமை',
+    'adminThemeDraft': 'வரைவு',
+    'adminThemePublishedVersion': 'வெளியிடப்பட்ட பதிப்பு',
+    'adminThemeUnsaved':
+        'சேமிக்கப்படாத உள்ளூர் மாற்றங்கள் — வரைவைச் சேமிக்கவும் அல்லது வெளியிடவும்.',
+    'adminThemeDraftSaved': 'தீம் வரைவு சேமிக்கப்பட்டது.',
+    'adminThemePublished': 'வாடிக்கையாளர்களுக்கான தீம் வெளியிடப்பட்டது.',
+    'adminThemeSaveError': 'தீம் வரைவைச் சேமிக்க முடியவில்லை',
+    'adminThemePublishError': 'தீமை வெளியிட முடியவில்லை',
+    'adminThemeLoadError': 'தீம் அமைப்பை ஏற்ற முடியவில்லை',
+    'adminThemeDefaultRestored':
+        'முன்னோட்டத்தில் இயல்புநிலைகள் மீட்டமைக்கப்பட்டன. வைத்திருக்க வரைவைச் சேமிக்கவும்.',
+    'adminThemeStyleGradient': 'கிரேடியண்ட்',
+    'adminThemeStyleSolid': 'சாலிட்',
+    'adminThemeStyleMinimal': 'மினிமல்',
+    'adminThemeStyleFilled': 'நிரப்பப்பட்டது',
+    'adminThemeStyleSoft': 'மென்மையானது',
+    'adminThemeStyleOutline': 'அவுட்லைன்',
+    'adminThemeEmpty': 'சேமிக்கப்பட்ட தீம் அமைப்பு இல்லை',
+    'adminThemeStartWithDefaults':
+        'இயல்புநிலைகளில் தொடங்கி, முன்னோட்டம் பார்த்து, பின்னர் வரைவைச் சேமிக்கவும்.',
   };
 
+  String get adminPaymentOperations => _t('adminPaymentOperations');
+  String get adminPaymentHealth => _t('adminPaymentHealth');
+  String get adminTransactionLedger => _t('adminTransactionLedger');
+  String get paymentHealthHealthy => _t('paymentHealthHealthy');
+  String get paymentHealthWarning => _t('paymentHealthWarning');
+  String get paymentHealthAttention => _t('paymentHealthAttention');
+  String get paymentHealthCritical => _t('paymentHealthCritical');
+  String get paymentHealthUnavailable => _t('paymentHealthUnavailable');
+  String get totalTransactions => _t('totalTransactions');
+  String get capturedPayments => _t('capturedPayments');
+  String get pendingPayments => _t('pendingPayments');
+  String get failedPayments => _t('failedPayments');
+  String get refundedPayments => _t('refundedPayments');
+  String get paymentSuccessRate => _t('paymentSuccessRate');
+  String get reconciliationExceptions => _t('reconciliationExceptions');
+  String get webhookMissing => _t('webhookMissing');
+  String get readOnlyLabel => _t('readOnlyLabel');
+  String get noTransactionsInPeriod => _t('noTransactionsInPeriod');
+  String get noTransactionsInPeriodMessage =>
+      _t('noTransactionsInPeriodMessage');
+  String get searchByReferenceOrOrderId => _t('searchByReferenceOrOrderId');
+  String get filterByStatus => _t('filterByStatus');
+  String get filterByVenue => _t('filterByVenue');
+  String get dateRangeLabel => _t('dateRangeLabel');
+  String get paymentStatusLabel => _t('paymentStatusLabel');
+  String get bookingStatusLabel => _t('bookingStatusLabel');
+  String get approvalStatusLabel => _t('approvalStatusLabel');
+  String get webhookStatusLabel => _t('webhookStatusLabel');
+  String get permissionDeniedAdminPayments =>
+      _t('permissionDeniedAdminPayments');
+  String get adminPaymentsLoadError => _t('adminPaymentsLoadError');
+  String get columnReference => _t('columnReference');
+  String get columnVenue => _t('columnVenue');
+  String get columnAmount => _t('columnAmount');
+  String get columnCreatedAt => _t('columnCreatedAt');
+  String get adminThemeTitle => _t('adminThemeTitle');
+  String get adminThemeSubtitle => _t('adminThemeSubtitle');
+  String get adminThemeColors => _t('adminThemeColors');
+  String get adminThemeLight => _t('adminThemeLight');
+  String get adminThemeDark => _t('adminThemeDark');
+  String get adminThemePrimary => _t('adminThemePrimary');
+  String get adminThemeSecondary => _t('adminThemeSecondary');
+  String get adminThemeBackground => _t('adminThemeBackground');
+  String get adminThemeSurface => _t('adminThemeSurface');
+  String get adminThemeText => _t('adminThemeText');
+  String get adminThemeCard => _t('adminThemeCard');
+  String get adminThemeShape => _t('adminThemeShape');
+  String get adminThemeCardRadius => _t('adminThemeCardRadius');
+  String get adminThemeButtonRadius => _t('adminThemeButtonRadius');
+  String get adminThemeInputRadius => _t('adminThemeInputRadius');
+  String get adminThemeElevation => _t('adminThemeElevation');
+  String get adminThemeGlassOpacity => _t('adminThemeGlassOpacity');
+  String get adminThemeGlassBorderOpacity => _t('adminThemeGlassBorderOpacity');
+  String get adminThemeBannerStyle => _t('adminThemeBannerStyle');
+  String get adminThemeButtonStyle => _t('adminThemeButtonStyle');
+  String get adminThemeLivePreview => _t('adminThemeLivePreview');
+  String get adminThemePreviewTitle => _t('adminThemePreviewTitle');
+  String get adminThemePreviewSubtitle => _t('adminThemePreviewSubtitle');
+  String get adminThemePreviewAction => _t('adminThemePreviewAction');
+  String get adminThemeSaveDraft => _t('adminThemeSaveDraft');
+  String get adminThemePublish => _t('adminThemePublish');
+  String get adminThemeResetDefault => _t('adminThemeResetDefault');
+  String get adminThemeDraft => _t('adminThemeDraft');
+  String get adminThemePublishedVersion => _t('adminThemePublishedVersion');
+  String get adminThemeUnsaved => _t('adminThemeUnsaved');
+  String get adminThemeDraftSaved => _t('adminThemeDraftSaved');
+  String get adminThemePublished => _t('adminThemePublished');
+  String get adminThemeSaveError => _t('adminThemeSaveError');
+  String get adminThemePublishError => _t('adminThemePublishError');
+  String get adminThemeLoadError => _t('adminThemeLoadError');
+  String get adminThemeDefaultRestored => _t('adminThemeDefaultRestored');
+  String get adminThemeStyleGradient => _t('adminThemeStyleGradient');
+  String get adminThemeStyleSolid => _t('adminThemeStyleSolid');
+  String get adminThemeStyleMinimal => _t('adminThemeStyleMinimal');
+  String get adminThemeStyleFilled => _t('adminThemeStyleFilled');
+  String get adminThemeStyleSoft => _t('adminThemeStyleSoft');
+  String get adminThemeStyleOutline => _t('adminThemeStyleOutline');
+  String get adminThemeEmpty => _t('adminThemeEmpty');
+  String get adminThemeStartWithDefaults => _t('adminThemeStartWithDefaults');
   String _t(String key) {
     final lang = locale.languageCode;
     return _tables[lang]?[key] ?? _tables['en']?[key] ?? key;

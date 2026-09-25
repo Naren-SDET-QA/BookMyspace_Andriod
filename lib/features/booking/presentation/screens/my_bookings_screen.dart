@@ -12,6 +12,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
+import '../../../calendar/presentation/calendar_export_service.dart';
 import '../../../payments/presentation/payment_providers.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
@@ -150,6 +151,15 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     }
   }
 
+  Future<void> _exportCalendar(Booking booking) async {
+    const service = CalendarExportService();
+    final message = await service.exportBooking(booking);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -203,6 +213,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                       : null,
                   onReceipt: list[i].canViewReceipt
                       ? () => context.push('/bookings/${list[i].id}/receipt')
+                      : null,
+                  onCalendar: list[i].canExportCalendar
+                      ? () => _exportCalendar(list[i])
                       : null,
                 ),
               ),
@@ -362,6 +375,7 @@ class _BookingCard extends StatelessWidget {
     this.onRefund,
     this.onPay,
     this.onReceipt,
+    this.onCalendar,
   });
 
   final Booking booking;
@@ -370,6 +384,7 @@ class _BookingCard extends StatelessWidget {
   final VoidCallback? onRefund;
   final VoidCallback? onPay;
   final VoidCallback? onReceipt;
+  final VoidCallback? onCalendar;
 
   @override
   Widget build(BuildContext context) {
@@ -493,6 +508,28 @@ class _BookingCard extends StatelessWidget {
                 onPressed: onPay,
                 icon: const Icon(Icons.lock_outline_rounded, size: 18),
                 label: const Text('Pay securely'),
+              ),
+            ),
+          ],
+          if (onReceipt != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onReceipt,
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('View Receipt'),
+              ),
+            ),
+          ],
+          if (onCalendar != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onCalendar,
+                icon: const Icon(Icons.event_outlined, size: 18),
+                label: const Text('Add to Calendar'),
               ),
             ),
           ],

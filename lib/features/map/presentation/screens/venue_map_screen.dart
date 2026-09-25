@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart' as flmap;
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart' as fllat;
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
@@ -35,10 +38,11 @@ class VenueCluster {
   Venue get singleVenue => venues.first;
 }
 
-/// An interactive live map discovery screen supporting both iOS and Web.
+/// An interactive live map discovery screen supporting Android, iOS and Web.
 ///
 /// Features:
-/// - Real-time Google Maps integration matching Android parity.
+/// - Cross-platform map: Google Maps on native (Android/iOS), OpenStreetMap
+///   via FlutterMap on Web — `google_maps_flutter` has no Web plugin.
 /// - Venue pins with dynamic clustering based on map zoom levels.
 /// - Map/List split view (side-by-side on Web/Desktop, layered sheet on Mobile).
 /// - Category and text search filtering with debounced reactivity.
@@ -64,7 +68,10 @@ class VenueMapScreen extends ConsumerStatefulWidget {
 }
 
 class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
-  GoogleMapController? _mapController;
+  // Native (GoogleMap) controller; null on Web.
+  GoogleMapController? _nativeMapController;
+  // Web (FlutterMap) controller; null on native.
+  flmap.MapController? _webMapController;
   late final TextEditingController _searchController;
   Timer? _searchDebounce;
   late VenueSearchQuery _query;
@@ -81,6 +88,15 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
       return LatLng(location.latitude!, location.longitude!);
     }
     return const LatLng(17.3850, 78.4867);
+  }
+
+  /// Web-safe center as [fllat.LatLng] for [flmap.FlutterMap].
+  fllat.LatLng get _webMapCenter {
+    final location = ref.read(discoveryLocationProvider);
+    if (location.hasCoordinates) {
+      return fllat.LatLng(location.latitude!, location.longitude!);
+    }
+    return const fllat.LatLng(17.3850, 78.4867);
   }
 
   // Scroll controller for the list view to scroll selected item into view
@@ -112,7 +128,8 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     _searchDebounce?.cancel();
     _searchController.dispose();
     _listScrollController.dispose();
-    _mapController?.dispose();
+    _nativeMapController?.dispose();
+    // FlutterMap controller has no dispose(); it is managed by the widget tree.
     super.dispose();
   }
 
@@ -130,15 +147,22 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
       _selectedVenueId = venue.id;
     });
 
-    if (animateMap && _mapController != null && venue.latitude != 0.0) {
-      await _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(venue.latitude, venue.longitude),
-            zoom: math.max(_currentZoom, 14.5),
+    if (animateMap && venue.latitude != 0.0) {
+      if (!kIsWeb && _nativeMapController != null) {
+        await _nativeMapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(venue.latitude, venue.longitude),
+              zoom: math.max(_currentZoom, 14.5),
+            ),
           ),
-        ),
-      );
+        );
+      } else if (kIsWeb && _webMapController != null) {
+        _webMapController!.move(
+          fllat.LatLng(venue.latitude, venue.longitude),
+          math.max(_currentZoom, 14.5),
+        );
+      }
     }
 
     _scrollToVenueInList(venue.id);
@@ -252,7 +276,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             ),
             onTap: () {
               // Zoom into the cluster
-              _mapController?.animateCamera(
+              _nativeMapController?.animateCamera(
                 CameraUpdate.newCameraPosition(
                   CameraPosition(
                     target: cluster.position,
@@ -304,11 +328,15 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
             icon: const Icon(Icons.my_location_rounded),
             tooltip: 'Re-center Map',
             onPressed: () {
-              _mapController?.animateCamera(
-                CameraUpdate.newCameraPosition(
-                  CameraPosition(target: _mapCenter, zoom: 12.0),
-                ),
-              );
+              if (!kIsWeb) {
+                _nativeMapController?.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(target: _mapCenter, zoom: 12.0),
+                  ),
+                );
+              } else {
+                _webMapController?.move(_webMapCenter, 12.0);
+              }
             },
           ),
         ],
@@ -342,7 +370,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                           // Left side: Interactive Map (55% width)
                           Expanded(
                             flex: 55,
-                            child: _buildGoogleMap(markers, venues),
+                            child: _buildMap(markers, venues),
                           ),
                           // Vertical divider
                           const VerticalDivider(width: 1, thickness: 1),
@@ -359,7 +387,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                         children: [
                           Expanded(
                             flex: 55,
-                            child: _buildGoogleMap(markers, venues),
+                            child: _buildMap(markers, venues),
                           ),
                           const Divider(height: 1, thickness: 1),
                           Expanded(
@@ -495,6 +523,104 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     );
   }
 
+  /// Platform-branched map widget: [flmap.FlutterMap] on Web (OpenStreetMap
+  /// tiles), [GoogleMap] on Android/iOS. `google_maps_flutter` has no Web
+  /// plugin, so the unconditional `GoogleMap` crashed the screen on Web.
+  Widget _buildMap(Set<Marker> markers, List<Venue> venues) {
+    return kIsWeb
+        ? _buildFlutterMap(markers, venues)
+        : _buildGoogleMap(markers, venues);
+  }
+
+  /// Web map using [flmap.FlutterMap] with OpenStreetMap tiles — the same
+  /// engine the venue-details mini-map already uses, so the visual is
+  /// consistent across the app on every platform.
+  Widget _buildFlutterMap(Set<Marker> gmMarkers, List<Venue> venues) {
+    fllat.LatLng initialTarget = _webMapCenter;
+    if (_selectedVenueId != null) {
+      final selected =
+          venues.where((v) => v.id == _selectedVenueId).firstOrNull;
+      if (selected != null && selected.latitude != 0.0) {
+        initialTarget =
+            fllat.LatLng(selected.latitude, selected.longitude);
+      }
+    } else if (venues.isNotEmpty) {
+      final firstWithCoords =
+          venues.where((v) => v.latitude != 0.0).firstOrNull;
+      if (firstWithCoords != null) {
+        initialTarget =
+            fllat.LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
+      }
+    }
+
+    // Convert GoogleMap markers to FlutterMap markers.
+    final flMarkers = gmMarkers.map((gm) {
+      final isSelected = gm.markerId.value == _selectedVenueId;
+      return flmap.Marker(
+        point: fllat.LatLng(gm.position.latitude, gm.position.longitude),
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () {
+            // Find the venue or cluster and handle tap
+            final venue = venues
+                .where((v) => v.id == gm.markerId.value)
+                .firstOrNull;
+            if (venue != null) {
+              _selectVenue(venue, animateMap: true);
+            } else {
+              // Cluster tap — zoom in
+              _webMapController?.move(
+                fllat.LatLng(gm.position.latitude, gm.position.longitude),
+                _currentZoom + 2.0,
+              );
+            }
+          },
+          child: Icon(
+            isSelected ? Icons.location_on : Icons.location_pin,
+            color: isSelected
+                ? Colors.cyan
+                : Colors.deepPurple,
+            size: 36,
+          ),
+        ),
+      );
+    }).toList();
+
+    return Stack(
+      children: [
+        flmap.FlutterMap(
+          mapController: _webMapController ??= flmap.MapController(),
+          options: flmap.MapOptions(
+            initialCenter: initialTarget,
+            initialZoom: _currentZoom,
+            interactionOptions: const flmap.InteractionOptions(
+              flags: flmap.InteractiveFlag.drag |
+                  flmap.InteractiveFlag.pinchZoom |
+                  flmap.InteractiveFlag.doubleTapZoom,
+            ),
+            onPositionChanged: (position, hasGesture) {
+              _currentZoom = position.zoom;
+            },
+            onMapReady: () {
+              setState(() => _isMapReady = true);
+            },
+          ),
+          children: [
+            flmap.TileLayer(
+              urlTemplate:
+                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.bookmyspace.app',
+            ),
+            flmap.MarkerLayer(markers: flMarkers),
+          ],
+        ),
+        if (!_isMapReady)
+          const Center(child: CircularProgressIndicator()),
+      ],
+    );
+  }
+
   Widget _buildGoogleMap(Set<Marker> markers, List<Venue> venues) {
     LatLng initialTarget = _mapCenter;
     if (_selectedVenueId != null) {
@@ -526,7 +652,7 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
           mapToolbarEnabled: false,
           compassEnabled: true,
           onMapCreated: (controller) {
-            _mapController = controller;
+            _nativeMapController = controller;
             setState(() {
               _isMapReady = true;
             });
