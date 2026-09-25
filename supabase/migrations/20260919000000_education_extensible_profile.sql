@@ -136,6 +136,10 @@ create index if not exists idx_education_invoices_course on public.education_inv
 -- error messages are matched by the Dart layer ('batch full',
 -- 'batch not available', 'already enrolled'), so the wording below is
 -- load-bearing and must stay in sync.
+-- release/v1.0 0012_events_enrollment defines enroll_in_course returning uuid;
+-- this lineage returns the enrollment row, so replace it explicitly.
+drop function if exists public.enroll_in_course(uuid, uuid);
+
 create or replace function public.enroll_in_course(p_batch_id uuid, p_user_id uuid)
 returns public.course_enrollments
 language plpgsql

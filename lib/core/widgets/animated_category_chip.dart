@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../theme/app_theme.dart';
-
 /// A responsive, glassmorphic category chip component featuring:
 /// - Subtle 3D depth and frosted glass highlights
 /// - Smooth mouse-hover lift and dynamic glow on desktop/web
@@ -56,7 +54,8 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
         widget.selectedColor ?? theme.colorScheme.primary;
     final effectiveSelectedTextColor =
         widget.selectedTextColor ?? theme.colorScheme.onPrimary;
-    final effectiveUnselectedColor = widget.unselectedColor ??
+    final effectiveUnselectedColor =
+        widget.unselectedColor ??
         (isDark
             ? Colors.white.withValues(alpha: 0.08)
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5));
@@ -121,7 +120,7 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                         effectiveSelectedColor,
                         Color.lerp(
                           effectiveSelectedColor,
-                          AppTheme.action,
+                          theme.colorScheme.secondary,
                           0.25,
                         )!,
                       ],
@@ -139,11 +138,12 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                 color: widget.selected
                     ? effectiveSelectedColor
                     : (_isHovered
-                        ? effectiveSelectedColor.withValues(alpha: 0.45)
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.15)
-                            : theme.colorScheme.outlineVariant
-                                .withValues(alpha: 0.6))),
+                          ? effectiveSelectedColor.withValues(alpha: 0.45)
+                          : (isDark
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : theme.colorScheme.outlineVariant.withValues(
+                                    alpha: 0.6,
+                                  ))),
                 width: widget.selected || _isHovered ? 1.5 : 1.0,
               ),
               boxShadow: widget.selected
@@ -158,10 +158,12 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                   : [
                       BoxShadow(
                         color: isDark
-                            ? Colors.black
-                                .withValues(alpha: _isHovered ? 0.3 : 0.1)
-                            : const Color(0xFF0F172A)
-                                .withValues(alpha: _isHovered ? 0.08 : 0.02),
+                            ? Colors.black.withValues(
+                                alpha: _isHovered ? 0.3 : 0.1,
+                              )
+                            : const Color(
+                                0xFF0F172A,
+                              ).withValues(alpha: _isHovered ? 0.08 : 0.02),
                         blurRadius: _isHovered ? 8 : 3,
                         offset: Offset(0, _isHovered ? 3 : 1),
                       ),
@@ -181,10 +183,7 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                           parent: animation,
                           curve: Curves.easeOutBack,
                         ),
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        ),
+                        child: FadeTransition(opacity: animation, child: child),
                       );
                     },
                     child: widget.selected && widget.showCheckmarkOnSelect
@@ -229,8 +228,9 @@ class _AnimatedCategoryChipState extends State<AnimatedCategoryChip> {
                     curve: Curves.easeOut,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight:
-                          widget.selected ? FontWeight.bold : FontWeight.w500,
+                      fontWeight: widget.selected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
                       color: widget.selected
                           ? effectiveSelectedTextColor
                           : effectiveUnselectedTextColor,

@@ -38,6 +38,7 @@ declare
   v_subsection_caps jsonb;
   v_resolved jsonb := '{}'::jsonb;
   v_sub_slug text;
+  key text;
 begin
   -- Look up the venue's category and parent_section.
   select vc.slug, vc.parent_section

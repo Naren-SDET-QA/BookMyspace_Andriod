@@ -68,11 +68,11 @@ begin
     raise exception 'unsupported_theme_config_version' using errcode = '22023';
   end if;
 
-  foreach v_mode in array['light', 'dark'] loop
+  foreach v_mode in array array['light', 'dark'] loop
     if jsonb_typeof(p_config->v_mode) <> 'object' then
       raise exception 'invalid_theme_mode' using errcode = '22023';
     end if;
-    foreach v_key in array[
+    foreach v_key in array array[
       'primary', 'secondary', 'background', 'surface', 'surface_variant',
       'text', 'card', 'glass_tint'
     ] loop
