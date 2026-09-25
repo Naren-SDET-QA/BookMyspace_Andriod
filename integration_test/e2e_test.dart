@@ -1,6 +1,7 @@
 import 'package:integration_test/integration_test.dart';
 
 import 'flows/business_flows.dart';
+import 'flows/live_smoke_flows.dart';
 import 'flows/smoke_flows.dart';
 import 'support/e2e_env.dart';
 
@@ -13,7 +14,12 @@ void main() {
       registerMockSmokeFlows();
       registerMockBusinessFlows();
     case E2eMode.live:
-      // Live DEV flows are added in Phase 3; see docs/E2E_TESTING.md.
-      throw StateError('E2E_MODE=live has no registered flows yet.');
+      // DEV only: refuses any other environment or Supabase project, and
+      // missing credentials, before anything runs. See docs/E2E_TESTING.md.
+      final problem = E2eEnv.liveModeProblem();
+      if (problem != null) {
+        throw StateError('E2E_MODE=live refused: $problem');
+      }
+      registerLiveSmokeFlows();
   }
 }

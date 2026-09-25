@@ -1,4 +1,5 @@
 import 'package:bookmyspace/core/widgets/test_id.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'base_robot.dart';
 
@@ -18,6 +19,26 @@ class HistoryRobot extends BaseRobot {
   Future<void> expectStatus(String bookingId, String dbStatus) async {
     await reveal(E2eIds.bookingCard(bookingId));
     await waitFor(E2eIds.bookingStatus(bookingId, dbStatus));
+  }
+
+  /// The booking's card is listed with one of [dbStatuses]; returns which.
+  Future<String> expectAnyStatus(
+    String bookingId,
+    List<String> dbStatuses, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    await reveal(E2eIds.bookingCard(bookingId));
+    final steps = timeout.inMilliseconds ~/ 100;
+    for (var i = 0; i < steps; i++) {
+      for (final status in dbStatuses) {
+        final badge = byId(E2eIds.bookingStatus(bookingId, status));
+        if (badge.evaluate().isNotEmpty) return status;
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    throw TestFailure(
+      'Booking "$bookingId" is not shown with any of $dbStatuses.',
+    );
   }
 
   Future<void> pay(String bookingId) async {

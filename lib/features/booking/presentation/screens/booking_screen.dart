@@ -550,16 +550,25 @@ class _DateStrip extends StatelessWidget {
               date.year == selected.year &&
               date.month == selected.month &&
               date.day == selected.day;
-          return _DateChip(
-            date: date,
-            isSelected: isSelected,
-            onTap: () => onSelected(date),
+          return TestId(
+            E2eIds.bookingDate(_e2eIsoDate(date)),
+            child: _DateChip(
+              date: date,
+              isSelected: isSelected,
+              onTap: () => onSelected(date),
+            ),
           );
         },
       ),
     );
   }
 }
+
+/// `yyyy-MM-dd` with ASCII digits, for the date chip's E2E identifier only.
+String _e2eIsoDate(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
+    '${date.month.toString().padLeft(2, '0')}-'
+    '${date.day.toString().padLeft(2, '0')}';
 
 class _DateChip extends StatelessWidget {
   const _DateChip({

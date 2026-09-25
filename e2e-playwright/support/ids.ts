@@ -57,6 +57,7 @@ export const Ids = {
   nav: (destinationId: string) => `nav_${destinationId}`,
   venueCard: (venueId: string) => `venue_card_${venueId}`,
   slot: (slotId: string) => `slot_${slotId}`,
+  bookingDate: (isoDate: string) => `booking_date_${isoDate}`,
   bookingCard: (bookingId: string) => `booking_card_${bookingId}`,
   bookingCancel: (bookingId: string) => `booking_cancel_${bookingId}`,
   bookingRefund: (bookingId: string) => `booking_refund_${bookingId}`,

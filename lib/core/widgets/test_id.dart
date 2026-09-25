@@ -94,6 +94,10 @@ abstract final class E2eIds {
   /// A bookable time slot, keyed by the slot's stable backend id.
   static String slot(String slotId) => 'slot_$slotId';
 
+  /// A booking date chip, keyed by its calendar date as `yyyy-MM-dd`
+  /// (e.g. `booking_date_2026-09-29`).
+  static String bookingDate(String isoDate) => 'booking_date_$isoDate';
+
   /// A booking-history card, keyed by the booking id.
   static String bookingCard(String bookingId) => 'booking_card_$bookingId';
 
