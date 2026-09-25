@@ -144,6 +144,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

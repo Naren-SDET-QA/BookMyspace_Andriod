@@ -146,6 +146,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             onPressed: () {
               showModalBottomSheet<void>(
                 context: context,
+                useRootNavigator: true,
                 isScrollControlled: true,
                 builder: (_) => VoiceBookingSheet(
                   onConfirmed: (intent) {

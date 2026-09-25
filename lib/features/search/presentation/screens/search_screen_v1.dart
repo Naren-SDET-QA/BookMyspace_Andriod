@@ -173,6 +173,7 @@ class _SearchScreenState extends ConsumerState<SearchScreenV1> {
   Future<void> _openFilters() async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       builder: (_) => _SectionFilterSheet(
         initial: ref.read(searchQueryProvider),
@@ -230,6 +231,7 @@ class _SearchScreenState extends ConsumerState<SearchScreenV1> {
             IconButton(
               onPressed: () => showModalBottomSheet<void>(
                 context: context,
+                useRootNavigator: true,
                 isScrollControlled: true,
                 builder: (_) => VoiceBookingSheet(
                   onConfirmed: (intent) {

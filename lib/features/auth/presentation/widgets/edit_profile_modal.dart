@@ -26,6 +26,7 @@ class EditProfileModal extends ConsumerStatefulWidget {
   static Future<bool?> show(BuildContext context) {
     return showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const EditProfileModal(),

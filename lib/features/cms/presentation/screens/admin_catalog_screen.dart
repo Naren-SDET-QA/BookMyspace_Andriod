@@ -485,6 +485,7 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
               icon: const Icon(Icons.visibility_outlined),
               onPressed: () => showModalBottomSheet<void>(
                 context: context,
+                useRootNavigator: true,
                 isScrollControlled: true,
                 builder: (context) => FractionallySizedBox(
                   heightFactor: 0.9,

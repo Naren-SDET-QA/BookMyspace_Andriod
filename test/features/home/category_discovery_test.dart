@@ -67,6 +67,21 @@ Widget _homeApp(GoRouter router) {
   );
 }
 
+/// Home is a lazy sliver list: sections below the Explore showcase are only
+/// built once scrolled near, so scroll the page (not a horizontal row).
+Future<void> _scrollHomeTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    300,
+    scrollable: find
+        .byWidgetPredicate(
+          (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+        )
+        .first,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('home shows 3D glass Function Halls matrix and hero copy',
       (tester) async {
@@ -84,6 +99,7 @@ void main() {
     expect(find.text('Explore categories'), findsOneWidget);
     expect(find.text('All Categories'), findsOneWidget);
     expect(find.text('Function Halls'), findsWidgets);
+    await _scrollHomeTo(tester, find.byKey(const Key('function-halls-matrix')));
     expect(find.text('Function Halls & Celebrations'), findsWidgets);
     expect(find.byKey(const Key('function-halls-matrix')), findsOneWidget);
     expect(find.text('Marriage Halls'), findsOneWidget);
@@ -113,6 +129,7 @@ void main() {
     await tester.pumpWidget(_homeApp(router));
     await tester.pumpAndSettle();
 
+    await _scrollHomeTo(tester, find.text('Party Halls & Lawns'));
     await tester.ensureVisible(find.text('Party Halls & Lawns'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Party Halls & Lawns'));
@@ -138,6 +155,7 @@ void main() {
     await tester.pumpWidget(_homeApp(router));
     await tester.pumpAndSettle();
 
+    await _scrollHomeTo(tester, find.byKey(const Key('sub-engagement_hall')));
     await tester.ensureVisible(find.byKey(const Key('sub-engagement_hall')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sub-engagement_hall')));

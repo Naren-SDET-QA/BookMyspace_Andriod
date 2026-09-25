@@ -133,6 +133,7 @@ class SettingsScreenV1 extends ConsumerWidget {
   void _showPalettePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (context) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -207,6 +208,7 @@ class SettingsScreenV1 extends ConsumerWidget {
   void _showThemePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -247,6 +249,7 @@ class SettingsScreenV1 extends ConsumerWidget {
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (sheetContext) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -268,6 +271,7 @@ class SettingsScreenV1 extends ConsumerWidget {
   void _showBookingModePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

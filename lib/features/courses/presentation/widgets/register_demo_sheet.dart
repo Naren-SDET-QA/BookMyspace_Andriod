@@ -16,6 +16,7 @@ Future<void> showRegisterDemoSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (sheetContext) => Padding(

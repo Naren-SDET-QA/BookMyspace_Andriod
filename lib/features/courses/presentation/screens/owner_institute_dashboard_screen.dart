@@ -985,6 +985,7 @@ class _RegistrationFormTabState extends ConsumerState<_RegistrationFormTab> {
   Future<void> _preview(ConfigurableFormSchema schema) async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (context) {
         return Padding(

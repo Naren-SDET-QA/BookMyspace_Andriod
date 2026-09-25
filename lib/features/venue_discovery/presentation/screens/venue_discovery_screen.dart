@@ -97,6 +97,7 @@ class _VenueDiscoveryScreenState extends State<VenueDiscoveryScreen> {
     final alreadyStaged = widget.repository != null;
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (_) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

@@ -15,6 +15,7 @@ class AiBookingSheet extends StatelessWidget {
   static Future<void> show(BuildContext context, {String? initialText}) {
     return showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AiBookingSheet(initialText: initialText),

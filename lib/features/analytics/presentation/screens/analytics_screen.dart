@@ -168,6 +168,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final summary = _reportSummaryText(data, range);
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
         child: Column(

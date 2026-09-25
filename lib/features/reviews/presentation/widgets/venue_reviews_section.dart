@@ -141,6 +141,7 @@ class _VenueReviewsSectionState extends ConsumerState<VenueReviewsSection> {
   Future<void> _showReviewSheet(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       builder: (_) => _WriteReviewSheet(venueId: widget.venueId),
     );

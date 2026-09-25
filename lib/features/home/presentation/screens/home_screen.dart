@@ -39,6 +39,7 @@ import '../home_category_catalog.dart';
 import '../../domain/home_appearance.dart';
 import '../widgets/category_glass_matrix.dart';
 import '../widgets/home_ai_booking_card.dart';
+import '../widgets/home_explore_showcase.dart';
 import '../widgets/home_feed_sections.dart';
 import '../widgets/home_offer_banner.dart';
 import '../widgets/home_video_pill.dart';
@@ -94,9 +95,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// re-tracked each build), so this does not break provider semantics,
   /// caching, or the `ref.invalidate` calls already used by pull-to-refresh
   /// below.
-  AsyncValue<T> _deferUntilAfterFirstFrame<T>(
-    AsyncValue<T> Function() watch,
-  ) {
+  AsyncValue<T> _deferUntilAfterFirstFrame<T>(AsyncValue<T> Function() watch) {
     return _deferredContentUnlocked ? watch() : AsyncValue<T>.loading();
   }
 
@@ -153,10 +152,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bookingPrefs = ref.watch(discoveryBookingPrefsProvider);
     final eventsEnabled = ref.watch(moduleEnabledProvider('events'));
     final offersEnabled = ref.watch(moduleEnabledProvider('offers'));
-    final eventsAsync =
-        _deferUntilAfterFirstFrame(() => ref.watch(upcomingEventsProvider));
-    final coursesAsync =
-        _deferUntilAfterFirstFrame(() => ref.watch(publishedCoursesProvider));
+    final eventsAsync = _deferUntilAfterFirstFrame(
+      () => ref.watch(upcomingEventsProvider),
+    );
+    final coursesAsync = _deferUntilAfterFirstFrame(
+      () => ref.watch(publishedCoursesProvider),
+    );
     final couponsAsync = ref.watch(activeCouponsProvider);
     final cmsBanners =
         ref.watch(activeCmsBannersProvider).valueOrNull ?? const [];
@@ -167,8 +168,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // reserved for callers that genuinely need it -- QR check-in pass
     // eligibility and the profile screen). Still deferred past first
     // frame per the 9XM-2 rationale (below-the-fold content).
-    final myBookingsAsync =
-        _deferUntilAfterFirstFrame(() => ref.watch(recentBookingsProvider));
+    final myBookingsAsync = _deferUntilAfterFirstFrame(
+      () => ref.watch(recentBookingsProvider),
+    );
     final visibleBlocks = ref.watch(homeVisibleBlocksProvider);
 
     return Scaffold(
@@ -179,10 +181,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           builder: (context, responsive) {
             final dynamicCats =
                 ref.watch(venueCategoriesProvider).valueOrNull ??
-                    const <VenueCategory>[];
+                const <VenueCategory>[];
             final dynamicSubsections =
                 ref.watch(venueSubsectionsCatalogProvider).valueOrNull ??
-                    const <VenueSubsection>[];
+                const <VenueSubsection>[];
             final liveVenues =
                 popularVenuesAsync.valueOrNull ?? const <Venue>[];
             // Empty until the reader picks a location: nearbyVenuesProvider
@@ -238,12 +240,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
                         responsive.horizontalPadding,
-                        responsive.isCompact ? 12 : 0,
+                        16,
                         responsive.horizontalPadding,
-                        12,
+                        16,
                       ),
+                      // Laid out below the hero rather than pulled up under
+                      // it: slivers earlier in a scroll view paint on top, so
+                      // a negative offset hid the search field labels.
                       child: Transform.translate(
-                        offset: Offset(0, responsive.isCompact ? 0 : -28),
+                        offset: Offset.zero,
                         child: HomeSearchBar(
                           onTap: () => _openSearch(),
                           onVoiceTap: () => _showVoiceBookingDialog(context),
@@ -276,13 +281,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             coupons: couponsAsync.valueOrNull ?? const [],
                             cmsBanners: cmsBanners,
                             style: visibleBlocks
-                                    .where(
-                                      (block) =>
-                                          block.kind ==
-                                          HomeBlockKind.offerBanner,
-                                    )
-                                    .first
-                                    .style,
+                                .where(
+                                  (block) =>
+                                      block.kind == HomeBlockKind.offerBanner,
+                                )
+                                .first
+                                .style,
                             images: visibleBlocks
                                 .where(
                                   (block) =>
@@ -318,6 +322,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        responsive.horizontalPadding,
+                        12,
+                        responsive.horizontalPadding,
+                        16,
+                      ),
+                      child: HomeExploreShowcase(
+                        venues: radarVenues.isNotEmpty
+                            ? radarVenues
+                            : liveVenues,
+                        locationLabel: location.label,
+                        onOpenSection: (section) =>
+                            _openMaster(section, dynamicCats),
+                        onExploreAll: () => _openSearch(),
+                      ),
+                    ),
+                  ),
                   if (visibleBlocks.any(
                     (block) => block.kind == HomeBlockKind.categoryMatrix,
                   ))
@@ -334,8 +357,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           dynamicSubsections: dynamicSubsections,
                           venues: liveVenues,
                           categoryImageBySlot: categoryImageBySlot,
-                          isLoadingLiveData:
-                              ref.watch(venueCategoriesProvider).isLoading,
+                          isLoadingLiveData: ref
+                              .watch(venueCategoriesProvider)
+                              .isLoading,
                           onMasterChanged: (section) {
                             setState(() {
                               _selectedSection = section;
@@ -393,8 +417,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     events: eventsAsync.valueOrNull ?? const [],
                     saved:
                         ref.watch(savedVenuesProvider).valueOrNull ?? const [],
-                    favoritesEnabled:
-                        ref.watch(moduleEnabledProvider('favorites')),
+                    favoritesEnabled: ref.watch(
+                      moduleEnabledProvider('favorites'),
+                    ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 48)),
                 ],
@@ -444,10 +469,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _pickHeroGuests() async {
     final current = ref.read(discoveryBookingPrefsProvider).guests;
-    final picked = await HomeGuestsPickerSheet.show(
-      context,
-      selected: current,
-    );
+    final picked = await HomeGuestsPickerSheet.show(context, selected: current);
     if (picked == null || !mounted) return;
     ref.read(discoveryBookingPrefsProvider.notifier).setGuests(picked);
   }
@@ -528,8 +550,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Text(
                       'Your selection',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   TextButton(
@@ -634,24 +656,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisSpacing: responsive.gridSpacing,
                 childAspectRatio: responsive.resultsAspectRatio,
               ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final venue = venues[index];
-                  return _SectionVenueCard(
-                    venue: venue,
-                    onTap: () => context.push(
-                      AppRoutes.venueDetails.replaceAll(':id', venue.id),
-                    ),
-                    onBookTap: () => context.push(
-                      AppRoutes.bookingFlow.replaceAll(':id', venue.id),
-                      extra: venue,
-                    ),
-                    onCallTap: () => _handleCall(context, venue),
-                    onWhatsAppTap: () => _handleWhatsApp(context, venue),
-                  );
-                },
-                childCount: venues.length,
-              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final venue = venues[index];
+                return _SectionVenueCard(
+                  venue: venue,
+                  onTap: () => context.push(
+                    AppRoutes.venueDetails.replaceAll(':id', venue.id),
+                  ),
+                  onBookTap: () => context.push(
+                    AppRoutes.bookingFlow.replaceAll(':id', venue.id),
+                    extra: venue,
+                  ),
+                  onCallTap: () => _handleCall(context, venue),
+                  onWhatsAppTap: () => _handleWhatsApp(context, venue),
+                );
+              }, childCount: venues.length),
             ),
           );
         },
@@ -694,10 +713,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required bool favoritesEnabled,
   }) {
     final hPad = responsive.horizontalPadding;
-    final sponsoredOn =
-        blocks.any((block) => block.kind == HomeBlockKind.offerBanner);
-    final bookingsOn =
-        blocks.any((block) => block.kind == HomeBlockKind.recentBookings);
+    final sponsoredOn = blocks.any(
+      (block) => block.kind == HomeBlockKind.offerBanner,
+    );
+    final bookingsOn = blocks.any(
+      (block) => block.kind == HomeBlockKind.recentBookings,
+    );
     final children = <Widget>[];
     if (offersEnabled && coupons.isNotEmpty && !sponsoredOn) {
       children.add(HomeCouponRow(coupons: coupons));
@@ -890,6 +911,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showLocationPickerModal() {
     showModalBottomSheet(
       context: context,
+      // Above the shell's bottom navigation bar, not behind it.
+      useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1029,10 +1052,7 @@ class _ExploreCategoryCards extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(
-              onPressed: onViewAll,
-              child: const Text('View all'),
-            ),
+            TextButton(onPressed: onViewAll, child: const Text('View all')),
           ],
         ),
         const SizedBox(height: 8),
@@ -1042,8 +1062,7 @@ class _ExploreCategoryCards extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) =>
-                _ExploreChip(item: items[index]),
+            itemBuilder: (context, index) => _ExploreChip(item: items[index]),
           ),
         ),
       ],
@@ -1106,8 +1125,7 @@ class _ExploreChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (selected)
-                  const Icon(Icons.check_rounded,
-                      size: 16, color: Colors.white)
+                  const Icon(Icons.check_rounded, size: 16, color: Colors.white)
                 else
                   Icon(item.icon, size: 16, color: unselectedIcon),
                 const SizedBox(width: 6),
@@ -1129,10 +1147,7 @@ class _ExploreChip extends StatelessWidget {
 }
 
 class _HomeHeroBanner extends StatelessWidget {
-  const _HomeHeroBanner({
-    required this.banners,
-    required this.compact,
-  });
+  const _HomeHeroBanner({required this.banners, required this.compact});
 
   final List<CmsBanner> banners;
   final bool compact;
@@ -1267,13 +1282,65 @@ class _TopHeaderBar extends ConsumerWidget {
           );
 
     final narrow = responsive.isCompact;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        responsive.horizontalPadding,
-        8,
-        responsive.horizontalPadding,
-        6,
+    final padding = EdgeInsets.fromLTRB(
+      responsive.horizontalPadding,
+      8,
+      responsive.horizontalPadding,
+      6,
+    );
+    final location = _HeaderLocationChip(
+      label: locationLabel,
+      onTap: onLocationTap,
+    );
+    final actions = <Widget>[
+      _LanguagePill(compact: narrow),
+      IconButton(
+        tooltip: 'Notifications',
+        onPressed: onNotificationsTap,
+        icon: const Icon(Icons.notifications_none_rounded),
       ),
+      identity,
+    ];
+
+    // Phones: brand + actions on the first row and the location chip on its
+    // own row, so neither the wordmark nor the city gets truncated.
+    if (narrow) {
+      return Padding(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  const BookMySpaceMark(size: 32),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: BookMySpaceWordmark(
+                          fontSize: 17,
+                          textColor: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  ...actions,
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            location,
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
       child: SizedBox(
         height: 48,
         child: Row(
@@ -1288,21 +1355,9 @@ class _TopHeaderBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Flexible(
-              flex: 2,
-              child: _HeaderLocationChip(
-                label: locationLabel,
-                onTap: onLocationTap,
-              ),
-            ),
+            Flexible(flex: 2, child: location),
             const SizedBox(width: 4),
-            _LanguagePill(compact: narrow),
-            IconButton(
-              tooltip: 'Notifications',
-              onPressed: onNotificationsTap,
-              icon: const Icon(Icons.notifications_none_rounded),
-            ),
-            identity,
+            ...actions,
           ],
         ),
       ),
@@ -1315,10 +1370,7 @@ class _TopHeaderBar extends ConsumerWidget {
 /// stub. Tapping opens a picker over the languages [AppLocalizations]
 /// actually ships translations for.
 class _HeaderLocationChip extends StatelessWidget {
-  const _HeaderLocationChip({
-    required this.label,
-    required this.onTap,
-  });
+  const _HeaderLocationChip({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -1389,8 +1441,9 @@ class _LanguagePill extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color:
-              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.6,
+          ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -1405,7 +1458,9 @@ class _LanguagePill extends ConsumerWidget {
               Text(
                 label,
                 style: const TextStyle(
-                    fontSize: 11.5, fontWeight: FontWeight.w700),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ],
@@ -1417,6 +1472,8 @@ class _LanguagePill extends ConsumerWidget {
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      // Above the shell's bottom navigation bar, not behind it.
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (sheetContext) {
         final current = ref.read(localeProvider);
@@ -1446,7 +1503,8 @@ class _LanguagePill extends ConsumerWidget {
                   child: RadioListTile<String>(
                     value: locale.languageCode,
                     title: Text(
-                        _names[locale.languageCode] ?? locale.languageCode),
+                      _names[locale.languageCode] ?? locale.languageCode,
+                    ),
                   ),
                 ),
               const SizedBox(height: 8),
@@ -1499,7 +1557,9 @@ class _SectionVenueCard extends ConsumerWidget {
                     bottom: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(10),
@@ -1507,8 +1567,11 @@ class _SectionVenueCard extends ConsumerWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.near_me_rounded,
-                              size: 12, color: Colors.white),
+                          const Icon(
+                            Icons.near_me_rounded,
+                            size: 12,
+                            color: Colors.white,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             formatDistance(venue.distanceKm),
@@ -1541,9 +1604,7 @@ class _SectionVenueCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  venue.city.isNotEmpty
-                      ? venue.city
-                      : venue.addressLine1,
+                  venue.city.isNotEmpty ? venue.city : venue.addressLine1,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontSize: 12,
@@ -1587,7 +1648,9 @@ class _SectionVenueCard extends ConsumerWidget {
                     child: const Text(
                       'Book now',
                       style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w800),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
@@ -1612,8 +1675,10 @@ class _SectionVenueCard extends ConsumerWidget {
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                         ),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded,
-                            size: 16),
+                        icon: const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 16,
+                        ),
                         label: const Text('Chat'),
                       ),
                     ),
@@ -1648,8 +1713,10 @@ class _SectionVenueCard extends ConsumerWidget {
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
                           ),
-                          icon: const Icon(Icons.favorite_border_rounded,
-                              size: 16),
+                          icon: const Icon(
+                            Icons.favorite_border_rounded,
+                            size: 16,
+                          ),
                           label: const Text('Save'),
                         ),
                         error: (_, __) => TextButton.icon(
@@ -1658,8 +1725,10 @@ class _SectionVenueCard extends ConsumerWidget {
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
                           ),
-                          icon: const Icon(Icons.favorite_border_rounded,
-                              size: 16),
+                          icon: const Icon(
+                            Icons.favorite_border_rounded,
+                            size: 16,
+                          ),
                           label: const Text('Save'),
                         ),
                       ),

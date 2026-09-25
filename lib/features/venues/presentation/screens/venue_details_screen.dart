@@ -42,9 +42,7 @@ class VenueDetailsScreen extends ConsumerWidget {
     final venueAsync = ref.watch(venueDetailsProvider(venueId));
 
     return venueAsync.when(
-      loading: () => const Scaffold(
-        body: _ListingSkeleton(),
-      ),
+      loading: () => const Scaffold(body: _ListingSkeleton()),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
         body: ErrorView(
@@ -124,8 +122,9 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     final l10n = AppLocalizations.of(context);
     final favorite = ref.watch(isFavoriteProvider(venue.id));
     final supportEnabled = ref.watch(moduleEnabledProvider('support'));
-    final publishedSections =
-        ref.watch(publishedVenueSectionsProvider(venue.id));
+    final publishedSections = ref.watch(
+      publishedVenueSectionsProvider(venue.id),
+    );
     // Contact masking (reference parity with the Android privacy rule):
     // the owner's direct number is only actionable once the customer has a
     // booking the owner accepted. Before that, the call button dials a
@@ -202,8 +201,9 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
                                     template: template,
                                     selectedSlot: _selectedSlot,
                                     onAvailability: _openAvailability,
-                                    onBook:
-                                        venue.isActive ? _openBooking : null,
+                                    onBook: venue.isActive
+                                        ? _openBooking
+                                        : null,
                                     onCall: showCall ? _call : null,
                                     onWhatsApp: showCall ? _whatsapp : null,
                                     onChat: showChat ? _chat : null,
@@ -249,7 +249,13 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
           );
         },
       ),
-      floatingActionButton: supportEnabled
+      // On phones the sticky CTA bar already carries the Chat action, so the
+      // floating help button would only duplicate it and cover page text.
+      floatingActionButton:
+          supportEnabled &&
+              !(showChat &&
+                  venue.isActive &&
+                  !_isWideLayout(MediaQuery.sizeOf(context).width))
           ? FloatingActionButton.small(
               key: const Key('listing_ai_help'),
               tooltip: l10n.support,
@@ -258,6 +264,11 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
             )
           : null,
     );
+  }
+
+  static bool _isWideLayout(double width) {
+    final r = ResponsiveInfo.fromConstraints(BoxConstraints(maxWidth: width));
+    return r.isExpanded || r.isExtraWide;
   }
 
   SliverAppBar _heroBar(
@@ -271,8 +282,8 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     final heroHeight = mediaWidth >= 1024
         ? 420.0
         : mediaWidth >= 600
-            ? 340.0
-            : 260.0;
+        ? 340.0
+        : 260.0;
     return SliverAppBar(
       pinned: true,
       expandedHeight: heroHeight,
@@ -287,9 +298,7 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
         },
         icon: const Icon(Icons.arrow_back_rounded),
       ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: _HeroGallery(venue: venue),
-      ),
+      flexibleSpace: FlexibleSpaceBar(background: _HeroGallery(venue: venue)),
       actions: [
         favorite.when(
           data: (isFav) => IconButton(
@@ -334,10 +343,8 @@ class _HeroGallery extends StatelessWidget {
         if (venue.images.isNotEmpty)
           PageView.builder(
             itemCount: venue.images.length,
-            itemBuilder: (context, i) => AppNetworkImage(
-              url: venue.images[i].url,
-              fit: BoxFit.cover,
-            ),
+            itemBuilder: (context, i) =>
+                AppNetworkImage(url: venue.images[i].url, fit: BoxFit.cover),
           )
         else
           const ColoredBox(
@@ -396,11 +403,7 @@ class _HeroGallery extends StatelessWidget {
 }
 
 class _OverlayChip extends StatelessWidget {
-  const _OverlayChip({
-    required this.icon,
-    required this.label,
-    this.color,
-  });
+  const _OverlayChip({required this.icon, required this.label, this.color});
 
   final IconData icon;
   final String label;
@@ -745,13 +748,15 @@ class _KeySpecsCard extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                      child: Text(row.$1, style: theme.textTheme.bodyMedium)),
+                    child: Text(row.$1, style: theme.textTheme.bodyMedium),
+                  ),
                   Flexible(
                     child: Text(
                       row.$2,
                       textAlign: TextAlign.end,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -825,7 +830,8 @@ class _VenueMap extends StatelessWidget {
             initialCenter: point,
             initialZoom: 14,
             interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.drag |
+              flags:
+                  InteractiveFlag.drag |
                   InteractiveFlag.pinchZoom |
                   InteractiveFlag.doubleTapZoom,
             ),
@@ -919,9 +925,9 @@ class _StickyCtaBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.violet,
-                    ),
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.violet,
+                ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -1024,10 +1030,9 @@ class _StickySummary extends StatelessWidget {
         children: [
           Text(
             'Booking summary',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           _PriceRow(venue: venue),
@@ -1154,8 +1159,9 @@ class _OwnerPublishedSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizedTitle = section.localizedTitle(language);
-    final title =
-        localizedTitle.isNotEmpty ? localizedTitle : section.sectionName;
+    final title = localizedTitle.isNotEmpty
+        ? localizedTitle
+        : section.sectionName;
     final content = section.localizedContent(language);
 
     return GlassmorphicCard(

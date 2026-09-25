@@ -117,6 +117,7 @@ class _OwnerVenueSectionsScreenState
 
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       builder: (sheetContext) {
         return SafeArea(

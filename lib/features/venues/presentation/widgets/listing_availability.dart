@@ -39,7 +39,8 @@ class ListingDateStrip extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final date = dates[i];
-          final isSelected = date.year == selected.year &&
+          final isSelected =
+              date.year == selected.year &&
               date.month == selected.month &&
               date.day == selected.day;
           return _DateChip(
@@ -105,8 +106,9 @@ class _DateChip extends StatelessWidget {
               Text(
                 dayNum,
                 style: theme.textTheme.titleMedium?.copyWith(
-                  color:
-                      isSelected ? Colors.white : theme.colorScheme.onSurface,
+                  color: isSelected
+                      ? Colors.white
+                      : theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -218,8 +220,9 @@ class _SlotTile extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color:
-              isSelected ? AppTheme.violet : theme.colorScheme.outlineVariant,
+          color: isSelected
+              ? AppTheme.violet
+              : theme.colorScheme.outlineVariant,
         ),
       ),
       child: InkWell(
@@ -299,6 +302,7 @@ Future<SlotAvailability?> showListingAvailabilitySheet({
 }) {
   return showModalBottomSheet<SlotAvailability>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     builder: (sheetContext) {
@@ -354,8 +358,8 @@ class _AvailabilitySheetState extends State<_AvailabilitySheet> {
                   child: Text(
                     template.ctaAvailability,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -387,8 +391,9 @@ class _AvailabilitySheetState extends State<_AvailabilitySheet> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: FilledButton(
                 key: const Key('availability_confirm'),
-                onPressed:
-                    _slot == null ? null : () => Navigator.pop(context, _slot),
+                onPressed: _slot == null
+                    ? null
+                    : () => Navigator.pop(context, _slot),
                 child: Text(
                   _slot == null
                       ? template.ctaAvailability

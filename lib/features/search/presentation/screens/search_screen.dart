@@ -252,6 +252,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Future<void> _openFilters() async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (sheetContext) {
@@ -264,7 +265,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             height: maxHeight,
             child: _FilterSheet(
               initial: _effectiveQuery(),
-              categories: ref.read(venueCategoriesProvider).value ?? const [],
+              categories: ref.read(venueCategoriesProvider).valueOrNull ?? const [],
               onApply: _commitQuery,
             ),
           ),
@@ -420,7 +421,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     },
                   ),
                 ),
-                ...?categories.value?.map((c) {
+                ...?categories.valueOrNull?.map((c) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: AnimatedCategoryChip(

@@ -114,6 +114,7 @@ class CourseDemoActions extends StatelessWidget {
   ) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
         child: Column(

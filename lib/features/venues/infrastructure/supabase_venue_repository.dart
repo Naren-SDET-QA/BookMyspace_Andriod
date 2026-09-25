@@ -120,8 +120,9 @@ class SupabaseVenueRepository implements VenueRepository {
             'parent_section': category.parentSection ?? 'general',
             'description': category.description,
             'image_url': category.imageUrl.isEmpty ? null : category.imageUrl,
-            'image_path':
-                category.imagePath.isEmpty ? null : category.imagePath,
+            'image_path': category.imagePath.isEmpty
+                ? null
+                : category.imagePath,
             'display_order': category.displayOrder,
             'supported_languages': category.supportedLanguages,
             'name_i18n': category.nameTranslations,
@@ -150,10 +151,10 @@ class SupabaseVenueRepository implements VenueRepository {
           ? Map<String, dynamic>.from(current['metadata'] as Map)
           : <String, dynamic>{};
       metadata['active'] = isActive;
-      await _client.from('venue_categories').update({
-        'is_active': isActive,
-        'metadata': metadata,
-      }).eq('id', categoryId);
+      await _client
+          .from('venue_categories')
+          .update({'is_active': isActive, 'metadata': metadata})
+          .eq('id', categoryId);
     } catch (e) {
       throw mapError(e);
     }
@@ -163,15 +164,41 @@ class SupabaseVenueRepository implements VenueRepository {
   Stream<List<VenueCategory>> categoryStream({bool activeOnly = false}) {
     final filtered = activeOnly
         ? _client
-            .from('venue_categories')
-            .stream(primaryKey: ['id']).eq('is_active', true)
+              .from('venue_categories')
+              .stream(primaryKey: ['id'])
+              .eq('is_active', true)
         : _client.from('venue_categories').stream(primaryKey: ['id']);
-    return filtered
+    final live = filtered
         .order('display_order', ascending: true)
         .order('name', ascending: true)
         .map(
           (rows) => rows.map(VenueCategory.fromJson).toList(growable: false),
         );
+    return _realtimeWithFallback(live, () async {
+      var query = _client.from('venue_categories').select('*');
+      if (activeOnly) query = query.eq('is_active', true);
+      final rows = await query.order('display_order').order('name');
+      return rows.map(VenueCategory.fromJson).toList(growable: false);
+    });
+  }
+
+  /// Keeps a realtime-backed list usable when the realtime socket cannot be
+  /// opened (firewalls/proxies that block websockets): a subscribe failure
+  /// keeps the last emitted rows, or falls back to a one-shot REST fetch if
+  /// nothing was emitted yet, instead of surfacing an error to the UI.
+  static Stream<T> _realtimeWithFallback<T>(
+    Stream<T> live,
+    Future<T> Function() fetchOnce,
+  ) async* {
+    var emitted = false;
+    try {
+      await for (final value in live) {
+        emitted = true;
+        yield value;
+      }
+    } on RealtimeSubscribeException {
+      if (!emitted) yield await fetchOnce();
+    }
   }
 
   @override
@@ -199,35 +226,50 @@ class SupabaseVenueRepository implements VenueRepository {
   }) {
     // Realtime streams accept a single filter; the active flag is applied
     // client-side (supabase_flutter >= 2.8).
-    return _client
+    List<VenueSubsection> build(List<Map<String, dynamic>> rows) =>
+        _sortSubsections(
+          rows
+              .where((row) => !activeOnly || row['is_active'] == true)
+              .map(VenueSubsection.fromJson),
+        );
+    final live = _client
         .from('venue_subsections')
         .stream(primaryKey: ['id'])
         .eq('category_id', categoryId)
         .order('display_order', ascending: true)
-        .map(
-          (rows) => _sortSubsections(
-            rows
-                .where((row) => !activeOnly || row['is_active'] == true)
-                .map(VenueSubsection.fromJson),
-          ),
-        );
+        .map(build);
+    return _realtimeWithFallback(live, () async {
+      final rows = await _client
+          .from('venue_subsections')
+          .select('*')
+          .eq('category_id', categoryId)
+          .order('display_order');
+      return build(rows);
+    });
   }
 
   @override
   Stream<List<VenueSubsection>> subsectionCatalogStream({
     bool activeOnly = true,
   }) {
-    return _client
+    List<VenueSubsection> build(List<Map<String, dynamic>> rows) =>
+        _sortSubsections(
+          rows
+              .where((row) => !activeOnly || row['is_active'] == true)
+              .map(VenueSubsection.fromJson),
+        );
+    final live = _client
         .from('venue_subsections')
         .stream(primaryKey: ['id'])
         .order('display_order', ascending: true)
-        .map(
-          (rows) => _sortSubsections(
-            rows
-                .where((row) => !activeOnly || row['is_active'] == true)
-                .map(VenueSubsection.fromJson),
-          ),
-        );
+        .map(build);
+    return _realtimeWithFallback(live, () async {
+      final rows = await _client
+          .from('venue_subsections')
+          .select('*')
+          .order('display_order');
+      return build(rows);
+    });
   }
 
   @override
@@ -285,10 +327,12 @@ class SupabaseVenueRepository implements VenueRepository {
             'slug': subsection.slug.trim().toLowerCase(),
             'icon': subsection.icon,
             'description': subsection.description,
-            'image_url':
-                subsection.imageUrl.isEmpty ? null : subsection.imageUrl,
-            'image_path':
-                subsection.imagePath.isEmpty ? null : subsection.imagePath,
+            'image_url': subsection.imageUrl.isEmpty
+                ? null
+                : subsection.imageUrl,
+            'image_path': subsection.imagePath.isEmpty
+                ? null
+                : subsection.imagePath,
             'is_active': subsection.isActive,
             'display_order': subsection.displayOrder,
             'supported_languages': subsection.supportedLanguages,
@@ -386,7 +430,9 @@ class SupabaseVenueRepository implements VenueRepository {
   }) async {
     try {
       final path = _mediaPath('categories', category.id, extension);
-      await _client.storage.from('category-media').uploadBinary(
+      await _client.storage
+          .from('category-media')
+          .uploadBinary(
             path,
             Uint8List.fromList(bytes),
             fileOptions: FileOptions(
@@ -412,7 +458,8 @@ class SupabaseVenueRepository implements VenueRepository {
     try {
       await _removeOldMedia(category.imagePath);
       await updateCategory(
-          category.copyWith(clearImage: true, clearImagePath: true));
+        category.copyWith(clearImage: true, clearImagePath: true),
+      );
     } catch (e) {
       throw mapError(e);
     }
@@ -426,7 +473,9 @@ class SupabaseVenueRepository implements VenueRepository {
   }) async {
     try {
       final path = _mediaPath('subsections', subsection.id, extension);
-      await _client.storage.from('category-media').uploadBinary(
+      await _client.storage
+          .from('category-media')
+          .uploadBinary(
             path,
             Uint8List.fromList(bytes),
             fileOptions: FileOptions(
@@ -452,7 +501,8 @@ class SupabaseVenueRepository implements VenueRepository {
     try {
       await _removeOldMedia(subsection.imagePath);
       await updateSubsection(
-          subsection.copyWith(clearImage: true, clearImagePath: true));
+        subsection.copyWith(clearImage: true, clearImagePath: true),
+      );
     } catch (e) {
       throw mapError(e);
     }
@@ -461,12 +511,15 @@ class SupabaseVenueRepository implements VenueRepository {
   void _validateNameAndSlug(String name, String slug) {
     if (name.trim().isEmpty || name.trim().length > 120) {
       throw const BusinessException(
-          'Name must contain between 1 and 120 characters.');
+        'Name must contain between 1 and 120 characters.',
+      );
     }
-    if (!RegExp(r'^[a-z0-9]+(?:[-_][a-z0-9]+)*$')
-        .hasMatch(slug.trim().toLowerCase())) {
+    if (!RegExp(
+      r'^[a-z0-9]+(?:[-_][a-z0-9]+)*$',
+    ).hasMatch(slug.trim().toLowerCase())) {
       throw const BusinessException(
-          'SEO slug may contain lowercase letters, numbers, hyphens, and underscores.');
+        'SEO slug may contain lowercase letters, numbers, hyphens, and underscores.',
+      );
     }
   }
 
@@ -494,8 +547,10 @@ class SupabaseVenueRepository implements VenueRepository {
   }
 
   String _mediaPath(String folder, String entityId, String extension) {
-    final safeExtension =
-        extension.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final safeExtension = extension.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]'),
+      '',
+    );
     return '$folder/$entityId/${DateTime.now().microsecondsSinceEpoch}.${safeExtension.isEmpty ? 'jpg' : safeExtension}';
   }
 
@@ -657,8 +712,10 @@ class SupabaseVenueRepository implements VenueRepository {
           '''
           : _venueSelect;
 
-      var builder =
-          _client.from('venues').select(selectClause).eq('is_active', true);
+      var builder = _client
+          .from('venues')
+          .select(selectClause)
+          .eq('is_active', true);
 
       if (query.query.trim().isNotEmpty) {
         builder = builder.textSearch('search_document', query.query.trim());
@@ -670,9 +727,7 @@ class SupabaseVenueRepository implements VenueRepository {
         final pin = query.pincode!.trim();
         final city = query.city?.trim();
         if (city != null && city.isNotEmpty) {
-          builder = builder.or(
-            'postal_code.eq.$pin,city.ilike.%$city%',
-          );
+          builder = builder.or('postal_code.eq.$pin,city.ilike.%$city%');
         } else {
           builder = builder.eq('postal_code', pin);
         }
@@ -692,10 +747,8 @@ class SupabaseVenueRepository implements VenueRepository {
         VenueSortBy.rating => ('avg_rating', false),
         // Distance ordering is handled by the RPC path; fall back to
         // popularity for the REST query.
-        VenueSortBy.distance || VenueSortBy.relevance => (
-            'rating_count',
-            false
-          ),
+        VenueSortBy.distance ||
+        VenueSortBy.relevance => ('rating_count', false),
       };
 
       // Log exact SQL executed for function hall / category searches.
@@ -709,7 +762,8 @@ class SupabaseVenueRepository implements VenueRepository {
         // `categoryId` no longer exists (no separate lookup is made).
         // Diagnostic-only -- gated by kDebugMode since Phase 9XL, never
         // affects query results.
-        final executedSql = "SELECT $selectClause FROM venues"
+        final executedSql =
+            "SELECT $selectClause FROM venues"
             " INNER JOIN venue_categories ON venue_categories.id = venues.category_id"
             " WHERE venues.is_active = true"
             " AND venue_categories.slug = '${query.categorySlug}'"
@@ -729,8 +783,10 @@ class SupabaseVenueRepository implements VenueRepository {
       final rows = await builder
           .order(orderColumn, ascending: ascending)
           .range(start, start + pageSize - 1);
-      var results =
-          rows.whereType<Map<String, dynamic>>().map(Venue.fromJson).toList();
+      var results = rows
+          .whereType<Map<String, dynamic>>()
+          .map(Venue.fromJson)
+          .toList();
       if (query.facility != null && query.facility!.trim().isNotEmpty) {
         final needle = query.facility!.trim().toLowerCase();
         results = results

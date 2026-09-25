@@ -273,6 +273,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
   void _openLocationPicker() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -327,6 +328,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
   Future<void> _pickAttendees() async {
     final picked = await showModalBottomSheet<int>(
       context: context,
+      useRootNavigator: true,
       builder: (context) {
         return SafeArea(
           child: Column(
@@ -351,6 +353,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
   void _openFilters() {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) {

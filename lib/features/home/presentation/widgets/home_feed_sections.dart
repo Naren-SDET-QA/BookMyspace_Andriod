@@ -483,6 +483,8 @@ class HomeGuestsPickerSheet extends StatelessWidget {
   }) {
     return showModalBottomSheet<int>(
       context: context,
+      // Above the shell's bottom navigation bar, not behind it.
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,

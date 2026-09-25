@@ -29,6 +29,7 @@ class LocationPickerSheet extends ConsumerStatefulWidget {
   }) {
     return showModalBottomSheet<SearchArea>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
