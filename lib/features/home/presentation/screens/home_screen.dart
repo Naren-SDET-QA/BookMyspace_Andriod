@@ -226,7 +226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         responsive.horizontalPadding,
                         4,
                         responsive.horizontalPadding,
-                        0,
+                        responsive.isCompact ? 56 : 36,
                       ),
                       child: _HomeHeroBanner(
                         banners: cmsBanners,
@@ -238,12 +238,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
                         responsive.horizontalPadding,
-                        responsive.isCompact ? 12 : 0,
+                        0,
                         responsive.horizontalPadding,
                         12,
                       ),
                       child: Transform.translate(
-                        offset: Offset(0, responsive.isCompact ? 0 : -28),
+                        offset: Offset(0, responsive.isCompact ? -48 : -36),
                         child: HomeSearchBar(
                           onTap: () => _openSearch(),
                           onVoiceTap: () => _showVoiceBookingDialog(context),
@@ -699,6 +699,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bookingsOn =
         blocks.any((block) => block.kind == HomeBlockKind.recentBookings);
     final children = <Widget>[];
+    if (blocks.any((block) => block.kind == HomeBlockKind.aiBooking)) {
+      final ai = blocks.firstWhere(
+        (block) => block.kind == HomeBlockKind.aiBooking,
+      );
+      children.add(
+        HomeAiBookingCard(
+          title: _localizedTitle(ai, l10n).isEmpty
+              ? 'Plan More, Celebrate More'
+              : _localizedTitle(ai, l10n),
+          subtitle: _localizedSubtitle(ai, l10n).isEmpty
+              ? 'Great spaces. Greater moments.'
+              : _localizedSubtitle(ai, l10n),
+          style: ai.style,
+        ),
+      );
+    }
     if (offersEnabled && coupons.isNotEmpty && !sponsoredOn) {
       children.add(HomeCouponRow(coupons: coupons));
     }
@@ -739,6 +755,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children.add(HomeHorizontalEvents(events: events));
     }
     if (children.isEmpty) return const [];
+    final planMore = children.firstWhere(
+      (child) => child is HomeAiBookingCard || child is HomeCouponRow,
+      orElse: () => children.first,
+    );
+    final bookingsChild = children.whereType<HomeRecentBookings>().firstOrNull;
+    final rest = children
+        .where((child) => child != planMore && child != bookingsChild)
+        .toList();
     return [
       SliverToBoxAdapter(
         child: Padding(
@@ -746,16 +770,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Your activity',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Your activity',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go(AppRoutes.bookings),
+                    child: const Text('View all'),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) const SizedBox(height: 16),
-                children[i],
+              if (bookingsChild != null && !responsive.isCompact)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 5, child: planMore),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 7, child: bookingsChild),
+                  ],
+                )
+              else ...[
+                planMore,
+                if (bookingsChild != null) ...[
+                  const SizedBox(height: 12),
+                  bookingsChild,
+                ],
+              ],
+              for (final child in rest) ...[
+                const SizedBox(height: 16),
+                child,
               ],
             ],
           ),

@@ -207,18 +207,13 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
         Colors.black.withValues(alpha: 0.70),
       ];
     }
-    return isDark
-        ? const [
-            Color(0xFF075E54),
-            Color(0xFF0E7490),
-            Color(0xFF1E3A8A),
-          ]
-        : const [
-            Color(0xFF008F7A),
-            Color(0xFF14B8A6),
-            Color(0xFF38BDF8),
-            Color(0xFF818CF8),
-          ];
+    // "Spotlight & Hot Deals" look: hot orange melting into pink, same in
+    // both themes (admin colours still override above).
+    return const [
+      Color(0xFFF97316),
+      Color(0xFFF43F5E),
+      Color(0xFFEC4899),
+    ];
   }
 
   void _syncAutoPlay() {
@@ -265,7 +260,52 @@ class _HomeOfferBannerState extends State<HomeOfferBanner>
           final radius = BorderRadius.circular(style.radius);
           final backdrop =
               widget.images.isNotEmpty ? widget.images.first : null;
-          return Container(
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (slides.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF43F5E),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Spotlight & Hot Deals',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16.5,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                      for (var i = 0; i < slides.length; i++)
+                        Container(
+                          margin: const EdgeInsets.only(left: 5),
+                          width: i == _index ? 18 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: i == _index
+                                ? AppTheme.violetSoft
+                                : Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              Container(
             height: style.height ?? 156,
             decoration: BoxDecoration(
               borderRadius: radius,

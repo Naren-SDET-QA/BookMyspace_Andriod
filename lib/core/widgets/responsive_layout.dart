@@ -83,19 +83,19 @@ class ResponsiveInfo {
       categoryAspectRatio = 1.35;
     }
 
-    // Venue result cards: more columns on larger screens, taller on phones
-    // so image + name + price + Book/Call/Chat/Save all fit without overflow.
+    // Venue result cards: two-up on phones so Home matches the Android mock
+    // (image + name + Book now + Call/Chat/Save must still fit).
     final int resultsColumns;
     final double resultsAspectRatio;
     if (isCompact) {
-      resultsColumns = 1;
-      resultsAspectRatio = 0.92;
+      resultsColumns = 2;
+      resultsAspectRatio = 0.62;
     } else if (isMedium) {
       resultsColumns = 2;
-      resultsAspectRatio = 0.78;
+      resultsAspectRatio = 0.68;
     } else if (isExpanded) {
       resultsColumns = 3;
-      resultsAspectRatio = 0.72;
+      resultsAspectRatio = 0.70;
     } else {
       resultsColumns = 4;
       resultsAspectRatio = 0.70;

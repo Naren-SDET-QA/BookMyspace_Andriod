@@ -612,6 +612,58 @@ class _HeroMiniChip extends StatelessWidget {
   }
 }
 
+/// Picks one display image per spotlight venue so consecutive pages don't
+/// repeat the same artwork.
+///
+/// Priority per venue:
+/// 1. Admin-configured spotlight artwork, cycled per index.
+/// 2. The venue's own cover image -- but only when it is distinct from the
+///    cover of every previous page (seeded listings often share one stock
+///    cover, which made the whole carousel show the same photo).
+/// 3. The app's stock photo pool (poster/alternate/fallback per
+///    [MainHomeSection]), rotated deterministically by index and nudged by a
+///    hash of the venue id so equal covers land on different pool entries.
+List<String> spotlightImagesForVenues(List<Venue> venues,
+    {List<String> adminImages = const []}) {
+  if (venues.isEmpty) return const [];
+
+  final pool = <String>[
+    for (final section in MainHomeSection.values) ...[
+      section.posterImageUrl,
+      section.alternateImageUrl,
+      section.fallbackImageUrl,
+    ],
+  ];
+
+  final urls = <String>[];
+
+  // Next unused stock image, scanning from a stable per-venue offset so
+  // venues with identical covers still land on different pool entries.
+  String nextStock(int index, Venue venue) {
+    final start = (index + venue.id.hashCode) % pool.length;
+    for (var step = 0; step < pool.length; step++) {
+      final candidate = pool[(start + step) % pool.length];
+      if (!urls.contains(candidate)) return candidate;
+    }
+    return pool[start]; // Pool exhausted: allow repeats, never loop forever.
+  }
+
+  for (var i = 0; i < venues.length; i++) {
+    if (adminImages.isNotEmpty) {
+      urls.add(adminImages[i % adminImages.length]);
+      continue;
+    }
+
+    final cover = venues[i].coverImageUrl;
+    if (cover.isNotEmpty && !urls.contains(cover)) {
+      urls.add(cover);
+    } else {
+      urls.add(nextStock(i, venues[i]));
+    }
+  }
+  return urls;
+}
+
 /// Full-bleed hero carousel matching the approved reference design's
 /// "Top-Rated Spaces" section: a small "SPOTLIGHT" badge + title + page
 /// counter + prev/next arrows above one large image card per page
@@ -655,6 +707,7 @@ class _HomeSpotlightCarouselState extends State<HomeSpotlightCarousel> {
     if (widget.venues.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final count = widget.venues.length;
+    final images = spotlightImagesForVenues(widget.venues);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -726,7 +779,10 @@ class _HomeSpotlightCarouselState extends State<HomeSpotlightCarousel> {
             itemBuilder: (context, index) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: _SpotlightHeroCard(venue: widget.venues[index]),
+                child: _SpotlightHeroCard(
+                  venue: widget.venues[index],
+                  imageUrl: images[index],
+                ),
               );
             },
           ),
@@ -756,9 +812,12 @@ class _HomeSpotlightCarouselState extends State<HomeSpotlightCarousel> {
 }
 
 class _SpotlightHeroCard extends ConsumerWidget {
-  const _SpotlightHeroCard({required this.venue});
+  const _SpotlightHeroCard({required this.venue, this.imageUrl});
 
   final Venue venue;
+
+  /// Per-page display image; falls back to the venue cover when null.
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -775,7 +834,10 @@ class _SpotlightHeroCard extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
+            AppNetworkImage(
+              url: imageUrl ?? venue.coverImageUrl,
+              fit: BoxFit.cover,
+            ),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1135,6 +1197,8 @@ class _HomeSpotlightRowState extends State<HomeSpotlightRow> {
     if (venues.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final style = widget.style;
+    final images =
+        spotlightImagesForVenues(venues, adminImages: widget.images);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1210,9 +1274,7 @@ class _HomeSpotlightRowState extends State<HomeSpotlightRow> {
                 width: _cardWidth,
                 child: _SpotlightCard(
                   venue: venue,
-                  imageUrl: widget.images.isEmpty
-                      ? null
-                      : widget.images[index % widget.images.length],
+                  imageUrl: images[index],
                   accentGradient: style.backgroundColors.isEmpty
                       ? null
                       : LinearGradient(colors: style.backgroundColors),
@@ -1278,7 +1340,7 @@ class _SpotlightCard extends ConsumerWidget {
                 fit: StackFit.expand,
                 children: [
                   AppNetworkImage(
-                    url: venue.coverImageUrl,
+                    url: imageUrl ?? venue.coverImageUrl,
                     fit: BoxFit.cover,
                   ),
                   Positioned(
