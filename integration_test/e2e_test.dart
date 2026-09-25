@@ -1,6 +1,7 @@
 import 'package:integration_test/integration_test.dart';
 
 import 'flows/business_flows.dart';
+import 'flows/live_booking_lifecycle_flows.dart';
 import 'flows/live_smoke_flows.dart';
 import 'flows/smoke_flows.dart';
 import 'support/e2e_env.dart';
@@ -21,5 +22,6 @@ void main() {
         throw StateError('E2E_MODE=live refused: $problem');
       }
       registerLiveSmokeFlows();
+      registerLiveBookingLifecycleFlows();
   }
 }

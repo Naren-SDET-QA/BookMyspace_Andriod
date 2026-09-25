@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import type { FlutterApp } from './flutter';
+import { Ids, Tab } from './ids';
 
 /**
  * Live DEV mode (E2E_MODE=live). The only backend it may reach is the DEV
@@ -199,4 +200,60 @@ export function bookingIdFromUrl(url: string): string {
   const match = /#\/bookings\/([^/?#]+)\/pay$/.exec(url);
   if (!match) throw new Error(`Expected the checkout route, got "${new URL(url).hash}".`);
   return match[1];
+}
+
+/** Whether the seeded slot of [target] is bookable again (public read-only RPC). */
+export async function isSlotAvailable(request: APIRequestContext, cfg: LiveConfig, target: LiveTarget): Promise<boolean> {
+  const res = await request.post(`${cfg.supabaseUrl}/rest/v1/rpc/available_time_slots`, {
+    headers: { apikey: cfg.anonKey, 'Content-Type': 'application/json' },
+    data: { p_venue_id: target.venue.id, p_book_date: target.isoDate },
+  });
+  if (!res.ok()) throw new Error(`available_time_slots failed with HTTP ${res.status()}.`);
+  const rows = (await res.json()) as Array<{ slot_id: string; is_available: boolean }>;
+  return rows.find((row) => row.slot_id === target.venue.slotId)?.is_available === true;
+}
+
+/**
+ * Signs in as the DEV customer and takes one hold on [target], the same
+ * journey as the Phase 3 smoke. Returns the booking id once checkout shows it.
+ */
+export async function signInAndHold(app: FlutterApp, page: Page, cfg: LiveConfig, target: LiveTarget): Promise<string> {
+  await app.open('/login');
+  await typeSecret(app, Ids.loginEmail, cfg.email);
+  await typeSecret(app, Ids.loginPassword, cfg.password);
+  await app.tap(Ids.loginSubmit);
+  await app.waitFor(Ids.nav(Tab.home));
+
+  await app.tap(Ids.nav(Tab.search));
+  await app.fill(Ids.searchInput, target.venue.name);
+  await page.keyboard.press('Enter');
+  await app.tap(Ids.venueCard(target.venue.id));
+  await app.waitFor(Ids.bookNow);
+  await app.tap(Ids.bookNow);
+
+  await app.waitFor(Ids.bookingDate(isoDate(new Date())));
+  await app.tap(Ids.bookingDate(target.isoDate));
+  await app.waitFor(Ids.slot(target.venue.slotId));
+  await app.fill(Ids.bookingEventType, LIVE_EVENT_TYPE);
+  await app.tap(Ids.slot(target.venue.slotId));
+  await app.tap(Ids.bookingConfirm);
+  await app.tapIfShown(Ids.bookingConfirmDialog);
+  await app.waitFor(Ids.checkoutSummary);
+  return bookingIdFromUrl(page.url());
+}
+
+/** Pops pushed routes (venue, booking, checkout) until the bottom navigation is back. */
+export async function backToShell(app: FlutterApp): Promise<void> {
+  for (let i = 0; i < 5 && !(await app.byId(Ids.nav(Tab.bookings)).first().isVisible()); i++) {
+    await app.back();
+  }
+  await app.waitFor(Ids.nav(Tab.bookings));
+}
+
+/** Signs out from the profile tab and waits for the sign-in screen. */
+export async function signOut(app: FlutterApp): Promise<void> {
+  await app.tap(Ids.nav(Tab.profile));
+  await app.reveal(Ids.logout);
+  await app.tap(Ids.logout);
+  await app.waitFor(Ids.loginSubmit);
 }

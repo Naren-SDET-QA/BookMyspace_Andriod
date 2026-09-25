@@ -17,6 +17,12 @@ abstract final class E2eTags {
 
   /// Runs against the DEV Supabase project (`E2E_MODE=live` only).
   static const live = 'live';
+
+  /// Customer cancellation journeys.
+  static const cancellation = 'cancellation';
+
+  /// Flows that take more than ten minutes (live hold expiry).
+  static const slow = 'slow';
 }
 
 /// The only backend live E2E may ever reach.

@@ -33,7 +33,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // No automatic retries: a failure is reported as a failure.
   retries: 0,
-  workers: process.env.CI ? 2 : undefined,
+  // Live specs share one DEV customer and seeded venue pool: run them one at a time.
+  workers: live ? 1 : process.env.CI ? 2 : undefined,
   reporter: live
     ? [['list'], ['junit', { outputFile: 'reports/junit/web-e2e-live.xml' }]]
     : [

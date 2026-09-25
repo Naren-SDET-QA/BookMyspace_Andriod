@@ -13,7 +13,8 @@ Each suite runs in one of two modes:
 - **mock** (default): deterministic, no Supabase, no Razorpay, no network.
   PR-safe. This is Phase 1 (smoke) and Phase 2 (business flows).
 - **live**: the production app against the **DEV** Supabase project only,
-  signed in as the DEV customer. Phase 3. Never PROD.
+  signed in as the DEV customer. Phase 3 (smoke) and Phase 4 (cancellation,
+  hold expiry). Never PROD.
 
 ## Identifiers
 
@@ -30,7 +31,8 @@ together.
 ## Tags
 
 `smoke`, `critical`, `auth`, `booking`, `owner`, `negative`, `payment`,
-`admin`, `live`. Flutter: `--dart-define=E2E_TAGS=smoke,booking` (flows
+`admin`, `live`, `cancellation`, `slow` (flows over ten minutes: live hold
+expiry). Flutter: `--dart-define=E2E_TAGS=smoke,booking` (flows
 without a matching tag are not registered). Playwright: `--grep @smoke`.
 
 ## Mock mode
@@ -61,16 +63,29 @@ Mock mode never runs `tests/live/**`.
 
 ### What it covers
 
-One smoke journey, on Android, iOS (Flutter) and web (Playwright):
+Three journeys, each on Android, iOS (Flutter) and web (Playwright):
 
-sign in → search → venue details → availability on a chosen date →
-booking hold (checkout opens) → booking history shows it → sign out.
+1. **Smoke** (Phase 3): sign in → search → venue details → availability on
+   a chosen date → booking hold (checkout opens) → booking history shows
+   it → sign out.
+2. **Cancellation** (Phase 4, tag `cancellation`): take a hold, cancel it
+   from booking history, see it leave Upcoming and appear in Cancelled.
+   Uses the customer's own contract (RLS `bookings_user_update_own`:
+   `pending` → `cancelled`).
+3. **Hold expiry** (Phase 4, tag `slow`, about 11–13 minutes): take a hold
+   and do nothing. The server job (`expire-booking-holds` →
+   `expire_stale_holds()`) must expire the hold after 10 minutes and
+   cancel its draft booking; the flow then checks the slot is bookable
+   again and a freshly loaded app lists the booking as cancelled. The test
+   itself writes nothing while waiting.
 
-Flutter also reads the booking row back from DEV (RLS: own bookings only)
-and checks its user, venue, slot, date and `held`/`pending` status.
+Flutter also reads the rows back from DEV (RLS: own bookings and holds
+only): the new booking's user, venue, slot, date and `held`/`pending`
+status; `cancelled` after cancellation; the hold `active` then `expired`.
+Web checks availability through the public `available_time_slots` RPC.
 
-Not covered yet: payment (no Razorpay automation), cancellation, refunds,
-owner and admin flows, OTP sign-in. Flutter web is not wired to the live
+Not covered yet: payment (no Razorpay automation), refunds, owner and
+admin flows, OTP sign-in. Flutter web is not wired to the live
 suite (the repo has no `test_driver/`); web live coverage is Playwright.
 
 ### Safety guards
@@ -119,15 +134,21 @@ booking:
 - Pools are disjoint so parallel runs never compete for the same slot:
   Android 2–4, iOS 5–7, Flutter web 8, Playwright 9–10. Venue 1 holds
   the seed's history bookings and is never booked.
-- Each run takes one hold and never pays, cancels or deletes anything.
+- Each flow takes one hold and never pays or deletes anything; only the
+  cancellation flow cancels, and only its own booking, as the customer.
+  A full live run therefore uses three (venue, Tuesday) pairs per
+  platform. Cancelling does not release a hold, so a cancelled pair also
+  stays taken until its hold expires.
   The `expire_stale_holds()` job (pg_cron, every minute) expires the hold
   after 10 minutes and cancels its draft booking, so every slot frees
   itself. A rerun within about 11 minutes simply picks the next pair;
   if a whole pool is taken, the failure lists every pair tried and why.
-- What persists: after expiry, each run leaves one `cancelled` booking and
-  one `expired` hold as permanent history rows for the DEV customer.
-  Nothing stays active or blocks a slot, and booking inserts trigger no
-  notifications or emails. There is no automatic cleanup of these rows.
+- What persists: after expiry, every flow leaves one `cancelled` booking
+  and one `expired` hold as permanent history rows for the DEV customer;
+  the cancellation flow also leaves the app's own `booking_cancelled`
+  notification row. Nothing stays active or blocks a slot, and booking
+  inserts trigger no notifications or emails. There is no automatic
+  cleanup of these rows.
 
 ### Prerequisites (DEV)
 
@@ -195,8 +216,11 @@ cd e2e-playwright
 E2E_MODE=live E2E_WEB_BASE_URL=http://127.0.0.1:8788 npx playwright test
 ```
 
-Live mode runs only `tests/live/**` and writes JUnit to
-`reports/junit/web-e2e-live.xml`.
+Live mode runs only `tests/live/**`, one spec at a time (they share the
+DEV customer and venue pool), and writes JUnit to
+`reports/junit/web-e2e-live.xml`. Skip the long expiry spec with
+`--grep-invert @slow`; on Flutter, `--dart-define=E2E_TAGS=smoke,cancellation`
+registers only the smoke and cancellation flows.
 
 ## Adding flows
 

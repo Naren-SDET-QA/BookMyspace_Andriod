@@ -228,3 +228,91 @@ Future<void> expectLiveHeldBooking(
   expect(row['book_date'], target.isoDate);
   expect(row['status'], isIn(const ['held', 'pending']));
 }
+
+/// The booking's current status, read as the signed-in customer.
+Future<String?> liveBookingStatus(String bookingId) async {
+  final row = await E2eLive.client
+      .from('bookings')
+      .select('status')
+      .eq('id', bookingId)
+      .maybeSingle();
+  return row?['status'] as String?;
+}
+
+/// The hold behind [bookingId]: its status and server expiry time. RLS
+/// (`holds_owner_read`) lets a customer read only their own holds.
+Future<({String status, DateTime expiresAt})> liveHoldOf(
+  String bookingId,
+) async {
+  final booking = await E2eLive.client
+      .from('bookings')
+      .select('hold_id')
+      .eq('id', bookingId)
+      .single();
+  final holdId = booking['hold_id'] as String?;
+  if (holdId == null) {
+    throw TestFailure('Booking "$bookingId" has no hold.');
+  }
+  final hold = await E2eLive.client
+      .from('booking_holds')
+      .select('status, expires_at')
+      .eq('id', holdId)
+      .single();
+  return (
+    status: hold['status'] as String,
+    expiresAt: DateTime.parse(hold['expires_at'] as String),
+  );
+}
+
+/// Whether the seeded slot of [target] is bookable again (public RPC).
+Future<bool> isLiveSlotAvailable(LiveTarget target) async {
+  final rows = await E2eLive.client.rpc<List<dynamic>>(
+    'available_time_slots',
+    params: {'p_venue_id': target.venue.id, 'p_book_date': target.isoDate},
+  );
+  for (final row in rows.whereType<Map<String, dynamic>>()) {
+    if (row['slot_id'] == target.venue.slotId) {
+      return row['is_available'] == true;
+    }
+  }
+  return false;
+}
+
+/// Waits, writing nothing, until the server itself has expired the hold and
+/// cancelled its draft booking (`expire_stale_holds()`, run every minute by
+/// the `expire-booking-holds` pg_cron job). Fails once the hold's own expiry
+/// time plus [grace] has passed.
+Future<void> waitForLiveHoldExpiry(
+  WidgetTester tester,
+  String bookingId, {
+  Duration grace = const Duration(minutes: 3),
+  Duration poll = const Duration(seconds: 15),
+}) async {
+  final deadline = (await liveHoldOf(bookingId)).expiresAt.add(grace);
+  while (true) {
+    final hold = await liveHoldOf(bookingId);
+    final status = await liveBookingStatus(bookingId);
+    if (hold.status == 'expired' && status == 'cancelled') return;
+    if (DateTime.now().isAfter(deadline)) {
+      throw TestFailure(
+        'The hold did not expire by ${deadline.toIso8601String()} (hold '
+        '"${hold.status}", booking "$status"). Is the expire-booking-holds '
+        'pg_cron job running on DEV?',
+      );
+    }
+    await Future<void>.delayed(poll);
+    await tester.pump();
+  }
+}
+
+/// Rebuilds the production app from scratch at [location] (fresh providers,
+/// so nothing is served from memory), keeping the current DEV session.
+Future<void> repumpLiveApp(WidgetTester tester, String location) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      key: UniqueKey(),
+      child: BookMySpaceApp(initialLocation: location),
+    ),
+  );
+  await BaseRobot(tester).settle();
+}
