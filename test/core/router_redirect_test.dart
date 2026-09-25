@@ -177,4 +177,55 @@ void main() {
     );
     expect(redirect, isNull);
   });
+
+  test('venue owner can enter owner routes without redirect', () {
+    final redirect = resolveAppRedirect(
+      location: AppRoutes.ownerDashboard,
+      currentUser: const AuthUser(id: 'u1', role: AppRole.venueOwner),
+      authReady: true,
+    );
+    expect(redirect, isNull);
+  });
+
+  test('venue owner can enter analytics without redirect', () {
+    final redirect = resolveAppRedirect(
+      location: AppRoutes.analytics,
+      currentUser: const AuthUser(id: 'u1', role: AppRole.venueOwner),
+      authReady: true,
+    );
+    expect(redirect, isNull);
+  });
+
+  test('customer is redirected away from owner routes to profile', () {
+    final redirect = resolveAppRedirect(
+      location: AppRoutes.ownerDashboard,
+      currentUser: const AuthUser(id: 'u1', role: AppRole.customer),
+      authReady: true,
+    );
+    expect(redirect, AppRoutes.profile);
+  });
+
+  test('authoritative DB role override updates routing behavior', () {
+    // Initial user created with metadata role
+    const initialUser = AuthUser(id: 'u1', role: AppRole.venueOwner);
+    expect(
+      resolveAppRedirect(
+        location: AppRoutes.ownerDashboard,
+        currentUser: initialUser,
+        authReady: true,
+      ),
+      isNull,
+    );
+
+    // DB hydration revokes owner role -> becomes customer
+    final hydratedUser = initialUser.copyWith(role: AppRole.customer);
+    expect(
+      resolveAppRedirect(
+        location: AppRoutes.ownerDashboard,
+        currentUser: hydratedUser,
+        authReady: true,
+      ),
+      AppRoutes.profile,
+    );
+  });
 }

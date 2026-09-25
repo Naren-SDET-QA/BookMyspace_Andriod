@@ -264,6 +264,24 @@ class SupabaseAuthRepository implements AuthRepository {
     }
   }
 
+  static domain.AppRole _roleFromMetadata(User u) {
+    final raw = u.appMetadata['role'] ?? u.userMetadata?['role'];
+    if (raw is String) {
+      return switch (raw.toLowerCase()) {
+        'admin' || 'administrator' || 'super_administrator' =>
+          domain.AppRole.admin,
+        'venue_owner' || 'institute_owner' || 'event_organizer' =>
+          domain.AppRole.venueOwner,
+        _ => domain.AppRole.customer,
+      };
+    }
+    return domain.AppRole.customer;
+  }
+
+  @visibleForTesting
+  static domain.AppRole roleFromMetadataForTesting(User u) =>
+      _roleFromMetadata(u);
+
   domain.AuthUser _toUser(User u) {
     return domain.AuthUser(
       id: u.id,
@@ -271,8 +289,12 @@ class SupabaseAuthRepository implements AuthRepository {
       phone: u.phone ?? '',
       fullName: (u.userMetadata?['full_name'] ?? '') as String,
       avatarUrl: (u.userMetadata?['avatar_url'] ?? '') as String,
+      role: _roleFromMetadata(u),
     );
   }
+
+  @visibleForTesting
+  domain.AuthUser toUserForTesting(User u) => _toUser(u);
 
   Future<domain.AuthUser> _loadAuthoritativeUser(User user) async {
     var profile = <String, dynamic>{};
