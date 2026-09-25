@@ -313,7 +313,7 @@ class CategoryConfiguration {
       id: category.id,
       slug: category.slug,
       name: category.name,
-      icon: category.icon,
+      icon: category.icon ?? '',
       imageUrl: (meta['image'] ?? meta['image_url'] ?? '').toString(),
       sectionId: (meta['section_id'] ?? meta['section'] ?? '').toString(),
       visible: flag('active', true) && flag('visible', true),

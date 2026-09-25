@@ -1,394 +1,295 @@
 // Deno edge function: Razorpay webhook receiver.
 //
 // SECURITY: verifies the Razorpay webhook signature before processing.
-// IDEMPOTENT: webhook_event_id uniqueness guarantees a webhook is never
-// processed twice, so a payment can never create a duplicate booking.
+// IDEMPOTENT: event identity is specific to the provider event, and the
+// event is marked processed only after the business operation succeeds.
 //
 // Razorpay signs the raw body with HMAC-SHA256 using the webhook secret.
-import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import { enqueueEmail, userEmail } from '../_shared/email_outbox.ts';
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import {
+  confirmationRpcArgs,
+  deriveRazorpayEventId,
+  extractRefundEntity,
+  type RazorpayWebhookEvent,
+  verifyRazorpaySignature,
+} from "./helpers.ts";
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const RAZORPAY_WEBHOOK_SECRET = Deno.env.get('RAZORPAY_WEBHOOK_SECRET')!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const RAZORPAY_WEBHOOK_SECRET = Deno.env.get("RAZORPAY_WEBHOOK_SECRET")!;
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function verifySignature(body: string, signature: string): boolean {
-  const expected = createHmac('sha256', RAZORPAY_WEBHOOK_SECRET)
-    .update(body)
-    .digest('hex');
-  const a = Buffer.from(signature ?? '');
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function stringValue(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+async function markEventProcessed(
+  supabase: SupabaseClient,
+  provider: string,
+  eventId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("webhook_events")
+    .update({ processed: true, processed_at: new Date().toISOString() })
+    .eq("provider", provider)
+    .eq("event_id", eventId)
+    .eq("processed", false)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) {
+    throw new Error("webhook_processing_state_update_failed");
+  }
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   const rawBody = await req.text();
-  const signature = req.headers.get('x-razorpay-signature') ?? '';
-  if (!verifySignature(rawBody, signature)) {
-    return new Response(JSON.stringify({ error: 'invalid_signature' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  const signature = req.headers.get("x-razorpay-signature") ?? "";
+  if (!verifyRazorpaySignature(rawBody, signature, RAZORPAY_WEBHOOK_SECRET)) {
+    return jsonResponse({ error: "invalid_signature" }, 400);
   }
 
-  const event = JSON.parse(rawBody);
-  const eventId: string = event.id ?? event.payload?.payment?.entity?.id ?? crypto.randomUUID();
-  const eventType: string = event.event ?? 'unknown';
+  let event: RazorpayWebhookEvent;
+  try {
+    event = JSON.parse(rawBody) as RazorpayWebhookEvent;
+  } catch (_) {
+    return jsonResponse({ error: "invalid_payload" }, 400);
+  }
+
+  const eventType = stringValue(event.event) ?? "unknown";
+  let eventId: string;
+  try {
+    eventId = deriveRazorpayEventId(
+      event,
+      eventType,
+      req.headers.get("x-razorpay-event-id"),
+    );
+  } catch (_) {
+    return jsonResponse({ error: "missing_event_identity" }, 400);
+  }
 
   const supabase: SupabaseClient = createClient(
     SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY,
   );
 
-  // Idempotency: register the event; skip if it was already handled.
-  const { data: registered, error: registerError } = await supabase.rpc('register_webhook_event', {
-    p_provider: 'razorpay',
-    p_event_id: eventId,
-    p_event_type: eventType,
-    p_payload: event,
-  });
-  if (registerError || registered == null) {
-    return new Response(JSON.stringify({ error: 'webhook_registration_failed' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  // Registration is a claim, not success. The row remains unprocessed until
+  // the operation below completes, so a failed delivery can be retried.
+  const { data: registered, error: registerError } = await supabase.rpc(
+    "register_webhook_event",
+    {
+      p_provider: "razorpay",
+      p_event_id: eventId,
+      p_event_type: eventType,
+      p_payload: event,
+    },
+  );
+  if (registerError) {
+    return jsonResponse({ error: "webhook_registration_failed" }, 500);
   }
   if (registered === false) {
-    return new Response(JSON.stringify({ status: 'duplicate' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ status: "duplicate" });
   }
 
-  const releaseEvent = async () => {
-    await supabase
-      .from('webhook_events')
-      .delete()
-      .eq('provider', 'razorpay')
-      .eq('event_id', eventId);
-  };
-
-  const markEventProcessed = async () => {
-    const { error } = await supabase
-      .from('webhook_events')
-      .update({ processed: true, processed_at: new Date().toISOString() })
-      .eq('provider', 'razorpay')
-      .eq('event_id', eventId);
-    return error;
-  };
-
-  // Only payment.captured confirms a booking. Payment.failed releases the hold.
-  if (eventType === 'payment.captured') {
+  try {
     const paymentEntity = event.payload?.payment?.entity;
-    const orderId = paymentEntity?.order_id;
-    const paymentId = paymentEntity?.id;
-    const providerAmount = Number(paymentEntity?.amount);
-    const providerCurrency = String(paymentEntity?.currency ?? '').toUpperCase();
-    if (!orderId || !paymentId || !Number.isFinite(providerAmount)) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'invalid_payment_payload' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const orderId = stringValue(paymentEntity?.order_id);
+    const paymentId = stringValue(paymentEntity?.id);
 
-    // Contact-access orders are intentionally separate from booking payments.
-    // They use the same verified webhook and Razorpay credentials, but never
-    // enter the booking lifecycle.
-    const { data: contactTransaction } = await supabase
-      .from('business_payment_transactions')
-      .select('id, customer_user_id, venue_id, field_key, pricing_feature_key, price_version, amount_minor, currency, status, entitlement_expires_at, reveal_limit')
-      .eq('provider_order_id', orderId)
-      .maybeSingle();
-    if (contactTransaction) {
-      if (providerCurrency !== String(contactTransaction.currency).toUpperCase() || providerAmount !== Number(contactTransaction.amount_minor)) {
-        await releaseEvent();
-        return new Response(JSON.stringify({ error: 'payment_amount_or_currency_mismatch' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (eventType === "payment.captured") {
+      if (!orderId || !paymentId) {
+        return jsonResponse({ error: "invalid_captured_payload" }, 400);
       }
-      if (contactTransaction.status === 'captured') {
-        await markEventProcessed();
-        return new Response(JSON.stringify({ status: 'already_captured' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      const providerAmountPaise = Number(paymentEntity?.amount);
+      if (!Number.isFinite(providerAmountPaise)) {
+        return jsonResponse({ error: "invalid_captured_amount" }, 400);
       }
-      const { error: entitlementError } = await supabase.from('contact_entitlements').upsert({
-        customer_user_id: contactTransaction.customer_user_id,
-        venue_id: contactTransaction.venue_id,
-        field_key: contactTransaction.field_key,
-        pricing_feature_key: contactTransaction.pricing_feature_key,
-        price_version: contactTransaction.price_version,
-        amount_minor: contactTransaction.amount_minor,
-        currency: contactTransaction.currency,
-        payment_id: null,
-        transaction_id: contactTransaction.id,
-        expires_at: contactTransaction.entitlement_expires_at,
-      }, { onConflict: 'customer_user_id,venue_id,field_key' });
-      if (entitlementError) {
-        await releaseEvent();
-        return new Response(JSON.stringify({ error: 'entitlement_failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      const { data: payment, error: paymentError } = await supabase
+        .from("payments")
+        .select("id, booking_id, user_id, amount, status")
+        .eq("provider_order_id", orderId)
+        .maybeSingle();
+      if (paymentError || !payment) {
+        return jsonResponse({ error: "payment_not_found" }, 404);
       }
-      const { error: transactionError } = await supabase.from('business_payment_transactions').update({ status: 'captured', provider_payment_id: paymentId, captured_at: new Date().toISOString() }).eq('id', contactTransaction.id).eq('status', 'pending');
-      if (transactionError) {
-        await releaseEvent();
-        return new Response(JSON.stringify({ error: 'transaction_update_failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      const expectedAmountPaise = Math.round(Number(payment.amount) * 100);
+      if (providerAmountPaise !== expectedAmountPaise) {
+        return jsonResponse({ error: "payment_amount_mismatch" }, 409);
       }
-      await markEventProcessed();
-      return new Response(JSON.stringify({ status: 'contact_entitlement_granted' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
 
-    // Registration payments share Razorpay verification but have their own
-    // lifecycle record; booking payment behavior below is unchanged.
-    const { data: registrationPayment } = await supabase
-      .from('module_registration_payments')
-      .select('id, submission_id, user_id, amount_minor, currency, status')
-      .eq('provider_order_id', orderId)
-      .maybeSingle();
-    if (registrationPayment) {
-      if (providerCurrency !== String(registrationPayment.currency).toUpperCase() ||
-          providerAmount !== Number(registrationPayment.amount_minor)) {
-        await releaseEvent();
-        return new Response(JSON.stringify({ error: 'payment_amount_or_currency_mismatch' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      // Persist the provider result with the service-role client before
+      // invoking the server-side booking lifecycle RPC.
+      const { error: paymentUpdateError } = await supabase
+        .from("payments")
+        .update({ status: "captured", provider_payment_id: paymentId })
+        .eq("id", payment.id);
+      if (paymentUpdateError) {
+        return jsonResponse({ error: "payment_update_failed" }, 500);
       }
-      if (registrationPayment.status === 'paid') {
-        await markEventProcessed();
-        return new Response(JSON.stringify({ status: 'already_paid' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      const { data: confirmation, error: confirmationError } = await supabase
+        .rpc(
+          "confirm_venue_booking",
+          confirmationRpcArgs({
+            bookingId: payment.booking_id,
+            userId: payment.user_id,
+            paymentId,
+          }),
+        );
+      if (confirmationError) {
+        return jsonResponse({ error: "booking_confirmation_failed" }, 409);
       }
-      const { error: registrationUpdateError } = await supabase
-        .from('module_registration_payments')
-        .update({ status: 'paid', provider_payment_id: paymentId, updated_at: new Date().toISOString() })
-        .eq('id', registrationPayment.id)
-        .in('status', ['pending', 'processing']);
-      if (registrationUpdateError) {
-        await releaseEvent();
-        return new Response(JSON.stringify({ error: 'registration_payment_update_failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (
+        !confirmation ||
+        typeof confirmation !== "object" ||
+        (confirmation as { success?: unknown }).success !== true
+      ) {
+        return jsonResponse({ error: "booking_confirmation_rejected" }, 409);
       }
-      const recipient = await userEmail(supabase, registrationPayment.user_id);
-      if (recipient) await enqueueEmail(supabase, {
-        eventKey: `registration.payment_success.customer.${registrationPayment.submission_id}`,
-        eventType: 'registration.payment_success',
-        recipientEmail: recipient.email,
-        recipientName: recipient.name,
-        paymentId: registrationPayment.id,
-        templateName: 'payment-receipt',
-        payload: { registration_id: registrationPayment.submission_id, amount_minor: registrationPayment.amount_minor, currency: registrationPayment.currency },
-      });
-      const processedError = await markEventProcessed();
-      if (processedError) { await releaseEvent(); return new Response(JSON.stringify({ error: 'webhook_state_failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
-      return new Response(JSON.stringify({ status: 'registration_paid' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      await markEventProcessed(supabase, "razorpay", eventId);
+      return jsonResponse({ status: "confirmed" });
     }
 
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('id, booking_id, amount, currency, status, provider_payment_id')
-      .eq('provider_order_id', orderId)
-      .maybeSingle();
-    if (paymentError || !payment) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'payment_not_found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (eventType === "payment.authorized" || eventType === "order.paid") {
+      // Booking confirmation is owned by payment.captured only. These events
+      // are recorded independently so they cannot duplicate a booking.
+      await markEventProcessed(supabase, "razorpay", eventId);
+      return jsonResponse({
+        status: eventType === "order.paid"
+          ? "recorded_order_paid"
+          : "recorded_authorized",
       });
     }
 
-    if (
-      providerCurrency !== String(payment.currency ?? '').toUpperCase() ||
-      providerAmount !== Math.round(Number(payment.amount) * 100)
-    ) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'payment_amount_or_currency_mismatch' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (payment.status === 'captured') {
-      const processedError = await markEventProcessed();
-      if (processedError) {
-        await releaseEvent();
-        return new Response(JSON.stringify({ error: 'webhook_state_failed' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    if (eventType === "payment.failed") {
+      if (!orderId) {
+        return jsonResponse({ error: "invalid_failed_payload" }, 400);
       }
-      return new Response(JSON.stringify({ status: 'already_captured' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select('status, user_id, booking_ref, total_amount, venue_id')
-      .eq('id', payment.booking_id)
-      .single();
-    if (bookingError || !booking) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'booking_not_found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { error: paymentUpdateError } = await supabase
-      .from('payments')
-      .update({ status: 'captured', provider_payment_id: paymentId })
-      .eq('id', payment.id);
-    if (paymentUpdateError) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'payment_update_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Verified-fix: previously this handler updated `payments` only and
-    // returned the string 'pending_owner_approval' without ever writing it
-    // to `bookings.status`. The booking's real status never advanced, so
-    // the owner-approval queue never received it even though the customer
-    // and owner were told the booking was confirmed. This update is the
-    // actual state transition; `.eq('status', 'pending')` keeps it
-    // idempotent against webhook redelivery. A 23P01 here means the
-    // bookings_no_overlap exclusion constraint rejected the transition
-    // because another booking already occupies this slot in
-    // pending_owner_approval/confirmed — acquire_booking_hold should have
-    // prevented this upstream, so treat it as a conflict needing manual
-    // reconciliation rather than silently continuing.
-    const { error: bookingStatusError } = await supabase
-      .from('bookings')
-      .update({ status: 'pending_owner_approval' })
-      .eq('id', payment.booking_id)
-      .eq('status', 'pending');
-    if (bookingStatusError) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'booking_status_conflict', detail: bookingStatusError.message }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const customer = await userEmail(supabase, booking.user_id);
-    if (customer) {
-      await enqueueEmail(supabase, {
-        eventKey: `booking.pending_owner_approval.customer.${payment.booking_id}`,
-        eventType: 'booking.pending_owner_approval',
-        recipientEmail: customer.email,
-        recipientName: customer.name,
-        bookingId: payment.booking_id,
-        paymentId: payment.id,
-        templateName: 'booking-pending-owner-approval',
-        payload: { title: 'Payment received — awaiting venue approval', message: 'Your payment was verified. The venue owner will approve or reject this booking shortly.', booking_ref: booking.booking_ref, amount: booking.total_amount },
-      });
-      await enqueueEmail(supabase, {
-        eventKey: `payment.receipt.customer.${payment.id}`,
-        eventType: 'payment.receipt',
-        recipientEmail: customer.email,
-        recipientName: customer.name,
-        bookingId: payment.booking_id,
-        paymentId: payment.id,
-        templateName: 'payment-receipt',
-        payload: { title: 'Payment receipt', message: 'Your Razorpay payment was received.', booking_ref: booking.booking_ref, amount: booking.total_amount },
-      });
-    }
-    const { data: venue } = await supabase.from('venues').select('org_id').eq('id', booking.venue_id).maybeSingle();
-    if (venue?.org_id) {
-      const { data: organization } = await supabase.from('organizations').select('owner_user_id').eq('id', venue.org_id).maybeSingle();
-      if (organization?.owner_user_id) {
-        const owner = await userEmail(supabase, organization.owner_user_id);
-        if (owner) await enqueueEmail(supabase, {
-          eventKey: `booking.awaiting_approval.owner.${payment.booking_id}`,
-          eventType: 'booking.awaiting_approval',
-          recipientEmail: owner.email,
-          recipientName: owner.name,
-          bookingId: payment.booking_id,
-          paymentId: payment.id,
-          templateName: 'owner-booking-awaiting-approval',
-          payload: { title: 'New booking awaiting your approval', message: 'A customer has paid the booking token. Approve or reject it from your dashboard.', booking_ref: booking.booking_ref, amount: booking.total_amount },
-        });
+      const { data: payment, error: paymentError } = await supabase
+        .from("payments")
+        .select("id, status")
+        .eq("provider_order_id", orderId)
+        .maybeSingle();
+      if (paymentError || !payment) {
+        return jsonResponse({ error: "payment_not_found" }, 404);
       }
+
+      // A late failure notification must never downgrade a captured payment.
+      if (payment.status !== "captured") {
+        const { error: paymentUpdateError } = await supabase
+          .from("payments")
+          .update({ status: "failed" })
+          .eq("id", payment.id);
+        if (paymentUpdateError) {
+          return jsonResponse({ error: "payment_update_failed" }, 500);
+        }
+      }
+
+      await markEventProcessed(supabase, "razorpay", eventId);
+      return jsonResponse({ status: "recorded_failed" });
     }
 
-    const { data: confirmedBooking } = await supabase
-      .from('bookings')
-      .select('user_id, booking_ref')
-      .eq('id', payment.booking_id)
-      .maybeSingle();
-    if (confirmedBooking?.user_id) {
-      await supabase.from('notifications').insert({
-        user_id: confirmedBooking.user_id,
-        title: 'Payment received',
-        body: `Your payment for booking ${confirmedBooking.booking_ref ?? ''} was received. Awaiting venue approval.`,
-        type: 'payment_received',
-        data: { booking_id: payment.booking_id },
+    if (eventType === "refund.processed" || eventType === "refund.failed") {
+      // Refund-side authority: this is the confirmation source for whether
+      // a refund actually landed. See apply_refund_result() — it is the
+      // only place that moves payments.status to a refunded value, and it
+      // is idempotent/monotonic (a later 'failed' cannot downgrade an
+      // already-'processed' refund, and a repeat delivery of the same
+      // outcome is a no-op), so replayed/duplicate webhook deliveries are
+      // safe by construction.
+      const refundEntity = extractRefundEntity(event);
+      if (!refundEntity.paymentId) {
+        return jsonResponse({ error: "invalid_refund_payload" }, 400);
+      }
+
+      let refundRowId: string | undefined;
+
+      if (refundEntity.id) {
+        const { data } = await supabase
+          .from("refunds")
+          .select("id")
+          .eq("provider_refund_id", refundEntity.id)
+          .maybeSingle();
+        refundRowId = data?.id;
+      }
+
+      if (!refundRowId) {
+        const { data: payment } = await supabase
+          .from("payments")
+          .select("id")
+          .eq("provider_payment_id", refundEntity.paymentId)
+          .maybeSingle();
+        if (payment) {
+          const { data } = await supabase
+            .from("refunds")
+            .select("id")
+            .eq("payment_id", payment.id)
+            .neq("status", "failed")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          refundRowId = data?.id;
+        }
+      }
+
+      if (!refundRowId) {
+        // Nothing in our DB is (still) waiting on this refund — e.g. the
+        // DB-intent row hasn't been created yet, or was already resolved.
+        // Recording the event without acting is safe; there is nothing to
+        // reconcile against. Visible via the webhook_events row itself for
+        // support follow-up if this recurs unexpectedly.
+        await markEventProcessed(supabase, "razorpay", eventId);
+        return jsonResponse({ status: "no_matching_refund" });
+      }
+
+      const { error: applyError } = await supabase.rpc("apply_refund_result", {
+        p_refund_id: refundRowId,
+        p_provider_refund_id: refundEntity.id ?? null,
+        p_status: eventType === "refund.processed" ? "processed" : "failed",
+        p_failure_reason: eventType === "refund.failed"
+          ? "razorpay_refund_failed_webhook"
+          : null,
+      });
+      if (applyError) {
+        return jsonResponse({ error: "refund_apply_failed" }, 500);
+      }
+
+      await markEventProcessed(supabase, "razorpay", eventId);
+      return jsonResponse({
+        status: eventType === "refund.processed" ? "refund_processed" : "refund_failed",
       });
     }
 
-    const processedError = await markEventProcessed();
-    if (processedError) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'webhook_state_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ status: 'pending_owner_approval' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // Other notifications are recorded independently and marked processed
+    // without confirming a booking or refund.
+    await markEventProcessed(supabase, "razorpay", eventId);
+    return jsonResponse({ status: "ignored" });
+  } catch (_) {
+    // The event row intentionally remains processed=false. The provider can
+    // retry the event, and all business updates above are idempotent.
+    return jsonResponse({ error: "webhook_processing_failed" }, 500);
   }
-
-  if (eventType === 'payment.failed') {
-    // Mark payment failed; the reconciliation job / hold expiry frees the slot.
-    const { error: failedPaymentError } = await supabase
-      .from('payments')
-      .update({ status: 'failed' })
-      .eq('provider_order_id', event.payload?.payment?.entity?.order_id ?? '');
-    if (failedPaymentError) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'payment_update_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const processedError = await markEventProcessed();
-    if (processedError) {
-      await releaseEvent();
-      return new Response(JSON.stringify({ error: 'webhook_state_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    return new Response(JSON.stringify({ status: 'recorded_failed' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  if (eventType === 'refund.created' || eventType === 'refund.processed') {
-    const paymentId = event.payload?.refund?.entity?.payment_id;
-    if (paymentId) {
-      const { data: tx } = await supabase.from('business_payment_transactions').select('id').eq('provider_payment_id', paymentId).maybeSingle();
-      if (tx) {
-        await supabase.from('business_payment_transactions').update({ status: 'refunded' }).eq('id', tx.id);
-        await supabase.from('contact_entitlements').update({ expires_at: new Date().toISOString() }).eq('transaction_id', tx.id);
-      }
-    }
-    const processedError = await markEventProcessed();
-    if (processedError) { await releaseEvent(); return new Response(JSON.stringify({ error: 'webhook_state_failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
-    return new Response(JSON.stringify({ status: 'refund_recorded' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-
-  return new Response(JSON.stringify({ status: 'ignored' }), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
 });

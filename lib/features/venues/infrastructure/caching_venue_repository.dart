@@ -1,6 +1,7 @@
 import '../../../core/offline/offline_cache.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
+import '../domain/listing_template.dart';
 
 /// Read-through cache around a live [VenueRepository].
 ///
@@ -18,7 +19,8 @@ class CachingVenueRepository implements VenueRepository {
       : 'venues.favorites.$cacheScope';
 
   @override
-  Future<List<VenueCategory>> categories() => _inner.categories();
+  Future<List<VenueCategory>> categories({bool activeOnly = false}) =>
+      _inner.categories(activeOnly: activeOnly);
 
   @override
   Future<List<Venue>> popularVenues({int limit = 10}) {
@@ -72,4 +74,82 @@ class CachingVenueRepository implements VenueRepository {
 
   @override
   Future<void> removeFavorite(String venueId) => _inner.removeFavorite(venueId);
+
+  // Delegates for BookingRepository/VenueRepository members added by the
+  // main lineage (no offline caching for these yet).
+  @override
+  Future<VenueCategory> getCategory(String id) =>
+      _inner.getCategory(id);
+
+  @override
+  Future<VenueCategory> addCategory({ required String name, required String slug, String? icon, String? parentSection, bool isActive = true, ListingTemplateConfig? listingConfig = null, }) =>
+      _inner.addCategory(name: name, slug: slug, icon: icon, parentSection: parentSection, isActive: isActive, listingConfig: listingConfig);
+
+  @override
+  Future<VenueCategory> updateCategory(VenueCategory category) =>
+      _inner.updateCategory(category);
+
+  @override
+  Future<void> setCategoryActive(String categoryId, bool isActive) =>
+      _inner.setCategoryActive(categoryId, isActive);
+
+  @override
+  Stream<List<VenueCategory>> categoryStream({bool activeOnly = false}) =>
+      _inner.categoryStream(activeOnly: activeOnly);
+
+  @override
+  Future<List<VenueSubsection>> subsections( String categoryId, { bool activeOnly = false, }) =>
+      _inner.subsections(categoryId, activeOnly: activeOnly);
+
+  @override
+  Stream<List<VenueSubsection>> subsectionStream( String categoryId, { bool activeOnly = false, }) =>
+      _inner.subsectionStream(categoryId, activeOnly: activeOnly);
+
+  @override
+  Stream<List<VenueSubsection>> subsectionCatalogStream({ bool activeOnly = true, }) =>
+      _inner.subsectionCatalogStream(activeOnly: activeOnly);
+
+  @override
+  Future<VenueSubsection> addSubsection({ required String categoryId, required String name, required String slug, String? icon, String description = '', String? imageUrl, String? imagePath, bool isActive = true, int displayOrder = 0, List<String> supportedLanguages = const ['en'], Map<String, String> nameTranslations = const {}, Map<String, String> descriptionTranslations = const {}, }) =>
+      _inner.addSubsection(categoryId: categoryId, name: name, slug: slug, icon: icon, description: description, imageUrl: imageUrl, imagePath: imagePath, isActive: isActive, displayOrder: displayOrder, supportedLanguages: supportedLanguages, nameTranslations: nameTranslations, descriptionTranslations: descriptionTranslations);
+
+  @override
+  Future<VenueSubsection> updateSubsection(VenueSubsection subsection) =>
+      _inner.updateSubsection(subsection);
+
+  @override
+  Future<void> deleteCategory(String categoryId) =>
+      _inner.deleteCategory(categoryId);
+
+  @override
+  Future<void> deleteSubsection(String subsectionId) =>
+      _inner.deleteSubsection(subsectionId);
+
+  @override
+  Future<void> reorderCategories(List<String> categoryIds) =>
+      _inner.reorderCategories(categoryIds);
+
+  @override
+  Future<void> reorderSubsections( String categoryId, List<String> subsectionIds, ) =>
+      _inner.reorderSubsections(categoryId, subsectionIds);
+
+  @override
+  Future<VenueCategory> uploadCategoryImage({ required VenueCategory category, required List<int> bytes, required String extension, }) =>
+      _inner.uploadCategoryImage(category: category, bytes: bytes, extension: extension);
+
+  @override
+  Future<void> removeCategoryImage(VenueCategory category) =>
+      _inner.removeCategoryImage(category);
+
+  @override
+  Future<VenueSubsection> uploadSubsectionImage({ required VenueSubsection subsection, required List<int> bytes, required String extension, }) =>
+      _inner.uploadSubsectionImage(subsection: subsection, bytes: bytes, extension: extension);
+
+  @override
+  Future<void> removeSubsectionImage(VenueSubsection subsection) =>
+      _inner.removeSubsectionImage(subsection);
+
+  @override
+  Future<List<String>> listedCities() =>
+      _inner.listedCities();
 }

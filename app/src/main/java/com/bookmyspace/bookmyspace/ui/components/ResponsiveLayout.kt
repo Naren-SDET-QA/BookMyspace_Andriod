@@ -58,7 +58,7 @@ fun calculateResponsiveDimensions(width: Dp): ResponsiveDimensions {
         isMedium = isMedium,
         isExpanded = isExpanded,
         isTabletOrWide = isTabletOrWide,
-        categoryGridColumns = if (isCompact) 1 else 2,
+        categoryGridColumns = if (isCompact) 2 else if (isMedium) 3 else 4,
         resultsGridColumns = if (isCompact) 1 else if (isMedium) 2 else 2,
         horizontalPadding = if (isCompact) 20.dp else if (isMedium) 28.dp else 36.dp,
         gridSpacing = if (isCompact) 12.dp else 16.dp,

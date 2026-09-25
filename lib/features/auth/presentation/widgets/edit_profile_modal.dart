@@ -172,7 +172,10 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: theme.colorScheme.primaryContainer,
-                        border: Border.all(color: AppTheme.brand, width: 2.5),
+                        border: Border.all(
+                          color: AppTheme.violet,
+                          width: 2.5,
+                        ),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: activeAvatar.isNotEmpty
@@ -199,7 +202,7 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(
-                          color: AppTheme.brand,
+                          color: AppTheme.violet,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -318,7 +321,7 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                               AppNetworkImage(url: url, fit: BoxFit.cover),
                               if (isSelected)
                                 Container(
-                                  color: AppTheme.brand.withValues(alpha: 0.3),
+                                  color: AppTheme.violet.withValues(alpha: 0.3),
                                   child: const Icon(
                                     Icons.check_rounded,
                                     color: Colors.white,
@@ -367,7 +370,7 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  backgroundColor: AppTheme.brand,
+                  backgroundColor: AppTheme.violet,
                 ),
                 child: _isSaving
                     ? const SizedBox(

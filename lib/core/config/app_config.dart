@@ -118,6 +118,12 @@ class AppConfig {
   static const String _oneSignalAppIdDefine = String.fromEnvironment(
     'ONESIGNAL_APP_ID',
   );
+  static const String _supabasePublishableKeyDefine =
+      String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  static const String _developmentOtpEnabledDefine =
+      String.fromEnvironment('BMS_DEV_OTP_ENABLED');
+  static const String _uiTestModeDefine =
+      String.fromEnvironment('BMS_UI_TEST_MODE');
 
   static AppEnvironment get environment => AppEnvironment.current;
 
@@ -133,9 +139,11 @@ class AppConfig {
   static String get supabaseUrl => _supabaseUrlDefine.isNotEmpty
       ? _supabaseUrlDefine
       : environment.supabaseUrl;
-  static String get supabaseAnonKey => _supabaseAnonKeyDefine.isNotEmpty
-      ? _supabaseAnonKeyDefine
-      : environment.supabaseAnonKey;
+  static String get supabaseAnonKey => _supabasePublishableKeyDefine.isNotEmpty
+      ? _supabasePublishableKeyDefine
+      : (_supabaseAnonKeyDefine.isNotEmpty
+          ? _supabaseAnonKeyDefine
+          : environment.supabaseAnonKey);
   static String get razorpayKeyId {
     final testKey = _razorpayTestKeyIdDefine.isNotEmpty
         ? _razorpayTestKeyIdDefine
@@ -153,6 +161,11 @@ class AppConfig {
   static String get apiBaseUrl {
     if (_apiBaseUrlDefine.isNotEmpty) return _apiBaseUrlDefine;
     if (environment == AppEnvironment.local) return environment.apiBaseUrl;
+    if (isPlaceholderSupabaseHost ||
+        !(supabaseUrl.startsWith('https://') ||
+            supabaseUrl.startsWith('http://'))) {
+      return environment.apiBaseUrl;
+    }
     return '${supabaseUrl.replaceFirst(RegExp(r'/$'), '')}/functions/v1';
   }
   static String get devTestEmail => _devTestEmailDefine;
@@ -192,6 +205,47 @@ class AppConfig {
 
   static String get appName => 'BookMySpace';
 
+  /// Host-only view of [supabaseUrl] for diagnostics. Never includes keys.
+  static String get supabaseHost {
+    final parsed = Uri.tryParse(supabaseUrl);
+    if (parsed != null && parsed.host.isNotEmpty) return parsed.host;
+    return '';
+  }
+
+  /// True when the compile-time URL is still the source placeholder.
+  ///
+  /// DNS lowercases this to `your_project.supabase.co`, which is the failed
+  /// host lookup seen when `--dart-define-from-file` is missing.
+  static bool get isPlaceholderSupabaseHost =>
+      isPlaceholderSupabaseHostFor(supabaseUrl);
+
+  static bool isPlaceholderSupabaseHostFor(String url) {
+    final host = (Uri.tryParse(url)?.host ?? url).toLowerCase();
+    return host.contains('your_project') ||
+        host.endsWith('.invalid') ||
+        host.contains('configure-supabase-url');
+  }
+
+  /// Whether the app has real Supabase runtime configuration rather than the
+  /// safe placeholders used by source-control examples and local tests.
+  static bool get isSupabaseConfigured {
+    const placeholderKeys = {
+      'LOCAL_ANON_KEY',
+      'DEV_ANON_KEY',
+      'TEST_ANON_KEY',
+      'STAGING_ANON_KEY',
+      'PROD_ANON_KEY',
+      'SUPABASE_ANON_KEY_REQUIRED',
+    };
+    // Example files use "<prefix>_dev_key" style placeholders.
+    final isExampleKey = supabaseAnonKey.endsWith('_dev_key');
+    return (supabaseUrl.startsWith('https://') ||
+            supabaseUrl.startsWith('http://')) &&
+        !isPlaceholderSupabaseHost &&
+        !isExampleKey &&
+        !placeholderKeys.contains(supabaseAnonKey);
+  }
+
   /// Environment helpers
   static bool get isDevelopment =>
       environment == AppEnvironment.development ||
@@ -206,9 +260,60 @@ class AppConfig {
       environment == AppEnvironment.testing;
   static bool get isRazorpayTestMode => razorpayKeyId.startsWith('rzp_test_');
 
+  /// Enables the temporary phone OTP only for local debug development builds.
+  ///
+  /// A configured Supabase development build uses real phone OTP by default.
+  /// The temporary provider remains available for local builds without real
+  /// Supabase configuration, or when explicitly enabled for an isolated test.
+  /// The compile-time flag can disable it, but it can never enable it in
+  /// profile or release builds because [debugMode] is checked first.
+  static bool get isTemporaryDevelopmentPhoneOtpEnabled =>
+      isTemporaryDevelopmentPhoneOtpEnabledFor(
+        debugMode: kDebugMode,
+        development: isDevelopment,
+        flag: _developmentOtpEnabledDefine,
+        supabaseConfigured: isSupabaseConfigured,
+      );
+
+  static bool isTemporaryDevelopmentPhoneOtpEnabledFor({
+    required bool debugMode,
+    required bool development,
+    required String flag,
+    bool supabaseConfigured = false,
+  }) {
+    if (!debugMode || !development || supabaseConfigured) return false;
+
+    final normalizedFlag = flag.trim().toLowerCase();
+    if (normalizedFlag == 'false') return false;
+    if (normalizedFlag == 'true') return true;
+
+    return !supabaseConfigured;
+  }
+
+  /// Opens protected screens for visual/interaction testing without creating
+  /// an authenticated session or changing any repository behavior.
+  ///
+  /// This is deliberately limited to debug development builds. It cannot be
+  /// enabled in profile or release builds, even if the dart-define is passed.
+  static bool get isUiTestMode => isUiTestModeFor(
+        debugMode: kDebugMode,
+        development: isDevelopment,
+        flag: _uiTestModeDefine,
+      );
+
+  static bool isUiTestModeFor({
+    required bool debugMode,
+    required bool development,
+    required String flag,
+  }) =>
+      debugMode && development && flag.trim().toLowerCase() == 'true';
+
   /// Safe diagnostic summary of active environment settings (no sensitive keys exposed).
-  static Map<String, dynamic> get environmentSummary =>
-      activeEnv.toSummaryMap();
+  static Map<String, dynamic> get environmentSummary => {
+        ...activeEnv.toSummaryMap(),
+        'placeholderHost': isPlaceholderSupabaseHost,
+        'supabaseConfigured': isSupabaseConfigured,
+      };
 
   /// Booking hold duration before automatic expiry (server enforced too).
   static const Duration bookingHoldDuration = Duration(minutes: 10);

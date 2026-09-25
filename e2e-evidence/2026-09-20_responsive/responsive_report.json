@@ -1,0 +1,144 @@
+{
+  "appUrl": "http://127.0.0.1:8099",
+  "venueId": "8f3e8c12-7df3-4b59-9c47-2a0b9f1d6e31",
+  "widths": {
+    "320": {
+      "width": 320,
+      "checks": {
+        "onDetailRoute": true,
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": true,
+        "call": false,
+        "chat": true,
+        "about": true,
+        "keySpecs": true,
+        "cancellation": false,
+        "facilities": true,
+        "rating": true,
+        "price": true,
+        "assurance": false,
+        "addressOrMap": false,
+        "reviews": false,
+        "bookingSummary": "n/a"
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "error": null,
+      "loginHash": "#/home",
+      "textSample": "Back Saved Venues DEV Data Driven Hall 11 Verified 4.7 (88) HITEC City Main Road ₹42,000 About this venue A data-only DEV venue proof using the existing generic discovery and booking pipeline. Key specifications Capacity 750 Parking 120 vehicles Catering Catering available Amenities Operating Hours Mon 08:00:00 – 23:00:00 Tue 08:00:00 – 23:00:00 We"
+    },
+    "375": {
+      "width": 375,
+      "checks": {
+        "onDetailRoute": true,
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": true,
+        "call": false,
+        "chat": true,
+        "about": true,
+        "keySpecs": true,
+        "cancellation": false,
+        "facilities": true,
+        "rating": true,
+        "price": true,
+        "assurance": false,
+        "addressOrMap": false,
+        "reviews": false,
+        "bookingSummary": "n/a"
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "error": null,
+      "loginHash": "#/home",
+      "textSample": "Back Saved Venues DEV Data Driven Hall 11 Verified 4.7 (88) HITEC City Main Road ₹42,000 About this venue A data-only DEV venue proof using the existing generic discovery and booking pipeline. Key specifications Capacity 750 Parking 120 vehicles Catering Catering available Amenities Operating Hours Mon 08:00:00 – 23:00:00 Tue 08:00:00 – 23:00:00 We"
+    },
+    "390": {
+      "width": 390,
+      "checks": {
+        "onDetailRoute": true,
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": true,
+        "call": false,
+        "chat": true,
+        "about": true,
+        "keySpecs": true,
+        "cancellation": false,
+        "facilities": true,
+        "rating": true,
+        "price": true,
+        "assurance": false,
+        "addressOrMap": false,
+        "reviews": false,
+        "bookingSummary": "n/a"
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "error": null,
+      "loginHash": "#/home",
+      "textSample": "Back Saved Venues DEV Data Driven Hall 11 Verified 4.7 (88) HITEC City Main Road ₹42,000 About this venue A data-only DEV venue proof using the existing generic discovery and booking pipeline. Key specifications Capacity 750 Parking 120 vehicles Catering Catering available Amenities Operating Hours Mon 08:00:00 – 23:00:00 Tue 08:00:00 – 23:00:00 We"
+    },
+    "430": {
+      "width": 430,
+      "checks": {
+        "onDetailRoute": true,
+        "back": true,
+        "bookCta": true,
+        "availabilityCta": true,
+        "call": false,
+        "chat": true,
+        "about": true,
+        "keySpecs": true,
+        "cancellation": false,
+        "facilities": true,
+        "rating": true,
+        "price": true,
+        "assurance": false,
+        "addressOrMap": false,
+        "reviews": false,
+        "bookingSummary": "n/a"
+      },
+      "screenshots": [
+        "home.png",
+        "detail.png"
+      ],
+      "error": null,
+      "loginHash": "#/home",
+      "textSample": "Back Saved Venues DEV Data Driven Hall 11 Verified 4.7 (88) HITEC City Main Road ₹42,000 About this venue A data-only DEV venue proof using the existing generic discovery and booking pipeline. Key specifications Capacity 750 Parking 120 vehicles Catering Catering available Amenities Operating Hours Mon 08:00:00 – 23:00:00 Tue 08:00:00 – 23:00:00 We"
+    },
+    "768": {
+      "width": 768,
+      "checks": {},
+      "screenshots": [],
+      "error": "Error: login: mapped inputs=0 buttons=0"
+    },
+    "1024": {
+      "width": 1024,
+      "checks": {},
+      "screenshots": [],
+      "error": "Error: login: mapped inputs=0 buttons=0"
+    },
+    "1280": {
+      "width": 1280,
+      "checks": {},
+      "screenshots": [],
+      "error": "Error: login: mapped inputs=0 buttons=0"
+    },
+    "1440": {
+      "width": 1440,
+      "checks": {},
+      "screenshots": [],
+      "error": "Error: login: mapped inputs=0 buttons=0"
+    }
+  },
+  "startedAt": "2026-09-20T15:27:04.450Z",
+  "finishedAt": "2026-09-20T15:30:04.237Z"
+}

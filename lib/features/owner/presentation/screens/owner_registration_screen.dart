@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../domain/registration_field_config.dart';
 import '../owner_providers.dart';
 
-/// Owner registration form with Supabase email OTP verification.
+/// Owner registration form. Role assignment happens in the backend RPC
+/// `complete_owner_registration`; this screen never writes `user_roles`.
 class OwnerRegistrationScreen extends ConsumerStatefulWidget {
   const OwnerRegistrationScreen({super.key});
 
@@ -16,107 +17,95 @@ class OwnerRegistrationScreen extends ConsumerStatefulWidget {
 
 class _OwnerRegistrationScreenState
     extends ConsumerState<OwnerRegistrationScreen> {
-  // createOwnerProvider remains registered for backward-compatible callers;
-  // this screen uses the OTP methods on the same Supabase owner repository.
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
-  final _otpController = TextEditingController();
-  bool _otpSent = false;
-  bool _busy = false;
-  final Map<String, TextEditingController> _dynamicControllers = {};
-  final Map<String, String> _dynamicValues = {};
-  List<RegistrationFieldConfig> _configs = const [];
+  final _passwordController = TextEditingController();
+  final _legalNameController = TextEditingController();
+  final _gstinController = TextEditingController();
+  final _panController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _submitting = false;
+  String? _error;
 
   @override
   void dispose() {
     _emailController.dispose();
     _nameController.dispose();
-    _otpController.dispose();
-    for (final controller in _dynamicControllers.values) {
-      controller.dispose();
-    }
+    _passwordController.dispose();
+    _legalNameController.dispose();
+    _gstinController.dispose();
+    _panController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
     final l10n = AppLocalizations.of(context);
-    if (mounted) setState(() => _busy = true);
-    final missing = _configs.where((field) {
-      if (!field.required) return false;
-      final value =
-          _dynamicValues[field.key] ??
-          _dynamicControllers[field.key]?.text.trim() ??
-          '';
-      return value.isEmpty;
-    }).toList();
-    if (_emailController.text.trim().isEmpty ||
-        _nameController.text.trim().isEmpty ||
-        missing.isNotEmpty) {
-      if (mounted) setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please complete all required fields.')),
-      );
+    final email = _emailController.text.trim();
+    final name = _nameController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = l10n.errorInvalidEmail);
       return;
     }
-    try {
-      final repository = ref.read(ownerRepositoryProvider);
-      if (!_otpSent) {
-        await repository.requestOwnerOtp(
-          _emailController.text,
-          _nameController.text,
-        );
-        if (mounted) setState(() => _otpSent = true);
-        return;
-      }
-      if (!RegExp(r'^\d{6}$').hasMatch(_otpController.text.trim())) {
-        throw const FormatException('Enter the 6-digit verification code.');
-      }
-      await repository.verifyOwnerOtp(
-        email: _emailController.text,
-        name: _nameController.text,
-        token: _otpController.text,
-      );
-      final values = <String, String>{
-        for (final entry in _dynamicControllers.entries)
-          entry.key: entry.value.text.trim(),
-        ..._dynamicValues,
-      };
-      if (values.isNotEmpty) {
-        await ref
-            .read(registrationConfigRepositoryProvider)
-            .saveOwnerValues(values);
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.signUp)));
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l10n.errorInvalidEmail} ${e.toString()}')),
-        );
-      }
+    if (name.isEmpty || password.length < 8) {
+      setState(() => _error = l10n.errorInvalidEmail);
+      return;
     }
-    if (mounted) setState(() => _busy = false);
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await ref.read(ownerRepositoryProvider).createOwner(
+            email: email,
+            name: name,
+            password: password,
+            legalName: _legalNameController.text,
+            gstin: _gstinController.text,
+            pan: _panController.text,
+            city: _cityController.text,
+            state: _stateController.text,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.verificationSubmitted)),
+      );
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      final mapped = mapError(error);
+      setState(() {
+        _submitting = false;
+        _error = mapped.message;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final fields = ref.watch(ownerRegistrationFieldsProvider);
-
     return Scaffold(
       appBar: AppBar(title: Text(l10n.signUp)),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
           children: [
+            Text(
+              l10n.ownerRegistrationSubtitle,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _emailController,
-              enabled: !_otpSent && !_busy,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
               decoration: InputDecoration(
                 labelText: l10n.email,
                 border: const OutlineInputBorder(),
@@ -125,129 +114,91 @@ class _OwnerRegistrationScreenState
             const SizedBox(height: 16),
             TextField(
               controller: _nameController,
+              textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
                 labelText: l10n.name,
                 border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
-            if (_otpSent) ...[
-              TextField(
-                controller: _otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: const InputDecoration(
-                  labelText: '6-digit verification code',
-                  border: OutlineInputBorder(),
-                  counterText: '',
+            TextField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                labelText: l10n.password,
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-            fields.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: LinearProgressIndicator(),
-              ),
-              error: (error, _) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text('Additional fields unavailable: $error'),
-              ),
-              data: (configs) {
-                _configs = configs;
-                return Column(
-                  children: [
-                    for (final field in configs.where(
-                      (field) =>
-                          field.key != 'owner_name' && field.key != 'email',
-                    ))
-                      _dynamicField(field),
-                  ],
-                );
-              },
             ),
             const SizedBox(height: 24),
+            Text(l10n.legalName, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _legalNameController,
+              decoration: InputDecoration(
+                labelText: l10n.legalName,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _gstinController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                labelText: l10n.gstin,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _panController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                labelText: l10n.pan,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _cityController,
+              decoration: InputDecoration(
+                labelText: l10n.city,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _stateController,
+              decoration: InputDecoration(
+                labelText: l10n.state,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            const SizedBox(height: 24),
             FilledButton(
-              onPressed: _busy ? null : _register,
-              child: Text(_busy ? l10n.loading : (_otpSent ? 'Verify & create owner' : 'Send verification code')),
+              onPressed: _submitting ? null : _register,
+              child: Text(_submitting ? l10n.loading : l10n.signUp),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.verificationPending,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _dynamicField(RegistrationFieldConfig config) {
-    if (config.type == RegistrationFieldType.boolean) {
-      return SwitchListTile(
-        title: Text('${config.label}${config.required ? ' *' : ''}'),
-        subtitle: config.helpText == null ? null : Text(config.helpText!),
-        value: _dynamicValues[config.key] == 'true',
-        onChanged: (value) => setState(() {
-          _dynamicValues[config.key] = value.toString();
-        }),
-      );
-    }
-    if (config.type == RegistrationFieldType.dropdown &&
-        config.options.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: DropdownButtonFormField<String>(
-          value: _dynamicValues[config.key],
-          decoration: InputDecoration(
-            labelText: '${config.label}${config.required ? ' *' : ''}',
-            helperText: config.helpText,
-            border: const OutlineInputBorder(),
-          ),
-          items: [
-            for (final option in config.options)
-              DropdownMenuItem(value: option, child: Text(option)),
-          ],
-          onChanged: (value) => setState(() {
-            if (value == null) {
-              _dynamicValues.remove(config.key);
-            } else {
-              _dynamicValues[config.key] = value;
-            }
-          }),
-        ),
-      );
-    }
-    final controller = _dynamicControllers.putIfAbsent(
-      config.key,
-      TextEditingController.new,
-    );
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: controller,
-        readOnly: config.type == RegistrationFieldType.date,
-        onTap: config.type == RegistrationFieldType.date
-            ? () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  firstDate: DateTime(1900),
-                  lastDate: DateTime(2200),
-                  initialDate: DateTime.now(),
-                );
-                if (picked != null) {
-                  controller.text = picked.toIso8601String().split('T').first;
-                }
-              }
-            : null,
-        obscureText: config.sensitive,
-        keyboardType: config.type == RegistrationFieldType.phone
-            ? TextInputType.phone
-            : config.type == RegistrationFieldType.email
-            ? TextInputType.emailAddress
-            : config.type == RegistrationFieldType.number
-            ? TextInputType.number
-            : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: '${config.label}${config.required ? ' *' : ''}',
-          hintText: config.placeholder,
-          helperText: config.helpText,
-          border: const OutlineInputBorder(),
         ),
       ),
     );

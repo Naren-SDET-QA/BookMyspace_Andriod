@@ -40,8 +40,6 @@ class MapAndMarkerCacheManager private constructor(context: Context) {
         }
     }
 
-    val roomTileWriter = RoomOsmTileWriter(roomDb)
-
     init {
         // Run eviction policy on initialization
         runEvictionPolicy()
@@ -149,9 +147,9 @@ class MapAndMarkerCacheManager private constructor(context: Context) {
         return tileMemoryCache.get(tileKey)
     }
 
-    suspend fun getTileFromRoom(tileKey: String): ByteArray? = PerformanceTracer.traceAsyncSection("GetRoomMapTile", TraceCategory.ROOM_QUERY) {
+    suspend fun getTileFromRoom(tileKey: String): ByteArray? = PerformanceTracer.traceAsyncSection<ByteArray?>("GetRoomMapTile", TraceCategory.ROOM_QUERY) {
         try {
-            val bytes = roomDb.mapTileDao().getValidTileDataByKey(tileKey)
+            val bytes = roomDb.mapTileDao().getValidTileDataByKey(tileKey, System.currentTimeMillis())
             if (bytes != null) {
                 tileMemoryCache.put(tileKey, bytes)
             }

@@ -1,0 +1,10 @@
+# BookMySpace SPA Routing & Fallback Configuration
+# Ensures direct URL access and browser refresh resolve to index.html with HTTP 200.
+
+# Pass-through for well-known association files and static resources
+/.well-known/* /.well-known/:splat 200
+/icons/* /icons/:splat 200
+/assets/* /assets/:splat 200
+
+# SPA Fallback rule for HTML5 / GoRouter deep paths
+/* /index.html 200

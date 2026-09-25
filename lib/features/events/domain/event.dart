@@ -10,16 +10,16 @@ enum EventCategory {
   community;
 
   static EventCategory fromDb(String value) => switch (value) {
-    'meeting' => EventCategory.meeting,
-    'conference' => EventCategory.conference,
-    'workshop' => EventCategory.workshop,
-    'sports' => EventCategory.sports,
-    'entertainment' => EventCategory.entertainment,
-    'cultural' => EventCategory.cultural,
-    'exhibition' => EventCategory.exhibition,
-    'community' => EventCategory.community,
-    _ => EventCategory.community,
-  };
+        'meeting' => EventCategory.meeting,
+        'conference' => EventCategory.conference,
+        'workshop' => EventCategory.workshop,
+        'sports' => EventCategory.sports,
+        'entertainment' => EventCategory.entertainment,
+        'cultural' => EventCategory.cultural,
+        'exhibition' => EventCategory.exhibition,
+        'community' => EventCategory.community,
+        _ => EventCategory.community,
+      };
 
   String get dbValue => name;
 }
@@ -81,8 +81,7 @@ class Event {
       orgId: json['org_id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      startsAt:
-          DateTime.tryParse(json['starts_at'] as String? ?? '') ??
+      startsAt: DateTime.tryParse(json['starts_at'] as String? ?? '') ??
           DateTime(1970),
       endsAt:
           DateTime.tryParse(json['ends_at'] as String? ?? '') ?? DateTime(1970),

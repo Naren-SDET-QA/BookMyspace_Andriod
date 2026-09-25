@@ -17,6 +17,9 @@ abstract interface class AuthRepository {
   /// Verifies an email OTP token.
   Future<AuthUser> verifyEmailOtp(String email, String token);
 
+  /// Signs in with an email and password against the hosted Auth provider.
+  Future<AuthUser> signInWithEmailPassword(String email, String password);
+
   /// Signs in with a phone OTP.
   Future<void> signInWithPhoneOtp(String phone);
   Future<AuthUser> signInWithPassword(String email, String password);
@@ -36,7 +39,7 @@ abstract interface class AuthRepository {
   /// Signs in with Google.
   Future<AuthUser> signInWithGoogle();
 
-  /// Signs in with Apple.
+  /// Signs in with Apple (release/v1.0).
   Future<AuthUser> signInWithApple();
 
   /// Signs out of the current device.

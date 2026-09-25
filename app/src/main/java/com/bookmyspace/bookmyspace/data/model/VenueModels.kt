@@ -4,14 +4,48 @@ data class VenueCategory(
     val id: String,
     val slug: String,
     val name: String,
-    val iconName: String = "sports"
-)
+    val iconName: String = "sports",
+    val isActive: Boolean = true,
+    val isUnifiedRegistrationEnabled: Boolean = false,
+    val customEmoji: String? = null,
+    val parentSection: String? = null
+) {
+    val icon: String
+        get() = customEmoji ?: when (slug.lowercase()) {
+            "photography_studio", "photo_studio", "studio" -> "📸"
+            "sports", "sports_turf", "sports-fitness" -> "🏸"
+            "wedding_banquet", "function_hall", "banquet-halls", "venues", "marriage_hall", "kalyana_mandapam", "mini_hall", "banquet_hall", "convention_center", "community_hall", "govt_hall", "party_lawn", "other_hall" -> "🏛️"
+            "pg_hostel", "pg-co-living", "pg", "gents_pg", "ladies_pg", "student_hostel", "co_living", "single_room", "other_pg" -> "🏠"
+            "hotel_stay", "hotels-resorts", "hotels", "resort", "lodge", "guest_house", "hourly_room", "other_stay" -> "🏨"
+            "classes_academy", "coaching-institutes", "academies", "coaching", "computer_it", "dance_academy", "music_class", "sports_academy", "other_class" -> "🎓"
+            "events_workshops", "events" -> "🎟️"
+            else -> "✨"
+        }
+}
 
 data class VenueImage(
     val id: String,
     val url: String,
     val altText: String = "",
-    val isCover: Boolean = false
+    val isCover: Boolean = false,
+    val tag: String = "General" // "Cover", "Main Hall", "Dining", "Rooms", "Lawn", "Exterior", "Stage"
+)
+
+data class VenueVideo(
+    val id: String = "",
+    val title: String = "Short Walkthrough",
+    val videoUrl: String = "",
+    val thumbnailUrl: String = "",
+    val durationSeconds: Int = 30
+)
+
+data class Venue3dWalkthrough(
+    val id: String = "",
+    val title: String = "360° Virtual Tour",
+    val tourUrl: String = "",
+    val previewImageUrl: String = "",
+    val tourType: String = "360_PANORAMA", // "360_PANORAMA", "3D_MATTERPORT", "VIRTUAL_WALKTHROUGH"
+    val hotspots: List<String> = listOf("Grand Stage", "Dining Arena", "VIP Suite", "Lawn Grounds", "Entrance")
 )
 
 data class VenueFacility(
@@ -74,14 +108,31 @@ data class HotelDetails(
 )
 
 data class TimeSlot(
-    val id: String,
-    val venueId: String,
-    val label: String,
-    val startTime: String,
-    val endTime: String,
-    val priceAmount: Double,
+    val id: String = "",
+    val venueId: String = "",
+    val label: String = "",
+    val startTime: String = "",
+    val endTime: String = "",
+    val priceAmount: Double = 0.0,
     val isAvailable: Boolean = true
-)
+) {
+    constructor(
+        id: String,
+        label: String,
+        startTime: String,
+        endTime: String,
+        priceAmount: Double,
+        isAvailable: Boolean = true
+    ) : this(
+        id = id,
+        venueId = "",
+        label = label,
+        startTime = startTime,
+        endTime = endTime,
+        priceAmount = priceAmount,
+        isAvailable = isAvailable
+    )
+}
 
 data class ContactSettings(
     val showCall: Boolean = false,
@@ -128,12 +179,21 @@ data class Venue(
     val contactWhatsapp: String = "919876543210",
     val contactSettings: ContactSettings = ContactSettings(),
     val isSaved: Boolean = false,
-    val locationHierarchy: LocationHierarchy? = null
+    val locationHierarchy: LocationHierarchy? = null,
+    val featuredImageUrl: String = "",
+    val videos: List<VenueVideo> = emptyList(),
+    val virtual3dTour: Venue3dWalkthrough? = null,
+    val ownerId: String = "user_venue_owner"
 ) {
+    val imageUrls: List<String>
+        get() = images.map { it.url }.ifEmpty { listOf(coverImageUrl) }
+
     val coverImageUrl: String
-        get() = images.firstOrNull { it.isCover }?.url
-            ?: images.firstOrNull()?.url
-            ?: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3"
+        get() = featuredImageUrl.ifBlank {
+            images.firstOrNull { it.isCover }?.url
+                ?: images.firstOrNull()?.url
+                ?: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3"
+        }
 
     val fullAddress: String
         get() = locationHierarchy?.fullAddressText
@@ -163,4 +223,18 @@ data class VenueSearchQuery(
     val minStarRating: Int? = null,
     val hotelRoomType: String? = null,
     val sortBy: VenueSortBy = VenueSortBy.RELEVANCE
+)
+
+data class FavoriteVenueItem(
+    val id: String = "",
+    val userId: String = "",
+    val venueId: String = "",
+    val venueName: String = "",
+    val category: String = "",
+    val city: String = "",
+    val rating: Double = 4.8,
+    val coverImageUrl: String = "",
+    val pricingBaseAmount: Double = 500.0,
+    val addedAt: Long = System.currentTimeMillis(),
+    val notes: String = ""
 )

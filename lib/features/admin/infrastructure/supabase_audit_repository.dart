@@ -14,7 +14,8 @@ class SupabaseAuditRepository implements AuditLogRepository {
     try {
       final rows = await _client
           .from('audit_logs')
-          .select('*')
+          .select(
+              'id, user_id, actor_id, action, entity_type, entity_id, details, ip_address, created_at')
           .order('created_at', ascending: false)
           .limit(limit);
       return rows.map((r) => AuditLogEntry.fromJson(r)).toList();

@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../../domain/support_ticket.dart';
 import '../support_providers.dart';
 import '../widgets/contextual_help_button.dart';
@@ -16,6 +17,7 @@ class SupportTicketsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final enabled = ref.watch(moduleEnabledProvider('support'));
     final tickets = ref.watch(myTicketsProvider);
 
     return Scaffold(
@@ -23,29 +25,39 @@ class SupportTicketsScreen extends ConsumerWidget {
         title: Text(l10n.support),
         actions: const [ContextualHelpButton(route: AppRoutes.support)],
       ),
-      body: tickets.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(myTicketsProvider),
-        ),
-        data: (items) => items.isEmpty
-            ? EmptyState(
-                icon: Icons.headset_mic_rounded,
-                title: l10n.noSupportTickets,
-                message: l10n.ticketCreated,
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                itemBuilder: (context, i) => _TicketTile(ticket: items[i]),
+      body: !enabled
+          ? const EmptyState(
+              icon: Icons.support_agent_rounded,
+              title: 'Support is unavailable',
+              message:
+                  'This optional module is currently disabled by the administrator.',
+            )
+          : tickets.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => ErrorView(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(myTicketsProvider),
               ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateDialog(context, ref),
-        icon: const Icon(Icons.add_rounded),
-        label: Text(l10n.newTicket),
-      ),
+              data: (items) => items.isEmpty
+                  ? EmptyState(
+                      icon: Icons.headset_mic_rounded,
+                      title: l10n.noSupportTickets,
+                      message: l10n.ticketCreated,
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: items.length,
+                      itemBuilder: (context, i) =>
+                          _TicketTile(ticket: items[i]),
+                    ),
+            ),
+      floatingActionButton: enabled
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateDialog(context, ref),
+              icon: const Icon(Icons.add_rounded),
+              label: Text(l10n.newTicket),
+            )
+          : null,
     );
   }
 
@@ -158,7 +170,7 @@ class _TicketTile extends ConsumerWidget {
                   ),
                   decoration: BoxDecoration(
                     color: ticket.isResolved
-                        ? AppTheme.brand.withValues(alpha: 0.12)
+                        ? AppTheme.success.withValues(alpha: 0.12)
                         : AppTheme.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -166,7 +178,7 @@ class _TicketTile extends ConsumerWidget {
                     ticket.isResolved ? 'Resolved' : ticket.status.dbValue,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: ticket.isResolved
-                          ? AppTheme.brand
+                          ? AppTheme.success
                           : AppTheme.accent,
                       fontWeight: FontWeight.w700,
                     ),
@@ -206,7 +218,7 @@ class _TicketTile extends ConsumerWidget {
               Text(
                 ticket.adminReply!,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.brand,
+                  color: AppTheme.violet,
                 ),
               ),
             ],

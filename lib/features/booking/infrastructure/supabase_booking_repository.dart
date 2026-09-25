@@ -1,21 +1,16 @@
+import 'dart:convert';
 import 'dart:math';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../../core/config/app_config.dart';
 import '../../../core/errors/app_exceptions.dart' as app_errors;
 import '../domain/booking.dart';
 import '../domain/booking_repository.dart';
+import '../../../core/config/app_config.dart';
 
 /// Supabase-backed [BookingRepository].
 ///
-/// * Availability is read through the `available_time_slots` RPC (a
-///   security-definer function that computes availability across all users).
-/// * The atomic slot lock is acquired via the `create-booking-hold` Edge
-///   Function — the server validates the amount and prevents double-booking
-///   with an advisory lock, so the client never needs elevated privileges.
-/// * Bookings are inserted by the user (RLS allows `auth.uid() = user_id`)
-///   and confirmed later by the Razorpay webhook (Milestone 5).
+/// Availability and holds are authoritative server operations. This class
+/// deliberately has no local booking or slot fallback: a booking must be
+/// created and returned by Supabase before the payment flow can start.
 class SupabaseBookingRepository implements BookingRepository {
   SupabaseBookingRepository(this._client);
 
@@ -25,7 +20,7 @@ class SupabaseBookingRepository implements BookingRepository {
     *,
     venues (id, name, city),
     time_slots (id, label),
-    payments (method, provider_payment_id, status, created_at)
+    booking_receipts (receipt_number, issued_at)
   ''';
 
   @override
@@ -56,34 +51,39 @@ class SupabaseBookingRepository implements BookingRepository {
     int holdMinutes = 10,
   }) async {
     try {
-      final session = _client.auth.currentSession;
-      final accessToken = session?.accessToken;
-      if (accessToken == null || accessToken.isEmpty) {
-        throw const app_errors.AuthException(
-          'You must be signed in to acquire a booking hold.',
-        );
-      }
-      final request = {
-        'venue_id': venueId,
-        'slot_id': slotId,
-        'book_date': _formatDate(bookDate),
-        'idempotency_key': _newUuid(),
-        'amount': amount,
-        'hold_minutes': holdMinutes,
-      };
+      // Root cause of the `[missing_auth] Booking service error (401)`
+      // seen on Confirm Booking: `_client.functions.invoke` sends whatever
+      // Authorization header the FunctionsClient last cached from an auth
+      // state event (signedIn/tokenRefreshed). A silently restored session
+      // on cold start, or a session that expired between screens, can leave
+      // that cached header stale or absent even though the user is (or was)
+      // signed in -- the Edge Function then sees no Authorization header at
+      // all and returns 401 missing_auth before it ever reaches RLS. Fix:
+      // resolve and attach the current session's access token explicitly on
+      // every call, refreshing it once if it has expired, and fail fast with
+      // a clear AuthException (never a fabricated token) if no valid session
+      // is available -- rather than silently sending an unauthenticated
+      // request and surfacing a confusing server-side 401.
+      final session = await _requireValidSession();
       final response = await _client.functions.invoke(
         'create-booking-hold',
-        headers: {
-          // The publishable key identifies the Supabase project. The user's
-          // session token is the authentication bearer for the function.
-          'apikey': AppConfig.supabaseAnonKey,
-          'Authorization': 'Bearer $accessToken',
+        headers: {'Authorization': 'Bearer ${session.accessToken}'},
+        body: {
+          'venue_id': venueId,
+          'slot_id': slotId,
+          'book_date': _formatDate(bookDate),
+          'idempotency_key': _newUuid(),
+          'amount': amount,
+          'hold_minutes': holdMinutes,
+          'approval_minutes': holdMinutes,
         },
-        body: request,
       );
       final data = response.data;
       if (data is! Map<String, dynamic>) {
-        throw const app_errors.AppError('Empty response from booking service.');
+        throw const app_errors.ServerException(
+          'Booking service returned an empty hold response.',
+          code: 'empty_hold_response',
+        );
       }
       return BookingHold.fromResponse(data);
     } on FunctionException catch (e) {
@@ -97,6 +97,12 @@ class SupabaseBookingRepository implements BookingRepository {
           code: 'slot_unavailable',
         );
       }
+      if (error == 'date_blocked') {
+        throw const app_errors.BookingConflictException(
+          'This venue is unavailable on the selected date.',
+          code: 'date_blocked',
+        );
+      }
       throw app_errors.ServerException(
         'Booking service error (${e.status}).',
         code: error,
@@ -105,6 +111,32 @@ class SupabaseBookingRepository implements BookingRepository {
     } catch (e) {
       throw app_errors.mapError(e);
     }
+  }
+
+  @override
+  Future<Booking> requestBooking({
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    int approvalMinutes = 120,
+    String? couponCode,
+  }) async {
+    final hold = await acquireHold(
+      venueId: venueId,
+      slotId: slotId,
+      bookDate: bookDate,
+      amount: amount,
+      holdMinutes: approvalMinutes,
+    );
+    final bookingId = hold.bookingId;
+    if (bookingId == null || bookingId.isEmpty) {
+      throw const app_errors.ServerException(
+        'Booking request did not return a server booking.',
+        code: 'missing_booking_id',
+      );
+    }
+    return _loadBooking(bookingId);
   }
 
   @override
@@ -118,80 +150,59 @@ class SupabaseBookingRepository implements BookingRepository {
     required double totalAmount,
     Map<String, dynamic> metadata = const {},
   }) async {
-    try {
-      final user = _client.auth.currentUser;
-      if (user == null) {
-        throw const app_errors.AuthException('You must be signed in to book.');
-      }
-      // Fetch slot times so the booking rows carry authoritative start/end.
-      final slot = await _client
-          .from('time_slots')
-          .select('label, start_time, end_time')
-          .eq('id', slotId)
-          .maybeSingle();
-      final start = slot?['start_time'] as String? ?? '';
-      final end = slot?['end_time'] as String? ?? '';
+    // The hold endpoint now creates the booking request atomically. Retain
+    // this method for the existing repository contract, but never recreate a
+    // booking with a client-side insert (which could bypass approval/RLS).
+    final bookingId = hold.bookingId;
+    if (bookingId == null || bookingId.isEmpty) {
+      throw const app_errors.ServerException(
+        'The server did not return an approval request.',
+        code: 'missing_booking_id',
+      );
+    }
+    if (metadata.isNotEmpty) {
+      // release/v1.0 stores guests / sharing / check-out on bookings.metadata.
+      // Best effort: the booking itself was created server-side.
+      try {
+        await _client
+            .from('bookings')
+            .update({'metadata': metadata})
+            .eq('id', bookingId);
+      } catch (_) {}
+    }
+    return _loadBooking(bookingId);
+  }
 
-      // Verified-fix (Phase 16.9 E2E audit): this used to insert the row
-      // already at 'pending_owner_approval', which skipped the payment step
-      // entirely. `create-payment-order`'s bookingDecision() only authorizes
-      // a charge for a booking whose status is 'pending', and the Razorpay
-      // webhook's own transition (`.eq('status', 'pending')`) advances a
-      // captured payment from 'pending' to 'pending_owner_approval'. Booking
-      // must therefore start at 'pending' so the customer can actually pay;
-      // the webhook is what moves it into the owner's approval queue.
-      final row = await _client
-          .from('bookings')
-          .insert({
-            'booking_ref': _bookingRef(),
-            'user_id': user.id,
-            'venue_id': venueId,
-            'slot_id': slotId,
-            'book_date': _formatDate(bookDate),
-            'start_time': start,
-            'end_time': end,
-            'hold_id': hold.id,
-            'status': 'pending',
-            'quantity': 1,
-            'amount': amount,
-            'tax_amount': taxAmount,
-            'total_amount': totalAmount,
-            'currency': 'INR',
-            if (metadata.isNotEmpty) 'metadata': metadata,
-          })
-          .select(_slotSelect)
-          .single();
-      return Booking.fromJson(row);
-    } on PostgrestException catch (e) {
-      // 23P01 = exclusion_violation (the bookings_no_overlap constraint).
-      if (e.code == '23P01') {
-        throw const app_errors.BookingConflictException(
-          'This slot is no longer available.',
-          code: 'slot_unavailable',
-        );
-      }
-      throw app_errors.mapError(e);
+  @override
+  Future<Booking> approveBooking(String bookingId) async {
+    try {
+      final response = await _client.rpc(
+        'approve_venue_booking',
+        params: {
+          'p_booking_id': bookingId,
+          'p_idempotency_key': _newUuid(),
+        },
+      );
+      _ensureRpcSuccess(response, fallbackCode: 'approval_failed');
+      return _loadBooking(bookingId);
     } catch (e) {
       throw app_errors.mapError(e);
     }
   }
 
   @override
-  Future<Booking> bookingById(String bookingId) async {
+  Future<Booking> rejectBooking(String bookingId, {String? reason}) async {
     try {
-      final user = _client.auth.currentUser;
-      if (user == null) {
-        throw const app_errors.AuthException('You must be signed in to book.');
-      }
-      final row = await _client
-          .from('bookings')
-          .select(_slotSelect)
-          .eq('id', bookingId)
-          .maybeSingle();
-      if (row == null) {
-        throw const app_errors.NotFoundException('Booking not found.');
-      }
-      return Booking.fromJson(row);
+      final response = await _client.rpc(
+        'reject_venue_booking',
+        params: {
+          'p_booking_id': bookingId,
+          'p_idempotency_key': _newUuid(),
+          'p_reason': reason,
+        },
+      );
+      _ensureRpcSuccess(response, fallbackCode: 'rejection_failed');
+      return _loadBooking(bookingId);
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -218,6 +229,100 @@ class SupabaseBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<Booking>> recentBookings({int limit = 5}) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return const [];
+      final rows = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('user_id', user.id)
+          .order('book_date', ascending: false)
+          .order('start_time', ascending: false)
+          .order('id', ascending: true)
+          .limit(limit);
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Booking.fromJson)
+          .toList();
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<List<Booking>> myBookingsPage({
+    required int offset,
+    required int limit,
+  }) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return const [];
+      final safeOffset = offset < 0 ? 0 : offset;
+      final safeLimit = limit < 1 ? 1 : limit;
+      // Phase 9XM-3: same ordering as myBookings() (book_date desc,
+      // start_time desc), with `id` added as a deterministic tiebreaker.
+      // Without a tiebreaker, rows that share the same (book_date,
+      // start_time) have no guaranteed stable order across separate
+      // .range() requests, which could duplicate or skip rows between
+      // pages. The `id` order is arbitrary but stable, and never affects
+      // the visible newest-first ordering for rows with distinct
+      // (book_date, start_time).
+      final rows = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('user_id', user.id)
+          .order('book_date', ascending: false)
+          .order('start_time', ascending: false)
+          .order('id', ascending: true)
+          .range(safeOffset, safeOffset + safeLimit - 1);
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Booking.fromJson)
+          .toList();
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<Booking?> bookingById(String bookingId) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return null;
+      final row = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('id', bookingId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (row == null) return null;
+      return Booking.fromJson(row);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<List<Booking>> ownerVenueBookings() async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) return const [];
+      final rows = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .order('book_date', ascending: false)
+          .order('start_time', ascending: false);
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(Booking.fromJson)
+          .toList();
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
   Future<void> cancelBooking(String bookingId) async {
     try {
       final user = _client.auth.currentUser;
@@ -226,39 +331,191 @@ class SupabaseBookingRepository implements BookingRepository {
           'You must be signed in to cancel.',
         );
       }
-      final List<Map<String, dynamic>> result = await _client
-          .from('bookings')
-          .update({'status': 'cancelled'})
-          .eq('id', bookingId)
-          .eq('user_id', user.id)
-          .eq('status', 'pending')
-          .select('id');
-      if (result.isEmpty) {
-        // The booking may already be confirmed — cancelling is not allowed.
-        throw const app_errors.BookingConflictException(
-          'This booking can no longer be cancelled.',
-          code: 'cannot_cancel',
-        );
-      }
-      // Keep the existing cancellation contract, while recording a durable
-      // notification for the signed-in customer.
-      try {
-        await _client.from('notifications').insert({
-          'user_id': user.id,
-          'title': 'Booking cancelled',
-          'body': 'Your pending booking has been cancelled.',
-          'type': 'booking_cancelled',
-          'data': {'booking_id': bookingId},
-        });
-      } catch (_) {
-        // Notification delivery is best-effort; cancellation already won.
-      }
+      final response = await _client.rpc(
+        'cancel_venue_booking',
+        params: {'p_booking_id': bookingId},
+      );
+      _ensureRpcSuccess(response, fallbackCode: 'cannot_cancel');
     } catch (e) {
       if (e is app_errors.BookingConflictException) rethrow;
       throw app_errors.mapError(e);
     }
   }
 
+  /// Resolves the current Supabase session, refreshing it once if it has
+  /// expired, and never fabricating or bypassing auth: a missing or
+  /// unrefreshable session is surfaced as an explicit [app_errors.AuthException]
+  /// instead of letting the request go out without a valid user token.
+  Future<Session> _requireValidSession() async {
+    var session = _client.auth.currentSession;
+    if (session == null) {
+      throw const app_errors.AuthException(
+        'You must be signed in to book. Please sign in and try again.',
+        code: 'missing_session',
+      );
+    }
+    final expiresAt = session.expiresAt;
+    final isExpired = expiresAt != null &&
+        DateTime.now().toUtc().isAfter(
+              DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000,
+                  isUtc: true),
+            );
+    if (isExpired) {
+      try {
+        final refreshed = await _client.auth.refreshSession();
+        session = refreshed.session;
+      } catch (_) {
+        session = null;
+      }
+      if (session == null) {
+        throw const app_errors.AuthException(
+          'Your session has expired. Please sign in again to continue booking.',
+          code: 'expired_session',
+        );
+      }
+    }
+    return session;
+  }
+
+  Future<Booking> _loadBooking(String bookingId) async {
+    final row = await _client
+        .from('bookings')
+        .select(_slotSelect)
+        .eq('id', bookingId)
+        .maybeSingle();
+    if (row == null) {
+      throw const app_errors.NotFoundException(
+        'The server booking could not be loaded.',
+        code: 'booking_not_found',
+      );
+    }
+    return Booking.fromJson(row);
+  }
+
+  static void _ensureRpcSuccess(
+    dynamic response, {
+    required String fallbackCode,
+  }) {
+    if (response is Map<String, dynamic> && response['success'] == true) {
+      return;
+    }
+    final code = response is Map<String, dynamic>
+        ? response['error_code']?.toString().toLowerCase()
+        : null;
+    throw app_errors.ServerException(
+      response is Map<String, dynamic> && response['message'] is String
+          ? response['message'] as String
+          : 'The server rejected this booking operation.',
+      code: code ?? fallbackCode,
+    );
+  }
+
+  @override
+  Future<Booking> checkInBooking(String qrOrRef) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw const app_errors.AuthException(
+          'You must be signed in to check in a booking.',
+        );
+      }
+
+      final code = _bookingCode(qrOrRef);
+      if (code.isEmpty) {
+        throw const app_errors.ValidationException(
+          'The booking pass is empty or invalid.',
+          code: 'invalid_booking_pass',
+        );
+      }
+
+      final response = await _client.rpc(
+        'check_in_booking',
+        params: {'p_code': code, 'p_method': 'qr'},
+      );
+      final data = response is Map<String, dynamic> ? response : null;
+
+      // The server owns the verdict. Surface its reason rather than collapsing
+      // every outcome into "invalid code" — that is how a missing backend
+      // contract previously reached guests as their own input error.
+      if (data == null || data['success'] != true) {
+        throw app_errors.ServerException(
+          data?['message']?.toString() ??
+              'The booking pass could not be validated.',
+          code: data?['error_code']?.toString().toLowerCase() ??
+              'check_in_failed',
+        );
+      }
+
+      // A pass that has already admitted someone is not a fresh check-in, and
+      // must not be reported as one.
+      if (data['already_checked_in'] == true) {
+        throw const app_errors.ValidationException(
+          'This pass has already been used to check in.',
+          code: 'booking_already_checked_in',
+        );
+      }
+
+      final bookingId = data['booking_id'] as String?;
+      if (bookingId == null || bookingId.isEmpty) {
+        throw const app_errors.NotFoundException(
+          'The booking pass could not be validated.',
+          code: 'booking_not_found_or_not_owner',
+        );
+      }
+
+      final row = await _client
+          .from('bookings')
+          .select(_slotSelect)
+          .eq('id', bookingId)
+          .maybeSingle();
+      if (row == null) {
+        throw const app_errors.NotFoundException(
+          'The checked-in booking could not be loaded.',
+          code: 'booking_not_found',
+        );
+      }
+      return Booking.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw app_errors.mapError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  static String _bookingCode(String raw) {
+    final clean = raw.trim();
+    if (!clean.startsWith('{')) return clean;
+    try {
+      final decoded = jsonDecode(clean);
+      if (decoded is Map<String, dynamic>) {
+        return (decoded['booking_id'] as String? ?? '').trim();
+      }
+    } catch (_) {
+      // The validation error below is the user-facing result.
+    }
+    return '';
+  }
+
+  static String _formatDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  static String _newUuid() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0F) | 0x40;
+    bytes[8] = (bytes[8] & 0x3F) | 0x80;
+    String hex(int i) => bytes[i].toRadixString(16).padLeft(2, '0');
+    return '${hex(0)}${hex(1)}${hex(2)}${hex(3)}-'
+        '${hex(4)}${hex(5)}-${hex(6)}${hex(7)}-'
+        '${hex(8)}${hex(9)}-'
+        '${hex(10)}${hex(11)}${hex(12)}${hex(13)}${hex(14)}${hex(15)}';
+  }
+
+  // --- merged from release/v1.0 ---
   @override
   Future<Booking> applyCoupon({
     required String bookingId,
@@ -269,7 +526,14 @@ class SupabaseBookingRepository implements BookingRepository {
         'apply_booking_coupon',
         params: {'p_booking_id': bookingId, 'p_code': code},
       );
-      return await bookingById(bookingId);
+      final booking = await bookingById(bookingId);
+      if (booking == null) {
+        throw const app_errors.ServerException(
+          'The booking could not be reloaded.',
+          code: 'booking_not_found',
+        );
+      }
+      return booking;
     } on PostgrestException catch (e) {
       throw _mapCouponError(e);
     } catch (e) {
@@ -284,7 +548,14 @@ class SupabaseBookingRepository implements BookingRepository {
         'remove_booking_coupon',
         params: {'p_booking_id': bookingId},
       );
-      return await bookingById(bookingId);
+      final booking = await bookingById(bookingId);
+      if (booking == null) {
+        throw const app_errors.ServerException(
+          'The booking could not be reloaded.',
+          code: 'booking_not_found',
+        );
+      }
+      return booking;
     } on PostgrestException catch (e) {
       throw _mapCouponError(e);
     } catch (e) {
@@ -349,30 +620,9 @@ class SupabaseBookingRepository implements BookingRepository {
     };
   }
 
-  /// Formats a date as the local `YYYY-MM-DD` the DB expects.
-  static String _formatDate(DateTime date) {
-    final y = date.year.toString().padLeft(4, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
   /// Collision-resistant booking reference, e.g. `BMS-26AB39`.
   static String _bookingRef() {
     final n = Random().nextInt(0xFFFFFF);
     return 'BMS-${n.toRadixString(16).toUpperCase().padLeft(6, '0')}';
-  }
-
-  /// A random UUID v4 string (idempotency keys must be unique per attempt).
-  static String _newUuid() {
-    final rnd = Random.secure();
-    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0F) | 0x40;
-    bytes[8] = (bytes[8] & 0x3F) | 0x80;
-    String hex(int i) => bytes[i].toRadixString(16).padLeft(2, '0');
-    return '${hex(0)}${hex(1)}${hex(2)}${hex(3)}-'
-        '${hex(4)}${hex(5)}-${hex(6)}${hex(7)}-'
-        '${hex(8)}${hex(9)}-'
-        '${hex(10)}${hex(11)}${hex(12)}${hex(13)}${hex(14)}${hex(15)}';
   }
 }

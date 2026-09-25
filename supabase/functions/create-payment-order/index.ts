@@ -1,227 +1,290 @@
-import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { amountDecision, bookingDecision, canFailClaim, pendingOrderResponse, resolveChargeAmount } from './payment_order_policy.ts';
+// Deno edge function: creates a Razorpay payment order authoritatively on the server.
+//
+// Ensures payment secrets never live in the client, validates booking status,
+// and saves the order in the `payments` table before client checkout.
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import {
+  buildClientOrderResponse,
+  buildPendingPaymentRecord,
+} from "./helpers.ts";
 
-// ============================================================
-// Razorpay order creation — runs server-side so secrets stay secret.
-// Called from the Flutter app after a booking hold is acquired.
-// POST body: { booking_id }
-// ============================================================
-
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const RAZORPAY_KEY_ID = Deno.env.get('RAZORPAY_KEY_ID')!;
-const RAZORPAY_KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET')!;
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-async function createRazorpayOrder(amountPaise: number, receipt: string) {
-  const body = new URLSearchParams({ amount: String(amountPaise), currency: 'INR', receipt });
-  const res = await fetch('https://api.razorpay.com/v1/orders', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`)}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
-  });
-  if (!res.ok) {
-    throw new Error(`razorpay error ${res.status}: ${await res.text()}`);
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ??
+  Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+  "";
+function readSecret(name: string): string {
+  let value = (Deno.env.get(name) || "").trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
   }
-  return res.json();
+  return value;
 }
 
+const RAZORPAY_KEY_ID = readSecret("RAZORPAY_KEY_ID");
+const RAZORPAY_KEY_SECRET = readSecret("RAZORPAY_KEY_SECRET");
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  const authHeader = req.headers.get('Authorization');
+  const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'missing_auth' }), {
+    return new Response(JSON.stringify({ error: "missing_auth" }), {
       status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // This client is only used to validate the caller's JWT. Do not reuse it
-  // for privileged database writes.
-  const authClient: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user } } = await authClient.auth.getUser();
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  if (!SUPABASE_ANON_KEY) {
+    return new Response(
+      JSON.stringify({ error: "supabase_auth_not_configured" }),
+      {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 
-  // Keep the service-role client unmodified so its database operations are
-  // not downgraded to the authenticated role by the caller's JWT.
-  const adminClient: SupabaseClient = createClient(
+  // This client is deliberately user-scoped. It is used only to validate the
+  // caller and read the caller's own pending booking through RLS.
+  const userSupabase: SupabaseClient = createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+
+  // This client is deliberately separate and never receives the caller's
+  // Authorization header. It is the only client allowed to write payments.
+  const serviceSupabase: SupabaseClient = createClient(
     SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY,
   );
 
-  try {
-    const { booking_id, amount } = await req.json();
-    if (!booking_id) {
-      return new Response(JSON.stringify({ error: 'missing_fields' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+  const { data: { user }, error: userError } = await userSupabase.auth
+    .getUser();
+  if (userError || !user) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-    // Validate server-side: the booking must belong to the user and be pending.
-    const { data: booking, error: bookingError } = await adminClient
-      .from('bookings')
-      .select('id, user_id, total_amount, status, venue_id, venues(category_id, booking_token_amount, venue_categories(metadata))')
-      .eq('id', booking_id)
-      .single();
-    if (bookingError || !booking) {
-      return new Response(JSON.stringify({ error: 'booking_not_found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (bookingDecision(booking, user.id) !== 'ok') {
-      return new Response(JSON.stringify({ error: 'not_authorized' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const venueRow = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues;
-    const categoryRow = Array.isArray(venueRow?.venue_categories)
-      ? venueRow.venue_categories[0]
-      : venueRow?.venue_categories;
-    const categoryMetadata = (categoryRow?.metadata ?? {}) as Record<string, unknown>;
-    if (categoryMetadata.active !== true || categoryMetadata.payments_enabled !== true) {
-      return new Response(JSON.stringify({ error: 'category_payments_disabled' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    // Charge only the venue's configured booking token when one is set
-    // (clamped to never exceed the full price); the full price otherwise.
-    // This is the single place the online charge amount is decided —
-    // never the client, never a hardcoded literal.
-    const chargeAmount = resolveChargeAmount(
-      Number(booking.total_amount),
-      venueRow?.booking_token_amount ?? null,
+  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    return new Response(
+      JSON.stringify({ error: "payment_provider_not_configured" }),
+      {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
-    // The amount is always taken from the DB (never from the client).
-    // If supplied by an older client, still reject a mismatched amount; the
-    // current Flutter client intentionally omits it and uses the DB total.
-    if (amountDecision(amount, chargeAmount) === 'amount_mismatch') {
-      return new Response(JSON.stringify({ error: 'amount_mismatch' }), {
+  }
+  if (
+    !(RAZORPAY_KEY_ID.startsWith("rzp_test_") ||
+      RAZORPAY_KEY_ID.startsWith("rzp_live_"))
+  ) {
+    return new Response(
+      JSON.stringify({ error: "payment_provider_invalid" }),
+      {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  try {
+    const body = await req.json();
+    const { booking_id } = body;
+
+    if (!booking_id) {
+      return new Response(JSON.stringify({ error: "missing_booking_id" }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // A retry for the same pending booking reuses the already-created order.
-    // This check happens before contacting Razorpay, preventing another
-    // external order from being created for a completed insert.
-    const { data: existingPayment, error: existingPaymentError } = await adminClient
-      .from('payments')
-      .select('id, provider_order_id, amount, currency, status')
-      .eq('booking_id', booking.id)
-      .eq('provider', 'razorpay')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (existingPaymentError) {
-      return new Response(JSON.stringify({ error: 'payment_lookup_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const existingResponse = pendingOrderResponse(existingPayment);
-    if (existingResponse) {
-      return new Response(
-        JSON.stringify(existingResponse),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Reserve the booking before calling Razorpay. The partial unique index
-    // makes this claim atomic across concurrent Edge Function invocations.
-    const { data: claim, error: claimError } = await adminClient
-      .from('payments')
-      .insert({
-        booking_id: booking.id,
-        user_id: user.id,
-        provider: 'razorpay',
-        amount: chargeAmount,
-        status: 'pending',
-      })
-      .select('id')
+    // Fetch the pending booking row
+    const { data: booking, error: bookingError } = await userSupabase
+      .from("bookings")
+      .select(
+        "id, booking_ref, total_amount, amount, tax_amount, status, venue_id, hold_id, approval_required, approved_at, approved_by, payment_expires_at",
+      )
+      .eq("id", booking_id)
+      .eq("user_id", user.id)
       .single();
-    if (claimError || !claim) {
-      if (claimError?.code === '23505') {
-        return new Response(JSON.stringify({ error: 'payment_in_progress' }), {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response(JSON.stringify({ error: 'payment_claim_failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+
+    if (bookingError || !booking) {
+      return new Response(JSON.stringify({ error: "booking_not_found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let order: { id: string };
-    try {
-      order = await createRazorpayOrder(
-        Math.round(chargeAmount * 100),
-        booking.id,
+    if (booking.status !== "pending") {
+      return new Response(JSON.stringify({ error: "booking_not_payable" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Approve-first is enforced here as a second boundary. A caller cannot
+    // create a Razorpay order for an awaiting, rejected or expired request,
+    // even if it reaches this function with a guessed booking id.
+    if (!booking.approved_at || !booking.approved_by) {
+      return new Response(JSON.stringify({ error: "owner_approval_required" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (
+      booking.payment_expires_at &&
+      new Date(booking.payment_expires_at).getTime() <= Date.now()
+    ) {
+      return new Response(JSON.stringify({ error: "payment_window_expired" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Approval extends the same server-owned hold into the payment window.
+    // Refuse to create a provider order if that inventory lock is no longer
+    // active; confirmation also rechecks it inside the database transaction.
+    if (!booking.hold_id) {
+      return new Response(JSON.stringify({ error: "booking_hold_expired" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: hold, error: holdError } = await userSupabase
+      .from("booking_holds")
+      .select("status, expires_at")
+      .eq("id", booking.hold_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (
+      holdError ||
+      !hold ||
+      hold.status !== "active" ||
+      !hold.expires_at ||
+      new Date(hold.expires_at).getTime() <= Date.now()
+    ) {
+      return new Response(JSON.stringify({ error: "booking_hold_expired" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const totalAmount = Number(booking.total_amount);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return new Response(JSON.stringify({ error: "invalid_booking_amount" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const amountInPaise = Math.round(totalAmount * 100);
+
+    const auth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
+    const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${auth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: "INR",
+        receipt: `${String(booking.booking_ref || booking.id).slice(0, 20)}-${Date.now().toString(36)}`.slice(0, 40),
+        notes: {
+          booking_id: booking.id,
+          user_id: user.id,
+        },
+      }),
+    });
+
+    if (!rzpRes.ok) {
+      let providerCode = "unknown";
+      try {
+        const errJson = await rzpRes.json() as {
+          error?: { code?: string };
+        };
+        if (typeof errJson?.error?.code === "string") {
+          providerCode = errJson.error.code;
+        }
+      } catch {
+        // Never forward provider payloads; they can include account details.
+      }
+      return new Response(
+        JSON.stringify({
+          error: "payment_order_failed",
+          provider_status: rzpRes.status,
+          provider_code: providerCode,
+        }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
-    } catch (_) {
-      // Release only this request's claim. This lets a retry claim the
-      // booking again immediately after a provider-order failure.
-      if (canFailClaim(claim.id, claim.id, 'pending', null)) {
-        await adminClient
-          .from('payments')
-          .update({ status: 'failed' })
-          .eq('id', claim.id)
-          .eq('status', 'pending')
-          .is('provider_order_id', null);
-      }
-      return new Response(JSON.stringify({ error: 'payment_order_failed' }), {
+    }
+    const rzpData = await rzpRes.json();
+    const orderId = typeof rzpData.id === "string" ? rzpData.id : "";
+    if (orderId.length === 0) {
+      return new Response(JSON.stringify({ error: "payment_order_invalid" }), {
         status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // There is an unavoidable crash window after Razorpay creates the order
-    // and before this update persists its provider_order_id. Reconciliation
-    // must handle such orphaned claims; do not weaken the claim constraint.
-    const { error: updateError } = await adminClient
-      .from('payments')
-      .update({ provider_order_id: order.id })
-      .eq('id', claim.id)
-      .eq('status', 'pending');
-    if (updateError) {
-      return new Response(JSON.stringify({ error: 'payment_persist_failed' }), {
+    // Record or update payment record
+    const { error: paymentError } = await serviceSupabase
+      .from("payments")
+      .upsert(
+        buildPendingPaymentRecord({
+          bookingId: booking.id,
+          userId: user.id,
+          providerOrderId: orderId,
+          amount: totalAmount,
+          currency: "INR",
+        }),
+        { onConflict: "provider, provider_order_id" },
+      );
+    if (paymentError) {
+      return new Response(JSON.stringify({ error: "payment_record_failed" }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     return new Response(
-      JSON.stringify({ order_id: order.id, amount: chargeAmount, currency: 'INR' }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      JSON.stringify(buildClientOrderResponse({
+        orderId,
+        amount: totalAmount,
+        currency: "INR",
+        publicKeyId: RAZORPAY_KEY_ID,
+        bookingId: booking.id,
+      })),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
-  } catch (e) {
-    return new Response(JSON.stringify({ error: 'internal', detail: String(e) }), {
+  } catch (err) {
+    const message = err instanceof Error
+      ? err.message
+      : "order_creation_failed";
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

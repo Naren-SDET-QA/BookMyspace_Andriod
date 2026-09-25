@@ -5,7 +5,7 @@ import 'package:bookmyspace/features/venues/domain/category_configuration.dart';
 import 'package:bookmyspace/features/venues/presentation/category_configuration_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 
-import '../venues/mock_venue_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
 
 void main() {
   test(

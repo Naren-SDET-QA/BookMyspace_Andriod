@@ -1,5 +1,6 @@
-import '../domain/audit_log_entry.dart';
+import 'audit_log_entry.dart';
 
+/// Reads administrative audit events.
 abstract interface class AuditLogRepository {
-  Future<List<AuditLogEntry>> recentLogs({int limit});
+  Future<List<AuditLogEntry>> recentLogs({int limit = 100});
 }

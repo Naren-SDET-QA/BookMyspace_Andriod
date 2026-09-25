@@ -1,42 +1,282 @@
+import 'listing_template.dart';
 import 'sample_venue_images.dart';
 
-/// Venue categories as seeded in `venue_categories`.
-///
-/// NOTE: Freeze/JsonSerializable codegen is configured but was not run in this
-/// environment; the class is hand-written to stay dependency-free.
+/// Sorting options for venue discovery.
+enum VenueSortBy {
+  relevance,
+  priceAsc,
+  priceDesc,
+  rating,
+  distance,
+}
+
+/// Category metadata for venues.
 class VenueCategory {
   const VenueCategory({
     required this.id,
     required this.slug,
     required this.name,
-    this.icon = '',
+    this.icon,
+    this.isActive = true,
+    this.parentSection = 'general',
+    this.description = '',
+    this.imageUrl = '',
+    this.imagePath = '',
+    this.displayOrder = 0,
+    this.supportedLanguages = const ['en'],
+    this.nameTranslations = const {},
+    this.descriptionTranslations = const {},
+    this.listingConfig,
     this.metadata = const {},
   });
 
   final String id;
   final String slug;
   final String name;
-  final String icon;
+  final String? icon;
+  final bool isActive;
+  final String? parentSection;
+  final String description;
+  final String imageUrl;
+  final String imagePath;
+  final int displayOrder;
+  final List<String> supportedLanguages;
+  final Map<String, String> nameTranslations;
+  final Map<String, String> descriptionTranslations;
+  final ListingTemplateConfig? listingConfig;
+
+  /// Raw `venue_categories.metadata` (release/v1.0 API).
   final Map<String, dynamic> metadata;
 
-  factory VenueCategory.fromJson(Map<String, dynamic> json) => VenueCategory(
-    id: json['id'] as String? ?? '',
-    slug: json['slug'] as String? ?? '',
-    name: json['name'] as String? ?? '',
-    icon: json['icon'] as String? ?? '',
-    metadata: json['metadata'] is Map
+  /// Resolved template: admin overlay on top of slug defaults.
+  ListingTemplateConfig get listingTemplate => ListingTemplateConfig.resolve(
+        slug: slug,
+        parentSection: parentSection,
+        stored: listingConfig,
+      );
+
+  factory VenueCategory.fromJson(Map<String, dynamic> json) {
+    final metadata = json['metadata'] is Map
         ? Map<String, dynamic>.from(json['metadata'] as Map)
-        : const {},
+        : const <String, dynamic>{};
+    return VenueCategory(
+      id: json['id'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      icon: json['icon'] as String?,
+      isActive: json['is_active'] as bool? ??
+          metadata['active'] as bool? ??
+          metadata['is_active'] as bool? ??
+          true,
+      parentSection: json['parent_section'] as String? ??
+          metadata['parent_section'] as String? ??
+          metadata['section'] as String? ??
+          'general',
+      description: json['description'] as String? ?? '',
+      imageUrl: json['image_url'] as String? ?? '',
+      imagePath: json['image_path'] as String? ?? '',
+      displayOrder: (json['display_order'] as num?)?.toInt() ??
+          (metadata['section_sort_order'] as num?)?.toInt() ??
+          0,
+      supportedLanguages:
+          _stringList(json['supported_languages'], fallback: const ['en']),
+      nameTranslations: _stringMap(
+        json['name_i18n'] ?? metadata['localized_names'],
+      ),
+      descriptionTranslations: _stringMap(json['description_i18n']),
+      listingConfig: ListingTemplateConfig.tryParse(
+        json['listing_config'] ?? metadata['listing'],
+      ),
+      metadata: metadata,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'slug': slug,
+        'name': name,
+        if (icon != null) 'icon': icon,
+        'is_active': isActive,
+        if (parentSection != null) 'parent_section': parentSection,
+        'description': description,
+        'image_url': imageUrl.isEmpty ? null : imageUrl,
+        'image_path': imagePath.isEmpty ? null : imagePath,
+        'display_order': displayOrder,
+        'supported_languages': supportedLanguages,
+        'name_i18n': nameTranslations,
+        'description_i18n': descriptionTranslations,
+        'metadata': {
+          'active': isActive,
+          if (parentSection != null) 'parent_section': parentSection,
+          if (listingConfig != null) 'listing': listingConfig!.toJson(),
+        },
+      };
+
+  VenueCategory copyWith({
+    String? id,
+    String? slug,
+    String? name,
+    String? icon,
+    bool? isActive,
+    String? parentSection,
+    String? description,
+    String? imageUrl,
+    String? imagePath,
+    bool clearImage = false,
+    bool clearImagePath = false,
+    int? displayOrder,
+    List<String>? supportedLanguages,
+    Map<String, String>? nameTranslations,
+    Map<String, String>? descriptionTranslations,
+    ListingTemplateConfig? listingConfig,
+  }) {
+    return VenueCategory(
+      id: id ?? this.id,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      isActive: isActive ?? this.isActive,
+      parentSection: parentSection ?? this.parentSection,
+      description: description ?? this.description,
+      imageUrl: clearImage ? '' : imageUrl ?? this.imageUrl,
+      imagePath: clearImagePath ? '' : imagePath ?? this.imagePath,
+      displayOrder: displayOrder ?? this.displayOrder,
+      supportedLanguages: supportedLanguages ?? this.supportedLanguages,
+      nameTranslations: nameTranslations ?? this.nameTranslations,
+      descriptionTranslations:
+          descriptionTranslations ?? this.descriptionTranslations,
+      listingConfig: listingConfig ?? this.listingConfig,
+      metadata: metadata,
+    );
+  }
+}
+
+/// A second-level catalogue item managed beneath a [VenueCategory].
+class VenueSubsection {
+  const VenueSubsection({
+    required this.id,
+    required this.categoryId,
+    required this.slug,
+    required this.name,
+    this.icon,
+    this.description = '',
+    this.imageUrl = '',
+    this.imagePath = '',
+    this.isActive = true,
+    this.displayOrder = 0,
+    this.supportedLanguages = const ['en'],
+    this.nameTranslations = const {},
+    this.descriptionTranslations = const {},
+  });
+
+  final String id;
+  final String categoryId;
+  final String slug;
+  final String name;
+  final String? icon;
+  final String description;
+  final String imageUrl;
+  final String imagePath;
+  final bool isActive;
+  final int displayOrder;
+  final List<String> supportedLanguages;
+  final Map<String, String> nameTranslations;
+  final Map<String, String> descriptionTranslations;
+
+  factory VenueSubsection.fromJson(Map<String, dynamic> json) {
+    return VenueSubsection(
+      id: json['id'] as String? ?? '',
+      categoryId: json['category_id'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      icon: json['icon'] as String?,
+      description: json['description'] as String? ?? '',
+      imageUrl: json['image_url'] as String? ?? '',
+      imagePath: json['image_path'] as String? ?? '',
+      isActive: json['is_active'] as bool? ?? true,
+      displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
+      supportedLanguages:
+          _stringList(json['supported_languages'], fallback: const ['en']),
+      nameTranslations: _stringMap(json['name_i18n']),
+      descriptionTranslations: _stringMap(json['description_i18n']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'category_id': categoryId,
+        'slug': slug,
+        'name': name,
+        if (icon != null) 'icon': icon,
+        'description': description,
+        'image_url': imageUrl.isEmpty ? null : imageUrl,
+        'image_path': imagePath.isEmpty ? null : imagePath,
+        'is_active': isActive,
+        'display_order': displayOrder,
+        'supported_languages': supportedLanguages,
+        'name_i18n': nameTranslations,
+        'description_i18n': descriptionTranslations,
+      };
+
+  VenueSubsection copyWith({
+    String? categoryId,
+    String? slug,
+    String? name,
+    String? icon,
+    String? description,
+    String? imageUrl,
+    String? imagePath,
+    bool clearImage = false,
+    bool clearImagePath = false,
+    bool? isActive,
+    int? displayOrder,
+    List<String>? supportedLanguages,
+    Map<String, String>? nameTranslations,
+    Map<String, String>? descriptionTranslations,
+  }) {
+    return VenueSubsection(
+      id: id,
+      categoryId: categoryId ?? this.categoryId,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      description: description ?? this.description,
+      imageUrl: clearImage ? '' : imageUrl ?? this.imageUrl,
+      imagePath: clearImagePath ? '' : imagePath ?? this.imagePath,
+      isActive: isActive ?? this.isActive,
+      displayOrder: displayOrder ?? this.displayOrder,
+      supportedLanguages: supportedLanguages ?? this.supportedLanguages,
+      nameTranslations: nameTranslations ?? this.nameTranslations,
+      descriptionTranslations:
+          descriptionTranslations ?? this.descriptionTranslations,
+    );
+  }
+}
+
+List<String> _stringList(Object? value, {required List<String> fallback}) {
+  if (value is! List) return fallback;
+  final values = value
+      .whereType<String>()
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
+  return values.isEmpty ? fallback : List.unmodifiable(values);
+}
+
+Map<String, String> _stringMap(Object? value) {
+  if (value is! Map) return const {};
+  return Map.unmodifiable(
+    value.map((key, item) => MapEntry(key.toString(), item.toString())),
   );
 }
 
-/// A single venue image row from `venue_images`.
+/// Image model associated with a venue.
 class VenueImage {
   const VenueImage({
     required this.id,
     required this.url,
-    this.thumbnailUrl = '',
-    this.altText = '',
+    this.thumbnailUrl,
+    this.altText,
     this.isCover = false,
     this.sortOrder = 0,
     this.mediaKind = 'image',
@@ -44,100 +284,129 @@ class VenueImage {
 
   final String id;
   final String url;
-  final String thumbnailUrl;
-  final String altText;
+  final String? thumbnailUrl;
+  final String? altText;
   final bool isCover;
   final int sortOrder;
 
-  /// image | video | model_3d | other — UI currently renders images.
+  /// `image` or `video` (release/v1.0 media manager).
   final String mediaKind;
 
   bool get isImage => mediaKind == 'image' || mediaKind.isEmpty;
 
-  factory VenueImage.fromJson(Map<String, dynamic> json) => VenueImage(
-    id: json['id'] as String? ?? '',
-    url: json['url'] as String? ?? '',
-    thumbnailUrl: json['thumbnail_url'] as String? ?? '',
-    altText: json['alt_text'] as String? ?? '',
-    isCover: json['is_cover'] as bool? ?? false,
-    sortOrder: json['sort_order'] as int? ?? 0,
-    mediaKind: json['media_kind'] as String? ?? 'image',
-  );
+  factory VenueImage.fromJson(Map<String, dynamic> json) {
+    return VenueImage(
+      id: json['id'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      thumbnailUrl: json['thumbnail_url'] as String?,
+      altText: json['alt_text'] as String?,
+      isCover: json['is_cover'] as bool? ?? false,
+      sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
+      mediaKind: json['media_kind'] as String? ?? 'image',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'url': url,
+        if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
+        if (altText != null) 'alt_text': altText,
+        'is_cover': isCover,
+        'sort_order': sortOrder,
+      };
 }
 
-/// A facility offered by a venue (`venue_facilities`).
+/// Facility/amenity available at a venue.
 class VenueFacility {
-  const VenueFacility({required this.facility, this.isAvailable = true});
+  const VenueFacility({
+    required this.facility,
+    this.isAvailable = true,
+  });
 
   final String facility;
   final bool isAvailable;
 
-  factory VenueFacility.fromJson(Map<String, dynamic> json) => VenueFacility(
-    facility: json['facility'] as String? ?? '',
-    isAvailable: json['is_available'] as bool? ?? true,
-  );
+  factory VenueFacility.fromJson(Map<String, dynamic> json) {
+    return VenueFacility(
+      facility: json['facility'] as String? ?? '',
+      isAvailable: json['is_available'] as bool? ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'facility': facility,
+        'is_available': isAvailable,
+      };
 }
 
-/// Operating hours for one day of the week (`venue_operating_hours`).
+/// Operating hours for a venue on a given day of the week.
 class VenueOperatingHours {
   const VenueOperatingHours({
     required this.dayOfWeek,
-    required this.opensAt,
-    required this.closesAt,
+    this.opensAt,
+    this.closesAt,
     this.isClosed = false,
   });
 
   final int dayOfWeek;
-  final String opensAt;
-  final String closesAt;
+  final String? opensAt;
+  final String? closesAt;
   final bool isClosed;
 
-  factory VenueOperatingHours.fromJson(Map<String, dynamic> json) =>
-      VenueOperatingHours(
-        dayOfWeek: (json['day_of_week'] as num?)?.toInt() ?? 0,
-        opensAt: json['opens_at'] as String? ?? '09:00:00',
-        closesAt: json['closes_at'] as String? ?? '18:00:00',
-        isClosed: json['is_closed'] as bool? ?? false,
-      );
+  factory VenueOperatingHours.fromJson(Map<String, dynamic> json) {
+    return VenueOperatingHours(
+      dayOfWeek: json['day_of_week'] as int? ?? 0,
+      opensAt: json['opens_at'] as String?,
+      closesAt: json['closes_at'] as String?,
+      isClosed: json['is_closed'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'day_of_week': dayOfWeek,
+        if (opensAt != null) 'opens_at': opensAt,
+        if (closesAt != null) 'closes_at': closesAt,
+        'is_closed': isClosed,
+      };
 }
 
-/// A bookable venue.
-///
-/// Rich object combining `venues` with its category, cover image, facilities
-/// and operating hours. List endpoints return a light version; the details
-/// endpoint hydrates the collections.
+/// Main Venue domain model.
 class Venue {
   const Venue({
     required this.id,
     required this.name,
-    required this.latitude,
-    required this.longitude,
     this.slug = '',
     this.description = '',
-    this.addressLine1 = '',
-    this.addressLine2 = '',
+    this.address = '',
     this.city = '',
     this.state = '',
-    this.postalCode = '',
-    this.country = 'IN',
-    this.locationNodeId,
+    this.pincode = '',
+    required this.latitude,
+    required this.longitude,
     this.capacity = 0,
-    this.pricingBaseAmount = 0,
-    this.pricingCurrency = 'INR',
-    this.taxRate = 0,
-    this.parkingCapacity = 0,
+    this.pricingBaseAmount = 0.0,
+    this.price = 0.0,
+    this.taxRate = 18.0,
     this.foodOptions = '',
-    this.rules = '',
+    this.parkingCapacity = 0,
+    this.avgRating = 0.0,
+    this.ratingCount = 0,
     this.isVerified = false,
     this.isActive = true,
-    this.avgRating = 0,
-    this.ratingCount = 0,
     this.category,
     this.images = const [],
     this.facilities = const [],
     this.operatingHours = const [],
-    this.contactWhatsapp = '',
     this.distanceKm,
+    this.rules = '',
+    this.cancellationPolicy,
+    this.originalPrice,
+    this.contactPhone = '',
+    this.postalCode = '',
+    this.country = 'IN',
+    this.locationNodeId,
+    this.pricingCurrency = 'INR',
+    this.contactWhatsapp = '',
     this.listingStatus,
     this.listingRejectionReason = '',
   });
@@ -146,36 +415,38 @@ class Venue {
   final String name;
   final String slug;
   final String description;
-  final String addressLine1;
-  final String addressLine2;
+  final String address;
   final String city;
   final String state;
-  final String postalCode;
-  final String country;
-  final String? locationNodeId;
+  final String pincode;
   final double latitude;
   final double longitude;
   final int capacity;
   final double pricingBaseAmount;
-  final String pricingCurrency;
+  final double price;
   final double taxRate;
-  final int parkingCapacity;
   final String foodOptions;
-  final String rules;
-  final bool isVerified;
-  final bool isActive;
+  final int parkingCapacity;
   final double avgRating;
   final int ratingCount;
+  final bool isVerified;
+  final bool isActive;
   final VenueCategory? category;
-
-  /// Hydrated collections (empty in list responses).
   final List<VenueImage> images;
   final List<VenueFacility> facilities;
   final List<VenueOperatingHours> operatingHours;
-  final String contactWhatsapp;
-
-  /// Distance in kilometres from the query point, when computed.
   final double? distanceKm;
+  final String rules;
+  final Map<String, dynamic>? cancellationPolicy;
+  final double? originalPrice;
+  final String contactPhone;
+
+  // release/v1.0 listing fields.
+  final String postalCode;
+  final String country;
+  final String? locationNodeId;
+  final String pricingCurrency;
+  final String contactWhatsapp;
 
   /// Server listing lifecycle. Null when the column is absent.
   final String? listingStatus;
@@ -190,33 +461,7 @@ class Venue {
     return 'draft';
   }
 
-  /// Cover image URL (uploaded image first, then deterministic sample imagery).
-  String get coverImageUrl {
-    if (images.isNotEmpty) {
-      for (final image in images) {
-        if (image.isCover && image.url.trim().isNotEmpty) {
-          if (!SampleVenueImages.isAndroidGenericFallback(image.url)) {
-            return image.url;
-          }
-        }
-      }
-      for (final image in images) {
-        if (image.url.trim().isNotEmpty &&
-            !SampleVenueImages.isAndroidGenericFallback(image.url)) {
-          return image.url;
-        }
-      }
-    }
-    return SampleVenueImages.forVenue(
-      id: id,
-      categorySlug: category?.slug ?? '',
-    );
-  }
-
-  /// Android's `VenueImageResolver.resolveGalleryImages` equivalent.
-  ///
-  /// Generic shared seed fixtures are replaced with deterministic category
-  /// imagery, while real owner uploads remain authoritative.
+  /// Owner gallery, falling back to category sample imagery (release/v1.0).
   List<String> get galleryImageUrls {
     final ownerImages = images
         .map((image) => image.url.trim())
@@ -231,78 +476,156 @@ class Venue {
     final placeholders = SampleVenueImages.androidGalleryForCategory(
       category?.slug ?? '',
     );
-    // Android preserves owner-image order and appends every category fallback;
-    // it does not deduplicate this combined gallery.
     return [...ownerImages, ...placeholders];
   }
 
-  /// Address composed from address lines + city + state.
-  String get address => [
-    addressLine1,
-    addressLine2,
-    city,
-    state,
-  ].where((p) => p.trim().isNotEmpty).join(', ');
+  /// Cover image, or deterministic category sample imagery when none exists.
+  String get coverOrSampleImageUrl {
+    final cover = coverImageUrl;
+    if (cover.isNotEmpty && !SampleVenueImages.isAndroidGenericFallback(cover)) {
+      return cover;
+    }
+    return SampleVenueImages.forVenue(id: id, categorySlug: category?.slug ?? '');
+  }
 
-  /// Base price formatted without currency symbol (used with a currency label).
-  double get price => pricingBaseAmount;
+  ListingTemplateConfig get listingTemplate => ListingTemplateConfig.resolve(
+        slug: category?.slug,
+        parentSection: category?.parentSection,
+        stored: category?.listingConfig,
+      );
+
+  String get cancellationSummary {
+    final policy = cancellationPolicy;
+    if (policy == null || policy.isEmpty) return '';
+    for (final key in const ['summary', 'text', 'description', 'policy']) {
+      final value = policy[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return '';
+  }
+
+  bool get hasDiscount =>
+      originalPrice != null && originalPrice! > price && price > 0;
+
+  String get addressLine1 => address.isNotEmpty ? address : city;
+  String get addressLine2 => '$city, $state $pincode'.trim();
+
+  /// Returns the cover image url or empty string.
+  String get coverImageUrl {
+    if (images.isEmpty) return '';
+    try {
+      final cover = images.firstWhere((i) => i.isCover);
+      return cover.url;
+    } catch (_) {
+      return images.first.url;
+    }
+  }
 
   factory Venue.fromJson(Map<String, dynamic> json) {
-    final categoryRaw = json['venue_categories'] ?? json['category'];
-    final imagesRaw = json['venue_images'] ?? const <dynamic>[];
-    final facilitiesRaw = json['venue_facilities'] ?? const <dynamic>[];
-    final hoursRaw = json['venue_operating_hours'] ?? const <dynamic>[];
+    // Parse category
+    VenueCategory? cat;
+    if (json['venue_categories'] is Map<String, dynamic>) {
+      cat = VenueCategory.fromJson(
+          json['venue_categories'] as Map<String, dynamic>);
+    } else if (json['category'] is Map<String, dynamic>) {
+      cat = VenueCategory.fromJson(json['category'] as Map<String, dynamic>);
+    }
+
+    // Parse images
+    final imagesList = <VenueImage>[];
+    if (json['venue_images'] is List) {
+      for (final item in json['venue_images'] as List) {
+        if (item is Map<String, dynamic>) {
+          imagesList.add(VenueImage.fromJson(item));
+        }
+      }
+    } else if (json['images'] is List) {
+      for (final item in json['images'] as List) {
+        if (item is Map<String, dynamic>) {
+          imagesList.add(VenueImage.fromJson(item));
+        }
+      }
+    }
+
+    // Parse facilities
+    final facilitiesList = <VenueFacility>[];
+    if (json['venue_facilities'] is List) {
+      for (final item in json['venue_facilities'] as List) {
+        if (item is Map<String, dynamic>) {
+          facilitiesList.add(VenueFacility.fromJson(item));
+        }
+      }
+    }
+
+    // Parse operating hours
+    final hoursList = <VenueOperatingHours>[];
+    if (json['venue_operating_hours'] is List) {
+      for (final item in json['venue_operating_hours'] as List) {
+        if (item is Map<String, dynamic>) {
+          hoursList.add(VenueOperatingHours.fromJson(item));
+        }
+      }
+    }
+
+    final pricingBase = (json['pricing_base_amount'] as num?)?.toDouble() ??
+        (json['price'] as num?)?.toDouble() ??
+        0.0;
+
+    // Build compound address if not explicitly present
+    String addr =
+        json['address'] as String? ?? json['address_line1'] as String? ?? '';
+    if (addr.isEmpty) {
+      final parts = [
+        json['city'] as String?,
+        json['state'] as String?,
+        (json['pincode'] ?? json['postal_code']) as String?,
+      ].where((s) => s != null && s.trim().isNotEmpty).map((s) => s!.trim());
+      addr = parts.join(', ');
+    }
 
     return Venue(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      addressLine1: json['address_line1'] as String? ?? '',
-      addressLine2: json['address_line2'] as String? ?? '',
+      address: addr,
       city: json['city'] as String? ?? '',
       state: json['state'] as String? ?? '',
-      postalCode: json['postal_code'] as String? ?? '',
-      country: json['country'] as String? ?? 'IN',
-      locationNodeId: json['location_node_id'] as String?,
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
-      capacity: (json['capacity'] as num?)?.toInt() ?? 0,
-      pricingBaseAmount: (json['pricing_base_amount'] as num?)?.toDouble() ?? 0,
-      pricingCurrency: json['pricing_currency'] as String? ?? 'INR',
-      taxRate: (json['tax_rate'] as num?)?.toDouble() ?? 0,
-      parkingCapacity: (json['parking_capacity'] as num?)?.toInt() ?? 0,
+      pincode: (json['pincode'] ?? json['postal_code']) as String? ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      capacity: json['capacity'] as int? ?? 0,
+      pricingBaseAmount: pricingBase,
+      price: pricingBase,
+      taxRate: (json['tax_rate'] as num?)?.toDouble() ?? 18.0,
       foodOptions: json['food_options'] as String? ?? '',
-      rules: json['rules'] as String? ?? '',
+      parkingCapacity: (json['parking_capacity'] as num?)?.toInt() ?? 0,
+      avgRating: (json['avg_rating'] as num?)?.toDouble() ?? 0.0,
+      ratingCount: json['rating_count'] as int? ?? 0,
       isVerified: json['is_verified'] as bool? ?? false,
       isActive: json['is_active'] as bool? ?? true,
-      avgRating: (json['avg_rating'] as num?)?.toDouble() ?? 0,
-      ratingCount: (json['rating_count'] as num?)?.toInt() ?? 0,
+      category: cat,
+      images: imagesList,
+      facilities: facilitiesList,
+      operatingHours: hoursList,
       distanceKm: (json['distance_km'] as num?)?.toDouble(),
+      rules: json['rules'] as String? ?? '',
+      cancellationPolicy: json['cancellation_policy'] is Map
+          ? Map<String, dynamic>.from(json['cancellation_policy'] as Map)
+          : null,
+      originalPrice: (json['original_price'] as num?)?.toDouble() ??
+          (json['list_price'] as num?)?.toDouble(),
+      contactPhone:
+          json['contact_phone'] as String? ?? json['phone'] as String? ?? '',
+      postalCode:
+          (json['postal_code'] ?? json['pincode']) as String? ?? '',
+      country: json['country'] as String? ?? 'IN',
+      locationNodeId: json['location_node_id'] as String?,
+      pricingCurrency: json['pricing_currency'] as String? ?? 'INR',
       contactWhatsapp: json['contact_whatsapp'] as String? ?? '',
       listingStatus: json['listing_status'] as String?,
-      listingRejectionReason: json['listing_rejection_reason'] as String? ?? '',
-      category: categoryRaw is Map<String, dynamic>
-          ? VenueCategory.fromJson(categoryRaw)
-          : null,
-      images: imagesRaw is List
-          ? imagesRaw
-                .whereType<Map<String, dynamic>>()
-                .map(VenueImage.fromJson)
-                .toList()
-          : const [],
-      facilities: facilitiesRaw is List
-          ? facilitiesRaw
-                .whereType<Map<String, dynamic>>()
-                .map(VenueFacility.fromJson)
-                .toList()
-          : const [],
-      operatingHours: hoursRaw is List
-          ? hoursRaw
-                .whereType<Map<String, dynamic>>()
-                .map(VenueOperatingHours.fromJson)
-                .toList()
-          : const [],
+      listingRejectionReason:
+          json['listing_rejection_reason'] as String? ?? '',
     );
   }
 
@@ -311,31 +634,33 @@ class Venue {
     String? name,
     String? slug,
     String? description,
-    String? addressLine1,
-    String? addressLine2,
+    String? address,
     String? city,
     String? state,
-    String? postalCode,
-    String? country,
-    String? locationNodeId,
+    String? pincode,
     double? latitude,
     double? longitude,
     int? capacity,
     double? pricingBaseAmount,
-    String? pricingCurrency,
+    double? price,
     double? taxRate,
-    int? parkingCapacity,
-    String? foodOptions,
-    String? rules,
+    double? avgRating,
+    int? ratingCount,
     bool? isVerified,
     bool? isActive,
+    VenueCategory? category,
     List<VenueImage>? images,
     List<VenueFacility>? facilities,
     List<VenueOperatingHours>? operatingHours,
-    VenueCategory? category,
     double? distanceKm,
-    double? avgRating,
-    int? ratingCount,
+    String? rules,
+    Map<String, dynamic>? cancellationPolicy,
+    double? originalPrice,
+    String? contactPhone,
+    String? postalCode,
+    String? country,
+    String? locationNodeId,
+    String? pricingCurrency,
     String? contactWhatsapp,
     String? listingStatus,
     String? listingRejectionReason,
@@ -345,46 +670,42 @@ class Venue {
       name: name ?? this.name,
       slug: slug ?? this.slug,
       description: description ?? this.description,
-      addressLine1: addressLine1 ?? this.addressLine1,
-      addressLine2: addressLine2 ?? this.addressLine2,
+      address: address ?? this.address,
       city: city ?? this.city,
       state: state ?? this.state,
-      postalCode: postalCode ?? this.postalCode,
-      country: country ?? this.country,
-      locationNodeId: locationNodeId ?? this.locationNodeId,
+      pincode: pincode ?? this.pincode,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       capacity: capacity ?? this.capacity,
       pricingBaseAmount: pricingBaseAmount ?? this.pricingBaseAmount,
-      pricingCurrency: pricingCurrency ?? this.pricingCurrency,
+      price: price ?? this.price,
       taxRate: taxRate ?? this.taxRate,
-      parkingCapacity: parkingCapacity ?? this.parkingCapacity,
-      foodOptions: foodOptions ?? this.foodOptions,
-      rules: rules ?? this.rules,
-      isVerified: isVerified ?? this.isVerified,
-      isActive: isActive ?? this.isActive,
       avgRating: avgRating ?? this.avgRating,
       ratingCount: ratingCount ?? this.ratingCount,
-      contactWhatsapp: contactWhatsapp ?? this.contactWhatsapp,
-      listingStatus: listingStatus ?? this.listingStatus,
-      listingRejectionReason:
-          listingRejectionReason ?? this.listingRejectionReason,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
       category: category ?? this.category,
       images: images ?? this.images,
       facilities: facilities ?? this.facilities,
       operatingHours: operatingHours ?? this.operatingHours,
       distanceKm: distanceKm ?? this.distanceKm,
+      rules: rules ?? this.rules,
+      cancellationPolicy: cancellationPolicy ?? this.cancellationPolicy,
+      originalPrice: originalPrice ?? this.originalPrice,
+      contactPhone: contactPhone ?? this.contactPhone,
+      postalCode: postalCode ?? this.postalCode,
+      country: country ?? this.country,
+      locationNodeId: locationNodeId ?? this.locationNodeId,
+      pricingCurrency: pricingCurrency ?? this.pricingCurrency,
+      contactWhatsapp: contactWhatsapp ?? this.contactWhatsapp,
+      listingStatus: listingStatus ?? this.listingStatus,
+      listingRejectionReason:
+          listingRejectionReason ?? this.listingRejectionReason,
     );
   }
 }
 
-/// A search query describing the filters applied to venue listings.
-///
-/// Fields marked "section-specific" are driven by the active customer
-/// section (see [SectionFilterSpec] in `customer_section_catalog.dart`):
-/// halls carry date/guests, stays carry check-in/out/room type/rating,
-/// PG carries gender/sharing/food/deposit and institutes carry
-/// class type/mode. Unused fields are simply `null`.
+/// Search and filter query parameters for venues.
 class VenueSearchQuery {
   const VenueSearchQuery({
     this.query = '',
@@ -397,11 +718,14 @@ class VenueSearchQuery {
     this.city,
     this.area,
     this.postalCode,
+    this.pincode,
+    this.facility,
     this.minPrice,
     this.maxPrice,
     this.sortBy = VenueSortBy.relevance,
     this.latitude,
     this.longitude,
+    this.radiusKm,
     this.maxDistanceKm,
     this.minCapacity,
     this.date,
@@ -416,6 +740,8 @@ class VenueSearchQuery {
     this.classType,
     this.mode,
     this.amenities = const {},
+    this.limit = 24,
+    this.offset = 0,
   });
 
   final String query;
@@ -428,57 +754,35 @@ class VenueSearchQuery {
   final String? city;
   final String? area;
   final String? postalCode;
+  final String? pincode;
+  final String? facility;
   final double? minPrice;
   final double? maxPrice;
   final VenueSortBy sortBy;
   final double? latitude;
   final double? longitude;
+  final int? radiusKm;
   final double? maxDistanceKm;
-
-  // -- Section-specific filters (Phase 5) ------------------------------
-
-  /// Halls: minimum guest capacity.
   final int? minCapacity;
-
-  /// Halls: event date (booking context; availability is validated at
-  /// booking time, so this never excludes listings by itself).
   final DateTime? date;
-
-  /// Stays: check-in date (booking context, not a listing filter).
   final DateTime? checkIn;
-
-  /// Stays: check-out date (booking context, not a listing filter).
   final DateTime? checkOut;
-
-  /// Stays: room type keyword (single / double / family / deluxe...).
   final String? roomType;
-
-  /// Stays: minimum average rating (1.0 - 5.0).
   final double? minRating;
-
-  /// PG: gender preference (`gents` / `ladies`).
   final String? gender;
-
-  /// PG: sharing preference (`single` / `double` / `triple`).
   final String? sharing;
-
-  /// PG: food included (true = venue must offer food/mess).
   final bool? foodIncluded;
-
-  /// PG: maximum security deposit. When set, the venue must disclose a
-  /// deposit in its facilities.
   final double? maxDeposit;
-
-  /// Institutes: class type keyword (coaching / computer / dance / music /
-  /// sports). Also reflected in the category chips.
   final String? classType;
-
-  /// Institutes: delivery mode keyword (`online` / `offline` / `hybrid`).
   final String? mode;
-
-  /// Amenity ids selected in the filter sheet (parking, ac, catering,
-  /// generator...). Evaluated against the facility keyword haystack.
   final Set<String> amenities;
+  final int limit;
+  final int offset;
+
+  bool get hasCoordinates => latitude != null && longitude != null;
+
+  /// True when a location (lat/lng + radius) is part of the query.
+  bool get hasLocation => hasCoordinates;
 
   bool get hasFilters =>
       query.isNotEmpty ||
@@ -491,10 +795,13 @@ class VenueSearchQuery {
       city != null ||
       area != null ||
       postalCode != null ||
+      pincode != null ||
+      facility != null ||
       minPrice != null ||
       maxPrice != null ||
       latitude != null ||
       longitude != null ||
+      radiusKm != null ||
       maxDistanceKm != null ||
       minCapacity != null ||
       date != null ||
@@ -508,10 +815,8 @@ class VenueSearchQuery {
       maxDeposit != null ||
       classType != null ||
       mode != null ||
+      sortBy != VenueSortBy.relevance ||
       amenities.isNotEmpty;
-
-  /// True when a location (lat/lng + radius) is part of the query.
-  bool get hasLocation => latitude != null && longitude != null;
 
   VenueSearchQuery copyWith({
     String? query,
@@ -524,11 +829,14 @@ class VenueSearchQuery {
     String? Function()? city,
     String? Function()? area,
     String? Function()? postalCode,
+    String? Function()? pincode,
+    String? Function()? facility,
     double? Function()? minPrice,
     double? Function()? maxPrice,
     VenueSortBy? sortBy,
     double? Function()? latitude,
     double? Function()? longitude,
+    int? Function()? radiusKm,
     double? Function()? maxDistanceKm,
     int? Function()? minCapacity,
     DateTime? Function()? date,
@@ -543,28 +851,29 @@ class VenueSearchQuery {
     String? Function()? classType,
     String? Function()? mode,
     Set<String>? amenities,
+    int? limit,
+    int? offset,
   }) {
     return VenueSearchQuery(
       query: query ?? this.query,
       categorySlug: categorySlug != null ? categorySlug() : this.categorySlug,
       sectionId: sectionId != null ? sectionId() : this.sectionId,
-      locationNodeId: locationNodeId != null
-          ? locationNodeId()
-          : this.locationNodeId,
+      locationNodeId: locationNodeId != null ? locationNodeId() : this.locationNodeId,
       country: country != null ? country() : this.country,
       state: state != null ? state() : this.state,
       district: district != null ? district() : this.district,
       city: city != null ? city() : this.city,
       area: area != null ? area() : this.area,
       postalCode: postalCode != null ? postalCode() : this.postalCode,
+      pincode: pincode != null ? pincode() : this.pincode,
+      facility: facility != null ? facility() : this.facility,
       minPrice: minPrice != null ? minPrice() : this.minPrice,
       maxPrice: maxPrice != null ? maxPrice() : this.maxPrice,
       sortBy: sortBy ?? this.sortBy,
       latitude: latitude != null ? latitude() : this.latitude,
       longitude: longitude != null ? longitude() : this.longitude,
-      maxDistanceKm: maxDistanceKm != null
-          ? maxDistanceKm()
-          : this.maxDistanceKm,
+      radiusKm: radiusKm != null ? radiusKm() : this.radiusKm,
+      maxDistanceKm: maxDistanceKm != null ? maxDistanceKm() : this.maxDistanceKm,
       minCapacity: minCapacity != null ? minCapacity() : this.minCapacity,
       date: date != null ? date() : this.date,
       checkIn: checkIn != null ? checkIn() : this.checkIn,
@@ -578,9 +887,102 @@ class VenueSearchQuery {
       classType: classType != null ? classType() : this.classType,
       mode: mode != null ? mode() : this.mode,
       amenities: amenities ?? this.amenities,
+      limit: limit ?? this.limit,
+      offset: offset ?? this.offset,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is VenueSearchQuery &&
+            query == other.query &&
+            categorySlug == other.categorySlug &&
+            sectionId == other.sectionId &&
+            locationNodeId == other.locationNodeId &&
+            country == other.country &&
+            state == other.state &&
+            district == other.district &&
+            city == other.city &&
+            area == other.area &&
+            postalCode == other.postalCode &&
+            pincode == other.pincode &&
+            facility == other.facility &&
+            minPrice == other.minPrice &&
+            maxPrice == other.maxPrice &&
+            sortBy == other.sortBy &&
+            latitude == other.latitude &&
+            longitude == other.longitude &&
+            radiusKm == other.radiusKm &&
+            maxDistanceKm == other.maxDistanceKm &&
+            minCapacity == other.minCapacity &&
+            date == other.date &&
+            checkIn == other.checkIn &&
+            checkOut == other.checkOut &&
+            roomType == other.roomType &&
+            minRating == other.minRating &&
+            gender == other.gender &&
+            sharing == other.sharing &&
+            foodIncluded == other.foodIncluded &&
+            maxDeposit == other.maxDeposit &&
+            classType == other.classType &&
+            mode == other.mode &&
+            _setEquals(amenities, other.amenities) &&
+            limit == other.limit &&
+            offset == other.offset;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        query,
+        categorySlug,
+        sectionId,
+        locationNodeId,
+        country,
+        state,
+        district,
+        city,
+        area,
+        postalCode,
+        pincode,
+        facility,
+        minPrice,
+        maxPrice,
+        sortBy,
+        latitude,
+        longitude,
+        radiusKm,
+        maxDistanceKm,
+        minCapacity,
+        date,
+        checkIn,
+        checkOut,
+        roomType,
+        minRating,
+        gender,
+        sharing,
+        foodIncluded,
+        maxDeposit,
+        classType,
+        mode,
+        Object.hashAllUnordered(amenities),
+        limit,
+        offset,
+      ]);
 }
 
-/// Sort order for venue listings.
-enum VenueSortBy { relevance, priceAsc, priceDesc, rating, distance }
+bool _setEquals(Set<String> a, Set<String> b) =>
+    a.length == b.length && a.containsAll(b);
+
+/// Masks a venue's direct contact number for display before the customer has
+/// a booking the owner accepted (reference parity with the Android privacy
+/// rule "numbers unlock on booking confirmation").
+///
+/// Keeps the last two digits so the value still reads as a real number while
+/// remaining undialable; the digits shown are never enough to reconstruct it.
+String maskContactPhone(String raw) {
+  final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.length < 4) return '';
+  final head = digits.substring(0, digits.length - 2);
+  return '${'•' * (head.length - 2)}••${digits.substring(digits.length - 2)}';
+}

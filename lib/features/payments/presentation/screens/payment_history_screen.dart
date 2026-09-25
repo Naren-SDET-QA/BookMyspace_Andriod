@@ -150,15 +150,15 @@ class _PaymentHistoryCard extends ConsumerWidget {
             ),
             const Divider(height: 24),
             _HistoryRow(label: l10n.total, value: _formatAmount(payment)),
-            if (payment.providerPaymentId.isNotEmpty)
+            if ((payment.providerPaymentId ?? '').isNotEmpty)
               _HistoryRow(
                 label: l10n.razorpayTransactionId,
-                value: payment.providerPaymentId,
+                value: payment.providerPaymentId!,
               ),
-            if (payment.providerOrderId.isNotEmpty)
+            if ((payment.providerOrderId ?? '').isNotEmpty)
               _HistoryRow(
                 label: l10n.razorpayOrderId,
-                value: payment.providerOrderId,
+                value: payment.providerOrderId!,
               ),
             _HistoryRow(label: l10n.bookingId, value: payment.bookingId),
             if (_isCompleted) ...[

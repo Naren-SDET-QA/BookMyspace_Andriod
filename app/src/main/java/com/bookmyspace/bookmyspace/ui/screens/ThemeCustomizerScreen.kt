@@ -157,26 +157,34 @@ fun ThemeCustomizerScreen(
                             SegmentedButton(
                                 selected = themeMode == ThemeMode.SYSTEM_DEFAULT,
                                 onClick = { BookMySpaceRepository.setThemeMode(ThemeMode.SYSTEM_DEFAULT) },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 4),
                                 icon = { Icon(Icons.Default.BrightnessAuto, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             ) {
-                                Text("System", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Text("System", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                             }
                             SegmentedButton(
                                 selected = themeMode == ThemeMode.LIGHT,
                                 onClick = { BookMySpaceRepository.setThemeMode(ThemeMode.LIGHT) },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 4),
                                 icon = { Icon(Icons.Default.LightMode, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             ) {
-                                Text("Light", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Light", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                             }
                             SegmentedButton(
                                 selected = themeMode == ThemeMode.DARK,
                                 onClick = { BookMySpaceRepository.setThemeMode(ThemeMode.DARK) },
-                                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 4),
                                 icon = { Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             ) {
-                                Text("Dark", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Dark", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            SegmentedButton(
+                                selected = themeMode == ThemeMode.HIGH_CONTRAST_GLASS,
+                                onClick = { BookMySpaceRepository.setThemeMode(ThemeMode.HIGH_CONTRAST_GLASS) },
+                                shape = SegmentedButtonDefaults.itemShape(index = 3, count = 4),
+                                icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                            ) {
+                                Text("Glass ✨", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

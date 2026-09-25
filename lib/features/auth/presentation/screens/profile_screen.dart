@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/modular/feature_id.dart';
-import '../../../../core/modular/feature_providers.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/responsive_layout.dart';
-import '../../../../core/widgets/test_id.dart';
+import '../../../booking/presentation/booking_providers.dart';
 import '../../../venues/presentation/venue_providers.dart';
-import '../../domain/auth_user.dart';
 import '../auth_providers.dart';
+import '../../domain/app_role.dart';
+import '../role_providers.dart';
 import '../widgets/edit_profile_modal.dart';
 
 /// Full-featured Profile Screen with instant Edit Profile modal support,
@@ -26,7 +25,11 @@ class ProfileScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
-    final features = ref.watch(featureRegistryProvider);
+    final roles = ref.watch(currentUserRolesProvider).valueOrNull ?? {};
+    final isVenueOwner = roles.canManageVenues;
+    final isAdmin = roles.canViewAdminTools;
+    final bookings = ref.watch(myBookingsProvider);
+    final saved = ref.watch(savedVenuesProvider);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -58,9 +61,8 @@ class ProfileScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                     side: BorderSide(
-                      color: theme.colorScheme.outlineVariant.withValues(
-                        alpha: 0.4,
-                      ),
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.4),
                     ),
                   ),
                   child: Padding(
@@ -79,7 +81,7 @@ class ProfileScreen extends ConsumerWidget {
                                     shape: BoxShape.circle,
                                     color: theme.colorScheme.primaryContainer,
                                     border: Border.all(
-                                      color: AppTheme.brand,
+                                      color: AppTheme.violet,
                                       width: 2.5,
                                     ),
                                   ),
@@ -93,15 +95,15 @@ class ProfileScreen extends ConsumerWidget {
                                           child: Text(
                                             user?.fullName.isNotEmpty == true
                                                 ? user!.fullName[0]
-                                                      .toUpperCase()
+                                                    .toUpperCase()
                                                 : user?.email.isNotEmpty == true
-                                                ? user!.email[0].toUpperCase()
-                                                : 'U',
+                                                    ? user!.email[0]
+                                                        .toUpperCase()
+                                                    : 'U',
                                             style: TextStyle(
                                               fontSize: 28,
                                               fontWeight: FontWeight.bold,
-                                              color: theme
-                                                  .colorScheme
+                                              color: theme.colorScheme
                                                   .onPrimaryContainer,
                                             ),
                                           ),
@@ -115,7 +117,7 @@ class ProfileScreen extends ConsumerWidget {
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: const BoxDecoration(
-                                        color: AppTheme.brand,
+                                        color: AppTheme.violet,
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -135,69 +137,22 @@ class ProfileScreen extends ConsumerWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          user?.fullName.isNotEmpty == true
-                                              ? user!.fullName
-                                              : 'Guest User',
-                                          style: theme.textTheme.titleLarge
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w900,
-                                                letterSpacing: -0.3,
-                                              ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.shade100,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.verified,
-                                              size: 12,
-                                              color: Colors.green.shade800,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              _verificationLabel(user),
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green.shade800,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
                                   Text(
-                                    _roleLabel(user),
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                    user?.fullName.isNotEmpty == true
+                                        ? user!.fullName
+                                        : l10n.guest,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     user?.email.isNotEmpty == true
                                         ? user!.email
-                                        : 'Signed in via Supabase',
+                                        : l10n.notSignedIn,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
@@ -208,12 +163,11 @@ class ProfileScreen extends ConsumerWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       user!.phone,
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
                                     ),
                                   ],
                                 ],
@@ -244,16 +198,19 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Quick Activity Metrics
                 Row(
                   children: [
                     Expanded(
                       child: _MetricCard(
                         icon: Icons.receipt_long_rounded,
                         title: 'My Bookings',
-                        count: '3 Active',
-                        color: Colors.blue,
-                        onTap: () => context.go(AppRoutes.bookings),
+                        count: bookings.maybeWhen(
+                          data: (items) =>
+                              '${items.where((booking) => booking.isActive).length} active',
+                          orElse: () => '—',
+                        ),
+                        color: AppTheme.violet,
+                        onTap: () => context.push(AppRoutes.bookings),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -261,20 +218,12 @@ class ProfileScreen extends ConsumerWidget {
                       child: _MetricCard(
                         icon: Icons.favorite_rounded,
                         title: 'Saved Spaces',
-                        count:
-                            '${ref.watch(favoritesProvider).valueOrNull?.length ?? 0} Saved',
+                        count: saved.maybeWhen(
+                          data: (items) => '${items.length} saved',
+                          orElse: () => '—',
+                        ),
                         color: Colors.pink,
                         onTap: () => context.push(AppRoutes.saved),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _MetricCard(
-                        icon: Icons.account_balance_wallet_rounded,
-                        title: 'Wallet',
-                        count: '₹2,500',
-                        color: Colors.amber.shade800,
-                        onTap: () => context.push(AppRoutes.wallet),
                       ),
                     ),
                   ],
@@ -296,124 +245,81 @@ class ProfileScreen extends ConsumerWidget {
                   subtitle: 'Update your display name and photo in Supabase',
                   onTap: () => EditProfileModal.show(context),
                 ),
-                if (features.isExposed(FeatureId.payments))
-                  _ProfileMenuTile(
-                    icon: Icons.payments_outlined,
-                    title: l10n.paymentHistory,
-                    subtitle: 'View completed transactions and invoices',
-                    onTap: () => context.push(AppRoutes.paymentHistory),
-                  ),
                 _ProfileMenuTile(
-                  icon: Icons.card_giftcard_outlined,
-                  title: 'Refer & Earn',
-                  subtitle: 'Share your code and track rewards',
-                  onTap: () => context.push(AppRoutes.referrals),
+                  icon: Icons.event_available_outlined,
+                  title: 'Upcoming Events',
+                  subtitle: 'Workshops, concerts, and community events',
+                  onTap: () => context.push(AppRoutes.eventsList),
                 ),
                 _ProfileMenuTile(
-                  icon: Icons.insights_outlined,
-                  title: l10n.analytics,
-                  subtitle: 'Review your bookings and spending trends',
-                  onTap: () => context.push(AppRoutes.customerAnalytics),
+                  icon: Icons.school_outlined,
+                  title: 'Courses',
+                  subtitle: 'Institutes, batches, and enrollments',
+                  onTap: () => context.push(AppRoutes.coursesList),
                 ),
-                if (features.isExposed(FeatureId.notifications))
-                  _ProfileMenuTile(
-                    icon: Icons.notifications_none_rounded,
-                    title: l10n.notifications,
-                    subtitle: 'Booking updates, reminders, and offers',
-                    onTap: () => context.push(AppRoutes.notifications),
-                  ),
+                _ProfileMenuTile(
+                  icon: Icons.notifications_none_rounded,
+                  title: 'Notifications & Alerts',
+                  subtitle: 'Booking updates, reminders, and offers',
+                  onTap: () => context.push(AppRoutes.notifications),
+                ),
                 _ProfileMenuTile(
                   icon: Icons.tune_rounded,
-                  title: l10n.settings,
+                  title: 'App Preferences',
                   subtitle: 'Theme, language, and display options',
                   onTap: () => context.push(AppRoutes.settings),
                 ),
-                if (user?.isOwner == true)
-                  TestId(
-                    E2eIds.profileOwnerDashboard,
-                    child: _ProfileMenuTile(
-                      icon: Icons.storefront_outlined,
-                      title: l10n.ownerDashboard,
-                      subtitle: 'List your spaces, halls, and classes',
-                      onTap: () => context.push(AppRoutes.ownerDashboard),
-                    ),
-                  ),
-                if (user?.isOwner == true)
+                _ProfileMenuTile(
+                  icon: Icons.storefront_outlined,
+                  title: isVenueOwner
+                      ? 'Partner / Venue Owner Hub'
+                      : 'Become a Venue Partner',
+                  subtitle: isVenueOwner
+                      ? 'List your spaces, halls, and classes'
+                      : 'List your spaces, halls, and classes',
+                  onTap: () => context.push(isVenueOwner
+                      ? AppRoutes.ownerDashboard
+                      : AppRoutes.ownerRegistration),
+                ),
+                if (isAdmin)
                   _ProfileMenuTile(
-                    icon: Icons.school_outlined,
-                    title: l10n.instituteOwnerPortal,
-                    subtitle: 'Faculty, classes, demo sessions and plans',
-                    onTap: () => context.push(AppRoutes.ownerInstitute),
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'Admin console',
+                    subtitle: 'Users, owners, venues, support, and audit',
+                    onTap: () => context.push(AppRoutes.adminDashboard),
                   ),
-                if (user?.isOwner == true)
+                if (roles.contains(AppRole.supportAgent) && !isAdmin)
                   _ProfileMenuTile(
-                    icon: Icons.qr_code_scanner_rounded,
-                    title: l10n.checkIn,
-                    subtitle: 'Verify a confirmed booking pass',
-                    onTap: () => context.push(AppRoutes.checkIn),
-                  ),
-                if (user?.isAdmin == true)
-                  TestId(
-                    E2eIds.profileAdminDashboard,
-                    child: _ProfileMenuTile(
-                      icon: Icons.admin_panel_settings_outlined,
-                      title: l10n.admin,
-                      subtitle: 'Approvals, categories, payments and audit',
-                      onTap: () => context.push(AppRoutes.adminDashboard),
-                    ),
-                  ),
-                if (user?.isAdmin == true)
-                  _ProfileMenuTile(
-                    icon: Icons.healing_outlined,
-                    title: 'Payment & self-healing',
-                    subtitle: 'Reconcile stale pending Razorpay payments',
-                    onTap: () => context.push(AppRoutes.adminPaymentHealth),
-                  ),
-                if (features.isExposed(FeatureId.ai))
-                  _ProfileMenuTile(
-                    icon: Icons.auto_awesome,
-                    title: 'AI assistant',
-                    subtitle: 'Voice and natural-language discovery',
-                    onTap: () => context.push(AppRoutes.assistant),
-                  ),
-                if (features.isExposed(FeatureId.institutes))
-                  _ProfileMenuTile(
-                    icon: Icons.school_outlined,
-                    title: l10n.classes,
-                    subtitle: 'Browse academies, faculty and demo sessions',
-                    onTap: () => context.push(AppRoutes.institutesList),
+                    icon: Icons.support_agent_outlined,
+                    title: l10n.support,
+                    subtitle: 'Tickets your support role can read',
+                    onTap: () => context.push(AppRoutes.adminSupport),
                   ),
                 _ProfileMenuTile(
                   icon: Icons.headset_mic_outlined,
-                  title: l10n.support,
+                  title: 'Support & Help Desk',
                   subtitle: 'Get quick assistance with bookings',
                   onTap: () => context.push(AppRoutes.support),
                 ),
                 const SizedBox(height: 16),
 
                 // Sign out button
-                TestId(
-                  E2eIds.logout,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await ref.read(authNotifierProvider.notifier).signOut();
-                      if (context.mounted) {
-                        context.go(AppRoutes.login);
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      foregroundColor: theme.colorScheme.error,
-                      side: BorderSide(color: theme.colorScheme.error),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await ref.read(authNotifierProvider.notifier).signOut();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(color: theme.colorScheme.error),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    icon: const Icon(Icons.logout_rounded),
-                    label: const Text(
-                      'Sign Out',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                  ),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text(
+                    'Sign Out',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -424,20 +330,6 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
-
-  String _roleLabel(AuthUser? user) => switch (user?.role) {
-    AppRole.admin => 'Admin',
-    AppRole.venueOwner => 'Venue Owner',
-    _ => 'Customer',
-  };
-
-  String _verificationLabel(AuthUser? user) =>
-      switch (user?.verificationStatus) {
-        VerificationStatus.approved => 'Verified',
-        VerificationStatus.submitted => 'Under review',
-        VerificationStatus.rejected => 'Rejected',
-        _ => 'Unverified',
-      };
 }
 
 class _MetricCard extends StatelessWidget {
@@ -461,7 +353,9 @@ class _MetricCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -511,33 +405,66 @@ class _ProfileMenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(10),
+    // BMS2-style glass tile: translucent white surface with a soft violet
+    // icon orb, matching the settings screen and the approved reference.
+    final isDark = theme.brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: theme.colorScheme.onSurfaceVariant),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, size: 20),
+              ],
+            ),
           ),
-          child: Icon(icon, color: theme.colorScheme.primary, size: 20),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 11.5,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-        onTap: onTap,
       ),
     );
   }

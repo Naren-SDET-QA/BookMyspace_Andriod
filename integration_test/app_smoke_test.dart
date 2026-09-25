@@ -14,12 +14,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../test/features/auth/mock_auth_repository.dart';
-import '../test/features/booking/mock_booking_repository.dart';
-import '../test/features/courses/mock_course_repository.dart';
-import '../test/features/events/mock_event_repository.dart';
+import '../test/features/auth/mock_auth_repository_release.dart';
+import '../test/features/booking/mock_booking_repository_release.dart';
+import '../test/features/courses/mock_course_repository_release.dart';
+import '../test/features/events/mock_event_repository_release.dart';
 import '../test/features/notifications/mock_notification_repository.dart';
-import '../test/features/venues/mock_venue_repository.dart';
+import '../test/features/venues/mock_venue_repository_release.dart';
 
 Widget testApp(String route) => ProviderScope(
   overrides: [
@@ -72,7 +72,7 @@ void main() {
   testWidgets('venue navigation reaches booking step without payment', (
     tester,
   ) async {
-    await tester.pumpWidget(testApp('/venues/v1'));
+    await tester.pumpWidget(testApp('/v1/venues/v1'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Book Now'), findsOneWidget);
     await tester.tap(find.textContaining('Book Now'));
@@ -83,7 +83,7 @@ void main() {
     await tester.ensureVisible(find.text('Morning'));
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
-    expect(find.text('Confirm booking'), findsOneWidget);
+    expect(find.text('Confirm Booking'), findsOneWidget);
     expect(find.text('Sign in to continue'), findsNothing);
   });
 }

@@ -21,6 +21,9 @@ class RazorpayWebCheckoutService implements CheckoutService {
   CheckoutSuccessDetails? _lastSuccessDetails;
 
   @override
+  CheckoutResponse? get lastResponse => null;
+
+  @override
   CheckoutSuccessDetails? get lastSuccessDetails => _lastSuccessDetails;
 
   @override
@@ -29,7 +32,13 @@ class RazorpayWebCheckoutService implements CheckoutService {
     required double amount,
     required String currency,
     required String keyId,
-  }) async {
+      String? venueName,
+    String? bookingRef,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    Map<String, dynamic>? notes,
+}) async {
     if (keyId.trim().isEmpty || keyId.contains('PLACEHOLDER')) {
       throw const ConfigurationException(
         'Razorpay checkout is not configured. Add a test key to run payments.',

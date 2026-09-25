@@ -151,8 +151,15 @@ void main() {
 }
 
 class _FailingSearchRepository implements VenueRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
   @override
-  Future<List<VenueCategory>> categories() async => const [];
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
+  @override
+  Future<List<VenueCategory>> categories({bool activeOnly = false}) async =>
+      const [];
 
   @override
   Future<List<Venue>> popularVenues({int limit = 10}) async => const [];

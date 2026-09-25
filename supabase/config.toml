@@ -157,11 +157,12 @@ enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "http://127.0.0.1:3000"
-# The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
-# external_url = ""
-# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+additional_redirect_urls = [
+  "http://127.0.0.1:8080",
+  "bookmyspace://login-callback/",
+  "bookmyspace://login-callback",
+  "https://127.0.0.1:3000",
+]
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
 # jwt_issuer = ""
@@ -248,6 +249,15 @@ otp_expiry = 3600
 subject = "Your BookMySpace verification code"
 content_path = "./supabase/templates/confirmation.html"
 
+# Provider credentials are supplied via the hosted Supabase dashboard (or
+# local env), never committed. Empty values keep the local config honest.
+# Disabled locally so the CLI can parse this file. Hosted Google/Apple Auth is
+# configured in the Supabase dashboard and is never pushed by function deploy.
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = ""
+redirect_uri = ""
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
@@ -396,6 +406,30 @@ deno_version = 2
 [functions.razorpay-webhook]
 verify_jwt = false
 
+# Auth Send SMS hooks authenticate with the Standard Webhooks signature rather
+# than a user JWT. The function verifies that signature itself.
+[functions.send-sms-hook]
+verify_jwt = false
+
+# release/v1.0 variants of the booking/payment functions, kept deployable
+# next to the main-lineage versions.
+[functions.razorpay-webhook-release-v1]
+verify_jwt = false
+
+[functions.create-payment-order-release-v1]
+verify_jwt = true
+
+# User-authenticated order creation. Secrets stay in Edge Function env:
+# RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET.
+[functions.create-payment-order]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.lookup-pincode]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
@@ -419,6 +453,22 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # Set enabled = false to fall back to the legacy migra engine.
 [experimental.pgdelta]
 enabled = true
+
+# External Inventory (Channel Manager) webhook receiver. Authenticates
+# with an internal HMAC signature (EXTERNAL_INVENTORY_WEBHOOK_SECRET), not
+# a Supabase user JWT — see supabase/functions/external-inventory-webhook/helpers.ts.
+[functions.external-inventory-webhook]
+verify_jwt = false
+
+# External Inventory manual sync trigger. Authenticates with the caller's
+# own Supabase JWT; ownership is re-checked inside request_external_manual_sync().
+[functions.external-inventory-sync]
+verify_jwt = true
+
+[functions.ai-booking-assistant]
+verify_jwt = true
+[functions.mcp-api]
+verify_jwt = true
 # Directory under `supabase/` where declarative files are written.
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.

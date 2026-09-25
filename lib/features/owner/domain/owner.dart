@@ -13,11 +13,11 @@ class Owner {
   final String name;
 
   factory Owner.fromJson(Map<String, dynamic> json) => Owner(
-    id: json['id'] as String? ?? '',
-    userId: json['user_id'] as String? ?? '',
-    email: json['email'] as String? ?? '',
-    name: json['name'] as String? ?? '',
-  );
+        id: json['id'] as String? ?? '',
+        userId: json['user_id'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+      );
 }
 
 /// Contract for owner repository.
@@ -35,6 +35,11 @@ abstract interface class OwnerRepository {
     required String email,
     required String name,
     required String password,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
   });
 
   /// Get the current owner profile, if any.

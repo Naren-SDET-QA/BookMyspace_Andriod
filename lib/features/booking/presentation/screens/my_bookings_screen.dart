@@ -1,23 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/modular/feature_providers.dart';
-import '../../../../core/modular/plugin_kind.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
-import '../../../../core/widgets/test_id.dart';
-import '../../../notifications/domain/notification.dart';
-import '../../../notifications/presentation/notification_providers.dart';
+import '../../../../core/widgets/glassmorphic_card.dart';
+import '../../../calendar/presentation/calendar_export_service.dart';
 import '../../../payments/presentation/payment_providers.dart';
+import '../../../venues/domain/venue.dart';
+import '../../../venues/presentation/venue_providers.dart';
+import '../../../auth/presentation/auth_providers.dart';
+import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
+import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
-import '../widgets/booking_status_badge.dart';
 
 /// Lists the signed-in user's bookings with status and cancel action.
 class MyBookingsScreen extends ConsumerStatefulWidget {
@@ -28,27 +32,94 @@ class MyBookingsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
-  int _selectedTab = 0;
+  RealtimeChannel? _bookingChannel;
+  // Captured for dispose(): `ref` must not be used after dispose (debug
+  // builds throw), so dispose() cannot call ref.read for the client.
+  SupabaseClient? _supabaseClient;
 
-  Future<void> _refresh() async {
-    ref.invalidate(myBookingsProvider);
-    await ref.read(myBookingsProvider.future);
+  // Phase 9XM-3: drives infinite-scroll pagination. Works identically for
+  // touch scrolling (iOS/Android) and mouse/trackpad scrolling (Web) since
+  // ScrollController/ScrollPosition are platform-independent Flutter APIs
+  // with no iOS/Android-only dependency.
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToBookingUpdates();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _notify(
-    NotificationType type,
-    String title,
-    String body, {
-    Map<String, dynamic> data = const {},
-  }) async {
-    try {
-      await ref
-          .read(notificationRepositoryProvider)
-          .create(type: type, title: title, body: body, data: data);
-      ref.invalidate(unreadNotificationsCountProvider);
-    } catch (_) {
-      // Notification delivery is best-effort and must never block the action.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    // Fire the next-page fetch shortly before the user reaches the
+    // physical end of the list, so the next page is usually ready before
+    // they get there. MyBookingsPageController's own `_isFetching` guard
+    // (checked inside loadNextPage) prevents duplicate concurrent
+    // requests if this fires again before the previous page resolves.
+    if (position.pixels >= position.maxScrollExtent - 400) {
+      ref.read(myBookingsPageProvider.notifier).loadNextPage();
     }
+  }
+
+  void _subscribeToBookingUpdates() {
+    try {
+      final client = ref.read(supabaseProvider);
+      _supabaseClient = client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
+
+      _bookingChannel = client
+          .channel('customer-bookings-${user.id}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'bookings',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'user_id',
+              value: user.id,
+            ),
+            callback: (_) {
+              if (!mounted) return;
+              // Preserve existing behavior for other consumers of the
+              // unbounded provider (QR check-in pass eligibility, profile
+              // screen).
+              ref.invalidate(myBookingsProvider);
+              // Phase 9XM-3: reset the paginated My Bookings list to page
+              // 1 on any realtime change, rather than trying to patch
+              // whichever pages happen to be loaded.
+              ref.read(myBookingsPageProvider.notifier).refresh();
+            },
+          )
+          .subscribe();
+    } on AssertionError {
+      // Preview/router tests can render the shell before Supabase is
+      // initialized. Live sessions always initialize Supabase before this
+      // screen and still receive realtime booking updates.
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    final channel = _bookingChannel;
+    final client = _supabaseClient;
+    if (channel != null && client != null) {
+      unawaited(client.removeChannel(channel));
+    }
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    // Preserve existing behavior for other consumers of the unbounded
+    // provider (QR check-in pass eligibility, profile screen).
+    ref.invalidate(myBookingsProvider);
+    // Phase 9XM-3: pull-to-refresh resets My Bookings to page 1 and
+    // discards previously loaded pages, then awaits the fresh first page
+    // so RefreshIndicator's spinner stays up until it's ready.
+    await ref.read(myBookingsPageProvider.notifier).refresh();
   }
 
   Future<void> _cancelBooking(Booking booking) async {
@@ -63,12 +134,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.keep),
           ),
-          TestId(
-            E2eIds.bookingCancelConfirm,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(l10n.cancel),
-            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.cancel),
           ),
         ],
       ),
@@ -78,18 +146,34 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     try {
       await ref.read(bookingRepositoryProvider).cancelBooking(booking.id);
       ref.invalidate(myBookingsProvider);
-      await _notify(
-        NotificationType.bookingCancelled,
-        l10n.cancelBooking,
-        '${booking.venueName} · ${DateFormat.yMMMd().format(booking.bookDate)}',
-        data: {'booking_id': booking.id},
-      );
+      ref.read(myBookingsPageProvider.notifier).refresh();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  // Reference-parity "Book again" (Android MyBookings). Offered for every
+  // finished-or-abandoned booking — the statuses a customer could plausibly
+  // want to repeat. It never duplicates anything client-side: it just opens
+  // the standard booking flow for the same venue, where availability, holds
+  // and owner approval are recomputed server-side. A venue deleted since the
+  // booking falls back to its public details screen.
+  Future<void> _bookAgain(Booking booking) async {
+    Venue? venue;
+    try {
+      venue = await ref.read(venueRepositoryProvider).venueById(booking.venueId);
+    } catch (_) {
+      venue = null;
+    }
+    if (!mounted) return;
+    if (venue == null) {
+      unawaited(context.push('/venues/${booking.venueId}'));
+      return;
+    }
+    unawaited(context.push('/venues/${venue.id}/book', extra: venue));
   }
 
   Future<void> _requestRefund(Booking booking) async {
@@ -104,12 +188,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.keep),
           ),
-          TestId(
-            E2eIds.bookingRefundConfirm,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(l10n.requestRefund),
-            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.requestRefund),
           ),
         ],
       ),
@@ -121,16 +202,11 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
           .read(paymentRepositoryProvider)
           .requestRefund(bookingId: booking.id, amount: booking.totalAmount);
       ref.invalidate(myBookingsProvider);
+      ref.read(myBookingsPageProvider.notifier).refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.refundRequested)));
-      await _notify(
-        NotificationType.refundProcessed,
-        l10n.requestRefund,
-        '${booking.venueName} · ${formatInr(booking.totalAmount)}',
-        data: {'booking_id': booking.id},
-      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -139,269 +215,264 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     }
   }
 
+  Future<void> _exportCalendar(Booking booking) async {
+    const service = CalendarExportService();
+    final message = await service.exportBooking(booking);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final bookings = ref.watch(myBookingsProvider);
+    // Phase 9XM-3: paginated state (page 1 loading, subsequent pages,
+    // hasMore/error) replaces the single unbounded myBookingsProvider
+    // fetch for this screen's list.
+    final pageState = ref.watch(myBookingsPageProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.myBookings)),
-      body: bookings.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(message: e.toString(), onRetry: _refresh),
-        data: (list) {
-          // Every backend status belongs to exactly one tab, so no booking
-          // disappears from history (e.g. awaiting owner approval after pay
-          // at venue, or rejected/refunded after an owner decision).
-          final filtered = switch (_selectedTab) {
-            0 =>
-              list
-                  .where(
-                    (booking) =>
-                        booking.status == BookingStatus.confirmed ||
-                        booking.status == BookingStatus.pending ||
-                        booking.status == BookingStatus.held ||
-                        booking.status == BookingStatus.pendingOwnerApproval,
-                  )
-                  .toList(),
-            1 =>
-              list
-                  .where(
-                    (booking) =>
-                        booking.status == BookingStatus.completed ||
-                        booking.status == BookingStatus.noShow,
-                  )
-                  .toList(),
-            _ =>
-              list
-                  .where(
-                    (booking) =>
-                        booking.status == BookingStatus.cancelled ||
-                        booking.status == BookingStatus.rejected ||
-                        booking.status == BookingStatus.refunded,
-                  )
-                  .toList(),
-          };
-          if (list.isEmpty) {
-            return EmptyState(
-              icon: Icons.receipt_long_rounded,
-              title: l10n.noBookings,
-              message: l10n.noBookingsMessage,
-            );
-          }
-          return Column(
-            children: [
-              Material(
-                color: Colors.transparent,
-                child: DefaultTabController(
-                  length: 3,
-                  initialIndex: _selectedTab,
-                  child: TabBar(
-                    onTap: (index) => setState(() => _selectedTab = index),
-                    tabs: [
-                      TestId(
-                        E2eIds.bookingsTabUpcoming,
-                        child: Tab(text: l10n.upcomingEvents),
-                      ),
-                      TestId(
-                        E2eIds.bookingsTabCompleted,
-                        child: Tab(text: l10n.statusCompleted),
-                      ),
-                      TestId(
-                        E2eIds.bookingsTabCancelled,
-                        child: Tab(text: l10n.statusCancelled),
-                      ),
-                    ],
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
+      appBar: AppBar(
+        title: Text(l10n.myBookings),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            tooltip: 'QR Check-In Scanner',
+            onPressed: () => context.push(AppRoutes.qrScanner),
+          ),
+        ],
+      ),
+      body: _buildBody(pageState, l10n),
+    );
+  }
+
+  Widget _buildBody(MyBookingsPageState pageState, AppLocalizations l10n) {
+    if (pageState.isLoadingFirstPage) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (pageState.error != null && pageState.bookings.isEmpty) {
+      return ErrorView(
+        message: pageState.error.toString(),
+        onRetry: _refresh,
+      );
+    }
+    final list = pageState.bookings;
+    if (list.isEmpty) {
+      return EmptyState(
+        icon: Icons.receipt_long_rounded,
+        title: l10n.noBookings,
+        message: l10n.noBookingsMessage,
+      );
+    }
+    // A trailing row shows the load-more spinner, an inline retry after a
+    // failed page fetch, or nothing once hasMore is false (end of list) --
+    // there is no separate "you've reached the end" row so as not to
+    // change the screen's existing visual footprint beyond what
+    // pagination itself requires.
+    final showTrailingRow = pageState.isLoadingMore ||
+        (pageState.error != null && pageState.bookings.isNotEmpty);
+    final itemCount = list.length + (showTrailingRow ? 1 : 0);
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: itemCount,
+        itemBuilder: (context, i) {
+          if (i >= list.length) {
+            if (pageState.error != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: TextButton(
+                    onPressed: () => ref
+                        .read(myBookingsPageProvider.notifier)
+                        .loadNextPage(),
+                    child: Text(l10n.tryAgain),
                   ),
                 ),
+              );
+            }
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? EmptyState(
-                        icon: Icons.receipt_long_rounded,
-                        title: _emptyTabTitle(l10n),
-                        message: l10n.noBookingsMessage,
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _BookingCard(
+              booking: list[i],
+              onShowPass: (list[i].status == BookingStatus.confirmed ||
+                      list[i].status == BookingStatus.completed)
+                  ? () => _showEntryPass(list[i])
+                  : null,
+              onCancel:
+                  list[i].canCancel ? () => _cancelBooking(list[i]) : null,
+              onRefund:
+                  list[i].canRefund ? () => _requestRefund(list[i]) : null,
+              onPay: list[i].canPay
+                  ? () => context.push(
+                        '/bookings/${list[i].id}/pay',
+                        extra: list[i],
                       )
-                    : RefreshIndicator(
-                        onRefresh: _refresh,
-                        child: TestId(
-                          E2eIds.bookingHistory,
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(16),
-                            itemCount: filtered.length,
-                            itemBuilder: (context, i) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _BookingCard(
-                                booking: filtered[i],
-                                onShowPass:
-                                    (filtered[i].status ==
-                                            BookingStatus.confirmed ||
-                                        filtered[i].status ==
-                                            BookingStatus.completed)
-                                    ? () => _showEntryPass(filtered[i])
-                                    : null,
-                                onInvoice: filtered[i].canViewInvoice
-                                    ? () => context.push(
-                                        '/bookings/${filtered[i].id}/invoice',
-                                        extra: filtered[i],
-                                      )
-                                    : null,
-                                onCancel: filtered[i].canCancel
-                                    ? () => _cancelBooking(filtered[i])
-                                    : null,
-                                onRefund: filtered[i].canRefund
-                                    ? () => _requestRefund(filtered[i])
-                                    : null,
-                                onPay:
-                                    filtered[i].canPay &&
-                                        isCheckoutExposed(
-                                          ref.watch(featureRegistryProvider),
-                                        )
-                                    ? () => context.push(
-                                        AppRoutes.paymentFlow.replaceFirst(
-                                          ':id',
-                                          filtered[i].id,
-                                        ),
-                                        extra: filtered[i],
-                                      )
-                                    : null,
-                                onBookAgain: filtered[i].canBookAgain
-                                    ? () => context.push(
-                                        AppRoutes.venueDetails.replaceFirst(
-                                          ':id',
-                                          filtered[i].venueId,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-              ),
-            ],
+                  : null,
+              onReceipt: list[i].canViewReceipt
+                  ? () => context.push('/bookings/${list[i].id}/receipt')
+                  : null,
+              onCalendar: list[i].canExportCalendar
+                  ? () => _exportCalendar(list[i])
+                  : null,
+              onBookAgain: list[i].canBookAgain
+                  ? () => _bookAgain(list[i])
+                  : null,
+            ),
           );
         },
       ),
     );
   }
 
-  String _emptyTabTitle(AppLocalizations l10n) => switch (_selectedTab) {
-    0 => l10n.noUpcomingEvents,
-    1 => l10n.statusCompleted,
-    _ => l10n.statusCancelled,
-  };
-
   void _showEntryPass(Booking booking) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final isCheckedIn = booking.status == BookingStatus.completed;
+
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.qr_code_2_rounded, color: AppTheme.brand),
+            const Icon(Icons.qr_code_2_rounded,
+                color: AppTheme.violet, size: 28),
             const SizedBox(width: 8),
-            Text(
-              l10n.digitalEntryPass,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+            Expanded(
+              child: Text(
+                'Digital Entry Pass 🎫',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
               ),
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.colorScheme.outlineVariant),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // High Contrast 2D QR Code Pass
+              QrCodePassWidget(
+                booking: booking,
+                size: 190,
               ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.qr_code_scanner_rounded,
-                            size: 64,
-                            color: Colors.black87,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            booking.bookingRef.isNotEmpty
-                                ? booking.bookingRef
-                                : 'BMS-PASS',
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    booking.venueName.isNotEmpty
-                        ? booking.venueName
-                        : 'Venue Booking',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${DateFormat.yMMMd().format(booking.bookDate)} • ${booking.displayStart} – ${booking.displayEnd}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (booking.slotLabel.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      booking.slotLabel,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.brand,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
+              const SizedBox(height: 14),
+
+              Text(
+                booking.venueName.isNotEmpty
+                    ? booking.venueName
+                    : 'Venue Booking',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l10n.entryPassHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 4),
+              Text(
+                '📅 ${DateFormat.yMMMd().format(booking.bookDate)} • ⏰ ${booking.displayStart} – ${booking.displayEnd}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              if (booking.slotLabel.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  booking.slotLabel,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.violet,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                'Ref: #${booking.bookingRef.isNotEmpty ? booking.bookingRef : booking.id}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Status badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCheckedIn
+                      ? const Color(0xFFE8F5E9)
+                      : theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isCheckedIn
+                      ? '✓ CHECKED IN & VERIFIED'
+                      : 'READY TO SCAN AT DESK',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isCheckedIn
+                        ? const Color(0xFF2E7D32)
+                        : theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Text(
+                'Show this QR pass at the venue entrance counter for instant check-in verification.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
         actions: [
+          if (!isCheckedIn)
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogCtx);
+                final res = await ref
+                    .read(qrCheckInNotifierProvider.notifier)
+                    .checkInWithCode(booking.id);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(res.message),
+                    backgroundColor: res.success
+                        ? const Color(0xFF2E7D32)
+                        : theme.colorScheme.error,
+                  ),
+                );
+              },
+              child: const Text('Simulate Check-In'),
+            ),
           FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: Text(l10n.done),
           ),
         ],
@@ -414,19 +485,21 @@ class _BookingCard extends StatelessWidget {
   const _BookingCard({
     required this.booking,
     this.onShowPass,
-    this.onInvoice,
     this.onCancel,
     this.onRefund,
     this.onPay,
+    this.onReceipt,
+    this.onCalendar,
     this.onBookAgain,
   });
 
   final Booking booking;
   final VoidCallback? onShowPass;
-  final VoidCallback? onInvoice;
   final VoidCallback? onCancel;
   final VoidCallback? onRefund;
   final VoidCallback? onPay;
+  final VoidCallback? onReceipt;
+  final VoidCallback? onCalendar;
   final VoidCallback? onBookAgain;
 
   @override
@@ -435,159 +508,224 @@ class _BookingCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final name = booking.venueName.isEmpty ? l10n.venues : booking.venueName;
 
-    return TestId(
-      E2eIds.bookingCard(booking.id),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+    final statusGradient = switch (booking.status) {
+      BookingStatus.confirmed ||
+      BookingStatus.completed =>
+        const LinearGradient(
+          colors: [Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399)],
+        ),
+      BookingStatus.pending => const LinearGradient(
+          colors: [AppTheme.accent, Color(0xFFFBBF24), Color(0xFFF59E0B)],
+        ),
+      BookingStatus.awaitingOwnerApproval => const LinearGradient(
+          colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
+        ),
+      BookingStatus.ownerRejected ||
+      BookingStatus.approvalExpired =>
+        const LinearGradient(
+          colors: [Color(0xFFB91C1C), Color(0xFFF87171)],
+        ),
+      BookingStatus.cancelled => const LinearGradient(
+          colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
+        ),
+      _ => const LinearGradient(
+          colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
+        ),
+    };
+
+    return GlassmorphicCard(
+      borderRadius: 18,
+      accentGradient: statusGradient,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (booking.slotLabel.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        booking.slotLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        if (booking.slotLabel.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            booking.slotLabel,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  TestId(
-                    E2eIds.bookingStatus(booking.id, booking.status.dbValue),
-                    child: BookingStatusBadge(status: booking.status),
-                  ),
-                ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _InfoChip(
-                    icon: Icons.calendar_today_rounded,
-                    label: DateFormat.yMMMd().format(booking.bookDate),
-                  ),
-                  const SizedBox(width: 12),
-                  _InfoChip(
-                    icon: Icons.schedule_rounded,
-                    label: '${booking.displayStart} – ${booking.displayEnd}',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    booking.bookingRef,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    formatInr(booking.totalAmount),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppTheme.brand,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              if (onShowPass != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.tonalIcon(
-                    onPressed: onShowPass,
-                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                    label: Text(l10n.viewEntryPass),
-                  ),
-                ),
-              ],
-              if (onInvoice != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: onInvoice,
-                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                    label: Text(l10n.viewInvoice),
-                  ),
-                ),
-              ],
-              if (onCancel != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TestId(
-                    E2eIds.bookingCancel(booking.id),
-                    child: OutlinedButton.icon(
-                      onPressed: onCancel,
-                      icon: const Icon(Icons.cancel_outlined, size: 18),
-                      label: Text(l10n.cancelBooking),
-                    ),
-                  ),
-                ),
-              ],
-              if (onRefund != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TestId(
-                    E2eIds.bookingRefund(booking.id),
-                    child: OutlinedButton.icon(
-                      onPressed: onRefund,
-                      icon: const Icon(Icons.currency_rupee_rounded, size: 18),
-                      label: Text(l10n.requestRefund),
-                    ),
-                  ),
-                ),
-              ],
-              if (onPay != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TestId(
-                    E2eIds.bookingPay(booking.id),
-                    child: FilledButton.icon(
-                      onPressed: onPay,
-                      icon: const Icon(Icons.payment_rounded, size: 18),
-                      label: Text(l10n.payNow),
-                    ),
-                  ),
-                ),
-              ],
-              if (onBookAgain != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: onBookAgain,
-                    icon: const Icon(Icons.replay_rounded, size: 18),
-                    label: Text(l10n.bookAgain),
-                  ),
-                ),
-              ],
+              _StatusBadge(status: booking.status),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _InfoChip(
+                icon: Icons.calendar_today_rounded,
+                label: DateFormat.yMMMd().format(booking.bookDate),
+              ),
+              const SizedBox(width: 12),
+              _InfoChip(
+                icon: Icons.schedule_rounded,
+                label: '${booking.displayStart} – ${booking.displayEnd}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(
+                booking.bookingRef,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                formatInr(booking.totalAmount),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: AppTheme.violet,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          if (onShowPass != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: onShowPass,
+                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                label: const Text('View Entry Pass / QR'),
+              ),
+            ),
+          ],
+          if (onPay != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onPay,
+                icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                label: const Text('Pay securely'),
+              ),
+            ),
+          ],
+          if (onReceipt != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onReceipt,
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('View Receipt'),
+              ),
+            ),
+          ],
+          if (onCalendar != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onCalendar,
+                icon: const Icon(Icons.event_outlined, size: 18),
+                label: const Text('Add to Calendar'),
+              ),
+            ),
+          ],
+          if (onCancel != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onCancel,
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: Text(l10n.cancelBooking),
+              ),
+            ),
+          ],
+          if (onRefund != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onRefund,
+                icon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                label: Text(l10n.requestRefund),
+              ),
+            ),
+          ],
+          if (onBookAgain != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('booking_card_book_again'),
+                onPressed: onBookAgain,
+                icon: const Icon(Icons.replay_rounded, size: 18),
+                label: const Text('Book again'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final BookingStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = switch (status) {
+      BookingStatus.held => ('Held', Colors.orange),
+      BookingStatus.pending => ('Pending', Colors.orange),
+      BookingStatus.awaitingOwnerApproval ||
+      BookingStatus.pendingOwnerApproval => (
+          'Awaiting owner',
+          AppTheme.violet,
+        ),
+      BookingStatus.ownerRejected ||
+      BookingStatus.rejected => ('Declined', Colors.red),
+      BookingStatus.approvalExpired => ('Request expired', Colors.red),
+      BookingStatus.confirmed => ('Confirmed', Colors.green),
+      BookingStatus.completed => ('Completed', Colors.blue),
+      BookingStatus.cancelled => ('Cancelled', Colors.grey),
+      BookingStatus.refunded => ('Refunded', Colors.teal),
+      BookingStatus.noShow => ('No show', Colors.red),
+      BookingStatus.unknown => ('Status unavailable', Colors.grey),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -1,194 +1,231 @@
-import 'package:bookmyspace/features/home/domain/customer_section_catalog.dart';
+import 'package:bookmyspace/features/venues/domain/listing_template.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:bookmyspace/features/venues/domain/venue_repository.dart';
 
-/// In-memory venue repository for tests and widget tests.
 class MockVenueRepository implements VenueRepository {
-  MockVenueRepository({List<Venue>? venues})
-    : _venues = venues ?? defaultVenues;
-
-  final List<Venue> _venues;
-  final Set<String> _favorites = {};
   bool failRequests = false;
+  final List<String> _favs = [];
 
-  /// Tracks the last query passed to [search].
-  VenueSearchQuery? lastSearchQuery;
-  final List<VenueSearchQuery> searchQueries = [];
+  void seedVenue(Venue venue) {
+    _mockVenues.removeWhere((item) => item.id == venue.id);
+    _mockVenues.add(venue);
+  }
 
-  static const VenueCategory _functionHall = VenueCategory(
-    id: 'cat-1',
-    slug: 'function_hall',
-    name: 'Function Hall',
-  );
-  static const VenueCategory _meetingRoom = VenueCategory(
-    id: 'cat-2',
-    slug: 'meeting_room',
-    name: 'Meeting Room',
-  );
-
-  static const List<Venue> defaultVenues = [
-    Venue(
+  final List<Venue> _mockVenues = [
+    const Venue(
       id: 'v1',
       name: 'Sunrise Function Hall',
-      description: 'A spacious hall in the heart of the city.',
+      slug: 'sunrise-function-hall',
       city: 'Hyderabad',
       state: 'Telangana',
-      latitude: 17.385044,
-      longitude: 78.486671,
-      capacity: 500,
-      pricingBaseAmount: 35000,
-      isVerified: true,
+      latitude: 17.3850,
+      longitude: 78.4867,
+      capacity: 600,
+      pricingBaseAmount: 45000,
+      price: 45000,
       avgRating: 4.8,
-      ratingCount: 120,
-      category: _functionHall,
-      images: [
-        VenueImage(
-          id: 'i1',
-          url: 'https://example.com/sunrise.jpg',
-          isCover: true,
-        ),
-      ],
-      facilities: [
-        VenueFacility(facility: 'Air Conditioning'),
-        VenueFacility(facility: 'Parking'),
-      ],
+      ratingCount: 150,
+      isVerified: true,
+      category:
+          VenueCategory(id: 'c1', slug: 'function_hall', name: 'Function Hall'),
     ),
-    Venue(
+    const Venue(
       id: 'v2',
-      name: 'The Boardroom',
-      description: 'Modern meeting rooms for teams of 8-20.',
+      name: 'The Work Nest',
+      slug: 'the-work-nest',
       city: 'Hyderabad',
       state: 'Telangana',
-      latitude: 17.4246,
-      longitude: 78.4481,
-      capacity: 20,
-      pricingBaseAmount: 2500,
-      avgRating: 4.5,
-      ratingCount: 64,
-      category: _meetingRoom,
-      images: [
-        VenueImage(
-          id: 'i2',
-          url: 'https://example.com/boardroom.jpg',
-          isCover: true,
-        ),
-      ],
-    ),
-    Venue(
-      id: 'v3',
-      name: 'The Work Nest',
-      description: 'Flexible coworking with high-speed internet.',
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      latitude: 12.9716,
-      longitude: 77.5946,
-      capacity: 80,
-      pricingBaseAmount: 500,
-      isVerified: true,
-      avgRating: 4.7,
-      ratingCount: 214,
-      category: VenueCategory(
-        id: 'cat-3',
-        slug: 'coworking_space',
-        name: 'Coworking Space',
-      ),
-    ),
-    Venue(
-      id: 'v4',
-      name: 'Crown Lodge Rooms',
-      description: 'Budget lodge and hotel rooms near the metro.',
-      city: 'Hyderabad',
-      latitude: 17.44,
-      longitude: 78.39,
-      capacity: 4,
-      pricingBaseAmount: 2800,
-      avgRating: 4.4,
-      ratingCount: 40,
-      category: VenueCategory(id: 'cat-4', slug: 'hotel_stay', name: 'Hotel'),
-    ),
-    Venue(
-      id: 'v5',
-      name: 'Starlight Ladies PG',
-      description: 'Safe ladies PG hostel with food and wifi.',
-      city: 'Hyderabad',
-      latitude: 17.45,
-      longitude: 78.37,
-      capacity: 3,
-      pricingBaseAmount: 9000,
-      avgRating: 4.9,
-      ratingCount: 80,
-      category: VenueCategory(id: 'cat-5', slug: 'pg_hostel', name: 'PG'),
-    ),
-    Venue(
-      id: 'v6',
-      name: 'Apex Sports Academy',
-      description: 'Badminton coaching and sports turf listings.',
-      city: 'Hyderabad',
-      latitude: 17.42,
-      longitude: 78.40,
+      latitude: 17.4400,
+      longitude: 78.3489,
       capacity: 30,
-      pricingBaseAmount: 450,
+      pricingBaseAmount: 5000,
+      price: 5000,
       avgRating: 4.6,
-      ratingCount: 22,
-      category: VenueCategory(
-        id: 'cat-6',
-        slug: 'sports_ground',
-        name: 'Sports Ground',
-      ),
+      ratingCount: 85,
+      isVerified: true,
+      category:
+          VenueCategory(id: 'c2', slug: 'meeting_room', name: 'Meeting Room'),
+    ),
+    const Venue(
+      id: 'v3',
+      name: 'Skyline Community Center',
+      slug: 'skyline-community-center',
+      city: 'Hyderabad',
+      state: 'Telangana',
+      latitude: 17.4123,
+      longitude: 78.4080,
+      capacity: 250,
+      pricingBaseAmount: 2000,
+      price: 2000,
+      avgRating: 4.9,
+      ratingCount: 214,
+      isVerified: true,
+      category:
+          VenueCategory(id: 'c1', slug: 'function_hall', name: 'Function Hall'),
     ),
   ];
 
   @override
-  Future<List<VenueCategory>> categories() async {
-    if (failRequests) throw Exception('network down');
-    return [
-      _functionHall,
-      _meetingRoom,
-      const VenueCategory(
-        id: 'cat-3',
-        slug: 'coworking_space',
-        name: 'Coworking Space',
-      ),
-      const VenueCategory(
-        id: 'cat-hotel',
-        slug: 'hotel_stay',
-        name: 'Hotel / Stay',
-      ),
-      const VenueCategory(id: 'cat-lodge', slug: 'lodge', name: 'Lodge'),
-      const VenueCategory(
-        id: 'cat-pg',
-        slug: 'pg_coliving',
-        name: 'PG / Co-Living',
-      ),
-      const VenueCategory(
-        id: 'cat-ladies',
-        slug: 'ladies_pg',
-        name: 'Ladies PG',
-      ),
-      const VenueCategory(
-        id: 'cat-sport',
-        slug: 'sports_ground',
-        name: 'Sports Ground',
-      ),
-      const VenueCategory(
-        id: 'cat-mh',
-        slug: 'marriage_hall',
-        name: 'Marriage Hall',
-      ),
-      const VenueCategory(
-        id: 'cat-dance',
-        slug: 'dance_academy',
-        name: 'Dance Academy',
-      ),
+  Future<List<VenueCategory>> categories({bool activeOnly = false}) async {
+    if (failRequests) throw Exception('Network failure');
+    final categories = const [
+      VenueCategory(id: 'c1', slug: 'function_hall', name: 'Function Hall'),
+      VenueCategory(id: 'c2', slug: 'meeting_room', name: 'Meeting Room'),
+      VenueCategory(id: 'c3', slug: 'party_hall', name: 'Party Hall'),
     ];
+    return activeOnly
+        ? categories.where((category) => category.isActive).toList()
+        : categories;
+  }
+
+  @override
+  Stream<List<VenueCategory>> categoryStream({bool activeOnly = false}) async* {
+    yield await categories(activeOnly: activeOnly);
+  }
+
+  @override
+  Future<List<VenueSubsection>> subsections(
+    String categoryId, {
+    bool activeOnly = false,
+  }) async {
+    return const [];
+  }
+
+  @override
+  Stream<List<VenueSubsection>> subsectionStream(
+    String categoryId, {
+    bool activeOnly = false,
+  }) async* {
+    yield const [];
+  }
+
+  @override
+  Stream<List<VenueSubsection>> subsectionCatalogStream({
+    bool activeOnly = true,
+  }) async* {
+    yield const [];
+  }
+
+  @override
+  Future<VenueCategory> getCategory(String id) async {
+    for (final venue in _mockVenues) {
+      final category = venue.category;
+      if (category != null && category.id == id) return category;
+    }
+    throw UnimplementedError('getCategory not seeded in mock');
+  }
+
+  @override
+  Future<VenueCategory> addCategory({
+    required String name,
+    required String slug,
+    String? icon,
+    String? parentSection,
+    bool isActive = true,
+    ListingTemplateConfig? listingConfig,
+  }) async {
+    return VenueCategory(
+      id: slug,
+      slug: slug,
+      name: name,
+      icon: icon,
+      parentSection: parentSection,
+      isActive: isActive,
+    );
+  }
+
+  @override
+  Future<VenueCategory> updateCategory(VenueCategory category) async =>
+      category;
+
+  @override
+  Future<void> setCategoryActive(String categoryId, bool isActive) async {}
+
+  @override
+  Future<VenueSubsection> addSubsection({
+    required String categoryId,
+    required String name,
+    required String slug,
+    String? icon,
+    String description = '',
+    String? imageUrl,
+    String? imagePath,
+    bool isActive = true,
+    int displayOrder = 0,
+    List<String> supportedLanguages = const ['en'],
+    Map<String, String> nameTranslations = const {},
+    Map<String, String> descriptionTranslations = const {},
+  }) async {
+    return VenueSubsection(
+      id: 'new',
+      categoryId: categoryId,
+      name: name,
+      slug: slug,
+      icon: icon,
+      description: description,
+      imageUrl: imageUrl ?? '',
+      imagePath: imagePath ?? '',
+      isActive: isActive,
+      displayOrder: displayOrder,
+      supportedLanguages: supportedLanguages,
+      nameTranslations: nameTranslations,
+      descriptionTranslations: descriptionTranslations,
+    );
+  }
+
+  @override
+  Future<VenueSubsection> updateSubsection(VenueSubsection subsection) async =>
+      subsection;
+
+  @override
+  Future<void> deleteCategory(String categoryId) async {}
+
+  @override
+  Future<void> deleteSubsection(String subsectionId) async {}
+
+  @override
+  Future<void> reorderCategories(List<String> categoryIds) async {}
+
+  @override
+  Future<void> reorderSubsections(
+    String categoryId,
+    List<String> subsectionIds,
+  ) async {}
+
+  @override
+  Future<VenueCategory> uploadCategoryImage({
+    required VenueCategory category,
+    required List<int> bytes,
+    required String extension,
+  }) async =>
+      category;
+
+  @override
+  Future<void> removeCategoryImage(VenueCategory category) async {}
+
+  @override
+  Future<VenueSubsection> uploadSubsectionImage({
+    required VenueSubsection subsection,
+    required List<int> bytes,
+    required String extension,
+  }) async =>
+      subsection;
+
+  @override
+  Future<void> removeSubsectionImage(VenueSubsection subsection) async {}
+
+  @override
+  Future<List<String>> listedCities() async {
+    if (failRequests) throw Exception('Network failure');
+    return _mockVenues.map((venue) => venue.city).toSet().toList();
   }
 
   @override
   Future<List<Venue>> popularVenues({int limit = 10}) async {
-    if (failRequests) throw Exception('network down');
-    final sorted = [..._venues]
+    if (failRequests) throw Exception('Network failure');
+    final list = [..._mockVenues]
       ..sort((a, b) => b.ratingCount.compareTo(a.ratingCount));
-    return sorted.take(limit).toList();
+    return list.take(limit).toList();
   }
 
   @override
@@ -198,95 +235,90 @@ class MockVenueRepository implements VenueRepository {
     double maxDistanceKm = 25,
     int limit = 20,
   }) async {
-    if (failRequests) throw Exception('network down');
-    final withDistance = _venues
-        .map((v) => v.copyWith(distanceKm: 1.0))
-        .toList();
-    return withDistance.take(limit).toList();
+    if (failRequests) throw Exception('Network failure');
+    return _mockVenues.take(limit).toList();
   }
 
   @override
   Future<List<Venue>> search(VenueSearchQuery query) async {
-    if (failRequests) throw Exception('network down');
-    lastSearchQuery = query;
-    searchQueries.add(query);
-    final results = _venues.where((v) {
-      final matchesQuery =
-          query.query.isEmpty ||
-          v.name.toLowerCase().contains(query.query.toLowerCase()) ||
-          v.city.toLowerCase().contains(query.query.toLowerCase());
-      final matchesCategory =
-          query.categorySlug == null ||
-          query.categorySlug == 'all' ||
-          v.category?.slug == query.categorySlug;
-      final section = CustomerSection.fromId(query.sectionId);
-      final matchesSection =
-          section == null ||
-          CustomerSectionCatalog.matchesVenue(v, section, query.categorySlug);
-      final matchesMin =
-          query.minPrice == null || v.pricingBaseAmount >= query.minPrice!;
-      final matchesMax =
-          query.maxPrice == null || v.pricingBaseAmount <= query.maxPrice!;
-      final matchesFilters = CustomerSectionCatalog.matchesFilters(v, query);
-      return matchesQuery &&
-          matchesCategory &&
-          matchesSection &&
-          matchesMin &&
-          matchesMax &&
-          matchesFilters;
+    if (failRequests) throw Exception('Network failure');
+    var filtered = _mockVenues.where((v) {
+      if (query.categorySlug != null &&
+          v.category?.slug != query.categorySlug) {
+        return false;
+      }
+      if (query.query.isNotEmpty &&
+          !v.name.toLowerCase().contains(query.query.toLowerCase()) &&
+          !v.city.toLowerCase().contains(query.query.toLowerCase())) {
+        return false;
+      }
+      if (query.minPrice != null && v.price < query.minPrice!) {
+        return false;
+      }
+      if (query.maxPrice != null && v.price > query.maxPrice!) {
+        return false;
+      }
+      if (query.city != null &&
+          query.city!.trim().isNotEmpty &&
+          v.city.toLowerCase() != query.city!.trim().toLowerCase()) {
+        return false;
+      }
+      if (query.facility != null && query.facility!.trim().isNotEmpty) {
+        final needle = query.facility!.trim().toLowerCase();
+        if (!v.facilities.any(
+          (item) => item.isAvailable && item.facility.toLowerCase() == needle,
+        )) {
+          return false;
+        }
+      }
+      return true;
     }).toList();
 
     switch (query.sortBy) {
       case VenueSortBy.priceAsc:
-        results.sort(
-          (a, b) => a.pricingBaseAmount.compareTo(b.pricingBaseAmount),
-        );
+        filtered.sort((a, b) => a.price.compareTo(b.price));
+        break;
       case VenueSortBy.priceDesc:
-        results.sort(
-          (a, b) => b.pricingBaseAmount.compareTo(a.pricingBaseAmount),
-        );
+        filtered.sort((a, b) => b.price.compareTo(a.price));
+        break;
       case VenueSortBy.rating:
-        results.sort((a, b) => b.avgRating.compareTo(a.avgRating));
-      case VenueSortBy.distance:
-        results.sort(
-          (a, b) => (a.distanceKm ?? 0).compareTo(b.distanceKm ?? 0),
-        );
-      case VenueSortBy.relevance:
-        results.sort((a, b) => b.ratingCount.compareTo(a.ratingCount));
+        filtered.sort((a, b) => b.avgRating.compareTo(a.avgRating));
+        break;
+      default:
+        filtered.sort((a, b) => b.ratingCount.compareTo(a.ratingCount));
+        break;
     }
-    return results;
+
+    return filtered;
   }
 
   @override
   Future<Venue> venueById(String id) async {
-    if (failRequests) throw Exception('network down');
-    return _venues.firstWhere(
-      (v) => v.id == id,
-      orElse: () => throw Exception('Venue not found'),
-    );
+    if (failRequests) throw Exception('Network failure');
+    return _mockVenues.firstWhere((v) => v.id == id);
   }
 
   @override
   Future<List<String>> favoriteIds() async {
-    if (failRequests) throw Exception('network down');
-    return _favorites.toList();
+    if (failRequests) throw Exception('Network failure');
+    return [..._favs];
   }
 
   @override
   Future<List<Venue>> favorites() async {
-    if (failRequests) throw Exception('network down');
-    return _venues.where((v) => _favorites.contains(v.id)).toList();
+    if (failRequests) throw Exception('Network failure');
+    return _mockVenues.where((v) => _favs.contains(v.id)).toList();
   }
 
   @override
   Future<void> addFavorite(String venueId) async {
-    if (failRequests) throw Exception('network down');
-    _favorites.add(venueId);
+    if (failRequests) throw Exception('Network failure');
+    if (!_favs.contains(venueId)) _favs.add(venueId);
   }
 
   @override
   Future<void> removeFavorite(String venueId) async {
-    if (failRequests) throw Exception('network down');
-    _favorites.remove(venueId);
+    if (failRequests) throw Exception('Network failure');
+    _favs.remove(venueId);
   }
 }

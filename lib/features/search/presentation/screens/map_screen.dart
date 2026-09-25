@@ -108,7 +108,7 @@ class _SearchMapScreenState extends ConsumerState<SearchMapScreen> {
       );
     }
 
-    final results = ref.watch(searchResultsProvider);
+    final results = ref.watch(currentSearchResultsProvider);
     final section = ref.watch(selectedCustomerSectionProvider);
     final visibleSections = [
       for (final id in registry.visibleHomeSections())
@@ -168,7 +168,7 @@ class _SearchMapScreenState extends ConsumerState<SearchMapScreen> {
                             padding: const EdgeInsets.only(left: 8),
                             child: ChoiceChip(
                               label: Text(
-                                category.icon.isEmpty
+                                (category.icon ?? '').isEmpty
                                     ? category.name
                                     : '${category.icon} ${category.name}',
                               ),
@@ -216,7 +216,7 @@ class _SearchMapScreenState extends ConsumerState<SearchMapScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
           message: e.toString(),
-          onRetry: () => ref.invalidate(searchResultsProvider),
+          onRetry: () => ref.invalidate(currentSearchResultsProvider),
         ),
         data: (venues) {
           if (venues.isEmpty) {

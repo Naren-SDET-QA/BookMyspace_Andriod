@@ -38,7 +38,9 @@ class InvoiceScreen extends ConsumerWidget {
                   ? () => _InvoiceBody(booking: initial!)
                   : () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => ErrorView(message: e.toString()),
-              data: (b) => _InvoiceBody(booking: b),
+              data: (b) => b == null
+                  ? const ErrorView(message: 'Booking not found')
+                  : _InvoiceBody(booking: b),
             ),
     );
   }
@@ -282,7 +284,11 @@ class _InvoiceBody extends StatelessWidget {
     return switch (status) {
       BookingStatus.held => l10n.statusHeld,
       BookingStatus.pending => l10n.statusPending,
-      BookingStatus.pendingOwnerApproval => l10n.statusPending,
+      BookingStatus.pendingOwnerApproval ||
+      BookingStatus.awaitingOwnerApproval => l10n.statusPending,
+      BookingStatus.ownerRejected ||
+      BookingStatus.approvalExpired => l10n.statusCancelled,
+      BookingStatus.unknown => l10n.statusPending,
       BookingStatus.confirmed => l10n.statusConfirmed,
       BookingStatus.completed => l10n.statusCompleted,
       BookingStatus.cancelled => l10n.statusCancelled,

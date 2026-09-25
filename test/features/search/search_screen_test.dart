@@ -1,6 +1,8 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/features/home/domain/customer_section_catalog.dart';
-import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart';
+import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart'
+    hide SearchScreen;
+import 'package:bookmyspace/features/search/presentation/screens/search_screen_v1.dart';
 import 'package:bookmyspace/features/venues/domain/category_configuration.dart';
 import 'package:bookmyspace/features/venues/presentation/category_configuration_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
@@ -9,7 +11,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../venues/mock_venue_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
 
 Widget _app(
   MockVenueRepository repo, {
@@ -23,7 +25,7 @@ Widget _app(
         categoryConfigurationsProvider.overrideWith((ref) async => categories),
     ],
     child: MaterialApp(
-      home: SearchScreen(initialSection: section?.id),
+      home: SearchScreenV1(initialSection: section?.id),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -44,7 +46,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Section-scoped chips: halls only.
-    expect(find.text('All categories'), findsOneWidget);
+    expect(find.text('All Categories'), findsOneWidget);
     expect(find.textContaining('Marriage Hall'), findsOneWidget);
     // Results contain only halls (Sunrise) and no lodge/PG.
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
@@ -147,7 +149,7 @@ void main() {
       expect(find.text('Secret Hall'), findsNothing);
       expect(find.text('Marriage Hall'), findsNothing);
       expect(find.text('Convention Hall'), findsNothing);
-      expect(find.text('All categories'), findsWidgets);
+      expect(find.text('All Categories'), findsWidgets);
     },
   );
 

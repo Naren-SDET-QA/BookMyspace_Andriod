@@ -11,7 +11,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'mock_auth_repository.dart';
+import 'mock_auth_repository_release.dart';
 
 Widget _wrap(MockAuthRepository repo, {required Widget home}) {
   return ProviderScope(

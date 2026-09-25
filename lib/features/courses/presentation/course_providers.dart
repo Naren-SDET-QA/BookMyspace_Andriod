@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/storage/storage_service.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../cms/domain/configurable_form.dart';
+import '../../cms/domain/target_modules.dart';
 import '../domain/course.dart';
 import '../domain/course_repository.dart';
 import '../infrastructure/supabase_course_repository.dart';
@@ -11,35 +14,362 @@ final courseRepositoryProvider = Provider<CourseRepository>((ref) {
   return SupabaseCourseRepository(client);
 });
 
-/// Published courses, newest first, with institutes and batches.
+/// Shared storage helper for education demo videos, brochures and thumbnails.
+final storageServiceProvider = Provider<StorageService>((ref) {
+  return StorageService(ref.watch(supabaseProvider));
+});
+
+/// Published courses. Watches auth so enrollment flags refresh after login.
 final publishedCoursesProvider = FutureProvider<List<Course>>((ref) {
+  ref.watch(currentUserProvider);
   return ref.watch(courseRepositoryProvider).publishedCourses();
 });
 
-/// A single course with its batches and institute.
-final courseDetailProvider = FutureProvider.autoDispose.family<Course, String>((
-  ref,
-  courseId,
-) {
+final coursesProvider = publishedCoursesProvider;
+
+/// A single course with batches and the current user's enrollment flags.
+final courseDetailProvider =
+    FutureProvider.autoDispose.family<Course, String>((ref, courseId) {
+  ref.watch(currentUserProvider);
   return ref.watch(courseRepositoryProvider).courseDetail(courseId);
 });
 
-/// Enrolls the current user into a batch and refreshes the course caches.
-final enrollInCourseProvider = FutureProvider.autoDispose.family<void, String>((
-  ref,
-  batchId,
-) async {
-  final repo = ref.watch(courseRepositoryProvider);
-  await repo.enroll(batchId: batchId);
-  ref.invalidate(publishedCoursesProvider);
+/// All institutes, name-ordered.
+final institutesProvider = FutureProvider<List<Institute>>((ref) {
+  return ref.watch(courseRepositoryProvider).institutes();
 });
 
-/// Drops my enrollment from a batch and refreshes the course caches.
-final dropCourseProvider = FutureProvider.autoDispose.family<void, String>((
-  ref,
-  batchId,
-) async {
-  final repo = ref.watch(courseRepositoryProvider);
-  await repo.drop(batchId: batchId);
-  ref.invalidate(publishedCoursesProvider);
+/// A single institute profile.
+final instituteDetailProvider =
+    FutureProvider.autoDispose.family<Institute, String>((ref, instituteId) {
+  return ref.watch(courseRepositoryProvider).instituteDetail(instituteId);
+});
+
+/// Published courses offered by one institute.
+final instituteCoursesProvider =
+    FutureProvider.autoDispose.family<List<Course>, String>((ref, instituteId) {
+  return ref.watch(courseRepositoryProvider).coursesForInstitute(instituteId);
+});
+
+/// The signed-in learner's active enrollments. Watches auth so it refreshes
+/// after login and clears when signed out.
+final myCoursesProvider = FutureProvider<List<MyEnrolledCourse>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
+  return ref.watch(courseRepositoryProvider).myEnrolledCourses();
+});
+
+/// Published feedback for a course, newest first.
+final courseFeedbackProvider = FutureProvider.autoDispose
+    .family<List<CourseFeedback>, String>((ref, courseId) {
+  return ref.watch(courseRepositoryProvider).courseFeedback(courseId);
+});
+
+/// Courses owned by the signed-in owner's institute(s), any status.
+final ownerCoursesProvider = FutureProvider<List<Course>>((ref) {
+  ref.watch(currentUserProvider);
+  return ref.watch(courseRepositoryProvider).ownerCourses();
+});
+
+/// Institutes the signed-in owner may manage, for the course editor picker.
+final ownerInstitutesProvider = FutureProvider<List<Institute>>((ref) {
+  ref.watch(currentUserProvider);
+  return ref.watch(courseRepositoryProvider).ownerInstitutes();
+});
+
+/// Whether the signed-in learner is enrolled in a given course, derived from
+/// My Courses so the course detail screen can gate feedback and attendance.
+final isEnrolledInCourseProvider =
+    Provider.family<bool, String>((ref, courseId) {
+  final mine = ref.watch(myCoursesProvider).valueOrNull ?? const [];
+  return mine.any((e) => e.course.id == courseId);
+});
+
+/// User-action helper. Do not watch from build().
+class CourseEnrollmentController {
+  CourseEnrollmentController(this._ref);
+
+  final Ref _ref;
+
+  Future<CourseEnrollmentRecord> enroll({
+    required String courseId,
+    required String batchId,
+    bool isTrial = false,
+    String studentName = '',
+    String contactPhone = '',
+    DateTime? preferredStart,
+    Map<String, dynamic> formAnswers = const {},
+  }) async {
+    final record = await _ref.read(courseRepositoryProvider).enroll(
+          batchId: batchId,
+          isTrial: isTrial,
+          studentName: studentName,
+          contactPhone: contactPhone,
+          preferredStart: preferredStart,
+          formAnswers: formAnswers,
+        );
+    _ref.invalidate(publishedCoursesProvider);
+    _ref.invalidate(courseDetailProvider(courseId));
+    _ref.invalidate(myCoursesProvider);
+    _ref.invalidate(instituteCoursesProvider);
+    return record;
+  }
+
+  Future<void> drop({
+    required String courseId,
+    required String batchId,
+  }) async {
+    await _ref.read(courseRepositoryProvider).drop(batchId: batchId);
+    _ref.invalidate(publishedCoursesProvider);
+    _ref.invalidate(courseDetailProvider(courseId));
+    _ref.invalidate(myCoursesProvider);
+    _ref.invalidate(instituteCoursesProvider);
+  }
+}
+
+final courseEnrollmentControllerProvider =
+    Provider<CourseEnrollmentController>((ref) {
+  return CourseEnrollmentController(ref);
+});
+
+/// Handles internal demo-class registration and course feedback. Do not watch
+/// from build().
+class CourseInteractionController {
+  CourseInteractionController(this._ref);
+
+  final Ref _ref;
+
+  Future<void> registerForDemo({
+    required String courseId,
+    required String studentName,
+    required String mobile,
+    String email = '',
+    String preferredBatch = '',
+    String note = '',
+  }) async {
+    await _ref.read(courseRepositoryProvider).registerForDemo(
+          courseId: courseId,
+          studentName: studentName,
+          mobile: mobile,
+          email: email,
+          preferredBatch: preferredBatch,
+          note: note,
+        );
+  }
+
+  Future<void> submitFeedback({
+    required String courseId,
+    required int rating,
+    String comment = '',
+  }) async {
+    await _ref.read(courseRepositoryProvider).submitFeedback(
+          courseId: courseId,
+          rating: rating,
+          comment: comment,
+        );
+    _ref.invalidate(courseFeedbackProvider(courseId));
+  }
+}
+
+final courseInteractionControllerProvider =
+    Provider<CourseInteractionController>((ref) {
+  return CourseInteractionController(ref);
+});
+
+/// Owner course CRUD: create/edit courses, batches and faculty. Do not watch
+/// from build().
+class OwnerCourseController {
+  OwnerCourseController(this._ref);
+
+  final Ref _ref;
+
+  Future<String> saveCourse({
+    String? courseId,
+    required String instituteId,
+    required String title,
+    required String description,
+    required CourseMode mode,
+    required int durationWeeks,
+    required double feeAmount,
+    String instructorName = '',
+    String coverImage = '',
+    String categoryId = '',
+    double discountAmount = 0,
+    List<CourseDemoMethod> demoMethods = const [],
+    String demoVideoUrl = '',
+    String demoThumbnailUrl = '',
+    String brochureUrl = '',
+    String externalRegistrationUrl = '',
+    String contactPhone = '',
+    List<String> syllabusPoints = const [],
+    bool publish = false,
+  }) async {
+    final id = await _ref.read(courseRepositoryProvider).saveCourse(
+          courseId: courseId,
+          instituteId: instituteId,
+          title: title,
+          description: description,
+          mode: mode,
+          durationWeeks: durationWeeks,
+          feeAmount: feeAmount,
+          instructorName: instructorName,
+          coverImage: coverImage,
+          categoryId: categoryId,
+          discountAmount: discountAmount,
+          demoMethods: demoMethods,
+          demoVideoUrl: demoVideoUrl,
+          demoThumbnailUrl: demoThumbnailUrl,
+          brochureUrl: brochureUrl,
+          externalRegistrationUrl: externalRegistrationUrl,
+          contactPhone: contactPhone,
+          syllabusPoints: syllabusPoints,
+          publish: publish,
+        );
+    _ref.invalidate(ownerCoursesProvider);
+    _ref.invalidate(publishedCoursesProvider);
+    _ref.invalidate(courseDetailProvider(id));
+    _ref.invalidate(instituteCoursesProvider(instituteId));
+    return id;
+  }
+
+  Future<void> saveBatch({
+    String? batchId,
+    required String courseId,
+    required String label,
+    required DateTime startsOn,
+    required int capacity,
+    bool isActive = true,
+    String timing = '',
+    DateTime? endsOn,
+    double feeAmount = 0,
+    CourseMode? mode,
+    bool waitlistEnabled = false,
+    bool admissionsOpen = true,
+    String subject = '',
+    String categorySlug = '',
+  }) async {
+    await _ref.read(courseRepositoryProvider).saveBatch(
+          batchId: batchId,
+          courseId: courseId,
+          label: label,
+          startsOn: startsOn,
+          capacity: capacity,
+          isActive: isActive,
+          timing: timing,
+          endsOn: endsOn,
+          feeAmount: feeAmount,
+          mode: mode,
+          waitlistEnabled: waitlistEnabled,
+          admissionsOpen: admissionsOpen,
+          subject: subject,
+          categorySlug: categorySlug,
+        );
+    _ref.invalidate(courseDetailProvider(courseId));
+    _ref.invalidate(ownerCoursesProvider);
+  }
+
+  Future<void> addFaculty({
+    required String courseId,
+    required String name,
+    String role = '',
+    String bio = '',
+    String instituteId = '',
+    String photoUrl = '',
+    String designation = '',
+    String qualification = '',
+    String specialization = '',
+    String experienceText = '',
+    String demoUrl = '',
+  }) async {
+    await _ref.read(courseRepositoryProvider).addFaculty(
+          courseId: courseId,
+          name: name,
+          role: role,
+          bio: bio,
+          instituteId: instituteId,
+          photoUrl: photoUrl,
+          designation: designation,
+          qualification: qualification,
+          specialization: specialization,
+          experienceText: experienceText,
+          demoUrl: demoUrl,
+        );
+    _ref.invalidate(courseDetailProvider(courseId));
+    _ref.invalidate(ownerCoursesProvider);
+    _ref.invalidate(ownerInstitutesProvider);
+  }
+
+  Future<void> saveInstituteConfig({
+    required String instituteId,
+    TargetModuleConfig? modules,
+    ConfigurableFormSchema? registrationForm,
+    Map<String, dynamic>? profile,
+    String? address,
+    String? city,
+    String? phone,
+    String? timings,
+    List<String>? amenities,
+  }) async {
+    await _ref.read(courseRepositoryProvider).updateInstitute(
+          instituteId: instituteId,
+          address: address,
+          city: city,
+          phone: phone,
+          timings: timings,
+          amenities: amenities,
+          modules: modules,
+          registrationForm: registrationForm,
+          profile: profile,
+        );
+    _ref.invalidate(ownerInstitutesProvider);
+    _ref.invalidate(institutesProvider);
+    _ref.invalidate(instituteDetailProvider(instituteId));
+  }
+
+  Future<void> saveBranch(InstituteBranch branch) async {
+    await _ref.read(courseRepositoryProvider).saveBranch(branch);
+    _ref.invalidate(ownerInstitutesProvider);
+    _ref.invalidate(instituteDetailProvider(branch.instituteId));
+    _ref.invalidate(instituteBranchesProvider(branch.instituteId));
+  }
+
+  Future<void> deleteBranch({
+    required String instituteId,
+    required String branchId,
+  }) async {
+    await _ref.read(courseRepositoryProvider).deleteBranch(branchId);
+    _ref.invalidate(instituteBranchesProvider(instituteId));
+    _ref.invalidate(instituteDetailProvider(instituteId));
+  }
+
+  Future<void> addFaq({
+    required String courseId,
+    required String question,
+    required String answer,
+    int displayOrder = 0,
+  }) async {
+    await _ref.read(courseRepositoryProvider).addFaq(
+          courseId: courseId,
+          question: question,
+          answer: answer,
+          displayOrder: displayOrder,
+        );
+    _ref.invalidate(courseDetailProvider(courseId));
+    _ref.invalidate(ownerCoursesProvider);
+  }
+}
+
+final instituteBranchesProvider = FutureProvider.autoDispose
+    .family<List<InstituteBranch>, String>((ref, instituteId) {
+  return ref.watch(courseRepositoryProvider).branches(instituteId);
+});
+
+final ownerCourseControllerProvider = Provider<OwnerCourseController>((ref) {
+  return OwnerCourseController(ref);
+});
+
+final ownerAdmissionsProvider =
+    FutureProvider<List<CourseDemoRegistration>>((ref) {
+  ref.watch(currentUserProvider);
+  return ref.watch(courseRepositoryProvider).ownerAdmissions();
 });

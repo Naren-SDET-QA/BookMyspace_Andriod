@@ -42,9 +42,18 @@ class AuthException extends AppException {
   const AuthException(super.message, {super.code, super.statusCode});
 }
 
+/// The user dismissed an OAuth prompt without completing sign-in.
+class AuthCancelledException extends AppException {
+  const AuthCancelledException(super.message, {super.code = 'cancelled'});
+}
+
 /// Business rule violation (e.g. venue already booked).
 class BusinessException extends AppException {
   const BusinessException(super.message, {super.code, super.statusCode});
+}
+
+class ValidationException extends AppException {
+  const ValidationException(super.message, {super.code, super.statusCode});
 }
 
 /// A requested resource was not found.
@@ -67,6 +76,43 @@ class ConfigurationException extends AppException {
   const ConfigurationException(super.message, {super.code});
 }
 
+enum ErrorKind {
+  network,
+  authentication,
+  authorization,
+  validation,
+  conflict,
+  timeout,
+  server,
+  payment,
+  unknown,
+}
+
+ErrorKind classifyError(Object error) {
+  if (error is AuthException) return ErrorKind.authentication;
+  if (error is BookingConflictException) return ErrorKind.conflict;
+  if (error is ValidationException) return ErrorKind.validation;
+  if (error is TimeoutException) return ErrorKind.timeout;
+  if (error is NetworkException) return ErrorKind.network;
+  if (error is ServerException) {
+    if (error.statusCode == 401) return ErrorKind.authentication;
+    if (error.statusCode == 403) return ErrorKind.authorization;
+    return ErrorKind.server;
+  }
+  final text = error.toString().toLowerCase();
+  if (text.contains('payment')) return ErrorKind.payment;
+  if (text.contains('timeout')) return ErrorKind.timeout;
+  if (text.contains('socket') || text.contains('network')) {
+    return ErrorKind.network;
+  }
+  return ErrorKind.unknown;
+}
+
+bool isRetryableReadError(Object error) {
+  final kind = classifyError(error);
+  return kind == ErrorKind.network || kind == ErrorKind.timeout;
+}
+
 /// Convert a raw error into a typed [AppException] for presentation.
 AppException mapError(Object error) {
   if (error is AppException) return error;
@@ -74,6 +120,24 @@ AppException mapError(Object error) {
     return const BusinessException('Invalid argument passed to repository.');
   }
   final text = error.toString().toLowerCase();
+  if (text.contains('socketexception') ||
+      text.contains('failed host lookup') ||
+      text.contains('connection refused') ||
+      text.contains('network is unreachable') ||
+      text.contains('clientexception') ||
+      text.contains('connection reset') ||
+      text.contains('nodename nor servname')) {
+    return const NetworkException(
+      'Unable to reach BookMySpace right now. Check your connection and try again.',
+      code: 'network',
+    );
+  }
+  if (text.contains('timeout') || text.contains('timed out')) {
+    return const TimeoutException(
+      'The request took too long. Please try again.',
+      code: 'timeout',
+    );
+  }
   if (text.contains('hold expired') || text.contains('hold_expired')) {
     return const HoldExpiredException(
       'This hold has expired. Pick the slot again.',
@@ -81,7 +145,14 @@ AppException mapError(Object error) {
     );
   }
   if (kDebugMode) {
-    return AppError('Unexpected error: $error', code: 'unknown');
+    final compact = error.toString();
+    if (compact.length > 160) {
+      return const AppError(
+        'Something went wrong. Please try again.',
+        code: 'unknown',
+      );
+    }
+    return AppError('Unexpected error: $compact', code: 'unknown');
   }
   return const AppError('Something went wrong. Please try again.');
 }

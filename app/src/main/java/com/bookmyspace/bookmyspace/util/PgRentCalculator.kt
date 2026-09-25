@@ -12,16 +12,13 @@ data class PgRentBreakdown(
 ) {
     val monthlyPayable: Double
         get() = monthlyBaseRent + monthlyMaintenanceFee
-
     val totalMoveInCost: Double
         get() = monthlyBaseRent + securityDeposit + monthlyMaintenanceFee
-
     val totalTenureCost: Double
         get() = (monthlyBaseRent * tenureMonths) + securityDeposit + (monthlyMaintenanceFee * tenureMonths)
 }
 
 object PgRentCalculator {
-
     fun calculate(
         venue: Venue,
         selectedOptionIndex: Int = 0,
@@ -37,15 +34,12 @@ object PgRentCalculator {
                 tenureMonths = tenureMonths
             )
         }
-
         val selectedOption: PgSharingOption? = pg.sharingOptions.getOrNull(selectedOptionIndex)
             ?: pg.sharingOptions.firstOrNull()
-
         val baseRent = selectedOption?.monthlyRent ?: venue.pricingBaseAmount
         val deposit = selectedOption?.depositAmount
             ?: (baseRent * pg.securityDepositMonths.coerceAtLeast(1.0))
         val maint = pg.maintenanceFee
-
         return PgRentBreakdown(
             monthlyBaseRent = baseRent,
             securityDeposit = deposit,
@@ -64,7 +58,6 @@ object PgRentCalculator {
         val baseRent = option?.monthlyRent ?: fallbackBase
         val deposit = option?.depositAmount ?: (baseRent * pgDetails.securityDepositMonths.coerceAtLeast(1.0))
         val maint = pgDetails.maintenanceFee
-
         return PgRentBreakdown(
             monthlyBaseRent = baseRent,
             securityDeposit = deposit,

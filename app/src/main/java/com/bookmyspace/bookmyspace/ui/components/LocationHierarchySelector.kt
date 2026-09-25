@@ -139,7 +139,8 @@ fun LocationHierarchySelectorDialog(
     currentLocation: LocationHierarchy,
     currentRadius: LocationSearchRadius,
     onLocationSelected: (LocationHierarchy, LocationSearchRadius) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenPlaceDiscovery: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isGpsDetecting by remember { mutableStateOf(false) }
@@ -150,11 +151,15 @@ fun LocationHierarchySelectorDialog(
     var activeTab by remember { mutableStateOf("QUICK") }
 
     // Step state for HIERARCHY navigation
+    var stepCountryId by remember { mutableStateOf(currentLocation.countryId.ifBlank { "IN" }) }
     var stepStateId by remember { mutableStateOf(currentLocation.stateId) }
     var stepDistrictId by remember { mutableStateOf(currentLocation.districtId) }
     var stepMandalId by remember { mutableStateOf(currentLocation.mandalId) }
     var stepCityId by remember { mutableStateOf(currentLocation.cityTownId) }
     var stepAreaId by remember { mutableStateOf(currentLocation.areaId) }
+
+    // Active wizard step: 1 (Country), 2 (State), 3 (District), 4 (City/Mandal), 5 (Area)
+    var currentHierarchyStep by remember { mutableIntStateOf(1) }
 
     val searchResults = remember(searchQuery) {
         if (searchQuery.isNotBlank()) {
@@ -230,6 +235,27 @@ fun LocationHierarchySelectorDialog(
                         Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Use My Current GPS Location", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (onOpenPlaceDiscovery != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            onDismiss()
+                            onOpenPlaceDiscovery()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_open_place_discovery_engine"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.TravelExplore, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Open India Hierarchy & PIN Code Discovery", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -441,183 +467,284 @@ fun LocationHierarchySelectorDialog(
                         }
                     }
                 } else {
-                    // Step-by-Step Hierarchy Drilldown: State -> District -> Mandal -> City -> Area
-                    LazyColumn(
+                    // Step-by-Step Hierarchy Drilldown: Country -> State -> District -> Mandal/City -> Area
+                    Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // 1. State Selector
-                        item {
-                            Text("1. Select State / UT:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(IndiaLocationMasterData.STATES) { state ->
-                                    val isSelected = state.id == stepStateId
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            stepStateId = state.id
-                                            val firstDist = IndiaLocationMasterData.getDistrictsForState(state.id).firstOrNull()
-                                            stepDistrictId = firstDist?.id ?: ""
-                                            val firstMandal = IndiaLocationMasterData.getMandalsForDistrict(stepDistrictId).firstOrNull()
-                                            stepMandalId = firstMandal?.id ?: ""
-                                            val firstCity = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).firstOrNull()
-                                                ?: IndiaLocationMasterData.getCitiesForDistrict(stepDistrictId).firstOrNull()
-                                            stepCityId = firstCity?.id ?: ""
-                                            stepAreaId = null
-                                        },
-                                        label = { Text(state.name, fontSize = 11.sp) },
-                                        leadingIcon = if (isSelected) {
-                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                        } else null
-                                    )
-                                }
+                        // Step Navigation Breadcrumbs Bar
+                        val currentC = IndiaLocationMasterData.findCountry(stepCountryId) ?: IndiaLocationMasterData.COUNTRY_INDIA
+                        val currentS = IndiaLocationMasterData.findState(stepStateId)
+                        val currentD = IndiaLocationMasterData.findDistrict(stepDistrictId)
+                        val currentCt = IndiaLocationMasterData.findCity(stepCityId)
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = currentHierarchyStep == 1,
+                                    onClick = { currentHierarchyStep = 1 },
+                                    label = { Text("1. ${currentC.name}", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = currentHierarchyStep == 2,
+                                    onClick = { currentHierarchyStep = 2 },
+                                    label = { Text("2. ${currentS?.name ?: "State"}", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = currentHierarchyStep == 3,
+                                    onClick = { currentHierarchyStep = 3 },
+                                    label = { Text("3. ${currentD?.name ?: "District"}", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = currentHierarchyStep == 4,
+                                    onClick = { currentHierarchyStep = 4 },
+                                    label = { Text("4. ${currentCt?.name ?: "City"}", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+                            item {
+                                FilterChip(
+                                    selected = currentHierarchyStep == 5,
+                                    onClick = { currentHierarchyStep = 5 },
+                                    label = { Text("5. Area", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    shape = RoundedCornerShape(12.dp)
+                                )
                             }
                         }
 
-                        // 2. District Selector
-                        item {
-                            Text("2. Select District:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val dists = IndiaLocationMasterData.getDistrictsForState(stepStateId)
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(dists) { dist ->
-                                    val isSelected = dist.id == stepDistrictId
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            stepDistrictId = dist.id
-                                            val firstMandal = IndiaLocationMasterData.getMandalsForDistrict(dist.id).firstOrNull()
-                                            stepMandalId = firstMandal?.id ?: ""
-                                            val firstCity = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).firstOrNull()
-                                                ?: IndiaLocationMasterData.getCitiesForDistrict(dist.id).firstOrNull()
-                                            stepCityId = firstCity?.id ?: ""
-                                            stepAreaId = null
-                                        },
-                                        label = { Text(dist.name, fontSize = 11.sp) },
-                                        leadingIcon = if (isSelected) {
-                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                        } else null
-                                    )
-                                }
-                            }
-                        }
+                        Divider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-                        // 3. Mandal Selector
-                        item {
-                            Text("3. Select Mandal / Taluk:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val mandals = IndiaLocationMasterData.getMandalsForDistrict(stepDistrictId)
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(mandals) { mandal ->
-                                    val isSelected = mandal.id == stepMandalId
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            stepMandalId = mandal.id
-                                            val firstCity = IndiaLocationMasterData.getCitiesForMandal(mandal.id).firstOrNull()
-                                            stepCityId = firstCity?.id ?: ""
-                                            stepAreaId = null
-                                        },
-                                        label = { Text(mandal.name, fontSize = 11.sp) },
-                                        leadingIcon = if (isSelected) {
-                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                        } else null
-                                    )
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // 1. Country Selector
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Public, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("1. Select Country:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 }
-                            }
-                        }
-
-                        // 4. City / Town Selector
-                        item {
-                            Text("4. Select City / Town / Village:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val cities = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).ifEmpty {
-                                IndiaLocationMasterData.getCitiesForDistrict(stepDistrictId)
-                            }
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(cities) { city ->
-                                    val isSelected = city.id == stepCityId
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            stepCityId = city.id
-                                            stepAreaId = null
-                                        },
-                                        label = { Text(city.name, fontSize = 11.sp) },
-                                        leadingIcon = if (isSelected) {
-                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                        } else null
-                                    )
-                                }
-                            }
-                        }
-
-                        // 5. Area Selector
-                        item {
-                            Text("5. Select Area / Locality (Optional):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val areas = IndiaLocationMasterData.getAreasForCity(stepCityId).ifEmpty {
-                                IndiaLocationMasterData.getAreasForMandal(stepMandalId)
-                            }
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                // Option for Entire City / All Areas
-                                Surface(
-                                    onClick = {
-                                        val built = IndiaLocationMasterData.buildHierarchy(
-                                            stateId = stepStateId,
-                                            districtId = stepDistrictId,
-                                            mandalId = stepMandalId,
-                                            cityTownId = stepCityId,
-                                            areaId = null
+                                Spacer(modifier = Modifier.height(4.dp))
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    items(IndiaLocationMasterData.COUNTRIES) { country ->
+                                        val isSelected = country.id == stepCountryId
+                                        val flag = when (country.id) {
+                                            "IN" -> "🇮🇳"
+                                            "AE" -> "🇦🇪"
+                                            "SG" -> "🇸🇬"
+                                            "US" -> "🇺🇸"
+                                            "UK" -> "🇬🇧"
+                                            else -> "🌐"
+                                        }
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = {
+                                                stepCountryId = country.id
+                                                val states = IndiaLocationMasterData.getStatesForCountry(country.id)
+                                                val firstState = states.firstOrNull() ?: IndiaLocationMasterData.STATES.first()
+                                                stepStateId = firstState.id
+                                                val firstDist = IndiaLocationMasterData.getDistrictsForState(stepStateId).firstOrNull()
+                                                stepDistrictId = firstDist?.id ?: ""
+                                                val firstMandal = IndiaLocationMasterData.getMandalsForDistrict(stepDistrictId).firstOrNull()
+                                                stepMandalId = firstMandal?.id ?: ""
+                                                val firstCity = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).firstOrNull()
+                                                    ?: IndiaLocationMasterData.getCitiesForDistrict(stepDistrictId).firstOrNull()
+                                                stepCityId = firstCity?.id ?: ""
+                                                stepAreaId = null
+                                                currentHierarchyStep = 2
+                                            },
+                                            label = { Text("$flag ${country.name}", fontSize = 11.sp) },
+                                            leadingIcon = if (isSelected) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                            } else null
                                         )
-                                        onLocationSelected(built, selectedRadius)
-                                        onDismiss()
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(Icons.Default.Public, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Select Entire City (All Areas in City)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     }
                                 }
+                            }
 
-                                areas.forEach { area ->
+                            // 2. State Selector
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Map, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("2. Select State / Region:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val availableStates = IndiaLocationMasterData.getStatesForCountry(stepCountryId).ifEmpty { IndiaLocationMasterData.STATES }
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    items(availableStates) { state ->
+                                        val isSelected = state.id == stepStateId
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = {
+                                                stepStateId = state.id
+                                                val firstDist = IndiaLocationMasterData.getDistrictsForState(state.id).firstOrNull()
+                                                stepDistrictId = firstDist?.id ?: ""
+                                                val firstMandal = IndiaLocationMasterData.getMandalsForDistrict(stepDistrictId).firstOrNull()
+                                                stepMandalId = firstMandal?.id ?: ""
+                                                val firstCity = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).firstOrNull()
+                                                    ?: IndiaLocationMasterData.getCitiesForDistrict(stepDistrictId).firstOrNull()
+                                                stepCityId = firstCity?.id ?: ""
+                                                stepAreaId = null
+                                                currentHierarchyStep = 3
+                                            },
+                                            label = { Text(state.name, fontSize = 11.sp) },
+                                            leadingIcon = if (isSelected) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 3. District Selector
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.LocationCity, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("3. Select District / Area Division:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val dists = IndiaLocationMasterData.getDistrictsForState(stepStateId)
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    items(dists) { dist ->
+                                        val isSelected = dist.id == stepDistrictId
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = {
+                                                stepDistrictId = dist.id
+                                                val firstMandal = IndiaLocationMasterData.getMandalsForDistrict(dist.id).firstOrNull()
+                                                stepMandalId = firstMandal?.id ?: ""
+                                                val firstCity = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).firstOrNull()
+                                                    ?: IndiaLocationMasterData.getCitiesForDistrict(dist.id).firstOrNull()
+                                                stepCityId = firstCity?.id ?: ""
+                                                stepAreaId = null
+                                                currentHierarchyStep = 4
+                                            },
+                                            label = { Text(dist.name, fontSize = 11.sp) },
+                                            leadingIcon = if (isSelected) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 4. City / Town / Mandal Selector
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Apartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("4. Select City / Town / Mandal:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val cities = IndiaLocationMasterData.getCitiesForMandal(stepMandalId).ifEmpty {
+                                    IndiaLocationMasterData.getCitiesForDistrict(stepDistrictId)
+                                }
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    items(cities) { city ->
+                                        val isSelected = city.id == stepCityId
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = {
+                                                stepCityId = city.id
+                                                stepAreaId = null
+                                                currentHierarchyStep = 5
+                                            },
+                                            label = { Text(city.name, fontSize = 11.sp) },
+                                            leadingIcon = if (isSelected) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 5. Area Selector
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.PinDrop, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("5. Select Location Area / Locality:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val areas = IndiaLocationMasterData.getAreasForCity(stepCityId).ifEmpty {
+                                    IndiaLocationMasterData.getAreasForMandal(stepMandalId)
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    // Option for Entire City / All Areas
                                     Surface(
                                         onClick = {
                                             val built = IndiaLocationMasterData.buildHierarchy(
+                                                countryId = stepCountryId,
                                                 stateId = stepStateId,
                                                 districtId = stepDistrictId,
                                                 mandalId = stepMandalId,
                                                 cityTownId = stepCityId,
-                                                areaId = area.id
+                                                areaId = null
                                             )
                                             onLocationSelected(built, selectedRadius)
                                             onDismiss()
                                         },
                                         shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Column {
-                                                Text(area.name, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                                                if (area.landmark.isNotBlank()) {
-                                                    Text(area.landmark, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Icon(Icons.Default.Public, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Select Entire District / City (All Areas)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        }
+                                    }
+
+                                    areas.forEach { area ->
+                                        Surface(
+                                            onClick = {
+                                                val built = IndiaLocationMasterData.buildHierarchy(
+                                                    countryId = stepCountryId,
+                                                    stateId = stepStateId,
+                                                    districtId = stepDistrictId,
+                                                    mandalId = stepMandalId,
+                                                    cityTownId = stepCityId,
+                                                    areaId = area.id
+                                                )
+                                                onLocationSelected(built, selectedRadius)
+                                                onDismiss()
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Column {
+                                                    Text(area.name, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                                    if (area.landmark.isNotBlank()) {
+                                                        Text(area.landmark, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    }
                                                 }
-                                            }
-                                            if (area.postalCode.isNotBlank()) {
-                                                Text(area.postalCode, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                                if (area.postalCode.isNotBlank()) {
+                                                    Text(area.postalCode, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                                }
                                             }
                                         }
                                     }
@@ -632,6 +759,7 @@ fun LocationHierarchySelectorDialog(
             TextButton(
                 onClick = {
                     val built = IndiaLocationMasterData.buildHierarchy(
+                        countryId = stepCountryId,
                         stateId = stepStateId,
                         districtId = stepDistrictId,
                         mandalId = stepMandalId,
@@ -665,19 +793,22 @@ fun OwnerLocationHierarchySelector(
     onHierarchyChanged: (LocationHierarchy) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var countryId by remember(selectedHierarchy) { mutableStateOf(selectedHierarchy?.countryId ?: "IN") }
     var stateId by remember(selectedHierarchy) { mutableStateOf(selectedHierarchy?.stateId ?: "IN-TG") }
     var districtId by remember(selectedHierarchy) { mutableStateOf(selectedHierarchy?.districtId ?: "DIST_TG_HYDERABAD") }
     var mandalId by remember(selectedHierarchy) { mutableStateOf(selectedHierarchy?.mandalId ?: "MANDAL_TG_SERILINGAMPALLY") }
     var cityId by remember(selectedHierarchy) { mutableStateOf(selectedHierarchy?.cityTownId ?: "CITY_TG_HYDERABAD") }
     var areaId by remember(selectedHierarchy) { mutableStateOf(selectedHierarchy?.areaId ?: "AREA_TG_HYD_GACHIBOWLI") }
 
+    var expandedCountry by remember { mutableStateOf(false) }
     var expandedState by remember { mutableStateOf(false) }
     var expandedDistrict by remember { mutableStateOf(false) }
     var expandedMandal by remember { mutableStateOf(false) }
     var expandedCity by remember { mutableStateOf(false) }
     var expandedArea by remember { mutableStateOf(false) }
 
-    val availableStates = IndiaLocationMasterData.STATES
+    val availableCountries = IndiaLocationMasterData.COUNTRIES
+    val availableStates = remember(countryId) { IndiaLocationMasterData.getStatesForCountry(countryId).ifEmpty { IndiaLocationMasterData.STATES } }
     val availableDistricts = remember(stateId) { IndiaLocationMasterData.getDistrictsForState(stateId) }
     val availableMandals = remember(districtId) { IndiaLocationMasterData.getMandalsForDistrict(districtId) }
     val availableCities = remember(mandalId, districtId) {
@@ -691,6 +822,7 @@ fun OwnerLocationHierarchySelector(
         }
     }
 
+    val currentCountry = availableCountries.firstOrNull { it.id == countryId }
     val currentState = availableStates.firstOrNull { it.id == stateId }
     val currentDistrict = availableDistricts.firstOrNull { it.id == districtId }
     val currentMandal = availableMandals.firstOrNull { it.id == mandalId }
@@ -709,14 +841,59 @@ fun OwnerLocationHierarchySelector(
             Icon(Icons.Default.PinDrop, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "India Location Hierarchy (Official Master IDs)",
+                text = "Location Hierarchy (Country → State → District → City → Area)",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
         }
 
-        // 1. State Dropdown
+        // 1. Country Dropdown
+        ExposedDropdownMenuBox(
+            expanded = expandedCountry,
+            onExpandedChange = { expandedCountry = !expandedCountry }
+        ) {
+            OutlinedTextField(
+                value = currentCountry?.name ?: "Select Country",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Country *") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCountry) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            )
+            ExposedDropdownMenu(
+                expanded = expandedCountry,
+                onDismissRequest = { expandedCountry = false }
+            ) {
+                availableCountries.forEach { cntry ->
+                    DropdownMenuItem(
+                        text = { Text(cntry.name) },
+                        onClick = {
+                            countryId = cntry.id
+                            expandedCountry = false
+                            val stList = IndiaLocationMasterData.getStatesForCountry(cntry.id)
+                            val st = stList.firstOrNull() ?: IndiaLocationMasterData.STATES.first()
+                            stateId = st.id
+                            val d = IndiaLocationMasterData.getDistrictsForState(st.id).firstOrNull()
+                            districtId = d?.id ?: ""
+                            val m = IndiaLocationMasterData.getMandalsForDistrict(districtId).firstOrNull()
+                            mandalId = m?.id ?: ""
+                            val c = IndiaLocationMasterData.getCitiesForMandal(mandalId).firstOrNull() ?: IndiaLocationMasterData.getCitiesForDistrict(districtId).firstOrNull()
+                            cityId = c?.id ?: ""
+                            val a = IndiaLocationMasterData.getAreasForCity(cityId).firstOrNull()
+                            areaId = a?.id ?: ""
+                            val built = IndiaLocationMasterData.buildHierarchy(countryId, stateId, districtId, mandalId, cityId, areaId)
+                            onHierarchyChanged(built)
+                        }
+                    )
+                }
+            }
+        }
+
+        // 2. State Dropdown
         ExposedDropdownMenuBox(
             expanded = expandedState,
             onExpandedChange = { expandedState = !expandedState }
@@ -725,7 +902,7 @@ fun OwnerLocationHierarchySelector(
                 value = currentState?.name ?: "Select State",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("State / UT *") },
+                label = { Text("State / UT / Region *") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedState) },
                 modifier = Modifier
                     .menuAnchor()
@@ -750,7 +927,7 @@ fun OwnerLocationHierarchySelector(
                             cityId = c?.id ?: ""
                             val a = IndiaLocationMasterData.getAreasForCity(cityId).firstOrNull()
                             areaId = a?.id ?: ""
-                            val built = IndiaLocationMasterData.buildHierarchy(stateId, districtId, mandalId, cityId, areaId)
+                            val built = IndiaLocationMasterData.buildHierarchy(countryId, stateId, districtId, mandalId, cityId, areaId)
                             onHierarchyChanged(built)
                         }
                     )
@@ -758,7 +935,7 @@ fun OwnerLocationHierarchySelector(
             }
         }
 
-        // 2. District Dropdown
+        // 3. District Dropdown
         ExposedDropdownMenuBox(
             expanded = expandedDistrict,
             onExpandedChange = { expandedDistrict = !expandedDistrict }
@@ -790,7 +967,7 @@ fun OwnerLocationHierarchySelector(
                             cityId = c?.id ?: ""
                             val a = IndiaLocationMasterData.getAreasForCity(cityId).firstOrNull()
                             areaId = a?.id ?: ""
-                            val built = IndiaLocationMasterData.buildHierarchy(stateId, districtId, mandalId, cityId, areaId)
+                            val built = IndiaLocationMasterData.buildHierarchy(countryId, stateId, districtId, mandalId, cityId, areaId)
                             onHierarchyChanged(built)
                         }
                     )
@@ -798,45 +975,7 @@ fun OwnerLocationHierarchySelector(
             }
         }
 
-        // 3. Mandal Dropdown
-        ExposedDropdownMenuBox(
-            expanded = expandedMandal,
-            onExpandedChange = { expandedMandal = !expandedMandal }
-        ) {
-            OutlinedTextField(
-                value = currentMandal?.name ?: "Select Mandal",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Mandal / Taluk *") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMandal) },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
-            )
-            ExposedDropdownMenu(
-                expanded = expandedMandal,
-                onDismissRequest = { expandedMandal = false }
-            ) {
-                availableMandals.forEach { m ->
-                    DropdownMenuItem(
-                        text = { Text(m.name) },
-                        onClick = {
-                            mandalId = m.id
-                            expandedMandal = false
-                            val c = IndiaLocationMasterData.getCitiesForMandal(m.id).firstOrNull() ?: IndiaLocationMasterData.getCitiesForDistrict(districtId).firstOrNull()
-                            cityId = c?.id ?: ""
-                            val a = IndiaLocationMasterData.getAreasForCity(cityId).firstOrNull()
-                            areaId = a?.id ?: ""
-                            val built = IndiaLocationMasterData.buildHierarchy(stateId, districtId, mandalId, cityId, areaId)
-                            onHierarchyChanged(built)
-                        }
-                    )
-                }
-            }
-        }
-
-        // 4. City / Town Dropdown
+        // 4. Mandal / City Dropdown
         ExposedDropdownMenuBox(
             expanded = expandedCity,
             onExpandedChange = { expandedCity = !expandedCity }
@@ -845,7 +984,7 @@ fun OwnerLocationHierarchySelector(
                 value = currentCity?.name ?: "Select City",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("City / Town / Village *") },
+                label = { Text("City / Town / Mandal *") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCity) },
                 modifier = Modifier
                     .menuAnchor()
@@ -864,7 +1003,7 @@ fun OwnerLocationHierarchySelector(
                             expandedCity = false
                             val a = IndiaLocationMasterData.getAreasForCity(c.id).firstOrNull()
                             areaId = a?.id ?: ""
-                            val built = IndiaLocationMasterData.buildHierarchy(stateId, districtId, mandalId, cityId, areaId)
+                            val built = IndiaLocationMasterData.buildHierarchy(countryId, stateId, districtId, mandalId, cityId, areaId)
                             onHierarchyChanged(built)
                         }
                     )
@@ -898,7 +1037,7 @@ fun OwnerLocationHierarchySelector(
                         onClick = {
                             areaId = a.id
                             expandedArea = false
-                            val built = IndiaLocationMasterData.buildHierarchy(stateId, districtId, mandalId, cityId, areaId)
+                            val built = IndiaLocationMasterData.buildHierarchy(countryId, stateId, districtId, mandalId, cityId, areaId)
                             onHierarchyChanged(built)
                         }
                     )
@@ -920,7 +1059,7 @@ fun OwnerLocationHierarchySelector(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "📍 ${currentState?.name} → ${currentDistrict?.name} → ${currentMandal?.name} → ${currentCity?.name} → ${currentArea?.name ?: "All Area"}",
+                    text = "📍 ${currentCountry?.name} → ${currentState?.name} → ${currentDistrict?.name} → ${currentCity?.name} → ${currentArea?.name ?: "All Area"}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface

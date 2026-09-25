@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/config/test_mode.dart';
-import '../../../../features/debug/presentation/screens/debug_menu_screen.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/auth_providers.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 
 /// Settings screen: theme, language and account management entry points.
 class SettingsScreen extends ConsumerWidget {
@@ -15,226 +16,125 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
-    final simpleMode = ref.watch(simpleModeProvider);
-    final bookingMode = ref.watch(bookingModeProvider);
-    final palette = ref.watch(themePaletteProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.settings)),
-      body: ListView(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.brightness_6_rounded),
-            title: Text(l10n.themeMode),
-            subtitle: Text(themeMode.name.toUpperCase()),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showThemePicker(context, ref),
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.palette_outlined,
-              color: themePaletteColor(palette),
-            ),
-            title: const Text('Color theme'),
-            subtitle: Text(
-              ThemePalette.values
-                      .where((p) => p.name == palette)
-                      .firstOrNull
-                      ?.label ??
-                  '#$palette',
-            ),
-            onTap: () => context.push(AppRoutes.themeCustomizer),
-          ),
-          SwitchListTile.adaptive(
-            secondary: const Icon(Icons.accessibility_new_rounded),
-            title: const Text('Simple Mode'),
-            subtitle: const Text('Larger text and easier controls'),
-            value: simpleMode,
-            onChanged: (value) =>
-                ref.read(simpleModeProvider.notifier).setEnabled(value),
-          ),
-          ListTile(
-            leading: const Icon(Icons.flash_on_rounded),
-            title: const Text('Booking Mode'),
-            subtitle: Text(
-              bookingMode == BookingMode.quick
-                  ? '1-Tap Quick Booking'
-                  : 'Normal booking',
-            ),
-            onTap: () => _showBookingModePicker(context, ref),
-          ),
-          ListTile(
-            leading: const Icon(Icons.language_rounded),
-            title: Text(l10n.language),
-            subtitle: Text(AppLocalizations.languageLabel(locale)),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showLanguagePicker(context, ref),
-          ),
-          ListTile(
-            leading: const Icon(Icons.tune_rounded),
-            title: const Text('Choose what you want to see'),
-            subtitle: const Text('Customize home categories'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.categoryPreferences),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.notifications_outlined),
-            title: Text(l10n.notifications),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.notifications),
-          ),
-          ListTile(
-            leading: const Icon(Icons.support_agent_rounded),
-            title: Text(l10n.support),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.support),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: Text(l10n.privacyPolicy),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.privacyPolicy),
-          ),
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: Text(l10n.termsAndConditions),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppRoutes.termsOfService),
-          ),
-          _AboutListTile(
-            title: l10n.about,
-            tagline: l10n.tagline,
-            appName: l10n.appName,
-          ),
-          const Divider(),
-          ListTile(
-            leading: Icon(
-              Icons.delete_forever_outlined,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            title: Text(
-              l10n.deleteAccount,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-            onTap: () => _confirmDeleteAccount(context, l10n),
-          ),
-        ],
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        title: Text(l10n.settings,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-    );
-  }
-
-  void _showPalettePicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
+      body: ResponsiveLayoutBuilder(
+        builder: (context, responsive) => ListView(
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.horizontalPadding,
+            vertical: 12,
+          ),
           children: [
-            const ListTile(title: Text('Choose a color theme')),
-            ...ThemePalette.values.map(
-              (palette) => ListTile(
-                leading: CircleAvatar(backgroundColor: palette.color),
-                title: Text(palette.label),
-                onTap: () {
-                  ref.read(themePaletteProvider.notifier).setPalette(palette);
-                  Navigator.pop(context);
-                },
+            // Appearance section
+            _SectionHeader(label: 'Appearance'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.auto_awesome_rounded,
+              iconColor: AppTheme.violet,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.home3dEffects,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        Text(
+                          l10n.home3dEffectsSubtitle,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: ref.watch(home3dEffectsProvider),
+                    onChanged: (enabled) => ref
+                        .read(home3dEffectsProvider.notifier)
+                        .setEnabled(enabled),
+                    activeThumbColor: AppTheme.violet,
+                  ),
+                ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.colorize),
-              title: const Text('Custom HEX color'),
-              onTap: () {
-                Navigator.pop(context);
-                _showCustomHex(context, ref);
-              },
+            _GlassSettingsTile(
+              icon: Icons.language_rounded,
+              iconColor: AppTheme.violet,
+              onTap: () => _showLanguagePicker(context, ref),
+              title: l10n.language,
+              subtitle: locale.languageCode.toUpperCase(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
+            _GlassSettingsTile(
+              icon: Icons.extension_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.featuresHub),
+              title: l10n.featuresHub,
+              subtitle: l10n.featuresHubSubtitle,
+            ),
+            const SizedBox(height: 20),
 
-  void _showCustomHex(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Custom theme color'),
-        content: TextField(
-          controller: controller,
-          maxLength: 7,
-          decoration: const InputDecoration(
-            hintText: '#3F51B5',
-            labelText: 'HEX color',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final ok = await ref
-                  .read(themePaletteProvider.notifier)
-                  .setCustomHex(controller.text);
-              if (!context.mounted) return;
-              if (!ok) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Enter a valid 6-digit HEX color.'),
-                  ),
-                );
-                return;
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-    );
-  }
+            // Support section
+            _SectionHeader(label: 'Support'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.notifications_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.notifications),
+              title: l10n.notifications,
+            ),
+            _GlassSettingsTile(
+              icon: Icons.support_agent_rounded,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.support),
+              title: l10n.support,
+            ),
+            const SizedBox(height: 20),
 
-  void _showThemePicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('SYSTEM'),
-              onTap: () {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(ThemeMode.system);
-                Navigator.pop(sheetContext);
-              },
+            // Legal section
+            _SectionHeader(label: 'Legal'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.privacy_tip_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.privacyPolicy),
+              title: l10n.privacyPolicy,
             ),
-            ListTile(
-              title: const Text('LIGHT'),
-              onTap: () {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(ThemeMode.light);
-                Navigator.pop(sheetContext);
-              },
+            _GlassSettingsTile(
+              icon: Icons.description_outlined,
+              iconColor: AppTheme.violet,
+              onTap: () => context.push(AppRoutes.termsOfService),
+              title: l10n.termsAndConditions,
             ),
-            ListTile(
-              title: const Text('DARK'),
-              onTap: () {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(ThemeMode.dark);
-                Navigator.pop(sheetContext);
-              },
+            _GlassSettingsTile(
+              icon: Icons.info_outline,
+              iconColor: AppTheme.violet,
+              onTap: () => _showAboutDialog(context, l10n),
+              title: l10n.about,
             ),
+            const SizedBox(height: 20),
+
+            // Danger zone
+            _SectionHeader(label: 'Account'),
+            const SizedBox(height: 8),
+            _GlassSettingsTile(
+              icon: Icons.delete_forever_outlined,
+              iconColor: theme.colorScheme.error,
+              onTap: () => _confirmDeleteAccount(context, ref, l10n),
+              title: l10n.deleteAccount,
+              titleColor: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -245,141 +145,266 @@ class SettingsScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (final locale in AppLocalizations.supportedLocales)
-              ListTile(
-                title: Text(AppLocalizations.languageLabel(locale)),
-                onTap: () {
-                  ref.read(localeProvider.notifier).setLocale(locale);
-                  Navigator.pop(sheetContext);
-                },
-              ),
+            ListTile(
+              title: const Text('English'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('en'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('తెలుగు'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('te'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('हिन्दी'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('hi'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('ಕನ್ನಡ'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('kn'));
+                Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              title: const Text('தமிழ்'),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(const Locale('ta'));
+                Navigator.pop(sheetContext);
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _showBookingModePicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
+  void _showAboutDialog(BuildContext context, AppLocalizations l10n) {
+    showAboutDialog(
       context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Normal booking'),
-              onTap: () {
-                ref
-                    .read(bookingModeProvider.notifier)
-                    .setMode(BookingMode.normal);
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: const Text('1-Tap Quick Booking'),
-              onTap: () {
-                ref
-                    .read(bookingModeProvider.notifier)
-                    .setMode(BookingMode.quick);
-                Navigator.pop(sheetContext);
-              },
-            ),
-          ],
-        ),
-      ),
+      applicationName: l10n.appName,
+      applicationVersion: '1.0.0',
+      children: [Text(l10n.tagline)],
     );
   }
 
   Future<void> _confirmDeleteAccount(
     BuildContext context,
+    WidgetRef ref,
     AppLocalizations l10n,
   ) async {
+    final confirmation = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.deleteAccount),
-        content: const Text(
-          'This action cannot be undone. Your data will be permanently removed.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
-      context.go(AppRoutes.onboarding);
-    }
-  }
-}
-
-/// About tile that also serves as the hidden Test Mode debug-menu unlock:
-/// 7 taps within a 3-second window (while [TestMode.debugMenuEnabled] is on)
-/// opens [DebugMenuScreen] instead of the normal About dialog.
-class _AboutListTile extends StatefulWidget {
-  const _AboutListTile({
-    required this.title,
-    required this.tagline,
-    required this.appName,
-  });
-
-  final String title;
-  final String tagline;
-  final String appName;
-
-  @override
-  State<_AboutListTile> createState() => _AboutListTileState();
-}
-
-class _AboutListTileState extends State<_AboutListTile> {
-  int _tapCount = 0;
-  DateTime? _windowStart;
-
-  void _handleTap() {
-    if (TestMode.debugMenuEnabled) {
-      final now = DateTime.now();
-      if (_windowStart == null ||
-          now.difference(_windowStart!) > const Duration(seconds: 3)) {
-        _windowStart = now;
-        _tapCount = 1;
-      } else {
-        _tapCount++;
-      }
-      if (_tapCount >= 7) {
-        _tapCount = 0;
-        _windowStart = null;
-        Navigator.of(context).push<void>(
-          MaterialPageRoute(builder: (_) => const DebugMenuScreen()),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final typedDelete =
+                confirmation.text.trim().toUpperCase() == 'DELETE';
+            return AlertDialog(
+              title: Text(l10n.deleteAccount),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This permanently deletes your BookMySpace account and signed-in data. Type DELETE to confirm.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmation,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Type DELETE',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  onPressed: typedDelete
+                      ? () => Navigator.pop(dialogContext, true)
+                      : null,
+                  child: Text(l10n.delete),
+                ),
+              ],
+            );
+          },
         );
-        return;
+      },
+    );
+    confirmation.dispose();
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      await ref.read(authNotifierProvider.notifier).deleteAccount();
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+    } catch (error) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        final retry = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(l10n.deleteAccount),
+            content: Text(error.toString()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        if (retry == true && context.mounted) {
+          await _confirmDeleteAccount(context, ref, l10n);
+        }
       }
     }
-    showAboutDialog(
-      context: context,
-      applicationName: widget.appName,
-      applicationVersion: '1.0.0',
-      children: [Text(widget.tagline)],
-    );
   }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: const Icon(Icons.info_outline),
-      title: Text(widget.title),
-      onTap: _handleTap,
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+    );
+  }
+}
+
+class _GlassSettingsTile extends StatelessWidget {
+  const _GlassSettingsTile({
+    required this.icon,
+    required this.iconColor,
+    this.onTap,
+    this.title,
+    this.subtitle,
+    this.titleColor,
+    this.child,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback? onTap;
+  final String? title;
+  final String? subtitle;
+  final Color? titleColor;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 19),
+                ),
+                const SizedBox(width: 12),
+                if (child != null)
+                  Expanded(child: child!)
+                else
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (title != null)
+                          Text(
+                            title!,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: titleColor,
+                            ),
+                          ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                if (onTap != null && child == null)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

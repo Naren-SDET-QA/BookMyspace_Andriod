@@ -1,267 +1,499 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/app_network_image.dart';
-import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/error_view.dart';
-import '../../../../core/widgets/test_id.dart';
-import '../../../home/domain/customer_section_catalog.dart';
-import '../../../admin/presentation/admin_moderation_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../providers/owner_venue_providers.dart';
+import 'create_venue_screen.dart';
+import '../../../venue_sections/presentation/screens/owner_venue_sections_screen.dart';
 
-/// Screen showing venues owned by the current owner.
-class OwnerVenuesScreen extends ConsumerWidget {
+/// Owner spaces management screen listing all properties with edit, toggle, delete, and add actions.
+class OwnerVenuesScreen extends ConsumerStatefulWidget {
   const OwnerVenuesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final venues = ref.watch(myVenuesProvider);
+  ConsumerState<OwnerVenuesScreen> createState() => _OwnerVenuesScreenState();
+}
+
+class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
+  Future<void> _confirmDelete(Venue venue) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded,
+              color: Colors.red, size: 36),
+          title: const Text('Delete Space Listing?',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Text(
+            'Are you sure you want to remove "${venue.name}"? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(deleteVenueProvider(venue.id).future);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed "${venue.name}" successfully.'),
+              backgroundColor: const Color(0xFFC62828),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _toggleActive(Venue venue) async {
+    final newStatus = !venue.isActive;
+    try {
+      await ref.read(
+        updateVenueProvider((
+          venueId: venue.id,
+          isActive: newStatus,
+          name: venue.name,
+          categoryId: venue.category?.id ?? '',
+          description: venue.description,
+          city: venue.city,
+          state: venue.state,
+          latitude: venue.latitude,
+          longitude: venue.longitude,
+          capacity: venue.capacity,
+          pricingBaseAmount: venue.pricingBaseAmount,
+          address: venue.address,
+          pincode: venue.pincode,
+          images: venue.images,
+          facilities: venue.facilities.map((f) => f.facility).toList(),
+          videoUrl: null,
+          tour3dUrl: null,
+        )).future,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newStatus
+                  ? 'Listing is now LIVE & bookable! 🟢'
+                  : 'Listing paused (Inactive) ⏸️',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating status: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final myVenuesAsync = ref.watch(myVenuesProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.myVenues),
+        title: const Text(
+          'My Spaces & Properties 🏛️',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () async {
-              await context.push(AppRoutes.ownerVenueCreate);
-              ref.invalidate(myVenuesProvider);
-            },
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Listings',
+            onPressed: () => ref.refresh(myVenuesProvider),
           ),
         ],
       ),
-      body: venues.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(myVenuesProvider),
-        ),
-        data: (items) => items.isEmpty
-            ? const EmptyState(
-                icon: Icons.storefront_rounded,
-                title: 'No listings yet',
-                message:
-                    'Tap + to add a Function Hall, Lodge, PG or Institute.',
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                itemBuilder: (context, i) => TestId(
-                  E2eIds.ownerVenueCard(items[i].id),
-                  child: _VenueTile(venue: items[i]),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const CreateVenueScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add_business),
+        label: const Text('List Space'),
+      ),
+      body: myVenuesAsync.when(
+        data: (venues) {
+          if (venues.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_business_outlined,
+                      size: 64,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No spaces listed yet',
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Add your banquet hall, conference room, lawn, or coworking space to start hosting bookings.',
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('List Your First Space'),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CreateVenueScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
-      ),
-    );
-  }
-}
+            );
+          }
 
-class _VenueTile extends ConsumerWidget {
-  const _VenueTile({required this.venue});
+          final totalActive = venues.where((v) => v.isActive).length;
+          final avgPrice = venues.isEmpty
+              ? 0
+              : (venues
+                          .map((v) => v.pricingBaseAmount)
+                          .reduce((a, b) => a + b) /
+                      venues.length)
+                  .toInt();
 
-  final Venue venue;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final section = CustomerSectionCatalog.sectionForVenue(venue);
-    final institute = section == CustomerSection.institutesClasses;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(myVenuesProvider.future),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: AppNetworkImage(
-                    url: venue.coverImageUrl,
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
+                // Top Metrics Banner
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.2)),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Text(
-                        venue.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      _buildMetric(
+                        label: 'Total Spaces',
+                        value: '${venues.length}',
+                        icon: Icons.stadium,
+                        theme: theme,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          if (section != null)
-                            '${section.emoji} ${section.title}',
-                          '${venue.city}, ${venue.state}',
-                        ].join(' · '),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      Container(
+                          width: 1,
+                          height: 36,
+                          color: theme.colorScheme.outlineVariant),
+                      _buildMetric(
+                        label: 'Active Listings',
+                        value: '$totalActive',
+                        icon: Icons.check_circle,
+                        theme: theme,
+                        valueColor: const Color(0xFF2E7D32),
+                      ),
+                      Container(
+                          width: 1,
+                          height: 36,
+                          color: theme.colorScheme.outlineVariant),
+                      _buildMetric(
+                        label: 'Avg Base Rate',
+                        value: '₹$avgPrice',
+                        icon: Icons.currency_rupee,
+                        theme: theme,
                       ),
                     ],
                   ),
                 ),
-                TestId(
-                  E2eIds.ownerVenueState(
-                    venue.id,
-                    venue.isActive ? 'published' : 'unpublished',
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: venue.isActive
-                          ? AppTheme.brand.withValues(alpha: 0.12)
-                          : theme.colorScheme.error.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      venue.resolvedListingStatus,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: venue.isActive
-                            ? AppTheme.brand
-                            : theme.colorScheme.error,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
+                const SizedBox(height: 16),
                 Text(
-                  institute
-                      ? 'Fee from ₹${venue.pricingBaseAmount.toStringAsFixed(0)}'
-                      : '₹${venue.pricingBaseAmount.toStringAsFixed(0)}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.brand,
-                  ),
+                  'Your Properties (${venues.length})',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                if (institute) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    'Listing only',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                if (!venue.isVerified)
-                  Text(
-                    'Pending review',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                const SizedBox(height: 10),
+                ...venues.map((venue) => _buildVenueCard(venue, theme)),
+                const SizedBox(height: 72), // FAB spacing
               ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextButton(
-                  onPressed: () async {
-                    await context.push(AppRoutes.ownerVenueEditPath(venue.id));
-                    ref.invalidate(myVenuesProvider);
-                  },
-                  child: const Text('Edit'),
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 12),
+                Text('Error loading spaces: $err'),
+                const SizedBox(height: 16),
+                FilledButton.tonal(
+                  onPressed: () => ref.refresh(myVenuesProvider),
+                  child: const Text('Try Again'),
                 ),
-                TextButton(
-                  onPressed: () =>
-                      context.push('/owner/venues/${venue.id}/media'),
-                  child: const Text('Media'),
-                ),
-                TestId(
-                  E2eIds.ownerVenueAvailability(venue.id),
-                  child: TextButton(
-                    onPressed: () => context.push(
-                      AppRoutes.ownerVenueAvailabilityPath(venue.id),
-                    ),
-                    child: const Text('Hours & slots'),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.push('/venues/${venue.id}'),
-                  child: const Text('Preview'),
-                ),
-                TestId(
-                  E2eIds.ownerVenuePublish(venue.id),
-                  child: TextButton(
-                    onPressed: () async {
-                      await ref
-                          .read(ownerVenueRepositoryProvider)
-                          .setPublished(venue.id, !venue.isActive);
-                      ref.invalidate(myVenuesProvider);
-                    },
-                    child: Text(venue.isActive ? 'Unpublish' : 'Publish'),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    await ref
-                        .read(listingLifecycleRepositoryProvider)
-                        .submitForReview(venue.id);
-                    ref.invalidate(myVenuesProvider);
-                  },
-                  child: const Text('Submit for review'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete listing?'),
-                        content: Text(
-                          'Remove "${venue.name}" from your listings. This uses the existing owner delete.',
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetric({
+    required String label,
+    required String value,
+    required IconData icon,
+    required ThemeData theme,
+    Color? valueColor,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: theme.colorScheme.primary),
+            const SizedBox(width: 4),
+            Text(label,
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor ?? theme.colorScheme.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVenueCard(Venue venue, ThemeData theme) {
+    final cover = venue.coverImageUrl;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 1,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cover Thumbnail
+              SizedBox(
+                width: 105,
+                height: 105,
+                child: cover.isEmpty
+                    ? Container(
+                        color: theme.colorScheme.primaryContainer,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.stadium_rounded,
+                          color: theme.colorScheme.primary,
+                          size: 34,
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
+                      )
+                    : Image.network(
+                        cover,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: theme.colorScheme.primaryContainer,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: theme.colorScheme.primary,
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete'),
+                        ),
+                      ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              venue.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14.5),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: venue.isActive
+                                  ? (venue.isVerified
+                                      ? const Color(0xFFE8F5E9)
+                                      : const Color(0xFFFFF3E0))
+                                  : const Color(0xFFFFEBEE),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              venue.isActive
+                                  ? (venue.isVerified
+                                      ? 'Published'
+                                      : 'Active · Review pending')
+                                  : 'Inactive',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: venue.isActive
+                                    ? (venue.isVerified
+                                        ? const Color(0xFF2E7D32)
+                                        : Colors.orange.shade800)
+                                    : const Color(0xFFC62828),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    );
-                    if (confirmed != true) return;
-                    await ref
-                        .read(ownerVenueRepositoryProvider)
-                        .deleteVenue(venue.id);
-                    ref.invalidate(myVenuesProvider);
-                  },
-                  child: Text(
-                    'Delete',
-                    style: TextStyle(color: theme.colorScheme.error),
+                      const SizedBox(height: 4),
+                      Text(
+                        '📍 ${venue.city}${venue.state.isNotEmpty ? ', ${venue.state}' : ''}',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            '₹${venue.pricingBaseAmount.toInt()} / slot',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '•  Max ${venue.capacity} guests',
+                            style: const TextStyle(
+                                fontSize: 11.5, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 1),
+          // Action Buttons: Edit, Toggle, Delete
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('Edit Space',
+                          style: TextStyle(fontSize: 12.5)),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                CreateVenueScreen(existingVenue: venue),
+                          ),
+                        );
+                      },
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.dashboard_customize_outlined,
+                          size: 16),
+                      label: const Text('Sections',
+                          style: TextStyle(fontSize: 12.5)),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                OwnerVenueSectionsScreen(venue: venue),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => _toggleActive(venue),
+                      child: Text(
+                        venue.isActive ? 'Pause' : 'Activate',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: venue.isActive
+                              ? Colors.orange.shade800
+                              : Colors.green.shade800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          color: Colors.red, size: 18),
+                      tooltip: 'Delete Space',
+                      onPressed: () => _confirmDelete(venue),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

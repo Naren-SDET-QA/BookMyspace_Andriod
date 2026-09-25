@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Associated Domains for Universal Deep Linking -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:bookmyspace.com</string>
+	</array>
+	<!-- Apple Push Notification service (APNs) Environment -->
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>

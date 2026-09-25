@@ -1,97 +1,125 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_theme.dart';
-
-/// Formats amounts with the Indian rupee grouping (₹ symbol).
-String formatInr(double amount) {
-  final formatted = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 0,
-  ).format(amount);
-  return formatted;
+/// Formats Indian Rupee values with comma grouping.
+String formatInr(num amount) {
+  final str = amount.round().toString();
+  if (str.length <= 3) return '₹$str';
+  final last3 = str.substring(str.length - 3);
+  final remaining = str.substring(0, str.length - 3);
+  final formatted = remaining.replaceAllMapped(
+    RegExp(r'(\d)(?=(\d\d)+$)'),
+    (m) => '${m[1]},',
+  );
+  return '₹$formatted,$last3';
 }
 
-/// Formats a distance in km for display ("1.2 km").
-String formatDistance(double? km) {
-  if (km == null) return '';
-  if (km < 1) return '${(km * 1000).round()} m';
-  return '${km.toStringAsFixed(1)} km';
-}
-
-/// A compact display of a venue's rating with a star icon.
-class RatingBadge extends StatelessWidget {
-  const RatingBadge({super.key, required this.rating, this.count});
-
-  final double rating;
-  final int? count;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-        const SizedBox(width: 2),
-        Text(
-          rating.toStringAsFixed(1),
-          style: theme.textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (count != null && count! > 0) ...[
-          const SizedBox(width: 2),
-          Text(
-            '($count)',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ],
-    );
+/// Formats distance in km.
+String formatDistance(double? distanceKm) {
+  if (distanceKm == null) return '';
+  if (distanceKm < 1) {
+    return '${(distanceKm * 1000).round()} m';
   }
+  return '${distanceKm.toStringAsFixed(1)} km';
 }
 
-/// Verified badge shown next to venue names.
+/// A badge indicating verified venue status.
 class VerifiedBadge extends StatelessWidget {
   const VerifiedBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Verified venue',
-      child: Icon(
-        Icons.verified_rounded,
-        size: 16,
-        color: Theme.of(context).colorScheme.primary,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified_rounded, size: 14, color: Colors.green),
+          SizedBox(width: 4),
+          Text(
+            'Verified',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.green,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// A favourite (heart) toggle button.
+/// A badge displaying average rating and review count.
+class RatingBadge extends StatelessWidget {
+  const RatingBadge({super.key, required this.rating, required this.count});
+
+  final double rating;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+          const SizedBox(width: 2),
+          Text(
+            rating.toStringAsFixed(1),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+          if (count > 0) ...[
+            const SizedBox(width: 2),
+            Text(
+              '($count)',
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Favorite toggle icon button.
 class FavoriteButton extends StatelessWidget {
-  const FavoriteButton({super.key, required this.isFavorite, this.onPressed});
+  const FavoriteButton({
+    super.key,
+    required this.isFavorite,
+    required this.onPressed,
+  });
 
   final bool isFavorite;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return IconButton.filledTonal(
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: Colors.black.withValues(alpha: 0.35),
-        foregroundColor: Colors.white,
+    return Material(
+      color: Colors.white.withValues(alpha: 0.85),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: IconButton(
+        iconSize: 20,
+        icon: Icon(
+          isFavorite ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+          color: isFavorite ? Colors.redAccent : Colors.black87,
+        ),
+        onPressed: onPressed,
       ),
-      icon: Icon(
-        isFavorite ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-        color: isFavorite ? AppTheme.accent : Colors.white,
-      ),
-      tooltip: isFavorite ? 'Remove from saved' : 'Save venue',
     );
   }
 }

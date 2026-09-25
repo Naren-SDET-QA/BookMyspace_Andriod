@@ -103,7 +103,7 @@ class SupabasePaymentRepository implements PaymentRepository {
           .eq('id', bookingId)
           .eq('user_id', user.id)
           .maybeSingle();
-      return BookingStatus.fromDb(row?['status'] as String? ?? 'pending');
+      return BookingStatus.fromDb(row?['status'] as String? ?? 'unknown');
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -165,40 +165,62 @@ class SupabasePaymentRepository implements PaymentRepository {
         : '';
     return switch (error) {
       'booking_not_found' => app_errors.NotFoundException(
-        'The booking could not be found.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'The booking could not be found.',
+          code: error,
+          statusCode: e.status,
+        ),
       'not_authorized' => app_errors.BusinessException(
-        'You are not allowed to pay for this booking.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'You are not allowed to pay for this booking.',
+          code: error,
+          statusCode: e.status,
+        ),
       'amount_mismatch' => app_errors.BusinessException(
-        'The payment amount does not match the booking total.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'The payment amount does not match the booking total.',
+          code: error,
+          statusCode: e.status,
+        ),
       'payment_duplicate' => app_errors.BusinessException(
-        'A payment for this booking already exists.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'A payment for this booking already exists.',
+          code: error,
+          statusCode: e.status,
+        ),
+      'booking_not_payable' => app_errors.BusinessException(
+          'This booking is not awaiting payment.',
+          code: error,
+          statusCode: e.status,
+        ),
+      'owner_approval_required' => app_errors.BusinessException(
+          'The venue owner must approve this request before payment.',
+          code: error,
+          statusCode: e.status,
+        ),
+      'payment_window_expired' => app_errors.HoldExpiredException(
+          'The payment window expired. Please start a new booking request.',
+          code: error,
+        ),
+      'booking_hold_expired' => app_errors.HoldExpiredException(
+          'The booking hold expired before payment could begin. Please start a new booking request.',
+          code: error,
+        ),
+      'booking_expired' => app_errors.HoldExpiredException(
+          'This booking hold has expired. Please start a new booking.',
+          code: error,
+        ),
       'not_refundable' => app_errors.BusinessException(
-        'This booking is not refundable.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'This booking is not refundable.',
+          code: error,
+          statusCode: e.status,
+        ),
       'no_captured_payment' => app_errors.BusinessException(
-        'No captured payment was found for this booking.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'No captured payment was found for this booking.',
+          code: error,
+          statusCode: e.status,
+        ),
       'invalid_amount' => app_errors.BusinessException(
-        'The refund amount is invalid.',
-        code: error,
-        statusCode: e.status,
-      ),
+          'The refund amount is invalid.',
+          code: error,
+          statusCode: e.status,
+        ),
       'already_refunded' => app_errors.BusinessException(
         'This booking has already been refunded.',
         code: error,
@@ -209,10 +231,10 @@ class SupabasePaymentRepository implements PaymentRepository {
         code: error,
       ),
       _ => app_errors.ServerException(
-        'Payment service error (${e.status}).',
-        code: error,
-        statusCode: e.status,
-      ),
+          'Payment service error (${e.status}).',
+          code: error,
+          statusCode: e.status,
+        ),
     };
   }
 }

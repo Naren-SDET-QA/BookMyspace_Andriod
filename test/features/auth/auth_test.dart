@@ -1,3 +1,4 @@
+import 'package:bookmyspace/core/errors/app_exceptions.dart';
 import 'package:bookmyspace/features/auth/domain/auth_state.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,8 +74,51 @@ void main() {
     });
 
     test('surfaces failures without emitting sessions', () async {
-      final repo = MockAuthRepository()..failSignIn = true;
+      final repo = MockAuthRepository()..failGoogle = true;
       expect(repo.signInWithGoogle(), throwsException);
+      expect(repo.currentUser, isNull);
+      repo.dispose();
+    });
+
+    test('Google cancellation does not create a session', () async {
+      final googleRepo = MockAuthRepository()..cancelGoogle = true;
+      expect(
+        googleRepo.signInWithGoogle(),
+        throwsA(isA<AuthCancelledException>()),
+      );
+      expect(googleRepo.currentUser, isNull);
+      googleRepo.dispose();
+    });
+
+    test('OTP send failures do not affect Google', () async {
+      final repo = MockAuthRepository()..failSignIn = true;
+      await repo.signInWithGoogle();
+      expect(repo.currentUser?.email, 'mock@test.com');
+      await repo.signOut();
+      expect(repo.signInCount, 0);
+      expect(repo.googleCount, 1);
+      repo.dispose();
+    });
+
+    test('maintains cross-user state isolation during transitions', () async {
+      final repo = MockAuthRepository();
+      // Anonymous -> User A
+      final userA = await repo.verifyEmailOtp('userA@test.com', '111111');
+      expect(repo.currentUser?.id, userA.id);
+      expect(repo.currentUser?.email, 'userA@test.com');
+
+      // User A -> Logout
+      await repo.signOut();
+      expect(repo.currentUser, isNull);
+
+      // User A -> Logout -> User B
+      final userB = await repo.verifyEmailOtp('userB@test.com', '222222');
+      expect(repo.currentUser?.id, userB.id);
+      expect(repo.currentUser?.email, 'userB@test.com');
+      expect(repo.currentUser?.email, isNot(equals('userA@test.com')));
+
+      // Final cleanup
+      await repo.signOut();
       expect(repo.currentUser, isNull);
       repo.dispose();
     });

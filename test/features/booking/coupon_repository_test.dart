@@ -2,7 +2,7 @@ import 'package:bookmyspace/core/errors/app_exceptions.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'mock_booking_repository.dart';
+import 'mock_booking_repository_release.dart';
 
 /// Exercises promo-code application against [MockBookingRepository], which
 /// intentionally mirrors the same rules as the `apply_booking_coupon` /

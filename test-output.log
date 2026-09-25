@@ -1,0 +1,381 @@
+Resolving dependencies...
+Downloading packages...
+  app_links 7.0.0 (7.2.1 available)
+  app_links_platform_interface 2.0.2 (2.0.4 available)
+  cached_network_image 3.4.1 (4.0.0 available)
+  cached_network_image_platform_interface 4.1.1 (5.0.0 available)
+  cached_network_image_web 1.3.1 (2.0.0 available)
+  clock 1.1.2 (1.1.3 available)
+  code_assets 1.2.1 (2.0.0 available)
+  file_picker 10.3.10 (13.1.0 available)
+  flutter_cache_manager 3.4.2 (3.4.3 available)
+  flutter_lints 3.0.2 (6.0.0 available)
+  flutter_map 7.0.2 (8.3.2 available)
+  flutter_riverpod 2.6.1 (3.4.3 available)
+  flutter_secure_storage 9.2.4 (11.1.1 available)
+  flutter_secure_storage_linux 1.2.3 (3.0.3 available)
+  flutter_secure_storage_macos 3.1.3 (4.0.0 available)
+  flutter_secure_storage_platform_interface 1.1.2 (2.1.1 available)
+  flutter_secure_storage_web 1.2.1 (2.1.1 available)
+  flutter_secure_storage_windows 3.1.2 (4.2.2 available)
+  geocoding_android 5.0.2 (5.1.0 available)
+  geolocator 14.0.2 (14.0.3 available)
+  geolocator_linux 0.2.4 (0.2.6 available)
+  go_router 14.8.1 (18.0.1 available)
+  google_maps_flutter_android 2.19.10 (2.19.13 available)
+  google_maps_flutter_platform_interface 2.16.1 (2.17.0 available)
+  hooks 2.0.2 (2.2.0 available)
+  image_picker_android 0.8.13+17 (0.8.13+23 available)
+  intl 0.20.2 (0.20.3 available)
+  js 0.6.7 (0.7.2 available)
+  latlong2 0.9.1 (0.10.1 available)
+  lints 3.0.0 (6.1.0 available)
+  matcher 0.12.19 (0.12.20 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.17.0 (1.19.0 available)
+  mgrs_dart 2.0.0 (3.0.0 available)
+  objective_c 9.5.0 (9.6.0 available)
+  package_info_plus 9.0.1 (10.2.1 available)
+  package_info_plus_platform_interface 3.2.1 (4.1.0 available)
+  passkeys_platform_interface 2.9.0 (2.10.0 available)
+  platform 3.1.6 (3.2.0 available)
+  proj4dart 2.1.0 (3.0.0 available)
+  record_use 0.6.0 (1.1.1 available)
+  riverpod 2.6.1 (3.4.3 available)
+  shared_preferences_android 2.4.23 (2.4.28 available)
+  sqflite 2.4.2+1 (2.4.4 available)
+  sqflite_android 2.4.2+3 (2.4.4 available)
+  sqflite_common 2.5.8 (2.5.13 available)
+  sqflite_darwin 2.4.2 (2.4.4 available)
+  sqflite_platform_interface 2.4.0 (2.4.2 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  synchronized 3.4.0+1 (3.4.2 available)
+  test_api 0.7.10 (0.7.14 available)
+  unicode 0.3.1 (1.1.9 available)
+  url_launcher_android 6.3.30 (6.3.33 available)
+  vector_math 2.2.0 (2.4.2 available)
+  win32 5.15.0 (6.4.0 available)
+Got dependencies!
+55 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /Users/aa/BookMyspace_Andriod/test/core/feature_registry_test.dart
+00:00 +0: /Users/aa/BookMyspace_Andriod/test/core/feature_registry_test.dart: product registry keeps referrals disabled until a backend exists
+00:00 +1: /Users/aa/BookMyspace_Andriod/test/core/feature_registry_test.dart: feature enablement is not an authorization grant
+00:00 +2: /Users/aa/BookMyspace_Andriod/test/core/feature_registry_test.dart: network failures are retryable reads; payment errors are not
+00:00 +3: /Users/aa/BookMyspace_Andriod/test/core/config/app_config_host_test.dart: placeholder host is detected case-insensitively
+00:00 +4: /Users/aa/BookMyspace_Andriod/test/core/config/app_config_host_test.dart: mapError turns host lookup failures into a human-readable network error
+00:00 +5: /Users/aa/BookMyspace_Andriod/test/core/localization_test.dart: supported locales include Indian languages without UI code changes
+00:00 +6: /Users/aa/BookMyspace_Andriod/test/core/localization_test.dart: Telugu and Tamil nav labels are not English fallbacks
+00:00 +7: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams encodes category and query into the search location
+00:00 +8: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams reads query parameters as the source of truth
+00:00 +9: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams empty query parameters clear compatibility extras
+00:00 +10: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams falls back to extra when query parameters are absent
+00:00 +11: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams round-trips a full query including map venue id
+00:00 +12: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams round-trips GPS and PIN query parameters without dropping city
+00:00 +13: /Users/aa/BookMyspace_Andriod/test/core/search_route_test.dart: SearchRouteParams round-trips every Home category through Search
+00:00 +14: /Users/aa/BookMyspace_Andriod/test/core/router_stability_test.dart: appRouterProvider reuses the same GoRouter instance
+00:01 +15: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: protected destinations round-trip through login safely
+00:01 +16: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: login never follows an external redirect destination
+00:01 +17: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: unauth user on shell is redirected to login
+00:01 +18: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: unauth user on shell is redirected to login
+00:01 +19: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: unauth user on shell is redirected to login
+00:01 +20: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: unauth user on shell is redirected to login
+00:01 +21: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: unauth user on shell is redirected to login
+00:01 +22: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: unauth user on shell is redirected to login
+00:01 +23: /Users/aa/BookMyspace_Andriod/test/core/reliability_test.dart: withReadRetry retries network reads and then succeeds
+00:01 +24: /Users/aa/BookMyspace_Andriod/test/core/reliability_test.dart: withReadRetry retries network reads and then succeeds
+00:02 +25: /Users/aa/BookMyspace_Andriod/test/core/reliability_test.dart: withReadRetry retries network reads and then succeeds
+00:02 +26: /Users/aa/BookMyspace_Andriod/test/core/reliability_test.dart: withReadRetry retries network reads and then succeeds
+00:02 +27: /Users/aa/BookMyspace_Andriod/test/core/reliability_test.dart: withReadRetry retries network reads and then succeeds
+00:02 +28: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +29: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +30: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +31: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +32: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +33: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +34: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +35: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +36: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +37: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: home shows 3D glass Function Halls matrix and hero copy
+00:02 +38: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: root path / redirects authenticated users to home
+00:02 +39: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: root path / redirects authenticated users to home
+00:03 +40: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: root path / redirects authenticated users to home
+00:03 +41: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: tapping a live sub-section navigates via search route params
+00:03 +42: /Users/aa/BookMyspace_Andriod/test/features/home/category_discovery_test.dart: tapping a live sub-section navigates via search route params
+00:03 +43: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: root path / does not show page-not-found while auth loads
+00:03 +44: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:03 +45: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +46: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +47: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +48: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +49: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +50: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +51: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +52: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +53: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +54: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +55: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +56: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +57: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +58: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +59: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +60: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +61: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +62: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +62: /Users/aa/BookMyspace_Andriod/test/features/payments/payment_flow_test.dart: NativeRazorpayCheckoutService does not report success when native checkout is unavailable
+[NativeRazorpayCheckoutService] Native plugin missing: MissingPluginException(No implementation found for method openCheckout on channel com.bookmyspace.bookmyspace/razorpay_native)
+00:04 +63: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +64: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +65: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +66: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +67: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +68: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: home shows location selector, voice, spotlight and live offers
+00:04 +69: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: customer tab aliases resolve without unknown-route screen
+00:04 +70: /Users/aa/BookMyspace_Andriod/test/core/router_redirect_test.dart: customer tab aliases resolve without unknown-route screen
+00:05 +71: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +72: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +73: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +74: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +75: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +76: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +77: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +78: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +79: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +80: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +81: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +82: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +83: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +84: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +85: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +86: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +87: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +88: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +89: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +90: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: location sheet shows GPS and PIN without overflowing
+00:05 +91: /Users/aa/BookMyspace_Andriod/test/features/owner/owner_dashboard_test.dart: owner dashboard shows real venue and booking counts
+00:05 +92: /Users/aa/BookMyspace_Andriod/test/features/owner/owner_dashboard_test.dart: owner dashboard shows real venue and booking counts
+00:05 +93: /Users/aa/BookMyspace_Andriod/test/features/owner/owner_dashboard_test.dart: owner dashboard shows real venue and booking counts
+00:05 +94: /Users/aa/BookMyspace_Andriod/test/features/owner/owner_dashboard_test.dart: owner dashboard shows real venue and booking counts
+00:05 +95: /Users/aa/BookMyspace_Andriod/test/features/owner/owner_dashboard_test.dart: owner dashboard shows real venue and booking counts
+00:05 +96: /Users/aa/BookMyspace_Andriod/test/features/owner/owner_dashboard_test.dart: owner dashboard shows real venue and booking counts
+00:05 +97: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:05 +98: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +99: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +100: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +101: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +102: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +103: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +104: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +105: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: GPS timeout leaves the sheet and never keeps a spinner
+00:06 +106: /Users/aa/BookMyspace_Andriod/test/features/home/home_feed_test.dart: successful GPS applies the live city and exits loading
+00:06 +107: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +108: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +109: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +110: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +111: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +112: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +113: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +114: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +115: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +116: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +117: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +118: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:06 +119: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:07 +120: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:07 +121: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:07 +122: /Users/aa/BookMyspace_Andriod/test/features/auth/profile_metrics_test.dart: profile metrics use live booking and saved counts
+00:07 +123: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +124: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +125: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +126: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +127: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +128: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +129: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +130: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +131: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +132: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +133: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +134: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +135: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:07 +136: /Users/aa/BookMyspace_Andriod/test/features/auth/login_screen_test.dart: sends email OTP then verifies and shows success path
+00:08 +137: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +138: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +139: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +140: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +141: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +142: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +143: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +144: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +145: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +146: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +147: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +148: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +149: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +150: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +151: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +152: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +153: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +154: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +155: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +156: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +157: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +158: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +159: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:08 +160: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +161: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +162: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +163: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +164: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +165: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +166: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +167: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +168: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +169: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: account switch settles routing without stale shell state
+00:09 +170: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: customer is denied Admin console
+00:09 +171: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: customer is denied Admin console
+00:09 +172: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: customer is denied Admin console
+00:09 +173: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: customer is denied Admin console
+00:09 +174: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: customer is denied Admin console
+00:09 +175: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: customer is denied Admin console
+00:09 +176: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: signed-out users are redirected away from protected routes
+00:09 +177: /Users/aa/BookMyspace_Andriod/test/features/admin/admin_rbac_test.dart: owner is denied Admin console
+00:09 +178: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +179: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +180: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +181: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +182: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +183: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +184: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +185: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +186: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +187: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +188: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:09 +189: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:10 +190: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:10 +191: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: auth state transition redirects once from a protected route
+00:10 +192: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: signed-in users are redirected off login onto the shell
+00:10 +193: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: session restoration keeps protected routes accessible
+00:10 +194: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: session restoration keeps protected routes accessible
+00:10 +195: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: session restoration keeps protected routes accessible
+00:10 +196: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: session restoration keeps protected routes accessible
+00:10 +197: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: session restoration keeps protected routes accessible
+00:10 +198: /Users/aa/BookMyspace_Andriod/test/features/auth/auth_parity_test.dart: session restoration keeps protected routes accessible
+00:10 +199: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +200: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +201: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +202: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +203: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +204: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +205: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +206: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +207: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +208: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +209: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +210: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +211: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminPaymentHealthScreen shows a loading indicator before data arrives
+00:11 +212: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +213: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +214: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +215: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +216: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +217: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +218: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+ClientException: Request to https://tile.openstreetmap.org/14/11763/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11763/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11764/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11764/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11763/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11763/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11764/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11764/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11763/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11763/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11764/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11764/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11762/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11762/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11765/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11765/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11762/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11762/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11765/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11765/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11762/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11762/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11765/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11765/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11761/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11761/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11766/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11766/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11761/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11761/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11766/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11766/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11761/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11761/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11766/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11766/7389.png
+00:11 +219: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +220: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +221: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details shows name, location and booking CTA
+00:11 +222: /Users/aa/BookMyspace_Andriod/test/features/venues/favorites_test.dart: favorite persists across rebuilds and can be removed
+00:11 +223: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen shows an empty ledger state
+00:12 +224: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen shows an empty ledger state
+00:12 +224: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: venue details error recovers on retry
+ClientException: Request to https://tile.openstreetmap.org/14/11763/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11763/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11764/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11764/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11763/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11763/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11764/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11764/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11763/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11763/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11764/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11764/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11762/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11762/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11765/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11765/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11762/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11762/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11765/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11765/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11762/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11762/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11765/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11765/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11761/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11761/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11766/7388.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11766/7388.png
+ClientException: Request to https://tile.openstreetmap.org/14/11761/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11761/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11766/7387.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11766/7387.png
+ClientException: Request to https://tile.openstreetmap.org/14/11761/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11761/7389.png
+ClientException: Request to https://tile.openstreetmap.org/14/11766/7389.png failed with status 400: ., uri=https://tile.openstreetmap.org/14/11766/7389.png
+00:12 +225: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen shows an empty ledger state
+00:12 +226: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: initial search category filters results without provider writes
+00:12 +227: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: initial search category filters results without provider writes
+00:12 +228: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: initial search category filters results without provider writes
+00:12 +229: /Users/aa/BookMyspace_Andriod/test/features/owner_venues/time_slot_validation_test.dart: accepts non-overlapping active slots
+00:12 +230: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +231: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +232: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +233: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +234: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +235: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +236: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +237: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +238: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +239: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +240: /Users/aa/BookMyspace_Andriod/test/features/admin_payment/admin_payment_screens_test.dart: AdminTransactionLedgerScreen sending a search query calls the repository with that filter
+00:12 +241: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: search route query parameter selects the category
+00:12 +242: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: filters sheet has a back button and does not overflow
+00:13 +243: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: filters sheet has a back button and does not overflow
+00:13 +244: /Users/aa/BookMyspace_Andriod/test/features/venues/home_screen_test.dart: filters sheet has a back button and does not overflow
+00:13 +245: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +246: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +247: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +248: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +249: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +250: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +251: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +252: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows empty state
+00:13 +253: /Users/aa/BookMyspace_Andriod/test/features/events/event_screen_test.dart: event list shows empty state
+00:14 +254: /Users/aa/BookMyspace_Andriod/test/features/events/event_screen_test.dart: event list shows empty state
+00:14 +255: /Users/aa/BookMyspace_Andriod/test/features/events/event_screen_test.dart: event list shows empty state
+00:14 +256: /Users/aa/BookMyspace_Andriod/test/features/events/event_screen_test.dart: event list shows empty state
+00:14 +257: /Users/aa/BookMyspace_Andriod/test/features/events/event_screen_test.dart: event list shows empty state
+00:14 +258: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: course list shows cards and opens detail
+00:14 +259: /Users/aa/BookMyspace_Andriod/test/features/analytics/analytics_policy_test.dart: customer is denied analytics
+00:14 +260: /Users/aa/BookMyspace_Andriod/test/features/analytics/analytics_policy_test.dart: customer is denied analytics
+00:14 +261: /Users/aa/BookMyspace_Andriod/test/features/analytics/analytics_policy_test.dart: customer is denied analytics
+00:14 +262: /Users/aa/BookMyspace_Andriod/test/features/analytics/analytics_policy_test.dart: customer is denied analytics
+00:14 +263: /Users/aa/BookMyspace_Andriod/test/features/analytics/analytics_policy_test.dart: customer is denied analytics
+00:14 +264: /Users/aa/BookMyspace_Andriod/test/features/events/event_screen_test.dart: shows event details and the register button
+00:14 +265: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: shows course details and batches with enroll buttons
+00:15 +266: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: shows course details and batches with enroll buttons
+00:15 +267: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +268: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +269: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +270: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +271: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +272: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +273: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows empty reviews state
+00:15 +274: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: a full batch disables enrollment
+00:15 +275: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: a full batch disables enrollment
+00:15 +276: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: shows error and retries
+00:15 +277: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: unsigned enroll navigates to login
+00:15 +278: /Users/aa/BookMyspace_Andriod/test/features/courses/course_screen_test.dart: unsigned enroll navigates to login
+00:15 +279: /Users/aa/BookMyspace_Andriod/test/features/reviews/venue_reviews_section_test.dart: signed-in users can open the write sheet
+00:16 +280: All tests passed!

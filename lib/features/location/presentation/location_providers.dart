@@ -1,12 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../auth/presentation/auth_providers.dart';
+import '../domain/gps_location.dart';
+import '../domain/pin_code_location.dart';
+import '../infrastructure/geolocator_gps_location_service.dart';
+import '../infrastructure/india_post_pin_code_repository.dart';
 import '../domain/search_area.dart';
 import '../domain/location_node.dart';
 import '../domain/location_query_bounds.dart';
 import '../domain/location_repository.dart';
 import '../infrastructure/geocoding_service.dart';
 import '../infrastructure/supabase_location_repository.dart';
-import '../../auth/presentation/auth_providers.dart';
+
+final gpsLocationServiceProvider = Provider<GpsLocationService>((ref) {
+  return const GeolocatorGpsLocationService();
+});
+
+final pinCodeRepositoryProvider = Provider<PinCodeRepository>((ref) {
+  return IndiaPostPinCodeRepository(client: ref.watch(supabaseProvider));
+});
 
 /// Geocoding / device-location service instance.
 final geocodingServiceProvider = Provider<GeocodingService>((ref) {

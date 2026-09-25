@@ -1,13 +1,15 @@
-// Deno edge function: create a booking hold atomically on the server.
+// Deno edge function: create an owner-approval booking request atomically on
+// the server. The endpoint name is retained for backwards compatibility with
+// already-released clients.
 //
 // Called from the Flutter app AFTER the user picks a venue/date/slot and
-// BEFORE payment. Returns the hold id + expiry so the client can start
-// the Razorpay flow.
+// BEFORE payment. The returned hold is an approval hold; payment is only
+// allowed after the owner approval RPC moves the booking to `pending`.
 //
 // POST body:
 // {
 //   venue_id, slot_id, book_date, idempotency_key,
-//   amount, hold_minutes?
+//   amount, hold_minutes?, approval_minutes?
 // }
 import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
@@ -51,103 +53,82 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { venue_id, slot_id, book_date, idempotency_key, amount, hold_minutes } = body;
+    const {
+      venue_id,
+      slot_id,
+      book_date,
+      idempotency_key,
+      amount,
+      hold_minutes,
+      approval_minutes,
+    } = body;
 
-    if (!venue_id || !slot_id || !book_date || !idempotency_key || !amount) {
+    if (!venue_id || !slot_id || !book_date || !idempotency_key) {
       return new Response(JSON.stringify({ error: 'missing_fields' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: venue, error: venueError } = await supabase
-      .from('venues')
-      .select('id, category_id, is_active, venue_categories(metadata)')
-      .eq('id', venue_id)
-      .eq('is_active', true)
-      .maybeSingle();
-    if (venueError || !venue) {
-      return new Response(JSON.stringify({ error: 'invalid_venue' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const categoryRow = Array.isArray(venue.venue_categories)
-      ? venue.venue_categories[0]
-      : venue.venue_categories;
-    const metadata = (categoryRow?.metadata ?? {}) as Record<string, unknown>;
-    if (metadata.active !== true || metadata.bookable !== true) {
-      return new Response(JSON.stringify({ error: 'category_booking_disabled' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (metadata.availability_enabled !== true) {
-      return new Response(JSON.stringify({ error: 'category_availability_disabled' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Server-side amount validation: always re-fetch the authoritative price.
-    const { data: slot, error: slotError } = await supabase
-      .from('time_slots')
-      .select('id, price_amount')
-      .eq('id', slot_id)
-      .single();
-    if (slotError || !slot) {
-      return new Response(JSON.stringify({ error: 'invalid_slot' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (Math.abs(Number(amount) - Number(slot.price_amount)) > 0.01) {
-      return new Response(JSON.stringify({ error: 'amount_mismatch' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Atomic hold acquisition in the database.
-    const { data: holdId, error: holdError } = await supabase.rpc(
-      'acquire_booking_hold',
+    // The database function re-reads the venue, exact slot, date, tax and
+    // availability while holding the inventory lock. Client amounts are
+    // accepted only for backwards-compatible request shape and are not used
+    // as an authority for the booking total.
+    const { data, error: requestError } = await supabase.rpc(
+      'request_venue_booking',
       {
         p_venue_id: venue_id,
         p_slot_id: slot_id,
         p_book_date: book_date,
         p_user_id: user.id,
         p_idempotency_key: idempotency_key,
-        p_amount: amount,
-        p_hold_minutes: hold_minutes ?? 10,
+        p_base_amount: Number(amount) || 0,
+        p_tax_amount: 0,
+        p_discount_amount: 0,
+        p_approval_minutes: approval_minutes ?? 120,
       },
     );
-    if (holdError) {
-      const msg = holdError.message?.includes('slot unavailable')
+    if (requestError) {
+      const raw = requestError.message?.toLowerCase() ?? '';
+      const msg = raw.includes('slot_unavailable') || raw.includes('unavailable')
         ? 'slot_unavailable'
-        : 'hold_failed';
+        : raw.includes('date_blocked')
+        ? 'date_blocked'
+        : 'request_failed';
       return new Response(JSON.stringify({ error: msg }), {
         status: 409,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: holdRow } = await supabase
-      .from('booking_holds')
-      .select('id, expires_at')
-      .eq('id', holdId)
-      .maybeSingle();
-    const holdMinutes = hold_minutes ?? 10;
-    const expiresAt = holdRow?.expires_at
-      ?? new Date(Date.now() + holdMinutes * 60_000).toISOString();
+    if (!data || typeof data !== 'object') {
+      return new Response(JSON.stringify({ error: 'empty_request_response' }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    return new Response(
-      JSON.stringify({
-        hold_id: holdId,
-        expires_at: expiresAt,
-        expires_in_minutes: holdMinutes,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    const result = data as Record<string, unknown>;
+    if (result.success !== true) {
+      const errorCode = typeof result.error_code === 'string'
+        ? result.error_code.toLowerCase()
+        : 'request_failed';
+      const status = errorCode === 'slot_unavailable' ||
+          errorCode === 'date_blocked'
+        ? 409
+        : errorCode === 'unauthorized'
+        ? 401
+        : 400;
+      return new Response(JSON.stringify({ error: errorCode }), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (e) {
     return new Response(JSON.stringify({ error: 'internal', detail: String(e) }), {
       status: 500,

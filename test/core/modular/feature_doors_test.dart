@@ -4,15 +4,23 @@ import 'package:bookmyspace/core/modular/feature_registry.dart';
 import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
-import 'package:bookmyspace/features/auth/presentation/screens/profile_screen.dart';
+import 'package:bookmyspace/features/auth/presentation/screens/profile_screen.dart'
+    hide ProfileScreen;
+import 'package:bookmyspace/features/auth/presentation/screens/profile_screen_v1.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
-import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart';
+import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart'
+    hide MyBookingsScreen;
+import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen_v1.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
-import 'package:bookmyspace/features/home/presentation/screens/home_screen.dart';
+import 'package:bookmyspace/features/home/presentation/screens/home_screen.dart'
+    hide HomeScreen;
+import 'package:bookmyspace/features/home/presentation/screens/home_screen_v1.dart';
 import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 import 'package:bookmyspace/features/search/presentation/screens/map_screen.dart';
-import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart';
+import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart'
+    hide SearchScreen;
+import 'package:bookmyspace/features/search/presentation/screens/search_screen_v1.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -20,12 +28,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../features/auth/mock_auth_repository.dart';
-import '../../features/booking/mock_booking_repository.dart';
-import '../../features/courses/mock_course_repository.dart';
-import '../../features/events/mock_event_repository.dart';
+import '../../features/auth/mock_auth_repository_release.dart';
+import '../../features/booking/mock_booking_repository_release.dart';
+import '../../features/courses/mock_course_repository_release.dart';
+import '../../features/events/mock_event_repository_release.dart';
 import '../../features/notifications/mock_notification_repository.dart';
-import '../../features/venues/mock_venue_repository.dart';
+import '../../features/venues/mock_venue_repository_release.dart';
 
 const _user = AuthUser(
   id: 'u1',
@@ -76,7 +84,7 @@ void main() {
   testWidgets('defaults expose the four customer sections and discovery chips', (
     tester,
   ) async {
-    await tester.pumpWidget(_material(const HomeScreen()));
+    await tester.pumpWidget(_material(const HomeScreenV1()));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('section_function_halls')), findsOneWidget);
@@ -94,7 +102,7 @@ void main() {
 
   testWidgets('disable PG hides only the PG home tile', (tester) async {
     FeatureRegistry.configure(FeatureId.pg, enabled: false);
-    await tester.pumpWidget(_material(const HomeScreen()));
+    await tester.pumpWidget(_material(const HomeScreenV1()));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('section_pg_hostels')), findsNothing);
@@ -112,14 +120,14 @@ void main() {
     tester,
   ) async {
     FeatureRegistry.configure(FeatureId.maps, enabled: false);
-    await tester.pumpWidget(_material(const HomeScreen()));
+    await tester.pumpWidget(_material(const HomeScreenV1()));
     await tester.pumpAndSettle();
     expect(find.text('View on map'), findsNothing);
     expect(find.byKey(const ValueKey('section_function_halls')), findsOneWidget);
 
     await tester.pumpWidget(
       _material(
-        const SearchScreen(initialSection: 'function_halls'),
+        const SearchScreenV1(initialSection: 'function_halls'),
       ),
     );
     await tester.pumpAndSettle();
@@ -132,7 +140,7 @@ void main() {
   ) async {
     FeatureRegistry.configure(FeatureId.voice, enabled: false);
     await tester.pumpWidget(
-      _material(const SearchScreen(initialSection: 'function_halls')),
+      _material(const SearchScreenV1(initialSection: 'function_halls')),
     );
     await tester.pumpAndSettle();
 
@@ -143,7 +151,7 @@ void main() {
 
   testWidgets('disable institutes hides institute entries only', (tester) async {
     FeatureRegistry.configure(FeatureId.institutes, enabled: false);
-    await tester.pumpWidget(_material(const HomeScreen()));
+    await tester.pumpWidget(_material(const HomeScreenV1()));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('section_institutes_classes')),
@@ -152,7 +160,7 @@ void main() {
     expect(find.byKey(const ValueKey('section_function_halls')), findsOneWidget);
     expect(find.byKey(const ValueKey('section_pg_hostels')), findsOneWidget);
 
-    await tester.pumpWidget(_material(const ProfileScreen()));
+    await tester.pumpWidget(_material(const ProfileScreenV1()));
     await tester.pumpAndSettle();
     expect(find.text('Payment history'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -169,7 +177,7 @@ void main() {
   ) async {
     FeatureRegistry.configure(FeatureId.ai, enabled: false);
     FeatureRegistry.configure(FeatureId.notifications, enabled: false);
-    await tester.pumpWidget(_material(const HomeScreen()));
+    await tester.pumpWidget(_material(const HomeScreenV1()));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.auto_awesome), findsNothing);
@@ -181,7 +189,7 @@ void main() {
     tester,
   ) async {
     FeatureRegistry.configure(FeatureId.barcode, enabled: false);
-    await tester.pumpWidget(_material(const HomeScreen()));
+    await tester.pumpWidget(_material(const HomeScreenV1()));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.qr_code_scanner_rounded), findsNothing);
@@ -194,7 +202,7 @@ void main() {
     FeatureRegistry.configure(FeatureId.payments, enabled: false);
     FeatureRegistry.configure(FeatureId.ai, enabled: false);
     FeatureRegistry.configure(FeatureId.notifications, enabled: false);
-    await tester.pumpWidget(_material(const ProfileScreen()));
+    await tester.pumpWidget(_material(const ProfileScreenV1()));
     await tester.pumpAndSettle();
     await tester.fling(find.byType(ListView), const Offset(0, -800), 1000);
     await tester.pumpAndSettle();
@@ -236,7 +244,7 @@ void main() {
     );
     await tester.pumpWidget(
       _material(
-        const MyBookingsScreen(),
+        const MyBookingsScreenV1(),
         overrides: _baseOverrides(bookings: bookings),
       ),
     );
@@ -244,7 +252,7 @@ void main() {
 
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
     expect(find.text('Pay now'), findsNothing);
-    expect(find.text('Cancel booking'), findsOneWidget);
+    expect(find.text('Cancel Booking'), findsOneWidget);
   });
 
   testWidgets('booking still works and does not open /pay when payments is off', (
@@ -253,7 +261,7 @@ void main() {
     FeatureRegistry.configure(FeatureId.payments, enabled: false);
     final bookingRepo = MockBookingRepository();
     final router = createAppRouter(
-      initialLocation: '/venues/v1',
+      initialLocation: '/v1/venues/v1',
       currentUser: _user,
       authReady: true,
       features: FeatureRegistry.instance,
@@ -284,7 +292,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm booking').last);
+    await tester.tap(find.text('Confirm Booking').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
@@ -305,7 +313,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: const MaterialApp(
-          home: HomeScreen(),
+          home: HomeScreenV1(),
           localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,

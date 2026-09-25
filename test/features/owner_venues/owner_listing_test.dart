@@ -6,7 +6,7 @@ import 'package:bookmyspace/features/owner_venues/domain/owner_listing_draft.dar
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../venues/mock_venue_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
 import 'mock_owner_venue_repository.dart';
 
 void main() {

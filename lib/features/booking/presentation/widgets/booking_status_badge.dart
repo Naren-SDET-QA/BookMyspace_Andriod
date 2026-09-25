@@ -15,7 +15,8 @@ class BookingStatusBadge extends StatelessWidget {
     final (label, color) = switch (status) {
       BookingStatus.held => (l10n.statusHeld, Colors.orange),
       BookingStatus.pending => (l10n.statusPending, Colors.orange),
-      BookingStatus.pendingOwnerApproval => (
+      BookingStatus.pendingOwnerApproval ||
+      BookingStatus.awaitingOwnerApproval => (
         l10n.statusPendingOwnerApproval,
         Colors.deepOrange,
       ),
@@ -23,7 +24,10 @@ class BookingStatusBadge extends StatelessWidget {
       BookingStatus.completed => (l10n.statusCompleted, Colors.blue),
       BookingStatus.cancelled => (l10n.statusCancelled, Colors.grey),
       BookingStatus.refunded => (l10n.statusRefunded, Colors.teal),
-      BookingStatus.rejected => (l10n.statusRejected, Colors.grey),
+      BookingStatus.rejected ||
+      BookingStatus.ownerRejected => (l10n.statusRejected, Colors.grey),
+      BookingStatus.approvalExpired => (l10n.statusCancelled, Colors.grey),
+      BookingStatus.unknown => (l10n.statusPending, Colors.grey),
       BookingStatus.noShow => (l10n.statusNoShow, Colors.red),
     };
     return Container(

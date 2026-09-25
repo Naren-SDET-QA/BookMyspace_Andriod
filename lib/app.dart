@@ -1,25 +1,27 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/config/settings_controller.dart';
-import 'core/config/app_config.dart';
-import 'core/localization/app_localizations.dart';
-import 'core/notifications/onesignal_push_service.dart';
-import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/auth_providers.dart';
-import 'features/admin/presentation/admin_settings_providers.dart';
-import 'features/admin/domain/admin_settings.dart';
-import 'features/notifications/presentation/notification_providers.dart';
 import 'core/health/app_health.dart';
 import 'core/health/app_health_status.dart';
+import 'core/localization/app_localizations.dart';
+import 'core/notifications/onesignal_push_service.dart';
 import 'core/offline/offline_cached_banner.dart';
 import 'core/offline/offline_providers.dart';
+import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
+import 'core/widgets/offline_banner.dart';
+import 'features/admin/domain/admin_settings.dart';
+import 'features/admin/presentation/admin_settings_providers.dart';
+import 'features/auth/presentation/auth_providers.dart';
 import 'features/booking/presentation/booking_providers.dart';
+import 'features/notifications/presentation/notification_providers.dart';
+import 'features/theme/presentation/app_theme_providers.dart';
 import 'features/venues/presentation/venue_providers.dart';
 
 /// Root widget that wires together providers, theming, localization and routing.
@@ -31,14 +33,11 @@ class BookMySpaceApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authAsync = ref.watch(authStateProvider);
-    final currentUser = authAsync.value;
-    final authReady = !authAsync.isLoading;
+    // Stable router: auth changes refresh redirects without rebuilding it.
+    final router = ref.watch(
+      appRouterProvider(initialLocation ?? AppRoutes.shell),
+    );
 
-    // Register/deregister this device's OneSignal push subscription
-    // whenever the signed-in user changes. A no-op when ONESIGNAL_APP_ID
-    // is not configured (e.g. missing native config in this dev
-    // environment, or in widget tests, which never initialize OneSignal).
     ref.listen(passwordRecoveryProvider, (previous, next) {
       if (next.valueOrNull == true) {
         final navContext = rootNavigatorKey.currentContext;
@@ -63,6 +62,9 @@ class BookMySpaceApp extends ConsumerWidget {
         ),
       );
     });
+    // Register/deregister this device's OneSignal push subscription
+    // whenever the signed-in user changes. A no-op when ONESIGNAL_APP_ID
+    // is not configured.
     ref.listen(authStateProvider, (previous, next) {
       final user = next.value;
       if (user != null) {
@@ -76,30 +78,21 @@ class BookMySpaceApp extends ConsumerWidget {
         unawaited(OneSignalPushService.instance.onSignedOut());
       }
     });
-    final adminSettings =
-        ref.watch(adminSettingsProvider).valueOrNull ?? AdminSettings.defaults;
-    final palette = ref.watch(themePaletteProvider);
-    final adminColor = AdminSettings.color(
-      adminSettings.theme['primary_color'],
-      AppTheme.brand,
-    );
-    final primaryColor = palette == ThemePalette.defaultPalette.name
-        ? adminColor
-        : themePaletteColor(palette);
 
-    final router = createAppRouter(
-      initialLocation: initialLocation ?? AppRoutes.shell,
-      currentUser: currentUser,
-      authReady: authReady,
-      allowUnauthenticatedTestAccess: AppConfig.allowUnauthenticatedTestAccess,
-    );
+    // Theme: the admin Theme Customizer config is the base. A palette the
+    // user picked (Settings -> Theme) overrides the primary colour.
+    var themeConfig = ref.watch(effectiveAppThemeConfigProvider);
+    final palette = ref.watch(themePaletteProvider);
+    if (palette != ThemePalette.defaultPalette.name) {
+      themeConfig = themeConfig.withPrimary(themePaletteColor(palette));
+    }
 
     return MaterialApp.router(
       title: 'BookMySpace',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      theme: AppTheme.lightFor(primaryColor),
-      darkTheme: AppTheme.darkFor(primaryColor),
+      theme: AppTheme.fromConfig(themeConfig, Brightness.light),
+      darkTheme: AppTheme.fromConfig(themeConfig, Brightness.dark),
       themeMode: ref.watch(themeModeProvider),
       locale: ref.watch(localeProvider),
       supportedLocales: AppLocalizations.supportedLocales,
@@ -111,6 +104,8 @@ class BookMySpaceApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (context, child) {
+        final brightness = Theme.of(context).brightness;
+        final isDark = brightness == Brightness.dark;
         final simple = ref.watch(simpleModeProvider);
         final media = MediaQuery.of(context);
         final servingCached = ref.watch(servingCachedDataProvider);
@@ -123,45 +118,61 @@ class BookMySpaceApp extends ConsumerWidget {
           orElse: () => false,
         );
         final showTopBanners = showHealthBanner || servingCached;
-        return MediaQuery(
-          data: media.copyWith(
-            textScaler: TextScaler.linear(
-              media.textScaler.scale(1) * (simple ? 1.15 : 1.0),
-            ),
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+            systemNavigationBarColor: Theme.of(context).colorScheme.surface,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (showTopBanners)
-                SafeArea(
-                  bottom: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const AppHealthStatusWidget(),
-                      OfflineCachedBanner(
-                        onRetry: () {
-                          ref.invalidate(searchResultsProvider);
-                          ref.invalidate(popularVenuesProvider);
-                          ref.invalidate(nearbyVenuesProvider);
-                          ref.invalidate(moduleVenuesProvider);
-                          ref.invalidate(venueDetailsProvider);
-                          ref.invalidate(favoritesProvider);
-                          ref.invalidate(myBookingsProvider);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeTop: showTopBanners,
-                  child: child ?? const SizedBox.shrink(),
+          child: OfflineBanner(
+            child: MediaQuery(
+              data: media.copyWith(
+                textScaler: TextScaler.linear(
+                  media.textScaler.scale(1) * (simple ? 1.15 : 1.0),
                 ),
               ),
-            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (showTopBanners)
+                    SafeArea(
+                      bottom: false,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const AppHealthStatusWidget(),
+                          OfflineCachedBanner(
+                            onRetry: () {
+                              ref.invalidate(searchResultsProvider);
+                              ref.invalidate(currentSearchResultsProvider);
+                              ref.invalidate(popularVenuesProvider);
+                              ref.invalidate(nearbyVenuesProvider);
+                              ref.invalidate(moduleVenuesProvider);
+                              ref.invalidate(venueDetailsProvider);
+                              ref.invalidate(favoritesProvider);
+                              ref.invalidate(myBookingsProvider);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeTop: showTopBanners,
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },

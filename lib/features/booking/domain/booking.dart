@@ -26,14 +26,14 @@ class TimeSlot {
       endTime.length >= 5 ? endTime.substring(0, 5) : endTime;
 
   factory TimeSlot.fromJson(Map<String, dynamic> json) => TimeSlot(
-    id: json['id'] as String? ?? '',
-    venueId: json['venue_id'] as String? ?? '',
-    label: json['label'] as String? ?? '',
-    startTime: json['start_time'] as String? ?? '',
-    endTime: json['end_time'] as String? ?? '',
-    priceAmount: (json['price_amount'] as num?)?.toDouble() ?? 0,
-    isActive: json['is_active'] as bool? ?? true,
-  );
+        id: json['id'] as String? ?? '',
+        venueId: json['venue_id'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        startTime: json['start_time'] as String? ?? '',
+        endTime: json['end_time'] as String? ?? '',
+        priceAmount: (json['price_amount'] as num?)?.toDouble() ?? 0,
+        isActive: json['is_active'] as bool? ?? true,
+      );
 }
 
 /// Availability of a single slot, returned by `available_time_slots`.
@@ -77,38 +77,58 @@ class SlotAvailability {
 enum BookingStatus {
   held,
   pending,
+  awaitingOwnerApproval,
   pendingOwnerApproval,
+  ownerRejected,
+  approvalExpired,
   confirmed,
   completed,
   cancelled,
   refunded,
   rejected,
-  noShow;
+  noShow,
+  unknown;
 
   static BookingStatus fromDb(String value) => switch (value) {
-    'held' => BookingStatus.held,
-    'pending' => BookingStatus.pending,
-    'pending_owner_approval' => BookingStatus.pendingOwnerApproval,
-    'confirmed' => BookingStatus.confirmed,
-    'completed' => BookingStatus.completed,
-    'cancelled' => BookingStatus.cancelled,
-    'refunded' => BookingStatus.refunded,
-    'rejected' => BookingStatus.rejected,
-    'no_show' => BookingStatus.noShow,
-    _ => BookingStatus.pending,
-  };
+        'held' => BookingStatus.held,
+        'pending' => BookingStatus.pending,
+        'awaiting_owner_approval' => BookingStatus.awaitingOwnerApproval,
+        'pending_owner_approval' => BookingStatus.pendingOwnerApproval,
+        'owner_rejected' => BookingStatus.ownerRejected,
+        'approval_expired' => BookingStatus.approvalExpired,
+        'confirmed' => BookingStatus.confirmed,
+        'completed' => BookingStatus.completed,
+        'cancelled' => BookingStatus.cancelled,
+        'refunded' => BookingStatus.refunded,
+        'rejected' => BookingStatus.rejected,
+        'no_show' => BookingStatus.noShow,
+        _ => BookingStatus.unknown,
+      };
 
   String get dbValue => switch (this) {
-    BookingStatus.held => 'held',
-    BookingStatus.pending => 'pending',
-    BookingStatus.pendingOwnerApproval => 'pending_owner_approval',
-    BookingStatus.confirmed => 'confirmed',
-    BookingStatus.completed => 'completed',
-    BookingStatus.cancelled => 'cancelled',
-    BookingStatus.refunded => 'refunded',
-    BookingStatus.rejected => 'rejected',
-    BookingStatus.noShow => 'no_show',
-  };
+        BookingStatus.held => 'held',
+        BookingStatus.pending => 'pending',
+        BookingStatus.awaitingOwnerApproval => 'awaiting_owner_approval',
+        BookingStatus.pendingOwnerApproval => 'pending_owner_approval',
+        BookingStatus.ownerRejected => 'owner_rejected',
+        BookingStatus.approvalExpired => 'approval_expired',
+        BookingStatus.confirmed => 'confirmed',
+        BookingStatus.completed => 'completed',
+        BookingStatus.cancelled => 'cancelled',
+        BookingStatus.refunded => 'refunded',
+        BookingStatus.rejected => 'rejected',
+        BookingStatus.noShow => 'no_show',
+        BookingStatus.unknown => 'unknown',
+      };
+
+  /// Waiting for the venue owner, under either lineage's status name.
+  bool get isAwaitingOwner =>
+      this == BookingStatus.awaitingOwnerApproval ||
+      this == BookingStatus.pendingOwnerApproval;
+
+  /// Declined by the venue owner, under either lineage's status name.
+  bool get isOwnerRejected =>
+      this == BookingStatus.ownerRejected || this == BookingStatus.rejected;
 }
 
 /// A booking made by the user (or recorded offline by an owner).
@@ -130,6 +150,14 @@ class Booking {
     this.venueCity = '',
     this.slotLabel = '',
     this.createdAt,
+    this.approvalRequired = true,
+    this.approvalRequestedAt,
+    this.approvalExpiresAt,
+    this.approvedAt,
+    this.paymentExpiresAt,
+    this.rejectionReason,
+    this.receiptNumber,
+    this.receiptIssuedAt,
     this.customerName = '',
     this.customerPhone = '',
     this.isOffline = false,
@@ -161,6 +189,14 @@ class Booking {
   final String venueCity;
   final String slotLabel;
   final DateTime? createdAt;
+  final bool approvalRequired;
+  final DateTime? approvalRequestedAt;
+  final DateTime? approvalExpiresAt;
+  final DateTime? approvedAt;
+  final DateTime? paymentExpiresAt;
+  final String? rejectionReason;
+  final String? receiptNumber;
+  final DateTime? receiptIssuedAt;
 
   /// Customer fields recorded on offline (walk-in) bookings.
   final String customerName;
@@ -184,25 +220,64 @@ class Booking {
 
   bool get isActive =>
       status == BookingStatus.pending ||
+      status == BookingStatus.awaitingOwnerApproval ||
       status == BookingStatus.confirmed ||
       status == BookingStatus.held;
 
-  bool get canCancel => status == BookingStatus.pending;
+  bool get canCancel =>
+      status == BookingStatus.held ||
+      status == BookingStatus.awaitingOwnerApproval ||
+      status == BookingStatus.pending;
 
-  /// Held/pending bookings still need server-verified checkout.
+  /// Payable once the owner approved (main flow); held bookings are payable
+  /// directly (release/v1.0 hold flow).
   bool get canPay =>
+      status == BookingStatus.held ||
+      (status == BookingStatus.pending && approvedAt != null);
+
+  /// release/v1.0 rule used by the v1 screens: held and pending bookings go
+  /// straight to server-verified checkout (that flow has no approval gate).
+  bool get canPayDirect =>
       status == BookingStatus.pending || status == BookingStatus.held;
 
-  /// Book Again still requires a new date/slot and live price on the server.
-  bool get canBookAgain =>
-      status == BookingStatus.confirmed ||
-      status == BookingStatus.completed ||
-      status == BookingStatus.cancelled ||
-      status == BookingStatus.refunded;
 
   /// Confirmed (captured) bookings can be refunded.
   bool get canRefund => status == BookingStatus.confirmed;
 
+  /// Bookings a customer may want to repeat.
+  ///
+  /// "Book again" is an offer, not a capability: it only opens the standard
+  /// booking flow, where availability, holds and owner approval are
+  /// recomputed server-side. Offered for finished-or-abandoned bookings —
+  /// statuses with no remaining lifecycle action of their own.
+  bool get canBookAgain =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed ||
+      status == BookingStatus.cancelled ||
+      status == BookingStatus.refunded ||
+      status == BookingStatus.ownerRejected ||
+      status == BookingStatus.rejected ||
+      status == BookingStatus.approvalExpired;
+
+  /// Bookings whose payment was captured can produce an itemized receipt.
+  ///
+  /// Mirrors the gate in `public.issue_booking_receipt`, which refuses every
+  /// other status on the grounds that a receipt is evidence of payment. Kept in
+  /// step with the migration deliberately: offering a button that always fails
+  /// server-side is worse than not offering it.
+  bool get canViewReceipt =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed ||
+      status == BookingStatus.refunded;
+
+  /// Only confirmed and completed bookings can be exported to a calendar.
+  ///
+  /// A cancelled/rejected/expired booking should not appear in the user's
+  /// calendar — exporting it would create a false commitment. Held/pending
+  /// bookings are not yet final and may be cancelled by the system.
+  bool get canExportCalendar =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed;
   /// An invoice is available for paid/terminal bookings.
   bool get canViewInvoice =>
       status == BookingStatus.confirmed ||
@@ -218,6 +293,14 @@ class Booking {
   factory Booking.fromJson(Map<String, dynamic> json) {
     final venueRaw = json['venues'];
     final slotRaw = json['time_slots'];
+    final receiptValue = json['booking_receipts'];
+    final receiptRaw = receiptValue is Map
+        ? Map<String, dynamic>.from(receiptValue)
+        : receiptValue is List &&
+                receiptValue.isNotEmpty &&
+                receiptValue.first is Map
+            ? Map<String, dynamic>.from(receiptValue.first as Map)
+            : null;
     final paymentsRaw = json['payments'];
     final payment = paymentsRaw is List && paymentsRaw.isNotEmpty
         ? paymentsRaw.first is Map
@@ -235,12 +318,11 @@ class Booking {
       bookingRef: json['booking_ref'] as String? ?? '',
       venueId: json['venue_id'] as String? ?? '',
       slotId: json['slot_id'] as String? ?? '',
-      bookDate:
-          DateTime.tryParse(json['book_date'] as String? ?? '') ??
+      bookDate: DateTime.tryParse(json['book_date'] as String? ?? '') ??
           DateTime(1970),
       startTime: json['start_time'] as String? ?? '',
       endTime: json['end_time'] as String? ?? '',
-      status: BookingStatus.fromDb(json['status'] as String? ?? 'pending'),
+      status: BookingStatus.fromDb(json['status'] as String? ?? 'unknown'),
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       taxAmount: (json['tax_amount'] as num?)?.toDouble() ?? 0,
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0,
@@ -255,6 +337,19 @@ class Booking {
       slotLabel: slotRaw is Map<String, dynamic>
           ? (slotRaw['label'] as String? ?? '')
           : '',
+      approvalRequired: json['approval_required'] as bool? ?? true,
+      approvalRequestedAt:
+          DateTime.tryParse(json['approval_requested_at'] as String? ?? ''),
+      approvalExpiresAt:
+          DateTime.tryParse(json['approval_expires_at'] as String? ?? ''),
+      approvedAt: DateTime.tryParse(json['approved_at'] as String? ?? ''),
+      paymentExpiresAt:
+          DateTime.tryParse(json['payment_expires_at'] as String? ?? ''),
+      rejectionReason: json['rejection_reason'] as String?,
+      receiptNumber: receiptRaw?['receipt_number'] as String?,
+      receiptIssuedAt: DateTime.tryParse(
+        receiptRaw?['issued_at'] as String? ?? '',
+      ),
       customerName: metadata['customer_name'] as String? ?? '',
       customerPhone: metadata['customer_phone'] as String? ?? '',
       isOffline: metadata['offline_booking'] == true,
@@ -270,26 +365,38 @@ class Booking {
 
 /// Result of a successfully acquired booking hold.
 class BookingHold {
-  const BookingHold({required this.id, required this.expiresAt});
+  const BookingHold({
+    required this.id,
+    required this.expiresAt,
+    this.bookingId,
+    this.status,
+    this.totalAmount,
+  });
 
   final String id;
   final DateTime expiresAt;
+  final String? bookingId;
+  final String? status;
+  final double? totalAmount;
 
   factory BookingHold.fromResponse(
     Map<String, dynamic> json, {
     DateTime? now,
   }) {
-    final parsed = DateTime.tryParse(json['expires_at'] as String? ?? '');
-    if (parsed != null) {
-      return BookingHold(
-        id: json['hold_id'] as String? ?? '',
-        expiresAt: parsed.toLocal(),
-      );
-    }
     final expiresIn = (json['expires_in_minutes'] as num?)?.toInt() ?? 10;
+    final parsed = DateTime.tryParse(
+      json['approval_expires_at'] as String? ??
+          json['expires_at'] as String? ??
+          '',
+    );
+    final expiresAt = parsed?.toLocal() ??
+        (now ?? DateTime.now()).add(Duration(minutes: expiresIn));
     return BookingHold(
       id: json['hold_id'] as String? ?? '',
-      expiresAt: (now ?? DateTime.now()).add(Duration(minutes: expiresIn)),
+      expiresAt: expiresAt,
+      bookingId: json['booking_id'] as String?,
+      status: json['status'] as String?,
+      totalAmount: (json['total_amount'] as num?)?.toDouble(),
     );
   }
 

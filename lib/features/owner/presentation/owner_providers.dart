@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/presentation/auth_providers.dart';
+import '../../booking/domain/booking.dart';
+import '../../booking/presentation/booking_providers.dart';
+import '../../owner_venues/presentation/providers/owner_venue_providers.dart';
+import '../../venues/domain/venue.dart';
 import '../domain/owner.dart';
 import '../infrastructure/supabase_owner_repository.dart';
 import '../domain/registration_field_config.dart';
@@ -14,6 +18,8 @@ final ownerRepositoryProvider = Provider<OwnerRepository>((ref) {
 
 /// Current owner profile (null if not an owner).
 final currentOwnerProvider = FutureProvider<Owner?>((ref) {
+  // Re-evaluate the profile whenever the canonical auth session changes.
+  ref.watch(currentUserProvider);
   return ref.watch(ownerRepositoryProvider).currentOwner();
 });
 
@@ -30,22 +36,125 @@ final ownerRegistrationFieldsProvider =
 /// Sign in with email/password for owners.
 final ownerSignInProvider = FutureProvider.autoDispose
     .family<Owner, ({String email, String password})>((ref, params) async {
-      return ref
-          .watch(ownerRepositoryProvider)
-          .signInWithEmailPassword(params.email, params.password);
-    });
+  return ref.watch(ownerRepositoryProvider).signInWithEmailPassword(
+        params.email,
+        params.password,
+      );
+});
 
 /// Create a new owner profile.
 final createOwnerProvider = FutureProvider.autoDispose
-    .family<Owner, ({String email, String name, String password})>((
-      ref,
-      params,
-    ) async {
-      return ref
-          .watch(ownerRepositoryProvider)
-          .createOwner(
-            email: params.email,
-            name: params.name,
-            password: params.password,
-          );
-    });
+    .family<Owner, ({String email, String name, String password})>(
+        (ref, params) async {
+  return ref.watch(ownerRepositoryProvider).createOwner(
+        email: params.email,
+        name: params.name,
+        password: params.password,
+      );
+});
+
+/// Bookings RLS-visible to the current venue owner.
+final ownerVenueBookingsProvider = FutureProvider<List<Booking>>((ref) {
+  ref.watch(currentUserProvider);
+  return ref.watch(bookingRepositoryProvider).ownerVenueBookings();
+});
+
+class OwnerDashboardSnapshot {
+  const OwnerDashboardSnapshot({
+    required this.venueCount,
+    required this.bookingCount,
+    required this.pendingCount,
+    required this.confirmedRevenue,
+  });
+
+  final int venueCount;
+  final int bookingCount;
+  final int pendingCount;
+  final double confirmedRevenue;
+}
+
+/// Daily/weekly report summary derived from the same RLS-scoped bookings the
+/// dashboard already reads. All numbers come from real rows in `public.bookings`
+/// filtered by the owner's venues — nothing is simulated and no new backend is
+/// required (Supabase RLS does the authorization).
+class OwnerReportSummary {
+  const OwnerReportSummary({
+    required this.todayBookings,
+    required this.todayRevenue,
+    required this.weekBookings,
+    required this.weekRevenue,
+  });
+
+  final int todayBookings;
+  final double todayRevenue;
+  final int weekBookings;
+  final double weekRevenue;
+}
+
+final ownerReportSummaryProvider =
+    FutureProvider.autoDispose<OwnerReportSummary>((ref) async {
+  final venues = await ref.watch(myVenuesProvider.future);
+  final bookings = await ref.watch(ownerVenueBookingsProvider.future);
+  final venueIds = venues.map((Venue venue) => venue.id).toSet();
+  final scoped = venueIds.isEmpty
+      ? bookings
+      : bookings
+          .where((booking) => venueIds.contains(booking.venueId))
+          .toList();
+
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = todayStart.add(const Duration(days: 1));
+  // Week starts Monday (matches Android reference weekly reports).
+  final weekStart =
+      todayStart.subtract(Duration(days: todayStart.weekday - 1));
+
+  bool inRange(Booking booking, DateTime start, DateTime endExclusive) =>
+      !booking.bookDate.isBefore(start) && booking.bookDate.isBefore(endExclusive);
+
+  // Revenue counts confirmed + completed bookings; cancelled/refunded money
+  // never counts as earned.
+  bool earnsRevenue(Booking booking) =>
+      booking.status == BookingStatus.confirmed ||
+      booking.status == BookingStatus.completed;
+
+  final todayActive = scoped.where((b) => inRange(b, todayStart, todayEnd));
+  final weekEnd = weekStart.add(const Duration(days: 7));
+  final weekActive = scoped.where((b) => inRange(b, weekStart, weekEnd));
+
+  return OwnerReportSummary(
+    todayBookings: todayActive.length,
+    todayRevenue: todayActive.where(earnsRevenue).fold<double>(
+        0, (sum, booking) => sum + booking.totalAmount),
+    weekBookings: weekActive.length,
+    weekRevenue: weekActive.where(earnsRevenue).fold<double>(
+        0, (sum, booking) => sum + booking.totalAmount),
+  );
+});
+
+final ownerDashboardSnapshotProvider =
+    FutureProvider<OwnerDashboardSnapshot>((ref) async {
+  final venues = await ref.watch(myVenuesProvider.future);
+  final bookings = await ref.watch(ownerVenueBookingsProvider.future);
+  final venueIds = venues.map((Venue venue) => venue.id).toSet();
+  final scoped = venueIds.isEmpty
+      ? bookings
+      : bookings
+          .where((booking) => venueIds.contains(booking.venueId))
+          .toList();
+  final pending = scoped
+      .where((booking) =>
+          booking.status == BookingStatus.pending ||
+          booking.status == BookingStatus.held ||
+          booking.status == BookingStatus.awaitingOwnerApproval)
+      .length;
+  final revenue = scoped
+      .where((booking) => booking.status == BookingStatus.confirmed)
+      .fold<double>(0, (sum, booking) => sum + booking.totalAmount);
+  return OwnerDashboardSnapshot(
+    venueCount: venues.length,
+    bookingCount: scoped.length,
+    pendingCount: pending,
+    confirmedRevenue: revenue,
+  );
+});

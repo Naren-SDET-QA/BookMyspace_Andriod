@@ -2,215 +2,268 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/responsive_layout.dart';
-import '../../../../core/widgets/test_id.dart';
+import '../../../../core/widgets/error_view.dart';
+import '../../../integrations/presentation/integration_providers.dart';
+import '../../../modules/presentation/module_providers.dart';
+import '../admin_providers.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = [
-      _AdminTile(
-        icon: Icons.fact_check_rounded,
-        title: 'Listing approval',
-        subtitle: 'Approve, reject, publish or unpublish listings',
-        route: AppRoutes.adminListings,
-      ),
-      _AdminTile(
-        icon: Icons.travel_explore_rounded,
-        title: 'Venue discovery review',
-        subtitle: 'Review OSM-discovered venues before they become drafts',
-        route: AppRoutes.adminVenueDiscoveryReview,
-      ),
-      _AdminTile(
-        icon: Icons.category_rounded,
-        title: 'Category configuration',
-        subtitle: 'Aliases, visibility, booking mode, media',
-        route: AppRoutes.adminCategories,
-      ),
-      _AdminTile(
-        icon: Icons.toggle_on_rounded,
-        title: 'App sections',
-        subtitle: 'Show or hide customer home sections',
-        route: AppRoutes.adminAppSections,
-      ),
-      _AdminTile(
-        icon: Icons.tune_rounded,
-        title: 'Feature configuration',
-        subtitle: 'Enable features and control app visibility',
-        route: AppRoutes.adminFeatureConfiguration,
-      ),
-      _AdminTile(
-        icon: Icons.local_offer_rounded,
-        title: 'Promotions',
-        subtitle: 'Create, edit, schedule and publish promotions',
-        route: AppRoutes.adminPromotions,
-      ),
-      _AdminTile(
-        icon: Icons.settings_suggest_rounded,
-        title: 'Tenant configuration',
-        subtitle: 'Branding, runtime features, language and notifications',
-        route: AppRoutes.adminTenantConfiguration,
-      ),
-      _AdminTile(
-        icon: Icons.receipt_long_rounded,
-        title: 'Booking oversight',
-        subtitle: 'Server booking records',
-        route: AppRoutes.adminBookings,
-      ),
-      _AdminTile(
-        icon: Icons.payments_rounded,
-        title: 'Payment oversight',
-        subtitle: 'Captured and failed payments',
-        route: AppRoutes.adminPayments,
-      ),
-      _AdminTile(
-        icon: Icons.healing_rounded,
-        title: 'Payment & self-healing',
-        subtitle: 'Live Razorpay health and stale pending reconcile',
-        route: AppRoutes.adminPaymentHealth,
-      ),
-      _AdminTile(
-        icon: Icons.monitor_heart_rounded,
-        title: 'Observability',
-        subtitle: 'Verified health, errors, alerts and recovery visibility',
-        route: AppRoutes.adminObservability,
-      ),
-      _AdminTile(
-        icon: Icons.hub_rounded,
-        title: 'Observability providers',
-        subtitle: 'Provider health and safe connection tests',
-        route: AppRoutes.adminObservabilityProviders,
-      ),
-      _AdminTile(
-        icon: Icons.settings_rounded,
-        title: 'Platform settings',
-        subtitle: 'Home UI, colors and module configuration',
-        route: AppRoutes.adminSettings,
-      ),
-      _AdminTile(
-        icon: Icons.help_center_rounded,
-        title: 'Help Center',
-        subtitle: 'Searchable configuration and troubleshooting help',
-        route: AppRoutes.adminHelp,
-      ),
-      _AdminTile(
-        icon: Icons.tune_rounded,
-        title: 'Listing fields',
-        subtitle: 'Required and optional fields per category',
-        route: AppRoutes.adminListingFields,
-      ),
-      _AdminTile(
-        icon: Icons.person_add_alt_1_rounded,
-        title: 'Registration fields',
-        subtitle: 'Module registration form configuration',
-        route: AppRoutes.adminRegistrationFields,
-      ),
-      _AdminTile(
-        icon: Icons.replay_rounded,
-        title: 'Refund oversight',
-        subtitle: 'Refund requests and outcomes',
-        route: AppRoutes.adminRefunds,
-      ),
-      _AdminTile(
-        icon: Icons.history_rounded,
-        title: 'Audit log',
-        subtitle: 'Admin and system actions',
-        route: AppRoutes.adminAudit,
-      ),
-      _AdminTile(
-        icon: Icons.location_on_rounded,
-        title: 'Location master',
-        subtitle: 'Approve location submissions',
-        route: AppRoutes.adminLocations,
-      ),
-    ];
+    final l10n = AppLocalizations.of(context);
+    final users = ref.watch(adminUsersProvider);
+    final owners = ref.watch(adminOwnersProvider);
+    final venues = ref.watch(adminVenuesProvider);
+    final tickets = ref.watch(adminSupportTicketsProvider);
+    final audit = ref.watch(recentAuditLogsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const TestId(
-          E2eIds.adminDashboard,
-          child: Text('Admin dashboard'),
+      appBar: AppBar(title: const Text('Admin console')),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(adminUsersProvider);
+          ref.invalidate(adminOwnersProvider);
+          ref.invalidate(adminVenuesProvider);
+          ref.invalidate(adminSupportTicketsProvider);
+          ref.invalidate(recentAuditLogsProvider);
+          ref.invalidate(adminPublishedEventsProvider);
+          ref.invalidate(adminPublishedCoursesProvider);
+          ref.invalidate(integrationHealthProvider);
+          ref.invalidate(featureFlagsProvider);
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Platform administration',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Counts come from rows your administrator role can read. They are not estimates.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _StatChip(label: 'Users', value: _countLabel(users)),
+                _StatChip(label: 'Owners', value: _countLabel(owners)),
+                _StatChip(label: 'Venues', value: _countLabel(venues)),
+                _StatChip(label: 'Support', value: _countLabel(tickets)),
+                _StatChip(label: 'Audit', value: _countLabel(audit)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _AdminLink(
+              icon: Icons.people_alt_outlined,
+              title: 'Users',
+              subtitle: 'Profiles and roles visible to administrators',
+              onTap: () => context.push(AppRoutes.adminUsers),
+            ),
+            _AdminLink(
+              icon: Icons.storefront_outlined,
+              title: 'Owners',
+              subtitle: 'Organizations and verification status',
+              onTap: () => context.push(AppRoutes.adminOwners),
+            ),
+            _AdminLink(
+              icon: Icons.apartment_outlined,
+              title: 'Venues',
+              subtitle: 'Active listings readable under current RLS',
+              onTap: () => context.push(AppRoutes.adminVenues),
+            ),
+            _AdminLink(
+              icon: Icons.category_outlined,
+              title: 'Categories',
+              subtitle: 'Create, edit, order, and archive catalogue categories',
+              onTap: () => context.push(AppRoutes.adminCategories),
+            ),
+            _AdminLink(
+              icon: Icons.receipt_long_outlined,
+              title: 'Bookings',
+              subtitle: 'Platform-wide booking list is not granted by RLS',
+              onTap: () => context.push(AppRoutes.adminBookings),
+            ),
+            _AdminLink(
+              icon: Icons.payments_outlined,
+              title: 'Payments',
+              subtitle: 'Platform-wide payment list is not granted by RLS',
+              onTap: () => context.push(AppRoutes.adminPayments),
+            ),
+            _AdminLink(
+              icon: Icons.event_outlined,
+              title: 'Events',
+              subtitle: 'Published events',
+              onTap: () => context.push(AppRoutes.adminEvents),
+            ),
+            _AdminLink(
+              icon: Icons.school_outlined,
+              title: 'Courses',
+              subtitle: 'Published courses',
+              onTap: () => context.push(AppRoutes.adminCourses),
+            ),
+            _AdminLink(
+              icon: Icons.account_balance_outlined,
+              title: 'Education',
+              subtitle: 'Institutes, courses and module controls',
+              onTap: () => context.push(AppRoutes.adminEducation),
+            ),
+            _AdminLink(
+              icon: Icons.analytics_outlined,
+              title: 'Analytics',
+              subtitle: 'Recorded analytics events',
+              onTap: () => context.push(AppRoutes.analytics),
+            ),
+            _AdminLink(
+              icon: Icons.headset_mic_outlined,
+              title: 'Support',
+              subtitle: 'Support tickets your role can read',
+              onTap: () => context.push(AppRoutes.adminSupport),
+            ),
+            _AdminLink(
+              icon: Icons.history_rounded,
+              title: 'Audit log',
+              subtitle: 'Administrative actions',
+              onTap: () => context.push(AppRoutes.adminAudit),
+            ),
+            _AdminLink(
+              icon: Icons.view_carousel_outlined,
+              title: 'Home banners',
+              subtitle: 'CMS titles and subtitles shown on customer Home',
+              onTap: () => context.push(AppRoutes.adminCms),
+            ),
+            _AdminLink(
+              icon: Icons.hub_outlined,
+              title: 'Integrations',
+              subtitle: 'Provider health and configuration state',
+              onTap: () => context.push(AppRoutes.adminIntegrations),
+            ),
+            _AdminLink(
+              icon: Icons.tune_rounded,
+              title: 'Optional modules',
+              subtitle:
+                  'Enable implemented modules and update validated configuration',
+              onTap: () => context.push(AppRoutes.adminModules),
+            ),
+            _AdminLink(
+              icon: Icons.dashboard_customize_outlined,
+              title: 'Home layout',
+              subtitle:
+                  'Add, enable, reorder and theme the customer Home blocks',
+              onTap: () => context.push(AppRoutes.adminHomeLayout),
+            ),
+            _AdminLink(
+              icon: Icons.account_tree_outlined,
+              title: 'Discovery catalogue',
+              subtitle:
+                  'Facility types, sections and subsections: wording, icons, '
+                  'artwork, order and visibility',
+              onTap: () => context.push(AppRoutes.adminCatalog),
+            ),
+            _AdminLink(
+              icon: Icons.palette_outlined,
+              title: l10n.adminThemeTitle,
+              subtitle: l10n.adminThemeSubtitle,
+              onTap: () => context.push(AppRoutes.adminTheme),
+            ),
+            _AdminLink(
+              icon: Icons.tab_unselected_outlined,
+              title: 'Bottom navigation',
+              subtitle:
+                  'Choose which destinations customers see, in what order',
+              onTap: () => context.push(AppRoutes.adminNavTabs),
+            ),
+            users.maybeWhen(
+              error: (e, _) => Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: ErrorView(
+                  message: e.toString(),
+                  onRetry: () => ref.invalidate(adminUsersProvider),
+                ),
+              ),
+              orElse: () => const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
-      body: ResponsiveLayoutBuilder(
-        builder: (context, responsive) {
-          final columns = responsive.isCompact
-              ? 1
-              : responsive.isMedium
-              ? 2
-              : 3;
-          return GridView.builder(
-            padding: EdgeInsets.all(responsive.horizontalPadding),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: responsive.isCompact ? 2.8 : 1.6,
-            ),
-            itemCount: items.length,
-            itemBuilder: (context, i) {
-              final item = items[i];
-              return Card(
-                child: InkWell(
-                  onTap: () => context.push(item.route),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppTheme.brand.withValues(
-                            alpha: 0.12,
-                          ),
-                          child: Icon(item.icon, color: AppTheme.brand),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                item.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                item.subtitle,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+    );
+  }
+
+  static String _countLabel(AsyncValue<List<dynamic>> value) {
+    return value.when(
+      data: (items) => '${items.length}',
+      loading: () => '…',
+      error: (_, __) => '—',
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 104,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppTheme.violet.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+        ],
       ),
     );
   }
 }
 
-class _AdminTile {
-  const _AdminTile({
+class _AdminLink extends StatelessWidget {
+  const _AdminLink({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.route,
+    required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final String route;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Icon(icon, color: AppTheme.violet),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      ),
+    );
+  }
 }

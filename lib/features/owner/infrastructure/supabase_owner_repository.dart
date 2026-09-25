@@ -76,6 +76,11 @@ class SupabaseOwnerRepository implements OwnerRepository {
     required String email,
     required String name,
     required String password,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
   }) async {
     try {
       await _pending.save(email: email, name: name);
@@ -120,6 +125,16 @@ class SupabaseOwnerRepository implements OwnerRepository {
           .eq('id', ownerId)
           .single();
 
+      final userId = _client.auth.currentUser!.id;
+      await _ensureOrganization(userId, name.trim());
+      await _persistBusinessDetails(
+        userId: userId,
+        legalName: legalName,
+        gstin: gstin,
+        pan: pan,
+        city: city,
+        state: state,
+      );
       await _pending.clear();
       return Owner.fromJson(ownerJson);
     } on AuthException catch (e) {
@@ -225,5 +240,56 @@ class SupabaseOwnerRepository implements OwnerRepository {
     } catch (e) {
       throw app_errors.mapError(e);
     }
+  }
+
+  Future<void> _ensureOrganization(String userId, String ownerName) async {
+    final existing = await _client
+        .from('organizations')
+        .select('id')
+        .eq('owner_user_id', userId)
+        .isFilter('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+    if (existing != null) return;
+
+    await _client.from('organizations').insert({
+      'owner_user_id': userId,
+      'org_type': 'venue_owner',
+      'name': '$ownerName Spaces',
+    });
+  }
+
+  Future<void> _persistBusinessDetails({
+    required String userId,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
+  }) async {
+    final patch = <String, dynamic>{};
+    void put(String key, String? value) {
+      final trimmed = value?.trim() ?? '';
+      if (trimmed.isNotEmpty) patch[key] = trimmed;
+    }
+
+    put('legal_name', legalName);
+    put('gstin', gstin);
+    put('pan', pan);
+    put('city', city);
+    put('state', state);
+    if (gstin != null && gstin.trim().isNotEmpty) {
+      patch['business_verification'] = 'submitted';
+    }
+    if (pan != null && pan.trim().isNotEmpty) {
+      patch['identity_verification'] = 'submitted';
+    }
+    if (patch.isEmpty) return;
+
+    await _client
+        .from('organizations')
+        .update(patch)
+        .eq('owner_user_id', userId)
+        .isFilter('deleted_at', null);
   }
 }

@@ -2,14 +2,16 @@ import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/core/offline/offline_providers.dart';
 import 'package:bookmyspace/core/offline/offline_store.dart';
 import 'package:bookmyspace/features/search/domain/recent_search.dart';
-import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart';
+import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart'
+    hide SearchScreen;
+import 'package:bookmyspace/features/search/presentation/screens/search_screen_v1.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../venues/mock_venue_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
 
 Widget _searchApp(OfflineStore store) {
   return ProviderScope(
@@ -18,7 +20,7 @@ Widget _searchApp(OfflineStore store) {
       offlineStoreProvider.overrideWithValue(store),
     ],
     child: const MaterialApp(
-      home: SearchScreen(),
+      home: SearchScreenV1(),
       localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -114,7 +116,7 @@ void main() {
     });
   });
 
-  group('SearchScreen recent searches', () {
+  group('SearchScreenV1 recent searches', () {
     testWidgets('shows empty state when history is empty', (tester) async {
       await tester.pumpWidget(_searchApp(MemoryOfflineStore()));
       await tester.pumpAndSettle();

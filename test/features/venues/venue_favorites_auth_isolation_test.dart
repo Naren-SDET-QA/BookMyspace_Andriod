@@ -281,12 +281,16 @@ class _AlwaysOffline implements VenueRepository {
 /// directly by the test, so exact user/anonymous transitions (including a
 /// direct A -> B swap) can be exercised deterministically.
 class _ScriptedAuthRepository implements AuthRepository {
-  _ScriptedAuthRepository(this._events);
+  _ScriptedAuthRepository(this._events) {
+    // Like a real Supabase client, the current session follows the events.
+    _events.stream.listen((user) => _current = user);
+  }
 
   final StreamController<AuthUser?> _events;
+  AuthUser? _current;
 
   @override
-  AuthUser? get currentUser => null;
+  AuthUser? get currentUser => _current;
 
   @override
   Stream<AuthUser?> authStateChanges() => _events.stream;

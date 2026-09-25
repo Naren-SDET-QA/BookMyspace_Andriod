@@ -1,7 +1,9 @@
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../features/payments/domain/checkout_service.dart';
-import '../../features/payments/presentation/checkout_service_factory.dart';
+// Main-lineage Razorpay services (native SDK + Checkout.js); the
+// release/v1.0 factory in features/payments/presentation is kept as well.
+import '../../features/payments/infrastructure/checkout_service_factory.dart';
 import 'plugin_kind.dart';
 import 'plugins/flutter_map_plugin.dart';
 import 'plugins/map_provider.dart';

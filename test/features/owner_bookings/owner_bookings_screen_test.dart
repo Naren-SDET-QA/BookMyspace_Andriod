@@ -13,14 +13,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../auth/mock_auth_repository.dart';
+import '../auth/mock_auth_repository_release.dart';
 import '../owner_venues/mock_owner_venue_repository.dart';
 import 'mock_owner_booking_repository.dart';
 
 Widget _app(
   MockOwnerBookingRepository ownerBookingRepo,
   MockOwnerVenueRepository ownerVenueRepo, {
-  String initialLocation = AppRoutes.ownerBookings,
+  String initialLocation = AppRoutes.ownerBookingsManager,
 }) {
   return ProviderScope(
     overrides: [
@@ -31,7 +31,7 @@ Widget _app(
           initialUser: const AuthUser(
             id: 'u1',
             email: 'owner@b.com',
-            role: AppRole.venueOwner,
+            role: UserRole.venueOwner,
           ),
         ),
       ),
@@ -42,7 +42,7 @@ Widget _app(
         currentUser: const AuthUser(
           id: 'u1',
           email: 'owner@b.com',
-          role: AppRole.venueOwner,
+          role: UserRole.venueOwner,
         ),
       ),
       localizationsDelegates: const [
@@ -121,7 +121,7 @@ void main() {
 
     // Pending booking offers Confirm action; the confirmed booking shows a status badge.
     expect(find.text('Confirmed'), findsNWidgets(2));
-    expect(find.text('Cancel booking'), findsNWidgets(2));
+    expect(find.text('Cancel Booking'), findsNWidgets(2));
 
     // The FAB is visible when the owner has venues.
     expect(find.text('New offline booking'), findsOneWidget);
@@ -165,7 +165,7 @@ void main() {
       expect(find.text('Reject'), findsOneWidget);
       // Confirm/Cancel actions are not offered while awaiting owner approval.
       expect(find.text('Confirmed'), findsNothing);
-      expect(find.text('Cancel booking'), findsNothing);
+      expect(find.text('Cancel Booking'), findsNothing);
 
       await tester.tap(find.text('Approve'));
       await tester.pumpAndSettle();

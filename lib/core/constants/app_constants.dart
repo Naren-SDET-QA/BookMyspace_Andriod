@@ -20,6 +20,11 @@ class AppConstants {
   /// Key used to flag whether onboarding has been completed.
   static const String prefsOnboardingDoneKey = 'bms_onboarding_done';
 
+  /// Key used to persist the Home screen's "Color & 3D" effects toggle
+  /// (controls the tilt/depth effect on the Spotlight hero cards only --
+  /// the category matrix's own 3D tilt is a separate, untouched feature).
+  static const String prefs3dEffectsKey = 'bms_home_3d_effects';
+
   /// Radius presets (in kilometres) for nearby search.
   static const List<double> searchRadiusKm = [1, 2, 5, 10, 25, 50];
 

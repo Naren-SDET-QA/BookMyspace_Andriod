@@ -4,7 +4,9 @@ import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
-import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart';
+import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart'
+    hide MyBookingsScreen;
+import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen_v1.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
 import 'package:bookmyspace/features/notifications/domain/notification.dart';
@@ -16,13 +18,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../auth/mock_auth_repository.dart';
-import '../courses/mock_course_repository.dart';
-import '../events/mock_event_repository.dart';
+import '../auth/mock_auth_repository_release.dart';
+import '../courses/mock_course_repository_release.dart';
+import '../events/mock_event_repository_release.dart';
 import '../notifications/mock_notification_repository.dart';
-import '../payments/mock_payment_repository.dart';
-import '../venues/mock_venue_repository.dart';
-import 'mock_booking_repository.dart';
+import '../payments/mock_payment_repository_release.dart';
+import '../venues/mock_venue_repository_release.dart';
+import 'mock_booking_repository_release.dart';
 
 Widget _app(
   MockBookingRepository bookingRepo, {
@@ -79,7 +81,7 @@ void main() {
     tester,
   ) async {
     final bookingRepo = MockBookingRepository();
-    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/venues/v1'));
+    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/v1/venues/v1'));
 
     // Start on venue details, then enter the existing hold booking flow.
     await tester.pumpAndSettle();
@@ -97,7 +99,7 @@ void main() {
     tester,
   ) async {
     final bookingRepo = MockBookingRepository();
-    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/venues/v1'));
+    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/v1/venues/v1'));
 
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Book Now'));
@@ -107,9 +109,9 @@ void main() {
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Confirm booking'), findsWidgets);
+    expect(find.text('Confirm Booking'), findsWidgets);
 
-    await tester.tap(find.text('Confirm booking').last);
+    await tester.tap(find.text('Confirm Booking').last);
     await tester.pumpAndSettle();
 
     // Confirmation dialog.
@@ -127,7 +129,7 @@ void main() {
     tester,
   ) async {
     final bookingRepo = MockBookingRepository()..failAcquire = true;
-    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/venues/v1'));
+    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/v1/venues/v1'));
 
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Book Now'));
@@ -136,7 +138,7 @@ void main() {
 
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm booking').last);
+    await tester.tap(find.text('Confirm Booking').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
@@ -171,7 +173,7 @@ void main() {
           notificationRepositoryProvider.overrideWithValue(notificationRepo),
         ],
         child: const MaterialApp(
-          home: MyBookingsScreen(),
+          home: MyBookingsScreenV1(),
           localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -187,11 +189,11 @@ void main() {
     expect(find.text('Sunrise Function Hall'), findsNWidgets(2));
 
     // Only the pending booking shows a cancel button.
-    expect(find.text('Cancel booking'), findsOneWidget);
-    await tester.tap(find.text('Cancel booking'));
+    expect(find.text('Cancel Booking'), findsOneWidget);
+    await tester.tap(find.text('Cancel Booking'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Keep booking'), findsOneWidget);
+    expect(find.text('Keep'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
@@ -203,7 +205,7 @@ void main() {
     await tester.pump();
     expect(notificationRepo.created, hasLength(1));
     expect(
-      notificationRepo.created.single.type,
+      notificationRepo.created.single.kind,
       NotificationType.bookingCancelled,
     );
   });
@@ -232,7 +234,7 @@ void main() {
           notificationRepositoryProvider.overrideWithValue(notificationRepo),
         ],
         child: const MaterialApp(
-          home: MyBookingsScreen(),
+          home: MyBookingsScreenV1(),
           localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -246,25 +248,25 @@ void main() {
     await tester.pumpAndSettle();
 
     // A confirmed booking offers a refund, not a cancel.
-    expect(find.text('Request refund'), findsOneWidget);
-    expect(find.text('Cancel booking'), findsNothing);
+    expect(find.text('Request Refund'), findsOneWidget);
+    expect(find.text('Cancel Booking'), findsNothing);
 
-    await tester.tap(find.text('Request refund'));
+    await tester.tap(find.text('Request Refund'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('full refund'), findsOneWidget);
-    await tester.tap(find.text('Request refund').last);
+    expect(find.textContaining('request a refund'), findsOneWidget);
+    await tester.tap(find.text('Request Refund').last);
     await tester.pumpAndSettle();
 
     expect(paymentRepo.lastRefundBookingId, 'b1');
     expect(paymentRepo.lastRefundAmount, 41300);
-    expect(find.textContaining('Refund requested'), findsOneWidget);
+    expect(find.textContaining('Refund request submitted'), findsOneWidget);
 
     // Requesting a refund records a notification.
     await tester.pump();
     expect(notificationRepo.created, hasLength(1));
     expect(
-      notificationRepo.created.single.type,
+      notificationRepo.created.single.kind,
       NotificationType.refundProcessed,
     );
   });
@@ -292,7 +294,7 @@ void main() {
           ),
         ],
         child: const MaterialApp(
-          home: MyBookingsScreen(),
+          home: MyBookingsScreenV1(),
           localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,

@@ -1,80 +1,108 @@
+import 'package:bookmyspace/features/home/presentation/home_category_catalog.dart';
+import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:bookmyspace/features/home/domain/home_category_catalog.dart';
-import 'package:bookmyspace/features/venues/domain/category_configuration.dart';
-
 void main() {
-  CategoryConfiguration category({
-    required String id,
-    required String name,
-    required int order,
-    String section = '',
-    bool homeVisible = true,
-  }) => CategoryConfiguration(
-    id: id,
-    slug: id,
-    name: name,
-    sectionId: section,
-    sortOrder: order,
-    homeVisible: homeVisible,
-  );
-
-  test('uses configured display order and preserves unknown categories', () {
-    final result = HomeCategoryCatalog.effective(
-      configurations: [
-        category(id: 'co_working', name: 'Co-working', order: 3),
-        category(
-          id: 'function_hall',
-          name: 'Function Halls',
-          order: 1,
-          section: 'function_halls',
-        ),
-        category(id: 'hotel', name: 'Hotels', order: 2, section: 'lodge_rooms'),
-      ],
-      globallyVisible: {'function_halls', 'lodge_rooms', 'co_working'},
-      customerEnabled: {'function_hall', 'hotel', 'co_working'},
-    );
-
-    expect(result.map((item) => item.id), [
-      'function_hall',
-      'hotel',
-      'co_working',
+  test('Function Halls exposes the fourteen celebration sub-sections', () {
+    final items = MainHomeSection.functionHalls.subSections;
+    expect(items.map((s) => s.label).toList(), [
+      'Marriage Halls',
+      'Banquet Halls',
+      'Convention Halls',
+      'Party Halls & Lawns',
+      'Engagement Halls',
+      'Reception Halls',
+      'Premium / Luxury Halls',
+      'Outdoor / Garden Venues',
+      'Auditoriums',
+      'Community Halls',
+      'Exhibition Halls',
+      'Government Halls',
+      'Meeting Rooms',
+      'Temples',
     ]);
-    expect(result.last.isGeneric, isTrue);
+    // matrixCells is a legacy fixed 3x3 layout that deliberately cherry-picks
+    // only the original 8 celebration-hall slugs -- it must stay at 8 even
+    // as more sub-sections are added above.
+    expect(
+        MainHomeSection.functionHalls.matrixCells.whereType<HomeSubSection>(),
+        hasLength(8));
+    expect(MainHomeSection.functionHalls.matrixCells[4], isNull);
   });
 
-  test('hidden categories do not leave layout entries', () {
-    final result = HomeCategoryCatalog.effective(
-      configurations: [
-        category(id: 'hotel', name: 'Hotels', order: 1, homeVisible: false),
-        category(id: 'pg', name: 'PG', order: 2),
+  test('master category titles match the product catalog', () {
+    expect(
+      MainHomeSection.discoveryOrder.map((s) => s.displayTitle).toList(),
+      [
+        'Function Halls & Celebrations',
+        'Sports & Recreation',
+        'PG & Hostels',
+        'Education & Institutes',
+        'Lodges & Stays',
       ],
-      globallyVisible: {'hotel', 'pg'},
-      customerEnabled: {'hotel', 'pg'},
     );
-
-    expect(result.map((item) => item.id), ['pg']);
   });
 
-  test('customer preference can enable a configured section group', () {
-    final result = HomeCategoryCatalog.effective(
-      configurations: [
-        category(id: 'hotel', name: 'Hotel', order: 1, section: 'lodge_rooms'),
-      ],
-      globallyVisible: {'lodge_rooms'},
-      customerEnabled: {'lodge_rooms'},
-    );
-
-    expect(result.map((item) => item.id), ['hotel']);
+  test('sub-sections match live categories without inventing records', () {
+    const live = [
+      VenueCategory(
+        id: 'c1',
+        slug: 'marriage_hall',
+        name: 'Marriage Halls',
+        parentSection: 'venues',
+      ),
+      VenueCategory(
+        id: 'c2',
+        slug: 'party_hall',
+        name: 'Party Halls',
+        parentSection: 'venues',
+      ),
+    ];
+    final marriage =
+        MainHomeSection.functionHalls.subSections.first.match(live);
+    final engagement = MainHomeSection.functionHalls.subSections
+        .firstWhere((s) => s.slug == 'engagement_hall')
+        .match(live);
+    expect(marriage?.slug, 'marriage_hall');
+    expect(engagement, isNull);
   });
 
-  test('empty effective configuration returns no fake categories', () {
-    final result = HomeCategoryCatalog.effective(
-      configurations: [category(id: 'hotel', name: 'Hotels', order: 1)],
-      globallyVisible: const {},
-      customerEnabled: const {},
-    );
+  test('Lodges & Stays now includes Guest Houses', () {
+    final labels =
+        MainHomeSection.lodgeRooms.subSections.map((s) => s.label).toList();
+    expect(labels, contains('Guest Houses'));
+    expect(
+        MainHomeSection.lodgeRooms.subSections
+            .firstWhere((s) => s.label == 'Guest Houses')
+            .slug,
+        'guest_house');
+  });
 
-    expect(result, isEmpty);
+  test(
+      'new function-hall sub-sections resolve real venue_categories slugs '
+      'instead of inventing records', () {
+    const live = [
+      VenueCategory(
+        id: 'c3',
+        slug: 'auditorium',
+        name: 'Auditorium',
+        parentSection: 'function_halls',
+      ),
+      VenueCategory(
+        id: 'c4',
+        slug: 'temple',
+        name: 'Temple',
+        parentSection: 'function_halls',
+      ),
+    ];
+    final items = MainHomeSection.functionHalls.subSections;
+    final auditorium =
+        items.firstWhere((s) => s.slug == 'auditorium').match(live);
+    final temple = items.firstWhere((s) => s.slug == 'temple').match(live);
+    final meetingRoom =
+        items.firstWhere((s) => s.slug == 'meeting_room').match(live);
+    expect(auditorium?.slug, 'auditorium');
+    expect(temple?.slug, 'temple');
+    expect(meetingRoom, isNull);
   });
 }

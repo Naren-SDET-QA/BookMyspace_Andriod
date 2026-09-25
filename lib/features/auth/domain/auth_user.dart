@@ -2,7 +2,9 @@
 ///
 /// NOTE: Freezed/JsonSerializable codegen is configured but was not run in
 /// this environment. The class is hand-written to stay dependency-free.
-enum AppRole { customer, venueOwner, admin }
+/// Coarse role carried on the auth user (release/v1.0). Fine-grained
+/// authorization uses [AppRole] from app_role.dart.
+enum UserRole { customer, venueOwner, admin }
 
 enum VerificationStatus { pending, submitted, approved, rejected, unknown }
 
@@ -13,7 +15,7 @@ class AuthUser {
     this.phone = '',
     this.fullName = '',
     this.avatarUrl = '',
-    this.role = AppRole.customer,
+    this.role = UserRole.customer,
     this.verificationStatus = VerificationStatus.unknown,
   });
 
@@ -22,11 +24,11 @@ class AuthUser {
   final String phone;
   final String fullName;
   final String avatarUrl;
-  final AppRole role;
+  final UserRole role;
   final VerificationStatus verificationStatus;
 
-  bool get isAdmin => role == AppRole.admin;
-  bool get isOwner => role == AppRole.venueOwner || isAdmin;
+  bool get isAdmin => role == UserRole.admin;
+  bool get isOwner => role == UserRole.venueOwner || isAdmin;
 
   AuthUser copyWith({
     String? id,
@@ -34,7 +36,7 @@ class AuthUser {
     String? phone,
     String? fullName,
     String? avatarUrl,
-    AppRole? role,
+    UserRole? role,
     VerificationStatus? verificationStatus,
   }) {
     return AuthUser(
@@ -58,12 +60,12 @@ class AuthUser {
     verificationStatus: _verification(json['verification_status'] as String?),
   );
 
-  static AppRole _role(String? value) => switch (value) {
-    'admin' || 'administrator' || 'super_administrator' => AppRole.admin,
+  static UserRole _role(String? value) => switch (value) {
+    'admin' || 'administrator' || 'super_administrator' => UserRole.admin,
     'venue_owner' ||
     'institute_owner' ||
-    'event_organizer' => AppRole.venueOwner,
-    _ => AppRole.customer,
+    'event_organizer' => UserRole.venueOwner,
+    _ => UserRole.customer,
   };
 
   static VerificationStatus _verification(String? value) =>

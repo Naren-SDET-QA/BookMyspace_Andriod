@@ -3,7 +3,10 @@ package com.bookmyspace.bookmyspace.ui.screens
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,11 +40,12 @@ import com.bookmyspace.bookmyspace.ui.components.PeakHoursLineChartComponent
 import com.bookmyspace.bookmyspace.ui.components.RatingBadge
 import com.bookmyspace.bookmyspace.ui.components.VoiceReadoutButton
 import com.bookmyspace.bookmyspace.ui.components.VenueImageCarousel
+import com.bookmyspace.bookmyspace.ui.components.VenueRichMediaViewer
 import com.bookmyspace.bookmyspace.ui.components.DynamicListingFieldsDisplay
-import com.bookmyspace.bookmyspace.data.model.CustomerSection
-import com.bookmyspace.bookmyspace.data.model.CustomerSectionCatalog
 import com.bookmyspace.bookmyspace.data.model.ListingTargetCategory
 import com.bookmyspace.bookmyspace.util.PgRentCalculator
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -53,7 +57,11 @@ fun VenueDetailsScreen(
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val venues by BookMySpaceRepository.venues.collectAsState()
-    val venue = venues.firstOrNull { it.id == venueId } ?: venues.first()
+    val venue = venues.firstOrNull { it.id == venueId } ?: venues.firstOrNull()
+    if (venue == null) {
+        com.bookmyspace.bookmyspace.ui.components.EyeCatchingVenueDetailsSkeleton()
+        return
+    }
     val reviews by BookMySpaceRepository.reviews.collectAsState()
     val venueReviews by remember(reviews, venue.id) {
         derivedStateOf { reviews.filter { it.venueId == venue.id } }
@@ -225,53 +233,81 @@ fun VenueDetailsScreen(
         )
     }
 
-    // ⚡ 1-Tap Quick Booking Dialog
+    // ⚡ 1-Tap Quick Booking & Instant Pay Dialog
+    var quickPaymentMethod by remember { mutableStateOf("UPI") }
+    var quickPromoCode by remember { mutableStateOf<String?>(null) }
+    var quickDiscount by remember { mutableStateOf(0.0) }
+
     if (showQuickBookDialog) {
-        val quickDates = listOf("Today, Aug 06", "Tomorrow, Aug 07", "Sat, Aug 08", "Sun, Aug 09")
+        val today = remember { LocalDate.now() }
+        val dtfMonthDay = remember { DateTimeFormatter.ofPattern("MMM dd") }
+        val dtfDay = remember { DateTimeFormatter.ofPattern("EEE, MMM dd") }
+        val quickDateOptions = remember(today) {
+            listOf(
+                today.toString() to "Today, ${today.format(dtfMonthDay)}",
+                today.plusDays(1).toString() to "Tomorrow, ${today.plusDays(1).format(dtfMonthDay)}",
+                today.plusDays(2).toString() to today.plusDays(2).format(dtfDay),
+                today.plusDays(3).toString() to today.plusDays(3).format(dtfDay)
+            )
+        }
+        val chosenDate = quickDateOptions.getOrNull(quickBookDateIndex)?.first ?: today.toString()
         val selectedSlot = quickBookSlot ?: venue.timeSlots.firstOrNull()
         val basePrice = selectedSlot?.priceAmount ?: venue.pricingBaseAmount
         val taxAmount = basePrice * (venue.taxRate / 100.0)
-        val grandTotal = basePrice + taxAmount
+        val grandTotal = (basePrice + taxAmount - quickDiscount).coerceAtLeast(0.0)
 
         AlertDialog(
             onDismissRequest = { showQuickBookDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⚡ 1-Tap Quick Book", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("⚡ Quick Book & Pay", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                 }
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text("Instant 1-step reservation for ${venue.name}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text("1. Select Date", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        quickDates.take(3).forEachIndexed { idx, d ->
+                        quickDateOptions.take(3).forEachIndexed { idx, (_, label) ->
                             FilterChip(
                                 selected = quickBookDateIndex == idx,
                                 onClick = {
                                     quickBookDateIndex = idx
                                     BookMySpaceRepository.notifySlotInteraction()
                                 },
-                                label = { Text(d.split(",")[0], fontSize = 11.sp) }
+                                label = { Text(label.split(",")[0], fontSize = 11.sp) }
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text("2. Select Slot", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("2. Select Court / Slot", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(6.dp))
-                    venue.timeSlots.take(3).forEach { slot ->
+                    venue.timeSlots.take(4).forEach { slot ->
                         val isSelected = selectedSlot?.id == slot.id
+                        val isSlotBooked = BookMySpaceRepository.isSlotAlreadyBooked(venue.id, chosenDate, slot.label)
                         Surface(
                             onClick = {
-                                quickBookSlot = slot
-                                BookMySpaceRepository.notifySlotInteraction()
+                                if (!isSlotBooked) {
+                                    quickBookSlot = slot
+                                    BookMySpaceRepository.notifySlotInteraction()
+                                }
                             },
                             shape = RoundedCornerShape(10.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            color = when {
+                                isSlotBooked -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                isSelected -> MaterialTheme.colorScheme.primaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 2.dp)
@@ -281,22 +317,98 @@ fun VenueDetailsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("${slot.label} (${slot.startTime}-${slot.endTime})", fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                                Text("₹${slot.priceAmount.toInt()}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isSelected) {
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
+                                    Text(
+                                        "${slot.label} (${slot.startTime}-${slot.endTime})",
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSlotBooked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f) else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    if (isSlotBooked) "Booked" else "₹${slot.priceAmount.toInt()}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (isSlotBooked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("3. Payment Option", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val quickPayOptions = listOf(
+                        "UPI" to "⚡ UPI (GPay / PhonePe / Paytm)",
+                        "CARD" to "💳 Card (Debit / Credit)",
+                        "NETBANKING" to "🏛️ Net Banking",
+                        "VENUE" to "📍 Pay at Venue"
+                    )
+                    quickPayOptions.forEach { (mode, label) ->
+                        val isSelected = quickPaymentMethod == mode
+                        Surface(
+                            onClick = { quickPaymentMethod = mode },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+                            border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { quickPaymentMethod = mode },
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(label, fontSize = 11.5.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
+                    // Quick promo discount chip
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Live Server Price:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text("₹${grandTotal.toInt()} (Incl. Tax)", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                        FilterChip(
+                            selected = quickPromoCode == "FIRST50",
+                            onClick = {
+                                if (quickPromoCode == "FIRST50") {
+                                    quickPromoCode = null
+                                    quickDiscount = 0.0
+                                } else {
+                                    quickPromoCode = "FIRST50"
+                                    quickDiscount = 50.0
+                                }
+                            },
+                            label = { Text("FIRST50 (₹50 OFF)", fontSize = 10.sp) }
+                        )
+                        if (quickDiscount > 0) {
+                            Text("-₹${quickDiscount.toInt()}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Payable Amount:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("₹${grandTotal.toInt()} (Incl. Tax)", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             },
@@ -311,24 +423,28 @@ fun VenueDetailsScreen(
                             venueName = venue.name,
                             venueImageUrl = venue.coverImageUrl,
                             slotLabel = slot?.label ?: "Standard Slot",
-                            bookingDate = "2026-08-${6 + quickBookDateIndex}",
+                            bookingDate = chosenDate,
+                            date = chosenDate,
                             startTime = slot?.startTime ?: "09:00",
                             endTime = slot?.endTime ?: "11:00",
                             baseAmount = basePrice,
                             taxAmount = taxAmount,
-                            discountAmount = 0.0,
+                            discountAmount = quickDiscount,
                             totalAmount = grandTotal,
-                            couponCode = "QUICK1TAP",
-                            status = BookingStatus.PENDING,
+                            couponCode = quickPromoCode ?: "QUICK1TAP",
+                            status = if (quickPaymentMethod == "VENUE") BookingStatus.CONFIRMED else BookingStatus.PENDING,
                             isPaid = false
                         )
-                        BookMySpaceRepository.addBooking(newBooking)
+                        BookMySpaceRepository.addBooking(newBooking, enforceFutureOnly = true)
                         showQuickBookDialog = false
                         onBookSlot(venue.id)
                     },
                     modifier = Modifier.testTag("quick_tap_confirm_button")
                 ) {
-                    Text("⚡ Pay & Confirm ₹${grandTotal.toInt()}", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (quickPaymentMethod == "VENUE") "Book & Pay at Venue" else "⚡ Book & Pay ₹${grandTotal.toInt()}",
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             },
             dismissButton = {
@@ -371,40 +487,36 @@ fun VenueDetailsScreen(
         bottomBar = {
             val context = LocalContext.current
             val cs = venue.contactSettings
-            val listingSectionForContact = CustomerSectionCatalog.sectionForVenue(venue)
-            val revealOwner = CustomerSectionCatalog.canRevealOwnerContact(
-                listingSectionForContact,
-                userHasConfirmedBooking
-            ) || cs.showOwnerContact
+            val canDirectPostBooking = userHasConfirmedBooking && cs.allowPostBookingDirectContact
 
-            val showCall = revealOwner && (cs.showCall || listingSectionForContact == CustomerSection.INSTITUTES_CLASSES || userHasConfirmedBooking)
-            val showWhatsapp = revealOwner && (cs.showWhatsapp || listingSectionForContact == CustomerSection.INSTITUTES_CLASSES || userHasConfirmedBooking)
-            val showChat = cs.showChat || (userHasConfirmedBooking && cs.allowPostBookingDirectContact)
-            val showBmsSupport = !revealOwner || cs.contactBookMySpace || (!cs.showCall && !cs.showWhatsapp && !cs.showChat && !cs.showOwnerContact)
+            val showCall = cs.showCall || (canDirectPostBooking && cs.showCall)
+            val showWhatsapp = cs.showWhatsapp || (canDirectPostBooking && cs.showWhatsapp)
+            val showChat = cs.showChat || (canDirectPostBooking && cs.showChat)
+            val showBmsSupport = cs.contactBookMySpace || (!cs.showCall && !cs.showWhatsapp && !cs.showChat && !cs.showOwnerContact)
 
             Surface(
                 tonalElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val listingSection = CustomerSectionCatalog.sectionForVenue(venue)
-                    Column(modifier = Modifier.weight(0.9f).padding(end = 4.dp)) {
-                        val isPg = listingSection == CustomerSection.PG_HOSTELS
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        val isPg = venue.pgDetails != null || venue.category?.slug == "pg_hostel"
                         val selectedOpt = venue.pgDetails?.sharingOptions?.getOrNull(selectedSharingIndex)
                         val rentText = if (selectedOpt != null) "₹%,d/mo".format(selectedOpt.monthlyRent.toInt()) else if (isPg) "₹%,d/mo".format(venue.pricingBaseAmount.toInt()) else "₹%,d".format(venue.pricingBaseAmount.toInt())
                         
-                        Text(text = if (isPg) "Monthly Rent" else "Starting from", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = rentText, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                        Text(text = if (isPg) "Monthly Rent" else "Starting from", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = rentText, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (showCall) {
@@ -414,7 +526,7 @@ fun VenueDetailsScreen(
                                     context.startActivity(intent)
                                 },
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(38.dp)
                                     .background(Color(0xFF2E7D32), RoundedCornerShape(10.dp))
                                     .testTag("call_owner_button")
                             ) {
@@ -422,7 +534,7 @@ fun VenueDetailsScreen(
                             }
                         }
 
-                        if (showWhatsapp) {
+                        if (showWhatsapp && !showCall) {
                             IconButton(
                                 onClick = {
                                     val url = "https://api.whatsapp.com/send?phone=91${venue.contactPhone.replace("-", "")}&text=Hi%2C%20I%20am%20interested%20in%20${Uri.encode(venue.name)}"
@@ -430,7 +542,7 @@ fun VenueDetailsScreen(
                                     context.startActivity(intent)
                                 },
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(38.dp)
                                     .background(Color(0xFF00897B), RoundedCornerShape(10.dp))
                                     .testTag("whatsapp_owner_button")
                             ) {
@@ -438,59 +550,28 @@ fun VenueDetailsScreen(
                             }
                         }
 
-                        if (showChat) {
-                            IconButton(
-                                onClick = { showInAppEnquiryDialog = true },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
-                                    .testTag("chat_owner_button")
-                            ) {
-                                Icon(Icons.Default.QuestionAnswer, contentDescription = "Chat", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            }
-                        }
-
-                        if (showBmsSupport) {
-                            OutlinedButton(
-                                onClick = { showInAppEnquiryDialog = true },
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .testTag("contact_bookmyspace_button"),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("Contact BMS", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
                         OutlinedButton(
                             onClick = { showQuickBookDialog = true },
                             modifier = Modifier
-                                .height(36.dp)
+                                .height(40.dp)
                                 .testTag("check_availability_button"),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("Check Availability", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        Button(
-                            onClick = {
-                                if (listingSection == CustomerSection.INSTITUTES_CLASSES) {
-                                    showInAppEnquiryDialog = true
-                                } else {
-                                    onBookSlot(venue.id)
-                                }
-                            },
-                            modifier = Modifier
-                                .height(36.dp)
-                                .testTag("book_slot_button"),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             shape = RoundedCornerShape(10.dp)
                         ) {
+                            Text("Availability", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { onBookSlot(venue.id) },
+                            modifier = Modifier
+                                .height(40.dp)
+                                .testTag("book_slot_button"),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
                             Text(
-                                text = CustomerSectionCatalog.bookingCtaLabel(listingSection),
-                                fontSize = 11.sp,
+                                text = if (venue.pgDetails != null) "⚡ Book Deposit" else "⚡ Book & Pay",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -521,12 +602,10 @@ fun VenueDetailsScreen(
                 }
 
                 Box(modifier = heroImageModifier) {
-                    VenueImageCarousel(
+                    VenueRichMediaViewer(
                         venue = venue,
-                        height = 260.dp,
-                        showCaptions = true,
-                        showFullscreenButton = true,
-                        showNavButtons = true
+                        modifier = Modifier.fillMaxWidth(),
+                        onBookSlot = { onBookSlot(venue.id) }
                     )
                 }
             }
@@ -633,7 +712,7 @@ fun VenueDetailsScreen(
                          }
                      }
 
-                    val customValues = remember(venue.id) { BookMySpaceRepository.getCustomValuesForListing(venue.id) }
+                    val customValues = remember(venue.id) { BookMySpaceRepository.getCustomValuesMapForListing(venue.id) }
                     val dynamicTargetCategory = remember(venue.category, venue.pgDetails) {
                         val catName = venue.category?.name ?: ""
                         val catSlug = venue.category?.slug ?: ""
@@ -930,6 +1009,60 @@ fun VenueDetailsScreen(
             }
 
             // -----------------------------------------------------------------
+            // Interactive Google Maps Location & Directions
+            // -----------------------------------------------------------------
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                        .testTag("venue_google_map_section")
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Place,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Location & Map",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "Google Maps",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    GoogleMapInteractiveView(
+                        venue = venue,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            // -----------------------------------------------------------------
             // Reviews & Ratings Breakdown Header Card
             // -----------------------------------------------------------------
             item {
@@ -1129,13 +1262,16 @@ fun VenueDetailsScreen(
                                 RatingBadge(rating = review.rating)
                             }
 
-                            if (review.tags.isNotEmpty()) {
+                            val tagList = remember(review.tags) {
+                                review.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                            }
+                            if (tagList.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    review.tags.forEach { tag ->
+                                    tagList.forEach { tag ->
                                         Surface(
                                             color = MaterialTheme.colorScheme.surfaceVariant,
                                             shape = RoundedCornerShape(6.dp)

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const customer = AuthUser(id: 'customer');
-  const owner = AuthUser(id: 'owner', role: AppRole.venueOwner);
+  const owner = AuthUser(id: 'owner', role: UserRole.venueOwner);
 
   test('Phase-1 routes without PROD backend contracts redirect home', () {
     const customerRoutes = [
@@ -108,7 +108,7 @@ void main() {
   test(
     'venue claims page is admin-only and distinct from discovery review',
     () {
-      const admin = AuthUser(id: 'admin', role: AppRole.admin);
+      const admin = AuthUser(id: 'admin', role: UserRole.admin);
       expect(
         resolveAppRedirect(
           location: AppRoutes.adminVenueClaims,

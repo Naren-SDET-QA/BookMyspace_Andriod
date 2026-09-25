@@ -18,26 +18,44 @@ enum AnalyticsEventType {
   custom;
 
   static AnalyticsEventType fromDb(String value) => switch (value) {
-    'screen_view' => AnalyticsEventType.screenView,
-    'button_tap' => AnalyticsEventType.buttonTap,
-    'booking_created' => AnalyticsEventType.bookingCreated,
-    'booking_confirmed' => AnalyticsEventType.bookingConfirmed,
-    'payment_captured' => AnalyticsEventType.paymentCaptured,
-    'refund_requested' => AnalyticsEventType.refundRequested,
-    'refund_processed' => AnalyticsEventType.refundProcessed,
-    'event_registered' => AnalyticsEventType.eventRegistered,
-    'course_enrolled' => AnalyticsEventType.courseEnrolled,
-    'support_ticket_created' => AnalyticsEventType.supportTicketCreated,
-    'support_ticket_resolved' => AnalyticsEventType.supportTicketResolved,
-    'owner_registered' => AnalyticsEventType.ownerRegistered,
-    'venue_created' => AnalyticsEventType.venueCreated,
-    'venue_updated' => AnalyticsEventType.venueUpdated,
-    'notification_sent' => AnalyticsEventType.notificationSent,
-    'crash_reported' => AnalyticsEventType.crashReported,
-    _ => AnalyticsEventType.custom,
-  };
+        'screen_view' => AnalyticsEventType.screenView,
+        'button_tap' => AnalyticsEventType.buttonTap,
+        'booking_created' => AnalyticsEventType.bookingCreated,
+        'booking_confirmed' => AnalyticsEventType.bookingConfirmed,
+        'payment_captured' => AnalyticsEventType.paymentCaptured,
+        'refund_requested' => AnalyticsEventType.refundRequested,
+        'refund_processed' => AnalyticsEventType.refundProcessed,
+        'event_registered' => AnalyticsEventType.eventRegistered,
+        'course_enrolled' => AnalyticsEventType.courseEnrolled,
+        'support_ticket_created' => AnalyticsEventType.supportTicketCreated,
+        'support_ticket_resolved' => AnalyticsEventType.supportTicketResolved,
+        'owner_registered' => AnalyticsEventType.ownerRegistered,
+        'venue_created' => AnalyticsEventType.venueCreated,
+        'venue_updated' => AnalyticsEventType.venueUpdated,
+        'notification_sent' => AnalyticsEventType.notificationSent,
+        'crash_reported' => AnalyticsEventType.crashReported,
+        _ => AnalyticsEventType.custom,
+      };
 
-  String get dbValue => name;
+  String get dbValue => switch (this) {
+        AnalyticsEventType.screenView => 'screen_view',
+        AnalyticsEventType.buttonTap => 'button_tap',
+        AnalyticsEventType.bookingCreated => 'booking_created',
+        AnalyticsEventType.bookingConfirmed => 'booking_confirmed',
+        AnalyticsEventType.paymentCaptured => 'payment_captured',
+        AnalyticsEventType.refundRequested => 'refund_requested',
+        AnalyticsEventType.refundProcessed => 'refund_processed',
+        AnalyticsEventType.eventRegistered => 'event_registered',
+        AnalyticsEventType.courseEnrolled => 'course_enrolled',
+        AnalyticsEventType.supportTicketCreated => 'support_ticket_created',
+        AnalyticsEventType.supportTicketResolved => 'support_ticket_resolved',
+        AnalyticsEventType.ownerRegistered => 'owner_registered',
+        AnalyticsEventType.venueCreated => 'venue_created',
+        AnalyticsEventType.venueUpdated => 'venue_updated',
+        AnalyticsEventType.notificationSent => 'notification_sent',
+        AnalyticsEventType.crashReported => 'crash_reported',
+        AnalyticsEventType.custom => 'custom',
+      };
 }
 
 class AnalyticsEvent {

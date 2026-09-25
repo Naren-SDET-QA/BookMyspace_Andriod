@@ -1,10 +1,9 @@
 package com.bookmyspace.bookmyspace.util
 
+import android.os.Trace
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.tracing.Trace
-import androidx.tracing.trace
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -68,42 +67,15 @@ object PerformanceTracer {
         return duration
     }
 
-    /**
-     * Executes a synchronous block inside an androidx.tracing slice,
-     * timing the execution and recording metrics under the specified TraceCategory.
-     */
     inline fun <T> traceSection(
         sectionName: String,
         category: TraceCategory = TraceCategory.GENERAL,
         crossinline block: () -> T
     ): T {
-        val traceLabel = "${category.label}_$sectionName"
         val startNs = System.nanoTime()
-        return try {
-            trace(traceLabel) {
-                block()
-            }
-        } finally {
-            val durationNs = System.nanoTime() - startNs
-            recordMetric(sectionName, category, durationNs)
-        }
-    }
-
-    /**
-     * Executes a suspend block inside an androidx.tracing section,
-     * timing the asynchronous execution (e.g. data fetching or repository queries)
-     * and recording metrics.
-     */
-    suspend inline fun <T> traceAsyncSection(
-        sectionName: String,
-        category: TraceCategory = TraceCategory.DATA_FETCH,
-        crossinline block: suspend () -> T
-    ): T {
-        val traceLabel = "${category.label}_$sectionName"
-        val startNs = System.nanoTime()
-        Trace.beginSection(traceLabel)
-        return try {
-            block()
+        try {
+            Trace.beginSection(sectionName.take(127))
+            return block()
         } finally {
             Trace.endSection()
             val durationNs = System.nanoTime() - startNs
@@ -111,41 +83,32 @@ object PerformanceTracer {
         }
     }
 
-    /**
-     * Specialized utility to trace Map Rendering operations (e.g. tile updates, overlay generation, marker creation).
-     */
-    suspend inline fun <T> traceMapRender(
-        operationName: String,
+    suspend inline fun <T> traceAsyncSection(
+        sectionName: String,
+        category: TraceCategory = TraceCategory.GENERAL,
         crossinline block: suspend () -> T
     ): T {
-        return traceAsyncSection(
-            sectionName = operationName,
-            category = TraceCategory.MAP_RENDER,
-            block = block
-        )
-    }
-
-    /**
-     * Specialized utility to trace asynchronous Data Fetching operations (e.g. network requests, repository queries).
-     */
-    suspend inline fun <T> traceDataFetch(
-        operationName: String,
-        crossinline block: suspend () -> T
-    ): T {
-        return traceAsyncSection(
-            sectionName = operationName,
-            category = TraceCategory.DATA_FETCH,
-            block = block
-        )
-    }
-
-    /**
-     * Generic sync trace block compatible with legacy code.
-     */
-    fun <T> traceBlock(traceName: String, block: () -> T): T {
-        return traceSection(sectionName = traceName, category = TraceCategory.COMPOSE_RENDER) {
-            block()
+        val startNs = System.nanoTime()
+        try {
+            Trace.beginSection(sectionName.take(127))
+            return block()
+        } finally {
+            Trace.endSection()
+            val durationNs = System.nanoTime() - startNs
+            recordMetric(sectionName, category, durationNs)
         }
+    }
+
+    inline fun <T> traceMapRender(sectionName: String, crossinline block: () -> T): T {
+        return traceSection(sectionName, TraceCategory.MAP_RENDER, block)
+    }
+
+    inline fun <T> traceDataFetch(sectionName: String, crossinline block: () -> T): T {
+        return traceSection(sectionName, TraceCategory.DATA_FETCH, block)
+    }
+
+    inline fun <T> traceBlock(traceName: String, crossinline block: () -> T): T {
+        return traceSection(traceName, TraceCategory.COMPOSE_RENDER, block)
     }
 
     /**

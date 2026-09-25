@@ -20,7 +20,7 @@ void main() {
   test('preserves customer role and unverified status', () {
     const user = AuthUser(id: 'customer');
 
-    expect(user.role, AppRole.customer);
+    expect(user.role, UserRole.customer);
     expect(user.verificationStatus, VerificationStatus.unknown);
     expect(user.isAdmin, isFalse);
     expect(user.isOwner, isFalse);
@@ -29,7 +29,7 @@ void main() {
   test('preserves venue owner and approved verification', () {
     const user = AuthUser(
       id: 'owner',
-      role: AppRole.venueOwner,
+      role: UserRole.venueOwner,
       verificationStatus: VerificationStatus.approved,
     );
 
@@ -41,7 +41,7 @@ void main() {
   test('preserves admin role and elevated access', () {
     const user = AuthUser(
       id: 'admin',
-      role: AppRole.admin,
+      role: UserRole.admin,
       verificationStatus: VerificationStatus.approved,
     );
 
@@ -55,14 +55,14 @@ void main() {
         final uApp = _makeUser(appMetadata: {'role': role});
         expect(
           SupabaseAuthRepository.roleFromMetadataForTesting(uApp),
-          AppRole.venueOwner,
+          UserRole.venueOwner,
           reason: 'app_metadata role  should map to venueOwner',
         );
 
         final uUser = _makeUser(userMetadata: {'role': role});
         expect(
           SupabaseAuthRepository.roleFromMetadataForTesting(uUser),
-          AppRole.venueOwner,
+          UserRole.venueOwner,
           reason: 'user_metadata role  should map to venueOwner',
         );
       }
@@ -73,14 +73,14 @@ void main() {
         final uApp = _makeUser(appMetadata: {'role': role});
         expect(
           SupabaseAuthRepository.roleFromMetadataForTesting(uApp),
-          AppRole.admin,
+          UserRole.admin,
           reason: 'app_metadata role  should map to admin',
         );
 
         final uUser = _makeUser(userMetadata: {'role': role});
         expect(
           SupabaseAuthRepository.roleFromMetadataForTesting(uUser),
-          AppRole.admin,
+          UserRole.admin,
           reason: 'user_metadata role  should map to admin',
         );
       }
@@ -89,19 +89,19 @@ void main() {
     test('unknown/missing metadata -> customer', () {
       expect(
         SupabaseAuthRepository.roleFromMetadataForTesting(_makeUser()),
-        AppRole.customer,
+        UserRole.customer,
       );
       expect(
         SupabaseAuthRepository.roleFromMetadataForTesting(
           _makeUser(appMetadata: {'role': 'customer'}),
         ),
-        AppRole.customer,
+        UserRole.customer,
       );
       expect(
         SupabaseAuthRepository.roleFromMetadataForTesting(
           _makeUser(appMetadata: {'role': 'member'}),
         ),
-        AppRole.customer,
+        UserRole.customer,
       );
     });
 
@@ -117,9 +117,9 @@ void main() {
       expect(initialUser.isOwner, isTrue);
 
       // When authoritative DB lookup returns customer (e.g. revoked), DB role overrides
-      final authoritativeUser = initialUser.copyWith(role: AppRole.customer);
+      final authoritativeUser = initialUser.copyWith(role: UserRole.customer);
       expect(authoritativeUser.isOwner, isFalse);
-      expect(authoritativeUser.role, AppRole.customer);
+      expect(authoritativeUser.role, UserRole.customer);
     });
   });
 }

@@ -230,10 +230,14 @@ class _MediaBody extends ConsumerWidget {
     WidgetRef ref,
     MediaKind kind,
   ) async {
-    final result = await FilePicker.pickFiles(type: FileType.any);
-    if (result.isEmpty) return;
-    final file = result.first;
-    final bytes = await file.readAsBytes();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null) return;
     final contentType = _contentType(file.extension ?? '', kind);
     try {
       await ref

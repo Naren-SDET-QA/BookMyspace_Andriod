@@ -5,16 +5,18 @@ import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
-import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart';
+import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart'
+    hide MyBookingsScreen;
+import 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen_v1.dart';
 import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../auth/mock_auth_repository.dart';
+import '../auth/mock_auth_repository_release.dart';
 import '../notifications/mock_notification_repository.dart';
-import 'mock_booking_repository.dart';
+import 'mock_booking_repository_release.dart';
 
 /// Regression: every backend booking status is listed in exactly one
 /// My Bookings tab (awaiting-approval, rejected, refunded and no-show
@@ -33,6 +35,11 @@ void main() {
     BookingStatus.cancelled: E2eIds.bookingsTabCancelled,
     BookingStatus.rejected: E2eIds.bookingsTabCancelled,
     BookingStatus.refunded: E2eIds.bookingsTabCancelled,
+    // Statuses added by the main lineage (merged in).
+    BookingStatus.awaitingOwnerApproval: E2eIds.bookingsTabUpcoming,
+    BookingStatus.unknown: E2eIds.bookingsTabUpcoming,
+    BookingStatus.ownerRejected: E2eIds.bookingsTabCancelled,
+    BookingStatus.approvalExpired: E2eIds.bookingsTabCancelled,
   };
 
   test('every booking status is assigned a tab', () {
@@ -74,7 +81,7 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: MyBookingsScreen(),
+          home: MyBookingsScreenV1(),
         ),
       ),
     );
@@ -144,7 +151,7 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: MyBookingsScreen(),
+          home: MyBookingsScreenV1(),
         ),
       ),
     );

@@ -4,6 +4,12 @@ import 'package:bookmyspace/features/owner_venues/domain/owner_venue_repository.
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 
 class MockOwnerVenueRepository implements OwnerVenueRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   final List<Venue> venues = [];
 
   @override
@@ -20,6 +26,12 @@ class MockOwnerVenueRepository implements OwnerVenueRepository {
     required double longitude,
     required int capacity,
     required double pricingBaseAmount,
+    String? address,
+    String? pincode,
+    List<VenueImage>? images,
+    List<String>? facilities,
+    String? videoUrl,
+    String? tour3dUrl,
   }) async {
     final venue = Venue(
       id: 'ov_${venues.length + 1}',
@@ -55,6 +67,12 @@ class MockOwnerVenueRepository implements OwnerVenueRepository {
     int? capacity,
     double? pricingBaseAmount,
     bool? isActive,
+    String? address,
+    String? pincode,
+    List<VenueImage>? images,
+    List<String>? facilities,
+    String? videoUrl,
+    String? tour3dUrl,
   }) async {
     final index = venues.indexWhere((v) => v.id == venueId);
     if (index < 0) throw StateError('not found');
@@ -114,7 +132,7 @@ class MockOwnerVenueRepository implements OwnerVenueRepository {
         id: 'ov_${venues.length + 1}',
         name: draft.name,
         description: draft.description,
-        addressLine1: draft.addressLine1,
+        address: draft.addressLine1,
         city: draft.city,
         state: draft.state,
         latitude: draft.latitude,
@@ -141,7 +159,7 @@ class MockOwnerVenueRepository implements OwnerVenueRepository {
     final updated = venues[index].copyWith(
       name: draft.name,
       description: draft.description,
-      addressLine1: draft.addressLine1,
+      address: draft.addressLine1,
       city: draft.city,
       state: draft.state,
       latitude: draft.latitude,

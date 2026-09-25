@@ -11,8 +11,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../features/auth/mock_auth_repository.dart';
-import '../../features/venues/mock_venue_repository.dart';
+import '../../features/auth/mock_auth_repository_release.dart';
+import '../../features/venues/mock_venue_repository_release.dart';
 
 void main() {
   test('enabled shell destinations all appear by default', () {
@@ -21,7 +21,7 @@ void main() {
       visible.map((item) => item.id).toList(),
       ['home', 'map', 'search', 'bookings', 'profile', 'saved'],
     );
-    expect(visible.map((item) => item.branchIndex).toList(), [0, 1, 2, 3, 4, 5]);
+    expect(visible.map((item) => item.branchIndex).toList(), [0, 7, 2, 3, 5, 8]);
   });
 
   test('disabled feature tabs disappear without duplicating config', () {

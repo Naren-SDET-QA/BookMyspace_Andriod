@@ -66,10 +66,12 @@ class CachingBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<Booking> bookingById(String bookingId) async {
+  Future<Booking?> bookingById(String bookingId) async {
     try {
       final live = await _inner.bookingById(bookingId);
-      await _cache.saveBookings('$_bookingsKey.one.$bookingId', [live]);
+      if (live != null) {
+        await _cache.saveBookings('$_bookingsKey.one.$bookingId', [live]);
+      }
       return live;
     } catch (error) {
       if (!isOfflineWorthy(error)) rethrow;
@@ -102,4 +104,34 @@ class CachingBookingRepository implements BookingRepository {
   @override
   Future<Booking> removeCoupon(String bookingId) =>
       _inner.removeCoupon(bookingId);
+
+  // Delegates for BookingRepository/VenueRepository members added by the
+  // main lineage (no offline caching for these yet).
+  @override
+  Future<Booking> requestBooking({ required String venueId, required String slotId, required DateTime bookDate, required double amount, int approvalMinutes = 120, String? couponCode, }) =>
+      _inner.requestBooking(venueId: venueId, slotId: slotId, bookDate: bookDate, amount: amount, approvalMinutes: approvalMinutes, couponCode: couponCode);
+
+  @override
+  Future<Booking> approveBooking(String bookingId) =>
+      _inner.approveBooking(bookingId);
+
+  @override
+  Future<Booking> rejectBooking(String bookingId, {String? reason}) =>
+      _inner.rejectBooking(bookingId, reason: reason);
+
+  @override
+  Future<List<Booking>> recentBookings({int limit = 5}) =>
+      _inner.recentBookings(limit: limit);
+
+  @override
+  Future<List<Booking>> myBookingsPage({ required int offset, required int limit, }) =>
+      _inner.myBookingsPage(offset: offset, limit: limit);
+
+  @override
+  Future<List<Booking>> ownerVenueBookings() =>
+      _inner.ownerVenueBookings();
+
+  @override
+  Future<Booking> checkInBooking(String qrOrRef) =>
+      _inner.checkInBooking(qrOrRef);
 }

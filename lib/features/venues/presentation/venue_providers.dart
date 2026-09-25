@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/app_exceptions.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../home/presentation/discovery_location.dart';
 import '../../location/presentation/location_providers.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
@@ -34,6 +36,149 @@ final venueRepositoryProvider = Provider<VenueRepository>((ref) {
   );
 });
 
+/// Categories provider (active categories for discovery/browsing).
+///
+/// Supabase Realtime keeps customer discovery in sync with admin changes.
+final venueCategoriesProvider = StreamProvider<List<VenueCategory>>((ref) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .categoryStream(activeOnly: true)
+      .map(
+        (categories) => categories
+            .where((category) => category.listingTemplate.isPublished)
+            .toList(growable: false),
+      );
+});
+
+/// All categories provider for management screens (including inactive ones).
+final allVenueCategoriesProvider = StreamProvider<List<VenueCategory>>((ref) {
+  return ref.watch(venueRepositoryProvider).categoryStream(activeOnly: false);
+});
+
+/// Active subsections for customer catalogue surfaces.
+final venueSubsectionsProvider = StreamProvider.autoDispose
+    .family<List<VenueSubsection>, String>((ref, categoryId) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .subsectionStream(categoryId, activeOnly: true);
+});
+
+/// All subsections for management screens, including disabled rows.
+final allVenueSubsectionsProvider = StreamProvider.autoDispose
+    .family<List<VenueSubsection>, String>((ref, categoryId) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .subsectionStream(categoryId, activeOnly: false);
+});
+
+/// Active subsection catalogue for customer discovery surfaces.
+final venueSubsectionsCatalogProvider =
+    StreamProvider<List<VenueSubsection>>((ref) {
+  return ref.watch(venueRepositoryProvider).subsectionCatalogStream();
+});
+
+/// Complete subsection catalogue for management dashboards and aggregate
+/// counts. Customer surfaces must continue using the active-only provider.
+final allVenueSubsectionsCatalogProvider =
+    StreamProvider<List<VenueSubsection>>((ref) {
+  return ref
+      .watch(venueRepositoryProvider)
+      .subsectionCatalogStream(activeOnly: false);
+});
+
+/// Popular venues provider.
+final popularVenuesProvider = FutureProvider<List<Venue>>((ref) {
+  return ref.watch(venueRepositoryProvider).popularVenues();
+});
+
+/// Distinct cities from readable venue listings.
+final listedVenueCitiesProvider = FutureProvider<List<String>>((ref) {
+  return ref.watch(venueRepositoryProvider).listedCities();
+});
+
+/// Nearby venues. Coordinates must come from a real user-selected location;
+/// this provider does not invent a city centroid.
+final nearbyVenuesProvider = FutureProvider<List<Venue>>((ref) async {
+  final location = ref.watch(discoveryLocationProvider);
+  if (!location.hasCoordinates) return const <Venue>[];
+  return ref.watch(venueRepositoryProvider).nearbyVenues(
+        latitude: location.latitude!,
+        longitude: location.longitude!,
+        maxDistanceKm: location.radiusKm.toDouble(),
+      );
+});
+
+/// Search results for an explicit [VenueSearchQuery].
+///
+/// The query must come from route parameters or from a user action in the
+/// current screen. Screens must not write a shared search provider during
+/// widget construction (`initState` / `build`).
+final searchResultsProvider =
+    FutureProvider.autoDispose.family<List<Venue>, VenueSearchQuery>((
+  ref,
+  query,
+) {
+  return ref.watch(venueRepositoryProvider).search(query);
+});
+
+/// Venue details provider by venue ID.
+final venueDetailsProvider = FutureProvider.autoDispose.family<Venue, String>((
+  ref,
+  venueId,
+) {
+  return ref.watch(venueRepositoryProvider).venueById(venueId);
+});
+
+/// Canonical favorite-id list. All per-venue hearts derive from this.
+final favoriteVenueIdsProvider = FutureProvider<List<String>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
+  return ref.watch(venueRepositoryProvider).favoriteIds();
+});
+
+/// Favorite status for a venue, derived from [favoriteVenueIdsProvider].
+final isFavoriteProvider =
+    Provider.autoDispose.family<AsyncValue<bool>, String>((ref, venueId) {
+  return ref.watch(favoriteVenueIdsProvider).whenData(
+        (ids) => ids.contains(venueId),
+      );
+});
+
+/// User-action helper for favorite toggles. Do not watch from build().
+class FavoriteController {
+  FavoriteController(this._ref);
+
+  final Ref _ref;
+
+  Future<void> toggle(String venueId) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      throw const AuthException('Sign in to save venues.');
+    }
+    final repo = _ref.read(venueRepositoryProvider);
+    final ids = await repo.favoriteIds();
+    if (ids.contains(venueId)) {
+      await repo.removeFavorite(venueId);
+    } else {
+      await repo.addFavorite(venueId);
+    }
+    _ref.invalidate(favoriteVenueIdsProvider);
+    _ref.invalidate(savedVenuesProvider);
+  }
+}
+
+final favoriteControllerProvider = Provider<FavoriteController>((ref) {
+  return FavoriteController(ref);
+});
+
+/// Saved venues list provider.
+final savedVenuesProvider = FutureProvider<List<Venue>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
+  return ref.watch(venueRepositoryProvider).favorites();
+});
+
+final favoritesProvider = savedVenuesProvider;
 final mediaRepositoryProvider = Provider<MediaRepository>((ref) {
   return SupabaseMediaRepository(ref.watch(supabaseProvider));
 });
@@ -50,11 +195,6 @@ final hotelRoomTypesProvider = FutureProvider.autoDispose
           .watch(roomInventoryRepositoryProvider)
           .roomTypesForVenue(venueId);
     });
-
-/// Seed venue categories for chips and search filters.
-final venueCategoriesProvider = FutureProvider<List<VenueCategory>>((ref) {
-  return ref.watch(venueRepositoryProvider).categories();
-});
 
 /// Category-scoped Home data. This provider is created and queried only when
 /// the corresponding module widget resolves it; Home must not use it for
@@ -87,62 +227,26 @@ final moduleVenuesProvider = FutureProvider.autoDispose
       return unique.values.take(50).toList(growable: false);
     });
 
-/// Location-aware venues shown on the home screen.
-final popularVenuesProvider = FutureProvider<List<Venue>>((ref) {
-  final area = ref.watch(searchAreaProvider);
-  return ref
-      .watch(venueRepositoryProvider)
-      .nearbyVenues(
-        latitude: area.latitude,
-        longitude: area.longitude,
-        maxDistanceKm: area.radiusKm,
-        limit: 10,
-      );
-});
 
-/// Venues near the user's location (or a sensible default city centre).
-final nearbyVenuesProvider = FutureProvider.autoDispose<List<Venue>>((
-  ref,
-) async {
-  final area = ref.watch(searchAreaProvider);
-  return ref
-      .watch(venueRepositoryProvider)
-      .nearbyVenues(
-        latitude: area.latitude,
-        longitude: area.longitude,
-        maxDistanceKm: area.radiusKm,
-        limit: 10,
-      );
-});
+// ---------------------------------------------------------------------------
+// release/v1.0 search/favorite providers. The main lineage uses the family
+// [searchResultsProvider] and [favoriteVenueIdsProvider]; these keep the
+// release screens (map, search v1, list cards) working unchanged.
+// ---------------------------------------------------------------------------
 
-/// Holds the current search query; drives the search results provider.
+/// Holds the current search query; drives [currentSearchResultsProvider].
 final searchQueryProvider = StateProvider<VenueSearchQuery>((ref) {
   return const VenueSearchQuery();
 });
 
-/// Search results reacting to the current query.
-final searchResultsProvider = FutureProvider<List<Venue>>((ref) {
+/// Search results reacting to the current [searchQueryProvider].
+final currentSearchResultsProvider = FutureProvider<List<Venue>>((ref) {
   final query = ref.watch(searchQueryProvider);
   return ref.watch(venueRepositoryProvider).search(query);
 });
 
 /// Ids of venues favourited by the signed-in user.
-final favoriteIdsProvider = FutureProvider<List<String>>((ref) {
-  return ref.watch(venueRepositoryProvider).favoriteIds();
-});
-
-/// Hydrated favourite venues.
-final favoritesProvider = FutureProvider<List<Venue>>((ref) {
-  return ref.watch(venueRepositoryProvider).favorites();
-});
-
-/// A single venue's full details.
-final venueDetailsProvider = FutureProvider.autoDispose.family<Venue, String>((
-  ref,
-  id,
-) {
-  return ref.watch(venueRepositoryProvider).venueById(id);
-});
+final favoriteIdsProvider = favoriteVenueIdsProvider;
 
 /// Toggles a venue in the user's favourites and invalidates the caches.
 final toggleFavoriteProvider = FutureProvider.family<void, String>((
@@ -156,15 +260,6 @@ final toggleFavoriteProvider = FutureProvider.family<void, String>((
   } else {
     await repo.addFavorite(venueId);
   }
-  ref.invalidate(favoriteIdsProvider);
+  ref.invalidate(favoriteVenueIdsProvider);
   ref.invalidate(favoritesProvider);
-});
-
-/// Whether the given venue id is favourited (null while unknown).
-final isFavoriteProvider = FutureProvider.autoDispose.family<bool?, String>((
-  ref,
-  venueId,
-) async {
-  final ids = await ref.watch(favoriteIdsProvider.future);
-  return ids.contains(venueId);
 });

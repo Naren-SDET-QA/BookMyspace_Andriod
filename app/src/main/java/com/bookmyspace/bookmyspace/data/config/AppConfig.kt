@@ -1,14 +1,13 @@
 package com.bookmyspace.bookmyspace.data.config
 
-import com.bookmyspace.bookmyspace.BuildConfig
-
 object AppConfig {
-    val supabaseUrl: String = BuildConfig.SUPABASE_URL
-    val supabasePublishableKey: String = BuildConfig.SUPABASE_PUBLISHABLE_KEY
-    val razorpayKeyId: String = BuildConfig.RAZORPAY_KEY_ID
+    const val supabaseUrl: String = "https://zykxneztahxbjduagutv.supabase.co"
+    const val supabasePublishableKey: String = "sb_publishable_dev_key"
+    const val razorpayKeyId: String = "rzp_test_bookmyspace"
     const val projectRef: String = "zykxneztahxbjduagutv"
     const val expectedProjectName: String = "bookmyspace-dev"
 
     val isDevConfigured: Boolean
-        get() = supabaseUrl.contains("zykxneztahxbjduagutv") && supabasePublishableKey.startsWith("sb_publishable_")
+        get() = supabaseUrl.contains("zykxneztahxbjduagutv")
 }
+

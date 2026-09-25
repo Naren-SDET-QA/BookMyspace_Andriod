@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile in BookMySpace",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Auth UID of the user" },
+        "fullName": { "type": "string", "description": "Full name of the user" },
+        "email": { "type": "string", "description": "Email address of the user" },
+        "role": { "type": "string", "description": "Role (USER, VENUE_OWNER, ADMIN)" },
+        "avatarUrl": { "type": "string", "description": "Avatar URL" },
+        "phoneNumber": { "type": "string", "description": "Phone number" },
+        "walletBalance": { "type": "number", "description": "Wallet balance" },
+        "referralCode": { "type": "string", "description": "User referral code" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fullName", "email", "createdAt"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Venue booking document",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string", "description": "Unique booking identifier" },
+        "userId": { "type": "string", "description": "ID of user who booked" },
+        "venueId": { "type": "string", "description": "Target venue ID" },
+        "venueTitle": { "type": "string", "description": "Venue name" },
+        "slotTime": { "type": "string", "description": "Selected slot time" },
+        "bookingDate": { "type": "string", "description": "Booking date string" },
+        "totalPrice": { "type": "number", "description": "Total paid price" },
+        "status": { "type": "string", "description": "CONFIRMED, CANCELLED, PENDING, COMPLETED" },
+        "paymentMethod": { "type": "string", "description": "Payment method used" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bookingId", "userId", "venueId", "venueTitle", "totalPrice", "status", "createdAt"]
+    },
+    "SavedVenue": {
+      "title": "SavedVenue",
+      "description": "User saved favorite venue bookmark",
+      "type": "object",
+      "properties": {
+        "savedId": { "type": "string", "description": "Unique identifier" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "venueId": { "type": "string", "description": "Saved venue ID" },
+        "venueTitle": { "type": "string", "description": "Saved venue title" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["savedId", "userId", "venueId", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review for a venue",
+      "type": "object",
+      "properties": {
+        "reviewId": { "type": "string", "description": "Unique review identifier" },
+        "userId": { "type": "string", "description": "Review author user ID" },
+        "userName": { "type": "string", "description": "Review author display name" },
+        "venueId": { "type": "string", "description": "Venue being reviewed" },
+        "rating": { "type": "number", "description": "Star rating 1 to 5" },
+        "comment": { "type": "string", "description": "Review comments" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reviewId", "userId", "userName", "venueId", "rating", "comment", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile and account details"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Stores user booking records scoped to authenticated owner"
+    },
+    "/saved_venues/{savedId}": {
+      "schema": { "$ref": "#/entities/SavedVenue" },
+      "description": "Stores bookmarked venues per user"
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Stores venue customer reviews"
+    }
+  }
+}

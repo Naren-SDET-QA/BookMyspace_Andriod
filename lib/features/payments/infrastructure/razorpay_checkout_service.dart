@@ -11,6 +11,9 @@ import '../domain/checkout_service.dart';
 /// caller should surface a friendly message instead of crashing.
 class RazorpayCheckoutService implements CheckoutService {
   @override
+  CheckoutResponse? get lastResponse => null;
+
+  @override
   CheckoutSuccessDetails? get lastSuccessDetails => null;
 
   @override
@@ -19,7 +22,13 @@ class RazorpayCheckoutService implements CheckoutService {
     required double amount,
     required String currency,
     required String keyId,
-  }) async {
+      String? venueName,
+    String? bookingRef,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    Map<String, dynamic>? notes,
+}) async {
     if (keyId.trim().isEmpty || keyId.contains('PLACEHOLDER')) {
       throw const ConfigurationException(
         'Razorpay checkout is not configured. Add a test key to run payments.',

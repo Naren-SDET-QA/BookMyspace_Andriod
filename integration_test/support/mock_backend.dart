@@ -24,12 +24,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../test/features/courses/mock_course_repository.dart';
-import '../../test/features/events/mock_event_repository.dart';
+import '../../test/features/courses/mock_course_repository_release.dart';
+import '../../test/features/events/mock_event_repository_release.dart';
 import '../../test/features/notifications/mock_notification_repository.dart';
 import '../../test/features/owner_bookings/mock_owner_booking_repository.dart';
 import '../../test/features/owner_venues/mock_owner_venue_repository.dart';
-import '../../test/features/venues/mock_venue_repository.dart';
+import '../../test/features/venues/mock_venue_repository_release.dart';
 import 'e2e_fakes.dart';
 import 'e2e_fixtures.dart';
 

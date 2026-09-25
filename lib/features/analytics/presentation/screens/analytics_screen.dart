@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../../core/modular/feature_id.dart';
 import '../../../../core/modular/feature_providers.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -14,6 +13,9 @@ import '../../domain/peak_hours_analytics.dart';
 import '../../domain/revenue_analytics.dart';
 import '../analytics_providers.dart';
 import '../widgets/peak_hours_chart.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../modules/presentation/module_providers.dart';
+import '../../domain/analytics_event.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -36,6 +38,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = ref.watch(moduleEnabledProvider('analytics'));
+    if (!enabled) {
+      return Scaffold(
+        appBar: AppBar(title: Text(AppLocalizations.of(context).analyticsLabel)),
+        body: const EmptyState(
+          icon: Icons.analytics_outlined,
+          title: 'Analytics is unavailable',
+          message:
+              'This optional module is currently disabled by the administrator.',
+        ),
+      );
+    }
     final display = AnalyticsDisplayConfig.fromFeature(
       ref.watch(featureRegistryProvider).configOf(FeatureId.analytics),
     );
@@ -101,6 +115,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 : _Dashboard(data: data, display: display),
           ),
           if (display.showCharts) _peakHoursSection(),
+          _recentEventsSection(),
         ],
       ),
     );
@@ -185,6 +200,30 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Raw analytics event log (main lineage analytics screen).
+  Widget _recentEventsSection() {
+    final events = ref.watch(recentAnalyticsEventsProvider);
+    return events.maybeWhen(
+      data: (items) => items.isEmpty
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Recent events',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final event in items) _AnalyticsTile(event: event),
+                ],
+              ),
+            ),
+      orElse: () => const SizedBox.shrink(),
     );
   }
 
@@ -377,4 +416,61 @@ class _Breakdown extends StatelessWidget {
       ],
     ),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Merged from main lineage (declarations not present in the primary version).
+// ---------------------------------------------------------------------------
+
+class _AnalyticsTile extends StatelessWidget {
+  const _AnalyticsTile({required this.event});
+
+  final AnalyticsEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              event.eventType.dbValue.replaceAll('_', ' '),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'User: ${event.userId ?? "anonymous"}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (event.properties.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                event.properties.toString(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (event.createdAt != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                event.createdAt!.toIso8601String(),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

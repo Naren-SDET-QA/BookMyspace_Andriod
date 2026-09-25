@@ -58,12 +58,16 @@ void main() {
       });
       expect(past.isPast, isTrue);
 
-      final now = DateTime.now().toUtc();
       final future = Event.fromJson({
         'title': 'y',
-        'starts_at':
-            now.add(const Duration(days: 1)).toIso8601String(),
-        'ends_at': now.add(const Duration(days: 1, hours: 4)).toIso8601String(),
+        'starts_at': DateTime.now()
+            .add(const Duration(hours: 1))
+            .toUtc()
+            .toIso8601String(),
+        'ends_at': DateTime.now()
+            .add(const Duration(hours: 5))
+            .toUtc()
+            .toIso8601String(),
       });
       expect(future.isPast, isFalse);
     });

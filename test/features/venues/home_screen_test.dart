@@ -1,28 +1,34 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
+import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
-import 'package:bookmyspace/features/home/domain/customer_section_catalog.dart';
-import 'package:bookmyspace/features/home/presentation/screens/home_screen.dart';
+import 'package:bookmyspace/features/reviews/presentation/review_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
+import 'package:bookmyspace/features/venues/presentation/screens/venue_details_screen.dart';
+import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../auth/mock_auth_repository.dart';
+import '../booking/mock_booking_repository.dart';
 import '../courses/mock_course_repository.dart';
 import '../events/mock_event_repository.dart';
+import '../offers/mock_coupon_repository.dart';
+import '../reviews/mock_review_repository.dart';
 import 'mock_venue_repository.dart';
+import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
+import 'package:bookmyspace/features/offers/presentation/coupon_providers.dart';
 
 Widget _app(
   MockVenueRepository venueRepo, {
   MockAuthRepository? authRepo,
-  CustomerSection? section,
+  String initialLocation = AppRoutes.home,
 }) {
-  final auth =
-      authRepo ??
+  final auth = authRepo ??
       MockAuthRepository(
         initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
       );
@@ -32,9 +38,31 @@ Widget _app(
       authRepositoryProvider.overrideWithValue(auth),
       eventRepositoryProvider.overrideWithValue(MockEventRepository()),
       courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+      reviewRepositoryProvider.overrideWithValue(MockReviewRepository()),
+      couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+      bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
     ],
+    child: MaterialApp.router(
+      routerConfig: createAppRouter(
+        initialLocation: initialLocation,
+        currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+      ),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
+}
+
+Widget _searchApp(ProviderContainer container) {
+  return UncontrolledProviderScope(
+    container: container,
     child: MaterialApp(
-      home: HomeScreen(initialSection: section),
+      home: const SearchScreen(initialCategory: 'meeting_room'),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -47,110 +75,92 @@ Widget _app(
 }
 
 void main() {
-  testWidgets('first home screen shows only the four sections', (tester) async {
+  testWidgets('venue details shows name, location and booking CTA',
+      (tester) async {
     final repo = MockVenueRepository();
-    await tester.pumpWidget(_app(repo));
+    await tester.pumpWidget(_app(repo, initialLocation: '/venues/v1'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Spaces & Events'), findsWidgets);
-    expect(find.text('Stay'), findsOneWidget);
-    expect(find.text('Learning & Classes'), findsOneWidget);
-    expect(find.text('PG / Hostels'), findsOneWidget);
-    expect(find.text('Student Hostel'), findsNothing);
-    expect(find.text('Sunrise Function Hall'), findsNothing);
-    expect(find.text('The Work Nest'), findsNothing);
-  });
-
-  testWidgets('function halls section hides lodge, pg and coworking', (
-    tester,
-  ) async {
-    final repo = MockVenueRepository();
-    await tester.pumpWidget(_app(repo, section: CustomerSection.functionHalls));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Choose Category'), findsOneWidget);
-    expect(find.text('All Halls'), findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    expect(find.byType(VenueDetailsScreen), findsOneWidget);
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
-    expect(find.text('Crown Lodge Rooms'), findsNothing);
-    expect(find.text('Starlight Ladies PG'), findsNothing);
-    expect(find.text('The Work Nest'), findsNothing);
+    expect(find.byKey(const Key('listing_book_cta')), findsOneWidget);
+    expect(find.byKey(const Key('listing_availability_cta')), findsOneWidget);
+    expect(find.text('Reviews'), findsOneWidget);
   });
 
-  testWidgets('home shows error state after selecting a section', (
-    tester,
-  ) async {
+  testWidgets('venue details error recovers on retry', (tester) async {
     final repo = MockVenueRepository()..failRequests = true;
-    await tester.pumpWidget(_app(repo, section: CustomerSection.functionHalls));
+    await tester.pumpWidget(_app(repo, initialLocation: '/venues/v1'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Choose Category'), findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
-    await tester.pumpAndSettle();
-    expect(find.text('Try again'), findsWidgets);
+    expect(find.text('Try Again'), findsWidgets);
 
     repo.failRequests = false;
-    final retry = find.widgetWithText(FilledButton, 'Try again');
-    expect(retry, findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -250));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(retry);
-    await tester.tap(retry);
+    await tester.tap(find.text('Try Again').first);
     await tester.pumpAndSettle();
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
   });
 
-  Future<void> setCompactAndroidView(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(412, 915);
+  testWidgets('initial search category filters results without provider writes',
+      (tester) async {
+    final repo = MockVenueRepository();
+    final container = ProviderContainer(
+      overrides: [
+        venueRepositoryProvider.overrideWithValue(repo),
+        authRepositoryProvider.overrideWithValue(
+          MockAuthRepository(
+            initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+          ),
+        ),
+        couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+        bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(_searchApp(container));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The Work Nest'), findsOneWidget);
+    expect(find.text('Sunrise Function Hall'), findsNothing);
+  });
+
+  testWidgets('search route query parameter selects the category',
+      (tester) async {
+    final repo = MockVenueRepository();
+    await tester.pumpWidget(
+      _app(repo, initialLocation: '/search?category=meeting_room'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('The Work Nest'), findsOneWidget);
+    expect(find.text('Sunrise Function Hall'), findsNothing);
+  });
+
+  testWidgets('filters sheet has a back button and does not overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 640);
     tester.view.devicePixelRatio = 1.0;
-    tester.view.padding = const FakeViewPadding(top: 48, bottom: 24);
-    tester.view.viewPadding = const FakeViewPadding(top: 48, bottom: 24);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPadding);
-    addTearDown(tester.view.resetViewPadding);
-  }
 
-  testWidgets('compact 412-wide first screen does not overflow', (
-    tester,
-  ) async {
-    await setCompactAndroidView(tester);
     await tester.pumpWidget(
-      _app(MockVenueRepository(), authRepo: MockAuthRepository()),
+      _app(MockVenueRepository(), initialLocation: AppRoutes.search),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('BookMySpace'), findsOneWidget);
-    expect(find.text('Sign In'), findsOneWidget);
+    await tester.tap(find.byTooltip('Filters'));
+    await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
-  });
+    expect(find.byKey(const Key('filters_back')), findsOneWidget);
+    expect(find.text('Clear Filters'), findsOneWidget);
 
-  testWidgets('compact 412-wide section drill-down does not overflow', (
-    tester,
-  ) async {
-    await setCompactAndroidView(tester);
-    await tester.pumpWidget(
-      _app(MockVenueRepository(), section: CustomerSection.institutesClasses),
-    );
+    await tester.enterText(find.byKey(const Key('filters_min_price')), '1000');
+    await tester.enterText(find.byKey(const Key('filters_max_price')), '90000');
+    await tester.tap(find.byKey(const Key('filters_apply')));
     await tester.pumpAndSettle();
 
-    expect(find.text('All Spaces'), findsOneWidget);
-    expect(find.text('Choose Category'), findsOneWidget);
+    expect(find.byKey(const Key('filters_back')), findsNothing);
     expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('lodge section does not show halls or pgs', (tester) async {
-    final repo = MockVenueRepository();
-    await tester.pumpWidget(_app(repo, section: CustomerSection.lodgeRooms));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Choose Category'), findsOneWidget);
-    expect(find.text('All Stays'), findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    expect(find.text('Crown Lodge Rooms'), findsOneWidget);
-    expect(find.text('Sunrise Function Hall'), findsNothing);
-    expect(find.text('Starlight Ladies PG'), findsNothing);
   });
 }
