@@ -15,6 +15,17 @@ class WebRazorpayCheckoutService implements CheckoutService {
   CheckoutResponse? get lastResponse => _lastResponse;
 
   @override
+  CheckoutSuccessDetails? get lastSuccessDetails {
+    final response = _lastResponse;
+    if (response == null || response.result != CheckoutResult.paid) return null;
+    return CheckoutSuccessDetails(
+      paymentId: response.paymentId ?? '',
+      orderId: response.orderId ?? '',
+      signature: response.signature ?? '',
+    );
+  }
+
+  @override
   Future<CheckoutResult> openCheckout({
     required String orderId,
     required double amount,

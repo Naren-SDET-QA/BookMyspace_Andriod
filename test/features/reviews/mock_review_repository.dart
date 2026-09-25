@@ -56,6 +56,7 @@ class MockReviewRepository implements ReviewRepository {
     String? title,
     String? body,
     String? bookingId,
+    List<String> tags = const [],
   }) async {
     if (failSubmit) throw Exception('submit failed');
     submitted = Review(

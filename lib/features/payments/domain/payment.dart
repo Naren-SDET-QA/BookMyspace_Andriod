@@ -1,24 +1,31 @@
+import '../../../core/errors/app_exceptions.dart' as app_errors;
 /// Lifecycle status of a payment row in the `payments` table.
 enum PaymentStatus {
   pending,
+  authorized,
   captured,
   failed,
-  refunded;
+  refunded,
+  partiallyRefunded;
 
   static PaymentStatus fromDb(String value) => switch (value) {
-        'pending' => PaymentStatus.pending,
-        'captured' => PaymentStatus.captured,
-        'failed' => PaymentStatus.failed,
-        'refunded' => PaymentStatus.refunded,
-        _ => PaymentStatus.pending,
-      };
+    'pending' => PaymentStatus.pending,
+    'authorized' => PaymentStatus.authorized,
+    'captured' => PaymentStatus.captured,
+    'failed' => PaymentStatus.failed,
+    'refunded' => PaymentStatus.refunded,
+    'partially_refunded' => PaymentStatus.partiallyRefunded,
+    _ => PaymentStatus.pending,
+  };
 
   String get dbValue => switch (this) {
-        PaymentStatus.pending => 'pending',
-        PaymentStatus.captured => 'captured',
-        PaymentStatus.failed => 'failed',
-        PaymentStatus.refunded => 'refunded',
-      };
+    PaymentStatus.pending => 'pending',
+    PaymentStatus.authorized => 'authorized',
+    PaymentStatus.captured => 'captured',
+    PaymentStatus.failed => 'failed',
+    PaymentStatus.refunded => 'refunded',
+    PaymentStatus.partiallyRefunded => 'partially_refunded',
+  };
 }
 
 /// A payment order generated for Razorpay checkout.
@@ -154,7 +161,15 @@ class Refund {
   final DateTime? processedAt;
   final DateTime? createdAt;
 
-  factory Refund.fromResponse(Map<String, dynamic> json) => Refund(
+  /// Parses the response of the `create-refund` Edge Function.
+  factory Refund.fromResponse(Object? json) {
+    if (json is Map<String, dynamic>) return Refund.fromJson(json);
+    throw const app_errors.SerializationException(
+      'Could not read the refund response.',
+    );
+  }
+
+  factory Refund.fromJson(Map<String, dynamic> json) => Refund(
         id: json['id'] as String? ?? '',
         paymentId: json['payment_id'] as String? ?? '',
         bookingId: json['booking_id'] as String? ?? '',
@@ -165,9 +180,6 @@ class Refund {
         processedAt: DateTime.tryParse(json['processed_at'] as String? ?? ''),
         createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
       );
-
-  factory Refund.fromJson(Map<String, dynamic> json) =>
-      Refund.fromResponse(json);
 
   Map<String, dynamic> toJson() => {
         'id': id,

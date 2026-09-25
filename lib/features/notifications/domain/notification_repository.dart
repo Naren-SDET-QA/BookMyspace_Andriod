@@ -12,4 +12,13 @@ abstract interface class NotificationRepository {
     Map<String, dynamic>? subscriptionData,
   });
   Future<void> unregisterPushToken(String token);
+
+  /// Records an in-app notification for the current user (RLS allows users
+  /// to insert rows for themselves; used for booking lifecycle events).
+  Future<void> create({
+    required NotificationType type,
+    required String title,
+    required String body,
+    Map<String, dynamic> data = const {},
+  });
 }

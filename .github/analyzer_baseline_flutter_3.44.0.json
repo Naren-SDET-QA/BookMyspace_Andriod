@@ -1,0 +1,1526 @@
+{
+  "schema_version": 1,
+  "source_commit": "510922d400ee19fe0d6ee66b59d7ebaa352623b4",
+  "flutter_version": "3.44.0",
+  "flutter_framework_revision": "559ffa3f75e7402d65a8def9c28389a9b2e6fe42",
+  "dart_version": "3.12.0",
+  "diagnostic_counts": {
+    "error": 0,
+    "warning": 26,
+    "info": 446
+  },
+  "diagnostics": [
+    {
+      "severity": "info",
+      "code": "always_declare_return_types",
+      "file": "test/features/booking/caching_booking_repository_test.dart",
+      "message": "The method 'noSuchMethod' should have a return type but doesn't. Try adding a return type to the method",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "always_declare_return_types",
+      "file": "test/features/venues/venue_favorites_auth_isolation_test.dart",
+      "message": "The method 'noSuchMethod' should have a return type but doesn't. Try adding a return type to the method",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/core/modular/plugins/ai_provider_plugin.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/features/admin/presentation/screens/admin_settings_screen.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/features/integrations/infrastructure/supabase_tenant_configuration_repository.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/features/venue_discovery/domain/venue_discovery.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/features/venue_discovery/presentation/screens/venue_discovery_screen.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 14
+    },
+    {
+      "severity": "info",
+      "code": "avoid_relative_lib_imports",
+      "file": "test/features/ai/booking_intent_test.dart",
+      "message": "Can't use a relative path to import a library in 'lib'. Try fixing the relative path or changing the import to a 'package:' import",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_relative_lib_imports",
+      "file": "test/features/booking/invoice_repository_test.dart",
+      "message": "Can't use a relative path to import a library in 'lib'. Try fixing the relative path or changing the import to a 'package:' import",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_relative_lib_imports",
+      "file": "test/features/promotions/promotion_test.dart",
+      "message": "Can't use a relative path to import a library in 'lib'. Try fixing the relative path or changing the import to a 'package:' import",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_relative_lib_imports",
+      "file": "test/features/registration/module_registration_test.dart",
+      "message": "Can't use a relative path to import a library in 'lib'. Try fixing the relative path or changing the import to a 'package:' import",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "avoid_relative_lib_imports",
+      "file": "test/features/venues/media_item_test.dart",
+      "message": "Can't use a relative path to import a library in 'lib'. Try fixing the relative path or changing the import to a 'package:' import",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_relative_lib_imports",
+      "file": "test/features/venues/media_resilience_test.dart",
+      "message": "Can't use a relative path to import a library in 'lib'. Try fixing the relative path or changing the import to a 'package:' import",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_web_libraries_in_flutter",
+      "file": "lib/features/payments/infrastructure/razorpay_web_checkout_service.dart",
+      "message": "Don't use web-only libraries outside Flutter web plugins. Try finding a different library for your needs",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/core/modular/feature_registry.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/admin/infrastructure/supabase_admin_settings_repository.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/admin/presentation/screens/admin_feature_configuration_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/admin/presentation/screens/admin_promotions_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/admin/presentation/screens/admin_settings_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/ai/presentation/screens/assistant_screen.dart",
+      "message": "Statements in a for should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/ai/presentation/screens/assistant_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/analytics/domain/revenue_analytics.dart",
+      "message": "Statements in a for should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/auth/infrastructure/supabase_auth_configuration_repository.dart",
+      "message": "Statements in a for should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/booking/presentation/screens/invoice_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/business/presentation/screens/business_plan_configuration_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/business/presentation/screens/business_pricing_configuration_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 7
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/customer_analytics/domain/customer_analytics.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/customer_analytics/presentation/screens/customer_analytics_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/home/presentation/screens/customer_category_preferences_screen.dart",
+      "message": "Statements in a for should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/institutes/presentation/screens/institute_owner_dashboard_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/location/presentation/screens/location_management_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/owner_venues/presentation/screens/media_manager_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/registration/presentation/module_registration_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 6
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/registration/presentation/module_submission_status_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/rewards/domain/rewards.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/rewards/presentation/screens/admin_reward_config_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/rewards/presentation/screens/referral_screen.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/venue_discovery/domain/venue_discovery.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "curly_braces_in_flow_control_structures",
+      "file": "lib/features/venue_discovery/infrastructure/overpass_discovery_service.dart",
+      "message": "Statements in an if should be enclosed in a block. Try wrapping the statement in a block",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "depend_on_referenced_packages",
+      "file": "lib/core/network/logging_http_client.dart",
+      "message": "The imported package 'http' isn't a dependency of the importing package. Try adding a dependency for 'http' in the 'pubspec.yaml' file",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/core/modular/plugins/speech_voice_plugin.dart",
+      "message": "'localeId' is deprecated and shouldn't be used. Use SpeechListenOptions.localeId instead. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/ai/presentation/widgets/dynamic_clarification_form.dart",
+      "message": "'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/owner/presentation/screens/owner_registration_screen.dart",
+      "message": "'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/owner_venues/presentation/screens/media_manager_screen.dart",
+      "message": "'onReorder' is deprecated and shouldn't be used. Use the onReorderItem callback instead. The onReorderItem callback adjusts the newIndex parameter for a removed item at the oldIndex. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/payments/infrastructure/razorpay_web_checkout_service.dart",
+      "message": "'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/promotions/presentation/widgets/existing_media_picker.dart",
+      "message": "'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/promotions/presentation/widgets/existing_media_picker.dart",
+      "message": "'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/registration/presentation/dynamic_registration_form.dart",
+      "message": "'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/venue_discovery/presentation/screens/venue_discovery_screen.dart",
+      "message": "'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/app.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/core/modular/feature_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/core/modular/register_default_plugins.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/core/router/app_router.dart",
+      "message": "Place 'package:' imports before relative imports. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/core/router/app_router.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 21
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/admin/presentation/screens/admin_feature_configuration_screen.dart",
+      "message": "Place 'dart:' imports before other imports. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/admin/presentation/screens/admin_feature_configuration_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/admin/presentation/screens/admin_help_center_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/admin/presentation/screens/admin_promotions_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/admin/presentation/screens/admin_settings_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/admin/presentation/screens/admin_tenant_configuration_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/ai/domain/dynamic_clarification_flow.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/ai/presentation/screens/assistant_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 6
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/auth/presentation/auth_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/booking/presentation/booking_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/booking/presentation/screens/booking_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/booking/presentation/screens/invoice_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/business/infrastructure/supabase_business_config_repository.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/business/presentation/business_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/home/presentation/screens/customer_category_preferences_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Place 'package:' imports before relative imports. Try sorting the directives",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 8
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/integrations/presentation/tenant_configuration_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/location/domain/india_location_importer.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/location/presentation/location_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/location/presentation/screens/location_management_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/location/presentation/widgets/location_picker_sheet.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner/presentation/owner_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner/presentation/screens/registration_field_configuration_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner_bookings/presentation/screens/owner_bookings_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner_venues/presentation/providers/owner_venue_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner_venues/presentation/screens/create_venue_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner_venues/presentation/screens/media_manager_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner_venues/presentation/screens/owner_availability_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner_venues/presentation/screens/owner_venues_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/promotions/presentation/promotion_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/registration/presentation/module_submission_status_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/search/presentation/screens/map_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/search/presentation/screens/search_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/settings/presentation/screens/settings_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/venues/infrastructure/supabase_media_repository.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/venues/infrastructure/supabase_venue_repository.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/venues/presentation/screens/venue_details_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/venues/presentation/venue_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/main.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/core/app_health_status_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/core/app_health_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/core/configurable_banner_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/core/settings_controller_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/admin/admin_health_screen_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/admin/admin_settings_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/admin/observability_control_plane_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/admin/observability_engine_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/admin/observability_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/action_gate_policy_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/booking_preview_card_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/booking_preview_model_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/chat_coordinator_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/dynamic_clarification_flow_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/dynamic_clarification_form_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/dynamic_clarification_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/provider_adapter_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/provider_resolution_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/scoped_provider_resolution_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/ai/universal_intent_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/auth/login_screen_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/booking/caching_booking_repository_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/business/contact_access_card_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/business/pricing_feature_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/home/category_group_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/home/context_aware_help_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/home/customer_category_preferences_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/home/home_category_catalog_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/home/module_registry_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/home/module_venue_provider_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/integrations/integration_config_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/integrations/observability_settings_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/integrations/tenant_configuration_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/integrations/tenant_runtime_configuration_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/location/location_master_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/m9/accessibility_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/m9/retry_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/m9/validators_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/owner/registration_field_config_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/registration/module_registration_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/search/ai_search_intent_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/venue_discovery/venue_discovery_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/venues/category_controls_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/venues/room_inventory_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/venues/venue_favorites_auth_isolation_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "invalid_runtime_check_with_js_interop_types",
+      "file": "lib/features/payments/infrastructure/razorpay_web_checkout_service.dart",
+      "message": "Runtime check between 'JSAny?' and 'JSObject' involves a non-trivial runtime check between two JS interop types that might not be platform-consistent. Try using a JS interop member like 'isA' from 'dart:js_interop' to check the underlying type of JS interop values",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "invalid_runtime_check_with_js_interop_types",
+      "file": "lib/features/payments/infrastructure/razorpay_web_checkout_service.dart",
+      "message": "Runtime check between 'JSAny?' and 'JSString' involves a non-trivial runtime check between two JS interop types that might not be platform-consistent. Try using a JS interop member like 'isA' from 'dart:js_interop' to check the underlying type of JS interop values",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/admin/presentation/screens/admin_dashboard_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 19
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/admin/presentation/screens/admin_settings_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 8
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/ai/domain/dynamic_clarification_flow.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/ai/domain/universal_intent.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/auth/presentation/widgets/edit_profile_modal.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/booking/presentation/screens/invoice_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/debug/presentation/screens/debug_menu_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 8
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/notifications/presentation/screens/notifications_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/owner/presentation/screens/owner_registration_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/owner_venues/presentation/screens/media_manager_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/registration/presentation/module_submission_status_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/core/localization_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/admin/observability_engine_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/ai/booking_preview_card_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/ai/dynamic_clarification_flow_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/ai/provider_adapter_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/analytics/analytics_screen_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/booking/mock_booking_repository.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/m9/retry_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/notifications/notifications_screen_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 5
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/registration/module_registration_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/venue_discovery/venue_discovery_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/venues/configurable_discovery_booking_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/venues/room_inventory_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_final_locals",
+      "file": "lib/features/admin/presentation/screens/admin_promotions_screen.dart",
+      "message": "Local variables should be final. Try making the variable final",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "lib/core/localization/app_localizations.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "lib/features/venues/infrastructure/supabase_venue_repository.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/ai_action_gate_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 6
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/ai_booking_handoff_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 8
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/ai_chat_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 9
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/ai_clarification_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/ai_offer_action_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/ai_provider_adapter_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/category_activation_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_single_quotes",
+      "file": "test/tool/dev_e2e_seed_contract_test.dart",
+      "message": "Unnecessary use of double quotes. Try using single quotes unless the string contains single quotes",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "unawaited_futures",
+      "file": "lib/core/notifications/onesignal_push_service.dart",
+      "message": "Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "unawaited_futures",
+      "file": "lib/features/ai/presentation/screens/assistant_screen.dart",
+      "message": "Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "unawaited_futures",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "unnecessary_import",
+      "file": "test/core/app_health_test.dart",
+      "message": "The import of 'dart:async' is unnecessary because all of the used elements are also provided by the import of 'package:flutter_test/flutter_test.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "unnecessary_null_in_if_null_operators",
+      "file": "lib/features/venue_discovery/domain/venue_discovery.dart",
+      "message": "Unnecessary use of '??' with 'null'. Try removing the '??' operator and the 'null' operand",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "unnecessary_underscores",
+      "file": "lib/features/admin/presentation/screens/admin_health_screen.dart",
+      "message": "Unnecessary use of multiple underscores. Try using '_'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "unnecessary_underscores",
+      "file": "lib/features/admin/presentation/screens/admin_observability_screen.dart",
+      "message": "Unnecessary use of multiple underscores. Try using '_'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "unnecessary_underscores",
+      "file": "lib/features/auth/presentation/widgets/edit_profile_modal.dart",
+      "message": "Unnecessary use of multiple underscores. Try using '_'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_build_context_synchronously",
+      "file": "lib/features/admin/presentation/screens/admin_help_center_screen.dart",
+      "message": "Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_build_context_synchronously",
+      "file": "lib/features/admin/presentation/screens/admin_promotions_screen.dart",
+      "message": "Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_build_context_synchronously",
+      "file": "lib/features/ai/presentation/screens/assistant_screen.dart",
+      "message": "Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_build_context_synchronously",
+      "file": "lib/features/debug/presentation/screens/debug_menu_screen.dart",
+      "message": "Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_build_context_synchronously",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_null_aware_elements",
+      "file": "lib/features/admin/domain/admin_feature_configuration.dart",
+      "message": "Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'",
+      "count": 32
+    },
+    {
+      "severity": "info",
+      "code": "use_null_aware_elements",
+      "file": "lib/features/ai/domain/ai_provider.dart",
+      "message": "Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_null_aware_elements",
+      "file": "lib/features/auth/infrastructure/supabase_auth_repository.dart",
+      "message": "Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "use_null_aware_elements",
+      "file": "lib/features/owner_venues/infrastructure/supabase_owner_venue_repository.dart",
+      "message": "Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'",
+      "count": 10
+    },
+    {
+      "severity": "info",
+      "code": "use_null_aware_elements",
+      "file": "lib/features/owner_venues/presentation/screens/create_venue_screen.dart",
+      "message": "Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_null_aware_elements",
+      "file": "lib/features/search/presentation/screens/map_screen.dart",
+      "message": "Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "inference_failure_on_collection_literal",
+      "file": "lib/features/ai/domain/dynamic_clarification.dart",
+      "message": "The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "inference_failure_on_collection_literal",
+      "file": "lib/features/ai/presentation/screens/assistant_screen.dart",
+      "message": "The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "inference_failure_on_collection_literal",
+      "file": "lib/features/registration/infrastructure/supabase_module_registration_repository.dart",
+      "message": "The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "inference_failure_on_function_invocation",
+      "file": "lib/features/rewards/infrastructure/supabase_rewards_repository.dart",
+      "message": "The type argument(s) of the function 'rpc' can't be inferred. Use explicit type argument(s) for 'rpc'",
+      "count": 2
+    },
+    {
+      "severity": "warning",
+      "code": "inference_failure_on_function_invocation",
+      "file": "lib/features/venue_discovery/infrastructure/overpass_discovery_service.dart",
+      "message": "The type argument(s) of the function 'post' can't be inferred. Use explicit type argument(s) for 'post'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "inference_failure_on_function_invocation",
+      "file": "lib/features/venue_discovery/infrastructure/supabase_discovery_repository.dart",
+      "message": "The type argument(s) of the function 'rpc' can't be inferred. Use explicit type argument(s) for 'rpc'",
+      "count": 3
+    },
+    {
+      "severity": "warning",
+      "code": "invalid_use_of_protected_member",
+      "file": "lib/features/debug/presentation/screens/debug_menu_screen.dart",
+      "message": "The member 'state' can only be used within instance members of subclasses of 'NotifierBase'",
+      "count": 2
+    },
+    {
+      "severity": "warning",
+      "code": "invalid_use_of_visible_for_testing_member",
+      "file": "lib/features/debug/presentation/screens/debug_menu_screen.dart",
+      "message": "The member 'state' can only be used within 'package:riverpod/src/notifier.dart' or a test",
+      "count": 2
+    },
+    {
+      "severity": "warning",
+      "code": "strict_raw_type",
+      "file": "lib/features/registration/infrastructure/supabase_module_registration_repository.dart",
+      "message": "The generic type 'Map<dynamic, dynamic>' should have explicit type arguments but doesn't. Use explicit type arguments for 'Map<dynamic, dynamic>'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "strict_raw_type",
+      "file": "lib/features/venue_discovery/domain/venue_discovery.dart",
+      "message": "The generic type 'Map<dynamic, dynamic>' should have explicit type arguments but doesn't. Use explicit type arguments for 'Map<dynamic, dynamic>'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "strict_raw_type",
+      "file": "lib/features/venues/domain/room_inventory.dart",
+      "message": "The generic type 'Map<dynamic, dynamic>' should have explicit type arguments but doesn't. Use explicit type arguments for 'Map<dynamic, dynamic>'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unnecessary_cast",
+      "file": "lib/features/booking/domain/booking.dart",
+      "message": "Unnecessary cast. Try removing the cast",
+      "count": 2
+    },
+    {
+      "severity": "warning",
+      "code": "unnecessary_null_comparison",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "The operand can't be 'null', so the condition is always 'false'. Try removing the condition, an enclosing condition, or the whole conditional statement",
+      "count": 2
+    },
+    {
+      "severity": "warning",
+      "code": "unused_element",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "The declaration '_visibleHomeSections' isn't referenced. Try removing the declaration of '_visibleHomeSections'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_element",
+      "file": "lib/features/settings/presentation/screens/settings_screen.dart",
+      "message": "The declaration '_showPalettePicker' isn't referenced. Try removing the declaration of '_showPalettePicker'",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Unused import: '../../domain/bookmyspace_module.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "lib/features/owner_bookings/presentation/screens/owner_bookings_screen.dart",
+      "message": "Unused import: '../../../venues/domain/venue.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/owner_bookings/owner_bookings_screen_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/owner_bookings/presentation/screens/owner_bookings_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_local_variable",
+      "file": "lib/features/owner_bookings/presentation/screens/create_offline_booking_screen.dart",
+      "message": "The value of the local variable 'theme' isn't used. Try removing the variable or using it",
+      "count": 1
+    }
+  ]
+}

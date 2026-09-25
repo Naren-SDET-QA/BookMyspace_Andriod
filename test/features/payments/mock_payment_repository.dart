@@ -6,6 +6,12 @@ import 'package:bookmyspace/features/payments/domain/payment_repository.dart';
 
 /// In-memory payment repository for tests and widget tests.
 class MockPaymentRepository implements PaymentRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   MockPaymentRepository();
 
   bool failCreateOrder = false;
@@ -88,6 +94,12 @@ class MockPaymentRepository implements PaymentRepository {
 /// A checkout service that records the opened order and returns a fixed
 /// outcome, so payment widget tests never touch the native SDK.
 class FakeCheckoutService implements CheckoutService {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   FakeCheckoutService([this.result = CheckoutResult.paid]);
 
   CheckoutResult result;

@@ -138,6 +138,12 @@ AppException mapError(Object error) {
       code: 'timeout',
     );
   }
+  if (text.contains('hold expired') || text.contains('hold_expired')) {
+    return const HoldExpiredException(
+      'This hold has expired. Pick the slot again.',
+      code: 'hold_expired',
+    );
+  }
   if (kDebugMode) {
     final compact = error.toString();
     if (compact.length > 160) {

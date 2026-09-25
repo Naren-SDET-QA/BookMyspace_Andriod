@@ -1,4 +1,5 @@
 import 'listing_template.dart';
+import 'sample_venue_images.dart';
 
 /// Sorting options for venue discovery.
 enum VenueSortBy {
@@ -26,6 +27,7 @@ class VenueCategory {
     this.nameTranslations = const {},
     this.descriptionTranslations = const {},
     this.listingConfig,
+    this.metadata = const {},
   });
 
   final String id;
@@ -42,6 +44,9 @@ class VenueCategory {
   final Map<String, String> nameTranslations;
   final Map<String, String> descriptionTranslations;
   final ListingTemplateConfig? listingConfig;
+
+  /// Raw `venue_categories.metadata` (release/v1.0 API).
+  final Map<String, dynamic> metadata;
 
   /// Resolved template: admin overlay on top of slug defaults.
   ListingTemplateConfig get listingTemplate => ListingTemplateConfig.resolve(
@@ -82,6 +87,7 @@ class VenueCategory {
       listingConfig: ListingTemplateConfig.tryParse(
         json['listing_config'] ?? metadata['listing'],
       ),
+      metadata: metadata,
     );
   }
 
@@ -140,6 +146,7 @@ class VenueCategory {
       descriptionTranslations:
           descriptionTranslations ?? this.descriptionTranslations,
       listingConfig: listingConfig ?? this.listingConfig,
+      metadata: metadata,
     );
   }
 }
@@ -272,6 +279,7 @@ class VenueImage {
     this.altText,
     this.isCover = false,
     this.sortOrder = 0,
+    this.mediaKind = 'image',
   });
 
   final String id;
@@ -281,6 +289,11 @@ class VenueImage {
   final bool isCover;
   final int sortOrder;
 
+  /// `image` or `video` (release/v1.0 media manager).
+  final String mediaKind;
+
+  bool get isImage => mediaKind == 'image' || mediaKind.isEmpty;
+
   factory VenueImage.fromJson(Map<String, dynamic> json) {
     return VenueImage(
       id: json['id'] as String? ?? '',
@@ -288,7 +301,8 @@ class VenueImage {
       thumbnailUrl: json['thumbnail_url'] as String?,
       altText: json['alt_text'] as String?,
       isCover: json['is_cover'] as bool? ?? false,
-      sortOrder: json['sort_order'] as int? ?? 0,
+      sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
+      mediaKind: json['media_kind'] as String? ?? 'image',
     );
   }
 
@@ -388,6 +402,13 @@ class Venue {
     this.cancellationPolicy,
     this.originalPrice,
     this.contactPhone = '',
+    this.postalCode = '',
+    this.country = 'IN',
+    this.locationNodeId,
+    this.pricingCurrency = 'INR',
+    this.contactWhatsapp = '',
+    this.listingStatus,
+    this.listingRejectionReason = '',
   });
 
   final String id;
@@ -419,6 +440,53 @@ class Venue {
   final Map<String, dynamic>? cancellationPolicy;
   final double? originalPrice;
   final String contactPhone;
+
+  // release/v1.0 listing fields.
+  final String postalCode;
+  final String country;
+  final String? locationNodeId;
+  final String pricingCurrency;
+  final String contactWhatsapp;
+
+  /// Server listing lifecycle. Null when the column is absent.
+  final String? listingStatus;
+  final String listingRejectionReason;
+
+  String get resolvedListingStatus {
+    if (listingStatus != null && listingStatus!.isNotEmpty) {
+      return listingStatus!;
+    }
+    if (isActive && isVerified) return 'published';
+    if (isActive) return 'pending_approval';
+    return 'draft';
+  }
+
+  /// Owner gallery, falling back to category sample imagery (release/v1.0).
+  List<String> get galleryImageUrls {
+    final ownerImages = images
+        .map((image) => image.url.trim())
+        .where((url) => url.isNotEmpty)
+        .toList();
+    if (ownerImages.isNotEmpty &&
+        ownerImages.every(
+          (url) => !SampleVenueImages.isAndroidGenericFallback(url),
+        )) {
+      return ownerImages;
+    }
+    final placeholders = SampleVenueImages.androidGalleryForCategory(
+      category?.slug ?? '',
+    );
+    return [...ownerImages, ...placeholders];
+  }
+
+  /// Cover image, or deterministic category sample imagery when none exists.
+  String get coverOrSampleImageUrl {
+    final cover = coverImageUrl;
+    if (cover.isNotEmpty && !SampleVenueImages.isAndroidGenericFallback(cover)) {
+      return cover;
+    }
+    return SampleVenueImages.forVenue(id: id, categorySlug: category?.slug ?? '');
+  }
 
   ListingTemplateConfig get listingTemplate => ListingTemplateConfig.resolve(
         slug: category?.slug,
@@ -549,6 +617,15 @@ class Venue {
           (json['list_price'] as num?)?.toDouble(),
       contactPhone:
           json['contact_phone'] as String? ?? json['phone'] as String? ?? '',
+      postalCode:
+          (json['postal_code'] ?? json['pincode']) as String? ?? '',
+      country: json['country'] as String? ?? 'IN',
+      locationNodeId: json['location_node_id'] as String?,
+      pricingCurrency: json['pricing_currency'] as String? ?? 'INR',
+      contactWhatsapp: json['contact_whatsapp'] as String? ?? '',
+      listingStatus: json['listing_status'] as String?,
+      listingRejectionReason:
+          json['listing_rejection_reason'] as String? ?? '',
     );
   }
 
@@ -580,6 +657,13 @@ class Venue {
     Map<String, dynamic>? cancellationPolicy,
     double? originalPrice,
     String? contactPhone,
+    String? postalCode,
+    String? country,
+    String? locationNodeId,
+    String? pricingCurrency,
+    String? contactWhatsapp,
+    String? listingStatus,
+    String? listingRejectionReason,
   }) {
     return Venue(
       id: id ?? this.id,
@@ -609,6 +693,14 @@ class Venue {
       cancellationPolicy: cancellationPolicy ?? this.cancellationPolicy,
       originalPrice: originalPrice ?? this.originalPrice,
       contactPhone: contactPhone ?? this.contactPhone,
+      postalCode: postalCode ?? this.postalCode,
+      country: country ?? this.country,
+      locationNodeId: locationNodeId ?? this.locationNodeId,
+      pricingCurrency: pricingCurrency ?? this.pricingCurrency,
+      contactWhatsapp: contactWhatsapp ?? this.contactWhatsapp,
+      listingStatus: listingStatus ?? this.listingStatus,
+      listingRejectionReason:
+          listingRejectionReason ?? this.listingRejectionReason,
     );
   }
 }
@@ -618,73 +710,183 @@ class VenueSearchQuery {
   const VenueSearchQuery({
     this.query = '',
     this.categorySlug,
+    this.sectionId,
+    this.locationNodeId,
+    this.country,
+    this.state,
+    this.district,
     this.city,
+    this.area,
+    this.postalCode,
+    this.pincode,
+    this.facility,
     this.minPrice,
     this.maxPrice,
     this.sortBy = VenueSortBy.relevance,
     this.latitude,
     this.longitude,
     this.radiusKm,
-    this.pincode,
-    this.facility,
+    this.maxDistanceKm,
+    this.minCapacity,
+    this.date,
+    this.checkIn,
+    this.checkOut,
+    this.roomType,
+    this.minRating,
+    this.gender,
+    this.sharing,
+    this.foodIncluded,
+    this.maxDeposit,
+    this.classType,
+    this.mode,
+    this.amenities = const {},
     this.limit = 24,
     this.offset = 0,
   });
 
   final String query;
   final String? categorySlug;
+  final String? sectionId;
+  final String? locationNodeId;
+  final String? country;
+  final String? state;
+  final String? district;
   final String? city;
+  final String? area;
+  final String? postalCode;
+  final String? pincode;
+  final String? facility;
   final double? minPrice;
   final double? maxPrice;
   final VenueSortBy sortBy;
   final double? latitude;
   final double? longitude;
   final int? radiusKm;
-  final String? pincode;
-  final String? facility;
+  final double? maxDistanceKm;
+  final int? minCapacity;
+  final DateTime? date;
+  final DateTime? checkIn;
+  final DateTime? checkOut;
+  final String? roomType;
+  final double? minRating;
+  final String? gender;
+  final String? sharing;
+  final bool? foodIncluded;
+  final double? maxDeposit;
+  final String? classType;
+  final String? mode;
+  final Set<String> amenities;
   final int limit;
   final int offset;
 
   bool get hasCoordinates => latitude != null && longitude != null;
 
+  /// True when a location (lat/lng + radius) is part of the query.
+  bool get hasLocation => hasCoordinates;
+
   bool get hasFilters =>
       query.isNotEmpty ||
       categorySlug != null ||
+      sectionId != null ||
+      locationNodeId != null ||
+      country != null ||
+      state != null ||
+      district != null ||
       city != null ||
+      area != null ||
+      postalCode != null ||
+      pincode != null ||
+      facility != null ||
       minPrice != null ||
       maxPrice != null ||
+      latitude != null ||
+      longitude != null ||
+      radiusKm != null ||
+      maxDistanceKm != null ||
+      minCapacity != null ||
+      date != null ||
+      checkIn != null ||
+      checkOut != null ||
+      roomType != null ||
+      minRating != null ||
+      gender != null ||
+      sharing != null ||
+      foodIncluded != null ||
+      maxDeposit != null ||
+      classType != null ||
+      mode != null ||
       sortBy != VenueSortBy.relevance ||
-      hasCoordinates ||
-      pincode != null ||
-      facility != null;
+      amenities.isNotEmpty;
 
   VenueSearchQuery copyWith({
     String? query,
     String? Function()? categorySlug,
+    String? Function()? sectionId,
+    String? Function()? locationNodeId,
+    String? Function()? country,
+    String? Function()? state,
+    String? Function()? district,
     String? Function()? city,
+    String? Function()? area,
+    String? Function()? postalCode,
+    String? Function()? pincode,
+    String? Function()? facility,
     double? Function()? minPrice,
     double? Function()? maxPrice,
     VenueSortBy? sortBy,
     double? Function()? latitude,
     double? Function()? longitude,
     int? Function()? radiusKm,
-    String? Function()? pincode,
-    String? Function()? facility,
+    double? Function()? maxDistanceKm,
+    int? Function()? minCapacity,
+    DateTime? Function()? date,
+    DateTime? Function()? checkIn,
+    DateTime? Function()? checkOut,
+    String? Function()? roomType,
+    double? Function()? minRating,
+    String? Function()? gender,
+    String? Function()? sharing,
+    bool? Function()? foodIncluded,
+    double? Function()? maxDeposit,
+    String? Function()? classType,
+    String? Function()? mode,
+    Set<String>? amenities,
     int? limit,
     int? offset,
   }) {
     return VenueSearchQuery(
       query: query ?? this.query,
       categorySlug: categorySlug != null ? categorySlug() : this.categorySlug,
+      sectionId: sectionId != null ? sectionId() : this.sectionId,
+      locationNodeId: locationNodeId != null ? locationNodeId() : this.locationNodeId,
+      country: country != null ? country() : this.country,
+      state: state != null ? state() : this.state,
+      district: district != null ? district() : this.district,
       city: city != null ? city() : this.city,
+      area: area != null ? area() : this.area,
+      postalCode: postalCode != null ? postalCode() : this.postalCode,
+      pincode: pincode != null ? pincode() : this.pincode,
+      facility: facility != null ? facility() : this.facility,
       minPrice: minPrice != null ? minPrice() : this.minPrice,
       maxPrice: maxPrice != null ? maxPrice() : this.maxPrice,
       sortBy: sortBy ?? this.sortBy,
       latitude: latitude != null ? latitude() : this.latitude,
       longitude: longitude != null ? longitude() : this.longitude,
       radiusKm: radiusKm != null ? radiusKm() : this.radiusKm,
-      pincode: pincode != null ? pincode() : this.pincode,
-      facility: facility != null ? facility() : this.facility,
+      maxDistanceKm: maxDistanceKm != null ? maxDistanceKm() : this.maxDistanceKm,
+      minCapacity: minCapacity != null ? minCapacity() : this.minCapacity,
+      date: date != null ? date() : this.date,
+      checkIn: checkIn != null ? checkIn() : this.checkIn,
+      checkOut: checkOut != null ? checkOut() : this.checkOut,
+      roomType: roomType != null ? roomType() : this.roomType,
+      minRating: minRating != null ? minRating() : this.minRating,
+      gender: gender != null ? gender() : this.gender,
+      sharing: sharing != null ? sharing() : this.sharing,
+      foodIncluded: foodIncluded != null ? foodIncluded() : this.foodIncluded,
+      maxDeposit: maxDeposit != null ? maxDeposit() : this.maxDeposit,
+      classType: classType != null ? classType() : this.classType,
+      mode: mode != null ? mode() : this.mode,
+      amenities: amenities ?? this.amenities,
       limit: limit ?? this.limit,
       offset: offset ?? this.offset,
     );
@@ -696,36 +898,81 @@ class VenueSearchQuery {
         other is VenueSearchQuery &&
             query == other.query &&
             categorySlug == other.categorySlug &&
+            sectionId == other.sectionId &&
+            locationNodeId == other.locationNodeId &&
+            country == other.country &&
+            state == other.state &&
+            district == other.district &&
             city == other.city &&
+            area == other.area &&
+            postalCode == other.postalCode &&
+            pincode == other.pincode &&
+            facility == other.facility &&
             minPrice == other.minPrice &&
             maxPrice == other.maxPrice &&
             sortBy == other.sortBy &&
             latitude == other.latitude &&
             longitude == other.longitude &&
             radiusKm == other.radiusKm &&
-            pincode == other.pincode &&
-            facility == other.facility &&
+            maxDistanceKm == other.maxDistanceKm &&
+            minCapacity == other.minCapacity &&
+            date == other.date &&
+            checkIn == other.checkIn &&
+            checkOut == other.checkOut &&
+            roomType == other.roomType &&
+            minRating == other.minRating &&
+            gender == other.gender &&
+            sharing == other.sharing &&
+            foodIncluded == other.foodIncluded &&
+            maxDeposit == other.maxDeposit &&
+            classType == other.classType &&
+            mode == other.mode &&
+            _setEquals(amenities, other.amenities) &&
             limit == other.limit &&
             offset == other.offset;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
         query,
         categorySlug,
+        sectionId,
+        locationNodeId,
+        country,
+        state,
+        district,
         city,
+        area,
+        postalCode,
+        pincode,
+        facility,
         minPrice,
         maxPrice,
         sortBy,
         latitude,
         longitude,
         radiusKm,
-        pincode,
-        facility,
+        maxDistanceKm,
+        minCapacity,
+        date,
+        checkIn,
+        checkOut,
+        roomType,
+        minRating,
+        gender,
+        sharing,
+        foodIncluded,
+        maxDeposit,
+        classType,
+        mode,
+        Object.hashAllUnordered(amenities),
         limit,
         offset,
-      );
+      ]);
 }
+
+bool _setEquals(Set<String> a, Set<String> b) =>
+    a.length == b.length && a.containsAll(b);
 
 /// Masks a venue's direct contact number for display before the customer has
 /// a booking the owner accepted (reference parity with the Android privacy

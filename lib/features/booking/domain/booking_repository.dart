@@ -40,6 +40,9 @@ abstract interface class BookingRepository {
 
   /// Compatibility wrapper for older callers. New rows are created atomically
   /// by [acquireHold]/[requestBooking]; this method must never insert a row.
+  ///
+  /// [metadata] (e.g. guests, sharing option, check-out) is stored on the
+  /// booking row's `metadata` jsonb column.
   Future<Booking> createBooking({
     required BookingHold hold,
     required String venueId,
@@ -48,6 +51,7 @@ abstract interface class BookingRepository {
     required double amount,
     required double taxAmount,
     required double totalAmount,
+    Map<String, dynamic> metadata = const {},
   });
 
   /// Accepts a request through the server-side owner authorization gate.
@@ -96,4 +100,17 @@ abstract interface class BookingRepository {
 
   /// Validates and marks a booking as checked-in / completed using QR code or booking reference.
   Future<Booking> checkInBooking(String qrOrRef);
+  /// Applies promo [code] to [bookingId] (server-validated: expiry,
+  /// minimum amount, usage limits, discount cap — the discount is
+  /// always computed on the server, never on the client). [bookingId]
+  /// must belong to the signed-in user and still be `pending`.
+  /// Returns the booking with its updated `discountAmount`/
+  /// `totalAmount`. Calling again with the same code is a no-op;
+  /// calling with a different code replaces the prior one.
+  Future<Booking> applyCoupon({required String bookingId, required String code});
+
+  /// Clears any coupon applied to [bookingId], restoring the
+  /// undiscounted total. [bookingId] must belong to the signed-in user
+  /// and still be `pending`.
+  Future<Booking> removeCoupon(String bookingId);
 }

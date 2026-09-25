@@ -2,11 +2,33 @@
 enum CheckoutResult {
   paid,
   failed,
-  cancelled;
+
+  /// The user closed the checkout without completing a payment.
+  cancelled,
+
+  /// Checkout did not reach a terminal provider callback before its timeout.
+  timedOut;
 
   bool get isPaid => this == CheckoutResult.paid;
   bool get isFailed => this == CheckoutResult.failed;
   bool get isCancelled => this == CheckoutResult.cancelled;
+  bool get isTimedOut => this == CheckoutResult.timedOut;
+}
+
+/// Provider response captured from a successful checkout.
+///
+/// This is diagnostic/hand-off metadata only. Server-side webhook processing
+/// remains authoritative for payment confirmation.
+class CheckoutSuccessDetails {
+  const CheckoutSuccessDetails({
+    required this.paymentId,
+    required this.orderId,
+    required this.signature,
+  });
+
+  final String paymentId;
+  final String orderId;
+  final String signature;
 }
 
 /// Detailed response from the native Razorpay SDK or Web checkout.
@@ -34,7 +56,9 @@ class CheckoutResponse {
 /// Web uses Razorpay Checkout.js in the browser. The booking/payment
 /// state machine above this interface is shared.
 abstract interface class CheckoutService {
-  /// Opens the checkout flow with the given Razorpay order parameters.
+  CheckoutSuccessDetails? get lastSuccessDetails;
+
+  /// Opens the payment UI for [orderId] and waits for the terminal outcome.
   ///
   /// [amount] is the server-authoritative order amount in major units
   /// (INR rupees). Implementations convert to paise for Razorpay.

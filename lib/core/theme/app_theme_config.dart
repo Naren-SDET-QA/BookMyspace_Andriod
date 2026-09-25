@@ -178,6 +178,12 @@ class AppThemeConfig {
   AppThemeVariant variantFor(Brightness brightness) =>
       brightness == Brightness.dark ? dark : light;
 
+  /// Same config with [primary] as the interactive colour in both modes.
+  AppThemeConfig withPrimary(Color primary) => copyWith(
+        light: light.copyWith(primary: primary),
+        dark: dark.copyWith(primary: primary),
+      );
+
   AppThemeConfig copyWith({
     AppThemeVariant? light,
     AppThemeVariant? dark,

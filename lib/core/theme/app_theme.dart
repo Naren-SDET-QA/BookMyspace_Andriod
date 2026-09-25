@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 
 import 'app_theme_config.dart';
 
+import 'theme_tokens.dart';
+
 /// Centralised Material 3 theme for BookMySpace.
 ///
-/// Supports light and dark mode with a warm, trustworthy brand palette.
+/// Supports light and dark mode using the native BookMySpace visual language.
 class AppTheme {
   AppTheme._();
 
@@ -70,6 +72,18 @@ class AppTheme {
 
   static ThemeData get dark =>
       fromConfig(AppThemeConfig.defaults, Brightness.dark);
+
+  /// Theme seeded from a single primary colour (release/v1.0 API: admin
+  /// `primary_color` setting and the user palette picker). Everything else
+  /// comes from the configurable design system.
+  static ThemeData lightFor(Color seed) => fromConfig(
+        AppThemeConfig.defaults.withPrimary(seed),
+        Brightness.light,
+      );
+  static ThemeData darkFor(Color seed) => fromConfig(
+        AppThemeConfig.defaults.withPrimary(seed),
+        Brightness.dark,
+      );
 
   /// Builds the existing Material 3 design system from safe, server-backed
   /// tokens. Missing or malformed values are normalized by [AppThemeConfig].

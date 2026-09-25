@@ -69,6 +69,12 @@ Future<String> _redirectTo(
 }
 
 class _RouteTestNotificationRepository implements NotificationRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   @override
   Future<List<notification_domain.Notification>> myNotifications() async =>
       const [];

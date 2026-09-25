@@ -57,8 +57,9 @@ class _InteractiveTiltCardState extends State<InteractiveTiltCard> {
   DateTime? _lastTapTime;
 
   /// Public pointer value for child sheen overlays (TiltCardSheen etc.).
-  final ValueNotifier<Offset> pointerNotifier =
-      ValueNotifier<Offset>(Offset.zero);
+  final ValueNotifier<Offset> pointerNotifier = ValueNotifier<Offset>(
+    Offset.zero,
+  );
 
   /// Whether the pointer is currently inside the card bounds.
   bool get isHovering => _hovering;
@@ -98,10 +99,12 @@ class _InteractiveTiltCardState extends State<InteractiveTiltCard> {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final enabled = widget.enabled && !reduceMotion;
 
-    final rotateY =
-        enabled && _hovering ? _pointer.dx * widget.maxTiltRadians : 0.0;
-    final rotateX =
-        enabled && _hovering ? -_pointer.dy * widget.maxTiltRadians : 0.0;
+    final rotateY = enabled && _hovering
+        ? _pointer.dx * widget.maxTiltRadians
+        : 0.0;
+    final rotateX = enabled && _hovering
+        ? -_pointer.dy * widget.maxTiltRadians
+        : 0.0;
     final scale = _pressed
         ? widget.pressScale
         : (_hovering && enabled ? widget.hoverScale : 1.0);
@@ -213,8 +216,11 @@ class _InteractiveTiltCardState extends State<InteractiveTiltCard> {
 /// on top of a card to reinforce the "glass catching light" feel on hover.
 /// Purely decorative; safe to omit on low-end devices.
 class TiltCardSheen extends StatelessWidget {
-  const TiltCardSheen(
-      {super.key, required this.pointer, required this.visible});
+  const TiltCardSheen({
+    super.key,
+    required this.pointer,
+    required this.visible,
+  });
 
   final Offset pointer; // -1..1
   final bool visible;

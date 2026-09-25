@@ -8,6 +8,10 @@
 		<string>applinks:bookmyspace.com</string>
 	</array>
 	<!-- Apple Push Notification service (APNs) Environment -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 	<key>aps-environment</key>
 	<string>development</string>
 </dict>

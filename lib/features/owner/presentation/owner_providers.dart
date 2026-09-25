@@ -7,6 +7,8 @@ import '../../owner_venues/presentation/providers/owner_venue_providers.dart';
 import '../../venues/domain/venue.dart';
 import '../domain/owner.dart';
 import '../infrastructure/supabase_owner_repository.dart';
+import '../domain/registration_field_config.dart';
+import '../infrastructure/supabase_registration_config_repository.dart';
 
 /// Owner repository instance.
 final ownerRepositoryProvider = Provider<OwnerRepository>((ref) {
@@ -20,6 +22,16 @@ final currentOwnerProvider = FutureProvider<Owner?>((ref) {
   ref.watch(currentUserProvider);
   return ref.watch(ownerRepositoryProvider).currentOwner();
 });
+
+final registrationConfigRepositoryProvider =
+    Provider<SupabaseRegistrationConfigRepository>((ref) {
+      return SupabaseRegistrationConfigRepository(ref.watch(supabaseProvider));
+    });
+
+final ownerRegistrationFieldsProvider =
+    FutureProvider<List<RegistrationFieldConfig>>((ref) {
+      return ref.watch(registrationConfigRepositoryProvider).ownerFields();
+    });
 
 /// Sign in with email/password for owners.
 final ownerSignInProvider = FutureProvider.autoDispose

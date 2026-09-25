@@ -1,9 +1,7 @@
 import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     hide AuthState, AuthUser;
-
 import '../../../core/config/app_config.dart';
 import '../../notifications/presentation/notification_providers.dart';
 import '../domain/auth_repository.dart';
@@ -12,6 +10,10 @@ import '../domain/auth_user.dart';
 import '../domain/phone_otp_provider.dart';
 import '../infrastructure/development_phone_otp_provider.dart';
 import '../infrastructure/supabase_phone_otp_provider.dart';
+import '../../../core/notifications/onesignal_push_service.dart';
+import '../domain/auth_configuration.dart';
+import '../infrastructure/supabase_auth_configuration_repository.dart';
+import '../infrastructure/supabase_auth_repository.dart';
 
 /// Supabase client provider.
 final supabaseProvider = Provider<SupabaseClient>((ref) {
@@ -182,4 +184,45 @@ final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   return AuthNotifier(repo, ref);
+});
+
+/// Initialises the Supabase client. Call once before runApp().
+Future<void> initSupabase() async {
+  await Supabase.initialize(
+    url: AppConfig.supabaseUrl,
+    publishableKey: AppConfig.supabaseAnonKey,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,
+      detectSessionInUri: true,
+    ),
+  );
+}
+
+/// Optionally establishes a real DEV Auth session for browser regression runs.
+/// Credentials are supplied at launch and are never available in production.
+Future<void> signInDevelopmentTestUser() async {
+  if (!AppConfig.isDevelopment ||
+      AppConfig.devTestEmail.isEmpty ||
+      AppConfig.devTestPassword.isEmpty) {
+    return;
+  }
+  final client = Supabase.instance.client;
+  if (client.auth.currentSession != null) return;
+  await client.auth.signInWithPassword(
+    email: AppConfig.devTestEmail,
+    password: AppConfig.devTestPassword,
+  );
+}
+
+final authConfigurationRepositoryProvider = Provider((ref) {
+  return SupabaseAuthConfigurationRepository(ref.watch(supabaseProvider));
+});
+
+final authConfigurationProvider = FutureProvider<AuthConfiguration>((ref) {
+  return ref.watch(authConfigurationRepositoryProvider).load();
+});
+
+/// Emits when a recovery email deep-link establishes a session.
+final passwordRecoveryProvider = StreamProvider<bool>((ref) {
+  return ref.watch(authRepositoryProvider).passwordRecoveryState();
 });

@@ -699,11 +699,13 @@ class _StatusBadge extends StatelessWidget {
     final (label, color) = switch (status) {
       BookingStatus.held => ('Held', Colors.orange),
       BookingStatus.pending => ('Pending', Colors.orange),
-      BookingStatus.awaitingOwnerApproval => (
+      BookingStatus.awaitingOwnerApproval ||
+      BookingStatus.pendingOwnerApproval => (
           'Awaiting owner',
           AppTheme.violet,
         ),
-      BookingStatus.ownerRejected => ('Declined', Colors.red),
+      BookingStatus.ownerRejected ||
+      BookingStatus.rejected => ('Declined', Colors.red),
       BookingStatus.approvalExpired => ('Request expired', Colors.red),
       BookingStatus.confirmed => ('Confirmed', Colors.green),
       BookingStatus.completed => ('Completed', Colors.blue),

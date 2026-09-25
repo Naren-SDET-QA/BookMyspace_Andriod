@@ -1,11 +1,13 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
-
 import '../../../core/errors/app_exceptions.dart' as errors;
 import '../domain/auth_repository.dart';
 import '../domain/auth_user.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
+import '../../../core/config/app_config.dart';
+import '../../../core/errors/app_exceptions.dart' show AppException, mapError;
+import '../domain/auth_user.dart' as domain;
 
 /// Supabase-backed implementation of the application authentication contract.
 ///
@@ -276,4 +278,165 @@ class SupabaseAuthRepository implements AuthRepository {
       'or --dart-define=SUPABASE_ANON_KEY=<publishable-key>.',
     );
   }
+
+  // --- merged from release/v1.0 ---
+  @override
+  Future<domain.AuthUser> signInWithPassword(
+    String email,
+    String password,
+  ) async {
+    try {
+      final response = await _client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      final user = response.user;
+      if (user == null) throw const AppAuthException('Login failed.');
+      return _toUser(user);
+    } catch (error) {
+      throw mapError(error);
+    }
+  }
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      await _client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: kIsWeb
+            ? AppConfig.passwordResetRedirectUri
+            : AppConfig.nativeAuthRedirectUri,
+      );
+    } on AuthException catch (e) {
+      throw AppAuthException(e.message);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (e) {
+      throw AppAuthException(e.message);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Stream<bool> passwordRecoveryState() {
+    return _client.auth.onAuthStateChange
+        .where(
+          (data) =>
+              data.event == AuthChangeEvent.passwordRecovery ||
+              data.event == AuthChangeEvent.signedOut,
+        )
+        .map((data) => data.event == AuthChangeEvent.passwordRecovery);
+  }
+
+  @override
+  Future<domain.AuthUser> signInWithApple() async {
+    try {
+      await _client.auth.signInWithOAuth(
+        OAuthProvider.apple,
+        redirectTo: kIsWeb ? _webRedirect() : AppConfig.nativeAuthRedirectUri,
+      );
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw const AppAuthException('Apple sign-in was not completed.');
+      }
+      return _toUser(user);
+    } on AuthException catch (e) {
+      throw AppAuthException(e.message);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  domain.AuthUser _toUser(User u) {
+    return domain.AuthUser(
+      id: u.id,
+      email: u.email ?? '',
+      phone: u.phone ?? '',
+      fullName: (u.userMetadata?['full_name'] ?? '') as String,
+      avatarUrl: (u.userMetadata?['avatar_url'] ?? '') as String,
+    );
+  }
+
+  Future<domain.AuthUser> _loadAuthoritativeUser(User user) async {
+    var profile = <String, dynamic>{};
+    var role = domain.UserRole.customer;
+    var verification = user.emailConfirmedAt != null
+        ? domain.VerificationStatus.approved
+        : domain.VerificationStatus.pending;
+    try {
+      final profileRow = await _client
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+      profile = profileRow ?? profile;
+      final roleRows = await _client
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .isFilter('revoked_at', null);
+      final roles = roleRows.map((row) => row['role'] as String? ?? '').toSet();
+      if (roles.contains('administrator') ||
+          roles.contains('super_administrator')) {
+        role = domain.UserRole.admin;
+        verification = domain.VerificationStatus.approved;
+      } else if (roles.any(
+        (value) =>
+            value == 'venue_owner' ||
+            value == 'institute_owner' ||
+            value == 'event_organizer',
+      )) {
+        role = domain.UserRole.venueOwner;
+        final owner = await _client
+            .from('owner_profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (owner != null) {
+          final organization = await _client
+              .from('organizations')
+              .select('business_verification')
+              .eq('owner_user_id', owner['id'] as Object)
+              .maybeSingle();
+          verification = domain.VerificationStatus.values.firstWhere(
+            (status) => status.name == organization?['business_verification'],
+            orElse: () => domain.VerificationStatus.pending,
+          );
+        }
+      }
+    } catch (_) {
+      // Keep the authenticated user usable if optional profile hydration is
+      // unavailable; protected screens still require the authoritative role.
+    }
+    return domain.AuthUser(
+      id: user.id,
+      email: user.email ?? '',
+      phone: user.phone ?? '',
+      fullName:
+          profile['full_name'] as String? ??
+          (user.userMetadata?['full_name'] as String? ?? ''),
+      avatarUrl:
+          profile['avatar_url'] as String? ??
+          (user.userMetadata?['avatar_url'] as String? ?? ''),
+      role: role,
+      verificationStatus: verification,
+    );
+  }
+
+  String _webRedirect() {
+    return AppConfig.webAuthRedirectUri;
+  }
+}
+
+/// A Supabase authentication error surfaced to the presentation layer.
+class AppAuthException extends AppException {
+  const AppAuthException(super.message, {super.code});
 }

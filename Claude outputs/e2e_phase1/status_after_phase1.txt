@@ -1,0 +1,32 @@
+ M analysis_options.yaml
+ D ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+ M lib/core/router/app_router.dart
+ M lib/features/auth/presentation/screens/login_screen.dart
+ M lib/features/auth/presentation/screens/profile_screen.dart
+ M lib/features/booking/presentation/screens/booking_screen.dart
+ M lib/features/booking/presentation/screens/my_bookings_screen.dart
+ M lib/features/booking/presentation/widgets/section_customer_details_form.dart
+ M lib/features/payments/presentation/screens/payment_screen.dart
+ M lib/features/search/presentation/screens/search_screen.dart
+ M lib/features/venues/presentation/screens/venue_details_screen.dart
+ M lib/features/venues/presentation/widgets/venue_card.dart
+ M pubspec.lock
+?? .cursor/
+?? "Claude outputs/"
+?? RUNTIME_VERIFICATION_REPORT.md
+?? analyze.txt
+?? dart_test.yaml
+?? e2e-playwright/
+?? integration_test/e2e_test.dart
+?? integration_test/flows/
+?? integration_test/robots/
+?? integration_test/support/
+?? integration_test/web_mock_main.dart
+?? lib/core/widgets/animated_category_chip.dart
+?? lib/core/widgets/test_id.dart
+?? node_modules/
+?? run_step14_verify.sh
+?? supabase/migrations/20260921180000_education_configurable_modules.sql
+?? test-results-baseline.txt
+?? test-results.txt
+?? test/tool/e2e_ids_contract_test.dart

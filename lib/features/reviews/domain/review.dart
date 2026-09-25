@@ -13,6 +13,8 @@ class Review {
     this.updatedAt,
     this.userName,
     this.ownerReply,
+    this.avatarUrl = '',
+    this.tags = const [],
   });
 
   final String id;
@@ -27,6 +29,8 @@ class Review {
   final DateTime? updatedAt;
   final String? userName;
   final String? ownerReply;
+  final String avatarUrl;
+  final List<String> tags;
 
   factory Review.fromJson(Map<String, dynamic> json) => Review(
         id: json['id'] as String? ?? '',
@@ -46,6 +50,14 @@ class Review {
         userName:
             json['user_name'] as String? ?? json['reviewer_name'] as String?,
         ownerReply: json['owner_reply'] as String?,
+        avatarUrl: json['avatar_url'] as String? ?? '',
+        tags: json['tags'] is List
+            ? (json['tags'] as List).map((tag) => tag.toString()).toList()
+            : (json['tags'] as String? ?? '')
+                .split(',')
+                .map((tag) => tag.trim())
+                .where((tag) => tag.isNotEmpty)
+                .toList(),
       );
 
   Review copyWith({
@@ -65,6 +77,8 @@ class Review {
       updatedAt: updatedAt,
       userName: userName ?? this.userName,
       ownerReply: ownerReply ?? this.ownerReply,
+      avatarUrl: avatarUrl,
+      tags: tags,
     );
   }
 
@@ -76,6 +90,12 @@ class Review {
         'title': title,
         'body': body,
       };
+
+  /// Matches Android's star-level review filter (1–5 stars).
+  static List<Review> filterByStar(List<Review> reviews, int? star) {
+    if (star == null) return reviews;
+    return reviews.where((review) => review.rating == star).toList();
+  }
 }
 
 /// Contract for review repository.
@@ -93,6 +113,7 @@ abstract interface class ReviewRepository {
     String? title,
     String? body,
     String? bookingId,
+    List<String> tags = const [],
   });
 
   /// Update an existing review.

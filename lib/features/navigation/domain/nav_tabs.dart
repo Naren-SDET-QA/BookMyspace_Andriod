@@ -29,7 +29,12 @@ enum NavTab {
     6,
     Icons.auto_awesome_outlined,
     Icons.auto_awesome_rounded,
-  );
+  ),
+  // Destinations from the release/v1.0 bar. They ship disabled so the
+  // default bar is unchanged; an admin can switch them on.
+  map('map', 7, Icons.map_outlined, Icons.map_rounded),
+  saved('saved', 8, Icons.bookmark_outline_rounded, Icons.bookmark_rounded),
+  chat('chat', 9, Icons.chat_bubble_outline_rounded, Icons.chat_rounded);
 
   const NavTab(this.id, this.branch, this.icon, this.selectedIcon);
 
@@ -151,6 +156,9 @@ class NavTabsConfig {
     NavTabConfig(tab: NavTab.courses, order: 50),
     NavTabConfig(tab: NavTab.profile, order: 60),
     NavTabConfig(tab: NavTab.assistant, order: 70, enabled: false),
+    NavTabConfig(tab: NavTab.map, order: 80, enabled: false),
+    NavTabConfig(tab: NavTab.saved, order: 90, enabled: false),
+    NavTabConfig(tab: NavTab.chat, order: 100, enabled: false),
   ]);
 
   factory NavTabsConfig.fromJson(Object? json) {

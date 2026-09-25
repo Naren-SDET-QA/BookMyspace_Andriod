@@ -1,0 +1,10 @@
+# Tags used by the E2E suites in integration_test/ (see docs/E2E_TESTING.md).
+tags:
+  smoke:
+  critical:
+  auth:
+  booking:
+  owner:
+  negative:
+  payment:
+  admin:

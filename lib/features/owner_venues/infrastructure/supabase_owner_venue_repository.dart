@@ -1,11 +1,11 @@
 import 'dart:typed_data';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/errors/app_exceptions.dart' as app_errors;
 import '../../booking/domain/booking.dart';
 import '../../venues/domain/venue.dart';
 import '../domain/owner_venue_repository.dart';
+import '../../../core/errors/app_exceptions.dart' show mapError;
+import '../domain/owner_listing_draft.dart';
 
 /// Supabase implementation of [OwnerVenueRepository].
 ///
@@ -646,5 +646,264 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
     }
     if (!trimmed.startsWith('http')) return trimmed;
     return null;
+  }
+
+  // --- merged from release/v1.0 ---
+  static const _hydrateSelect = '''
+    *,
+    venue_categories (id, slug, name, icon),
+    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+    venue_facilities (facility, is_available)
+  ''';
+
+  @override
+  Future<void> setLocationNode(String venueId, String locationNodeId) async {
+    try {
+      await _client
+          .from('venues')
+          .update({'location_node_id': locationNodeId})
+          .eq('id', venueId);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<Venue> saveListing({
+    String? venueId,
+    required OwnerListingDraft draft,
+  }) async {
+    try {
+      draft.validate();
+      Venue venue;
+      if (venueId == null) {
+        venue = draft.locationNodeId == null
+            ? await createVenue(
+                name: draft.name,
+                categoryId: draft.categoryId,
+                description: draft.description,
+                city: draft.city,
+                state: draft.state,
+                latitude: draft.latitude,
+                longitude: draft.longitude,
+                capacity: draft.capacity,
+                pricingBaseAmount: draft.pricingBaseAmount,
+              )
+            : await _createVenueWithLocation(draft);
+        if (!draft.publish) {
+          venue = await updateVenue(venueId: venue.id, isActive: false);
+        }
+      } else {
+        venue = draft.locationNodeId == null
+            ? await updateVenue(
+                venueId: venueId,
+                name: draft.name,
+                categoryId: draft.categoryId,
+                description: draft.description,
+                city: draft.city,
+                state: draft.state,
+                latitude: draft.latitude,
+                longitude: draft.longitude,
+                capacity: draft.capacity,
+                pricingBaseAmount: draft.pricingBaseAmount,
+                isActive: draft.publish,
+              )
+            : await _updateVenueWithLocation(venueId, draft);
+      }
+
+      await _patchAddress(venue.id, draft.addressLine1);
+      final urls = <String>[];
+      for (final photo in draft.photos) {
+        if (photo.needsUpload) {
+          urls.add(
+            await uploadPhoto(
+              venueId: venue.id,
+              bytes: photo.bytes!,
+              fileName: photo.fileName,
+              contentType: photo.contentType,
+            ),
+          );
+        } else if (photo.remoteUrl.trim().isNotEmpty) {
+          urls.add(photo.remoteUrl.trim());
+        }
+      }
+      await replaceImages(venue.id, urls);
+      await replaceFacilities(venue.id, draft.facilities);
+      final hydrated = await _hydrateByIds([venue.id]);
+      return hydrated.isNotEmpty ? hydrated.first : venue;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  Future<Venue> _createVenueWithLocation(OwnerListingDraft draft) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'create_owner_venue_with_location',
+      params: {
+        'p_name': draft.name,
+        'p_category_id': draft.categoryId,
+        'p_description': draft.description,
+        'p_city': draft.city,
+        'p_state': draft.state,
+        'p_latitude': draft.latitude,
+        'p_longitude': draft.longitude,
+        'p_capacity': draft.capacity,
+        'p_pricing_base_amount': draft.pricingBaseAmount,
+        'p_location_node_id': draft.locationNodeId,
+      },
+    );
+    return Venue.fromJson(row);
+  }
+
+  Future<Venue> _updateVenueWithLocation(
+    String venueId,
+    OwnerListingDraft draft,
+  ) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_owner_venue_with_location',
+      params: {
+        'p_venue_id': venueId,
+        'p_name': draft.name,
+        'p_category_id': draft.categoryId,
+        'p_description': draft.description,
+        'p_city': draft.city,
+        'p_state': draft.state,
+        'p_latitude': draft.latitude,
+        'p_longitude': draft.longitude,
+        'p_capacity': draft.capacity,
+        'p_pricing_base_amount': draft.pricingBaseAmount,
+        'p_is_active': draft.publish,
+        'p_location_node_id': draft.locationNodeId,
+      },
+    );
+    return Venue.fromJson(row);
+  }
+
+  @override
+  Future<Venue> setPublished(String venueId, bool published) async {
+    try {
+      await updateVenue(venueId: venueId, isActive: published);
+      final hydrated = await _hydrateByIds([venueId]);
+      if (hydrated.isEmpty) {
+        throw StateError('Venue not found after publish update.');
+      }
+      return hydrated.first;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<String> uploadPhoto({
+    required String venueId,
+    required List<int> bytes,
+    required String fileName,
+    String contentType = 'image/jpeg',
+  }) async {
+    try {
+      final uid = _client.auth.currentUser?.id;
+      if (uid == null) {
+        throw StateError('Sign in as the owner to upload photos.');
+      }
+      if (!OwnerListingPhoto.allowedTypes.contains(contentType)) {
+        throw StateError('Use JPG, PNG or WEBP photos.');
+      }
+      if (bytes.length > OwnerListingPhoto.maxBytes) {
+        throw StateError('Each photo must be 5 MB or smaller.');
+      }
+      final rawName = fileName.trim().isEmpty ? 'photo.jpg' : fileName.trim();
+      var safeName = rawName
+          .replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')
+          .toLowerCase();
+      if (safeName.isEmpty || safeName == '_') {
+        safeName = 'photo.jpg';
+      }
+      final path =
+          '$uid/$venueId/${DateTime.now().microsecondsSinceEpoch}_$safeName';
+      await _client.storage
+          .from(OwnerListingDraft.storageBucket)
+          .uploadBinary(
+            path,
+            bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
+      return _client.storage
+          .from(OwnerListingDraft.storageBucket)
+          .getPublicUrl(path);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> replaceImages(String venueId, List<String> imageUrls) async {
+    try {
+      await _client.from('venue_images').delete().eq('venue_id', venueId);
+      final urls = imageUrls
+          .map((url) => url.trim())
+          .where((url) => url.isNotEmpty)
+          .take(OwnerListingDraft.maxPhotos)
+          .toList();
+      if (urls.isEmpty) return;
+      await _client.from('venue_images').insert([
+        for (var i = 0; i < urls.length; i++)
+          {
+            'venue_id': venueId,
+            'url': urls[i],
+            'alt_text': 'Photo ${i + 1}',
+            'is_cover': i == 0,
+            'sort_order': i,
+          },
+      ]);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> replaceFacilities(
+    String venueId,
+    List<String> facilities,
+  ) async {
+    try {
+      await _client.from('venue_facilities').delete().eq('venue_id', venueId);
+      final unique = <String>{};
+      for (final raw in facilities) {
+        final name = raw.trim();
+        if (name.isNotEmpty) unique.add(name);
+      }
+      if (unique.isEmpty) return;
+      await _client.from('venue_facilities').insert([
+        for (final facility in unique)
+          {'venue_id': venueId, 'facility': facility, 'is_available': true},
+      ]);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  Future<void> _patchAddress(String venueId, String addressLine1) async {
+    final address = addressLine1.trim();
+    if (address.isEmpty) return;
+    await _client
+        .from('venues')
+        .update({'address_line1': address})
+        .eq('id', venueId);
+  }
+
+  Future<List<Venue>> _hydrateByIds(List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    final rows = await _client
+        .from('venues')
+        .select(_hydrateSelect)
+        .inFilter('id', ids);
+    final byId = <String, Venue>{
+      for (final row in rows)
+        if (row['id'] is String) row['id'] as String: Venue.fromJson(row),
+    };
+    return [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!,
+    ];
   }
 }

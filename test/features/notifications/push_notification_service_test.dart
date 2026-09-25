@@ -11,6 +11,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// Records what the service hands to the backend so the fan-out behaviour can
 /// be asserted without a Supabase client.
 class _FakeNotificationRepository implements NotificationRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   final List<app_notif.Notification> added = <app_notif.Notification>[];
   final List<({String token, String platform})> registered = [];
   final List<String> unregistered = [];

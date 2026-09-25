@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../errors/app_exceptions.dart';
 import '../localization/app_localizations.dart';
+import 'test_id.dart';
 
 /// Full-screen error state with a retry button.
 class ErrorView extends StatelessWidget {
@@ -33,14 +34,17 @@ class ErrorView extends StatelessWidget {
               ),
               if (onRetry != null) ...[
                 const SizedBox(height: 24),
-                FilledButton.tonalIcon(
-                  onPressed: onRetry,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 48),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                TestId(
+                  E2eIds.errorRetry,
+                  child: FilledButton.tonalIcon(
+                    onPressed: onRetry,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(l10n.tryAgain),
                   ),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: Text(l10n.tryAgain),
                 ),
               ],
             ],

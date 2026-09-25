@@ -74,15 +74,14 @@ class AnalyticsEvent {
   final DateTime? createdAt;
 
   factory AnalyticsEvent.fromJson(Map<String, dynamic> json) => AnalyticsEvent(
-        id: json['id'] as String? ?? '',
-        userId: json['user_id'] as String?,
-        eventType:
-            AnalyticsEventType.fromDb(json['event_type'] as String? ?? ''),
-        properties: json['properties'] is Map
-            ? Map<String, dynamic>.from(json['properties'] as Map)
-            : const {},
-        createdAt: json['created_at'] != null
-            ? DateTime.tryParse(json['created_at'] as String? ?? '')
-            : null,
-      );
+    id: json['id'] as String? ?? '',
+    userId: json['user_id'] as String?,
+    eventType: AnalyticsEventType.fromDb(json['event_type'] as String? ?? ''),
+    properties: json['properties'] is Map
+        ? Map<String, dynamic>.from(json['properties'] as Map)
+        : const {},
+    createdAt: json['created_at'] != null
+        ? DateTime.tryParse(json['created_at'] as String? ?? '')
+        : null,
+  );
 }

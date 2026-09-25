@@ -349,6 +349,9 @@ class Course {
     this.faculty = const [],
     this.syllabusPoints = const [],
     this.faqs = const [],
+    this.isDemo = false,
+    this.seats,
+    this.scheduleNotes = '',
   });
 
   final String id;
@@ -378,6 +381,9 @@ class Course {
   final List<CourseFaculty> faculty;
   final List<String> syllabusPoints;
   final List<CourseFaq> faqs;
+  final bool isDemo;
+  final int? seats;
+  final String scheduleNotes;
 
   bool get isFree => feeAmount <= 0;
 
@@ -459,6 +465,9 @@ class Course {
       faculty: faculty,
       syllabusPoints: syllabusPoints,
       faqs: faqs,
+      isDemo: json['is_demo'] as bool? ?? false,
+      seats: (json['seats'] as num?)?.toInt(),
+      scheduleNotes: json['schedule_notes'] as String? ?? '',
     );
   }
 
@@ -498,6 +507,9 @@ class Course {
       faculty: faculty ?? this.faculty,
       syllabusPoints: syllabusPoints,
       faqs: faqs ?? this.faqs,
+      isDemo: isDemo,
+      seats: seats,
+      scheduleNotes: scheduleNotes,
     );
   }
 }

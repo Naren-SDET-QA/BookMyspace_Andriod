@@ -1,6 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/errors/app_exceptions.dart' as app_errors;
 import '../domain/notification.dart';
 import '../domain/notification_repository.dart';
@@ -170,6 +169,29 @@ class SupabaseNotificationRepository implements NotificationRepository {
       }
     } catch (_) {
       // Ignore errors on logout cleanup
+    }
+  }
+
+  // --- merged from release/v1.0 ---
+  @override
+  Future<void> create({
+    required NotificationType type,
+    required String title,
+    required String body,
+    Map<String, dynamic> data = const {},
+  }) async {
+    try {
+      final userId = _userId;
+      if (userId == null) return;
+      await _client.from('notifications').insert({
+        'user_id': userId,
+        'title': title,
+        'body': body,
+        'type': type.dbValue,
+        'data': data,
+      });
+    } catch (e) {
+      throw app_errors.mapError(e);
     }
   }
 }

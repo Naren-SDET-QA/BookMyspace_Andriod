@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exceptions.dart' as errors;
 import '../domain/review.dart';
+import '../domain/review_validation.dart';
 
 /// Supabase-backed [ReviewRepository] against the live `public.reviews` table.
 class SupabaseReviewRepository implements ReviewRepository {
@@ -51,11 +52,13 @@ class SupabaseReviewRepository implements ReviewRepository {
     String? title,
     String? body,
     String? bookingId,
+    List<String> tags = const [],
   }) async {
     final userId = _userId;
     if (userId == null) {
       throw const errors.AuthException('Sign in to write a review.');
     }
+    ReviewValidation.validate(rating: rating, title: title, body: body);
     try {
       final payload = <String, dynamic>{
         'venue_id': venueId,
@@ -63,6 +66,7 @@ class SupabaseReviewRepository implements ReviewRepository {
         'rating': rating,
         'title': title,
         'body': body,
+        if (tags.isNotEmpty) 'tags': tags.join(','),
       };
       if (bookingId != null && bookingId.isNotEmpty) {
         payload['booking_id'] = bookingId;
@@ -82,6 +86,8 @@ class SupabaseReviewRepository implements ReviewRepository {
     String? title,
     String? body,
   }) async {
+    ReviewValidation.ensureSignedIn(_userId);
+    ReviewValidation.validate(rating: rating, title: title, body: body);
     try {
       final update = <String, dynamic>{};
       if (rating != null) update['rating'] = rating;
@@ -102,6 +108,7 @@ class SupabaseReviewRepository implements ReviewRepository {
 
   @override
   Future<void> deleteReview(String reviewId) async {
+    ReviewValidation.ensureSignedIn(_userId);
     try {
       await _client.from('reviews').delete().eq('id', reviewId);
     } catch (e) {

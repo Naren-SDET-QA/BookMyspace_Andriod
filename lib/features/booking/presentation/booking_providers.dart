@@ -4,12 +4,29 @@ import '../../auth/presentation/auth_providers.dart';
 import '../domain/booking.dart';
 import '../domain/booking_repository.dart';
 import '../infrastructure/supabase_booking_repository.dart';
+import '../infrastructure/caching_booking_repository.dart';
+import '../../../core/offline/offline_providers.dart';
+import '../domain/invoice_repository.dart';
+import '../infrastructure/supabase_invoice_repository.dart';
 
 /// Booking repository instance.
 final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
   final client = ref.watch(supabaseProvider);
-  return SupabaseBookingRepository(client);
+  return CachingBookingRepository(
+    SupabaseBookingRepository(client),
+    ref.watch(offlineCacheProvider),
+    cacheScope: ref.watch(currentUserProvider)?.id,
+  );
 });
+
+final invoiceRepositoryProvider = Provider<InvoiceRepository>((ref) {
+  return SupabaseInvoiceRepository(ref.watch(supabaseProvider));
+});
+
+final invoiceArtifactProvider = FutureProvider.autoDispose
+    .family<InvoiceArtifact, String>((ref, bookingId) {
+      return ref.watch(invoiceRepositoryProvider).generate(bookingId);
+    });
 
 /// Availability of the venue's slots for a given (venueId, date) pair.
 final slotAvailabilityProvider = FutureProvider.autoDispose
@@ -20,14 +37,14 @@ final slotAvailabilityProvider = FutureProvider.autoDispose
 });
 
 /// The signed-in user's bookings, newest first.
-///
-/// Unbounded -- kept as-is because existing consumers ([qrPassBookingsProvider]
-/// for QR check-in pass eligibility, and the profile screen) rely on seeing
-/// the complete booking history. New surfaces should prefer
-/// [recentBookingsProvider] (a small fixed preview) or [myBookingsPageProvider]
-/// (paginated) instead of adding another dependency on this unbounded fetch.
-final myBookingsProvider = FutureProvider<List<Booking>>((ref) {
-  return ref.watch(bookingRepositoryProvider).myBookings();
+final myBookingsProvider = FutureProvider<List<Booking>>((ref) async {
+  final bookings = await ref.watch(bookingRepositoryProvider).myBookings();
+  try {
+    await ref.read(bookingReminderSchedulerProvider).sync(bookings);
+  } catch (_) {
+    // Local reminders must never block the bookings list or email outbox.
+  }
+  return bookings;
 });
 
 /// Phase 9XM-3: a small, bounded preview of the signed-in user's most

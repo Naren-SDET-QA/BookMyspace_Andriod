@@ -4,7 +4,7 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ^3.11.4
   flutter: ">=3.19.0"
 
 dependencies:
@@ -13,25 +13,36 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  flutter_riverpod: ^2.5.1
-  riverpod: ^2.5.1
-  go_router: ^14.2.0
-  supabase_flutter: ^2.5.0
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  riverpod: ^2.6.1
+  go_router: ^17.3.0
+  dio: ^5.11.0
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.12.0
+  supabase_flutter: ^2.16.0
   file_picker: 10.3.10
-  cached_network_image: ^3.3.1
+  file_selector: ^1.1.0
+  cached_network_image: ^3.4.1
   google_maps_flutter: ^2.7.0
-  flutter_map: ^7.0.0
-  latlong2: ^0.9.1
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
   geolocator: ^14.0.2
   geocoding: ^5.0.0
   image_picker: ^1.2.3
   intl: ^0.20.2
-  flutter_secure_storage: ^9.0.0
+  flutter_secure_storage: ^10.3.1
   http: ^1.2.2
-  # Promoted from a transitive dependency. Already resolved for every platform,
-  # and Home section videos open in the platform player rather than in-app, so
+  razorpay_flutter: ^1.4.5
+  video_player: ^2.9.2
+  model_viewer_plus: ^1.9.3
+  # Home section videos open in the platform player rather than in-app, so
   # no video decoding happens while the feed scrolls.
-  url_launcher: ^6.3.0
+  url_launcher: ^6.3.1
+  flutter_local_notifications: ^18.0.1
+  onesignal_flutter: ^5.6.8
+  speech_to_text: ^7.3.0
+  uuid: ^4.5.2
   # Camera-side QR decoding for venue check-in. Pure plugin code on Android
   # (CameraX + ML Kit), iOS (AVFoundation + Vision) and Web (zxing-wasm).
   mobile_scanner: ^7.4.1
@@ -44,30 +55,29 @@ dependencies:
   # removed QrCode.fromData — so `barcode` cannot compile against it and a
   # dependency_override only moves the failure from version solving to
   # compilation. Do not bump this without re-checking `barcode`'s constraint.
-  #
-  # Verified equivalent rather than assumed: for the real check-in payload this
-  # produces a module-for-module identical 45x45 symbol to 4.0.0, and both
-  # raise InputTooLongException at the same 13328-bit limit. The symbol decodes
-  # to the exact expected payload under OpenCV's detector, both with the brand
-  # badge occluding the centre and at the production 3px-per-module size.
   qr: ^3.0.2
   # Itemized receipt rendering. `pdf` is pure Dart, so the document bytes are
   # identical on Android, iOS and Web; `printing` supplies the platform-specific
   # preview / save / share surface for those bytes.
-  pdf: ^3.11.0
-  printing: ^5.13.0
+  pdf: ^3.12.0
+  printing: ^5.14.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
   integration_test:
     sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  freezed: ^3.0.4
+  json_serializable: ^6.9.4
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
   # Declared so tests can swap in the in-memory storage platform that
   # flutter_secure_storage ships for exactly this purpose. Without it, push
   # service tests would hit an unregistered MethodChannel and could only
   # exercise the paths that swallow storage errors.
-  flutter_secure_storage_platform_interface: ^1.1.2
+  flutter_secure_storage_platform_interface: ^2.0.1
   mocktail: ^1.0.4
 
 flutter:
@@ -79,3 +89,23 @@ flutter:
     # per-directory because a directory entry covers only the files directly
     # inside it. See assets/fonts/README.md for why a font is needed at all.
     - assets/fonts/
+
+# flutter_launcher_icons configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  web:
+    generate: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "assets/icons/adaptive_background.png"
+  adaptive_icon_foreground: "assets/icons/adaptive_foreground.png"
+  remove_alpha_ios: true
+
+# flutter_native_splash configuration
+flutter_native_splash:
+  color: "#3F51B5"
+  image: "assets/icons/splash_icon.png"
+  android: true
+  ios: true
+  web: true
+  fullscreen: true

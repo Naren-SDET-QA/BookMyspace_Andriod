@@ -1,0 +1,533 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/responsive_layout.dart';
+import '../../../../core/modular/feature_id.dart';
+import '../../../../core/modular/feature_providers.dart';
+import '../../../../core/modular/plugins/map_provider.dart';
+import '../../../../core/offline/map_tile_cache.dart';
+import '../../../support/presentation/widgets/contextual_help_button.dart';
+import '../../../home/domain/customer_section_catalog.dart';
+import '../../../home/presentation/customer_section_providers.dart';
+import '../../../location/presentation/location_providers.dart';
+import '../../../venues/domain/venue.dart';
+import '../../../venues/presentation/venue_providers.dart';
+
+/// Map view of the current search results.
+///
+/// Reads the same [searchResultsProvider] as the search screen, so the map
+/// always shows only the selected section's venues with the active
+/// category/filters/location applied.
+class SearchMapScreen extends ConsumerStatefulWidget {
+  const SearchMapScreen({super.key});
+
+  @override
+  ConsumerState<SearchMapScreen> createState() => _SearchMapScreenState();
+}
+
+class _SearchMapScreenState extends ConsumerState<SearchMapScreen> {
+  String? _selectedId;
+  MapController? _mapController;
+  late final TextEditingController _mapSearchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapSearchController = TextEditingController(
+      text: ref.read(searchQueryProvider).query,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ref.read(featureRegistryProvider).isExposed(FeatureId.maps)) return;
+      _seedFromArea();
+    });
+  }
+
+  void _seedFromArea() {
+    if (!mounted) return;
+    final area = ref.read(searchAreaProvider);
+    final current = ref.read(searchQueryProvider);
+    final section = ref.read(selectedCustomerSectionProvider);
+    if (current.latitude != null &&
+        current.longitude != null &&
+        current.sectionId != null) {
+      return;
+    }
+    ref.read(searchQueryProvider.notifier).state = current.copyWith(
+      latitude: () => current.latitude ?? area.latitude,
+      longitude: () => current.longitude ?? area.longitude,
+      maxDistanceKm: () => current.maxDistanceKm ?? area.radiusKm,
+      sectionId: () => current.sectionId ?? section?.id,
+    );
+  }
+
+  @override
+  void dispose() {
+    _mapSearchController.dispose();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  MapController _requireController(MapProvider map) {
+    return _mapController ??= map.createController();
+  }
+
+  void _focusVenue(Venue venue) {
+    final controller = _mapController;
+    if (controller == null) return;
+    setState(() => _selectedId = venue.id);
+    controller.move(
+      LatLng(venue.latitude, venue.longitude),
+      controller.camera.zoom >= 13 ? controller.camera.zoom : 13,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final registry = ref.watch(featureRegistryProvider);
+    final mapPlugin = resolvedMapProvider(ref.watch(providerRegistryProvider));
+    if (!registry.isExposed(FeatureId.maps) || mapPlugin == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.viewOnMap)),
+        body: const EmptyState(
+          key: ValueKey('map_unavailable'),
+          icon: Icons.map_outlined,
+          title: 'Map unavailable',
+          message: 'Maps are turned off for this build.',
+        ),
+      );
+    }
+
+    final results = ref.watch(currentSearchResultsProvider);
+    final section = ref.watch(selectedCustomerSectionProvider);
+    final visibleSections = [
+      for (final id in registry.visibleHomeSections())
+        if (CustomerSection.fromId(id) case final item?) item,
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          section == null
+              ? l10n.viewOnMap
+              : '${section.emoji} ${section.title} · ${l10n.viewOnMap}',
+        ),
+        actions: const [ContextualHelpButton(route: AppRoutes.map)],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: TextField(
+              controller: _mapSearchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Filter venues, arenas, halls...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _mapSearchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _mapSearchController.clear();
+                          _updateMapQuery(query: '');
+                        },
+                      ),
+              ),
+              onChanged: (value) => _updateMapQuery(query: value),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All spaces'),
+                      selected: ref.watch(searchQueryProvider).categorySlug == null,
+                      onSelected: (_) => _updateMapQuery(categorySlug: null),
+                    ),
+                    ...ref.watch(venueCategoriesProvider).maybeWhen(
+                      data: (categories) => [
+                        for (final category in categories)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                (category.icon ?? '').isEmpty
+                                    ? category.name
+                                    : '${category.icon} ${category.name}',
+                              ),
+                              selected:
+                                  ref.watch(searchQueryProvider).categorySlug ==
+                                  category.slug,
+                              onSelected: (_) => _updateMapQuery(
+                                categorySlug: category.slug,
+                              ),
+                            ),
+                          ),
+                      ],
+                      orElse: () => const <Widget>[],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Row(
+              children: [
+                for (final item in visibleSections)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text('${item.emoji} ${item.title}'),
+                      selected: section == item,
+                      onSelected: (_) {
+                        ref.read(selectedCustomerSectionProvider.notifier).state =
+                            item;
+                        final current = ref.read(searchQueryProvider);
+                        ref.read(searchQueryProvider.notifier).state = current
+                            .copyWith(sectionId: () => item.id);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: results.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => ErrorView(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(currentSearchResultsProvider),
+        ),
+        data: (venues) {
+          if (venues.isEmpty) {
+            return EmptyState(
+              icon: Icons.map_outlined,
+              title: l10n.noResults,
+              message: l10n.noResultsMessage,
+            );
+          }
+          final selected = venues
+              .where((v) => v.id == _selectedId)
+              .firstOrNull;
+          return ResponsiveLayoutBuilder(
+            builder: (context, responsive) {
+              final map = FlutterMap(
+                mapController: _requireController(mapPlugin),
+                options: MapOptions(
+                  initialCenter: LatLng(venues.first.latitude, venues.first.longitude),
+                  initialZoom: 11,
+                  interactionOptions: const InteractionOptions(
+                    flags:
+                        InteractiveFlag.drag |
+                        InteractiveFlag.pinchZoom |
+                        InteractiveFlag.doubleTapZoom,
+                  ),
+                  onTap: (_, _) => setState(() => _selectedId = null),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: mapPlugin.tileUrlTemplate,
+                    userAgentPackageName: mapPlugin.userAgentPackageName,
+                    tileProvider: createCachingTileProvider(),
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      for (final venue in venues)
+                        Marker(
+                          point: LatLng(venue.latitude, venue.longitude),
+                          width: 42,
+                          height: 42,
+                          child: GestureDetector(
+                            onTap: () => _focusVenue(venue),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: _selectedId == venue.id
+                                    ? AppTheme.brand
+                                    : Theme.of(context).colorScheme.surface,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _selectedId == venue.id
+                                      ? Colors.white
+                                      : AppTheme.brand,
+                                  width: 2,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 6,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.place_rounded,
+                                size: 24,
+                                color: AppTheme.brand,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+
+              if (responsive.isCompact) {
+                return Stack(
+                  children: [
+                    Positioned.fill(child: map),
+                    if (selected != null)
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 16,
+                        child: _VenueMapCard(
+                          venue: selected,
+                          distanceKm: selected.distanceKm,
+                          onTap: () => context.push(
+                            AppRoutes.venueDetails.replaceAll(':id', selected.id),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      left: 12,
+                      bottom: 16,
+                      child: _MapCountBadge(count: venues.length),
+                    ),
+                  ],
+                );
+              }
+
+              // Tablet / desktop: map + side list.
+              return Row(
+                children: [
+                  SizedBox(
+                    width: 360,
+                    child: _VenueListPanel(
+                      venues: venues,
+                      selectedId: _selectedId,
+                      onSelect: _focusVenue,
+                    ),
+                  ),
+                  Expanded(child: map),
+                ],
+              );
+            },
+          );
+        },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _updateMapQuery({String? query, String? categorySlug}) {
+    final current = ref.read(searchQueryProvider);
+    ref.read(searchQueryProvider.notifier).state = current.copyWith(
+      query: query,
+      categorySlug: () => categorySlug,
+    );
+    setState(() {});
+  }
+}
+
+class _MapCountBadge extends StatelessWidget {
+  const _MapCountBadge({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Text(
+        '$count ${count == 1 ? 'place' : 'places'}',
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+      ),
+    );
+  }
+}
+
+class _VenueMapCard extends StatelessWidget {
+  const _VenueMapCard({
+    required this.venue,
+    required this.onTap,
+    this.distanceKm,
+  });
+
+  final Venue venue;
+  final VoidCallback onTap;
+  final double? distanceKm;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final section = CustomerSectionCatalog.sectionForVenue(venue);
+    final bookable = section?.isBookable ?? true;
+    return Card(
+      elevation: 4,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 84,
+              height: 84,
+              child: venue.coverImageUrl.isEmpty
+                  ? ColoredBox(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Icon(Icons.location_city_rounded),
+                    )
+                  : AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    venue.name,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    venue.address,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (venue.avgRating > 0) ...[
+                        const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                        Text(
+                          ' ${venue.avgRating.toStringAsFixed(1)}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (distanceKm != null)
+                        Text(
+                          '${distanceKm!.toStringAsFixed(1)} km',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      const Spacer(),
+                      Text(
+                        '₹${venue.price.toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (bookable)
+              const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AppTheme.brand,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VenueListPanel extends StatelessWidget {
+  const _VenueListPanel({
+    required this.venues,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<Venue> venues;
+  final String? selectedId;
+  final ValueChanged<Venue> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: venues.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, i) {
+          final venue = venues[i];
+          final selected = venue.id == selectedId;
+          return InkWell(
+            onTap: () => onSelect(venue),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: selected
+                    ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                    : theme.colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    venue.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${venue.city}${venue.distanceKm != null ? ' · ${venue.distanceKm!.toStringAsFixed(1)} km' : ''}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

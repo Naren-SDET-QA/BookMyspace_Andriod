@@ -23,5 +23,8 @@ String navTabLabel(
     NavTab.courses => l10n.courses,
     NavTab.profile => l10n.navProfile,
     NavTab.assistant => l10n.navAssistant,
+    NavTab.map => l10n.navMap,
+    NavTab.saved => l10n.navSaved,
+    NavTab.chat => l10n.navChat,
   };
 }

@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/errors/app_exceptions.dart' as app_errors;
 import '../domain/booking.dart';
 import '../domain/booking_repository.dart';
+import '../../../core/config/app_config.dart';
 
 /// Supabase-backed [BookingRepository].
 ///
@@ -149,6 +148,7 @@ class SupabaseBookingRepository implements BookingRepository {
     required double amount,
     required double taxAmount,
     required double totalAmount,
+    Map<String, dynamic> metadata = const {},
   }) async {
     // The hold endpoint now creates the booking request atomically. Retain
     // this method for the existing repository contract, but never recreate a
@@ -159,6 +159,16 @@ class SupabaseBookingRepository implements BookingRepository {
         'The server did not return an approval request.',
         code: 'missing_booking_id',
       );
+    }
+    if (metadata.isNotEmpty) {
+      // release/v1.0 stores guests / sharing / check-out on bookings.metadata.
+      // Best effort: the booking itself was created server-side.
+      try {
+        await _client
+            .from('bookings')
+            .update({'metadata': metadata})
+            .eq('id', bookingId);
+      } catch (_) {}
     }
     return _loadBooking(bookingId);
   }
@@ -503,5 +513,116 @@ class SupabaseBookingRepository implements BookingRepository {
         '${hex(4)}${hex(5)}-${hex(6)}${hex(7)}-'
         '${hex(8)}${hex(9)}-'
         '${hex(10)}${hex(11)}${hex(12)}${hex(13)}${hex(14)}${hex(15)}';
+  }
+
+  // --- merged from release/v1.0 ---
+  @override
+  Future<Booking> applyCoupon({
+    required String bookingId,
+    required String code,
+  }) async {
+    try {
+      await _client.rpc<Object?>(
+        'apply_booking_coupon',
+        params: {'p_booking_id': bookingId, 'p_code': code},
+      );
+      final booking = await bookingById(bookingId);
+      if (booking == null) {
+        throw const app_errors.ServerException(
+          'The booking could not be reloaded.',
+          code: 'booking_not_found',
+        );
+      }
+      return booking;
+    } on PostgrestException catch (e) {
+      throw _mapCouponError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<Booking> removeCoupon(String bookingId) async {
+    try {
+      await _client.rpc<Object?>(
+        'remove_booking_coupon',
+        params: {'p_booking_id': bookingId},
+      );
+      final booking = await bookingById(bookingId);
+      if (booking == null) {
+        throw const app_errors.ServerException(
+          'The booking could not be reloaded.',
+          code: 'booking_not_found',
+        );
+      }
+      return booking;
+    } on PostgrestException catch (e) {
+      throw _mapCouponError(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  /// Maps the stable error strings raised by `apply_booking_coupon` /
+  /// `remove_booking_coupon` (see the Phase 17 migration) to typed
+  /// exceptions. Both functions validate and compute the discount
+  /// entirely server-side; nothing here trusts a client-supplied amount.
+  app_errors.AppException _mapCouponError(PostgrestException e) {
+    return switch (e.message) {
+      'unauthorized' => const app_errors.AuthException(
+        'You must be signed in to apply a promo code.',
+        code: 'unauthorized',
+      ),
+      'booking_not_found' => const app_errors.NotFoundException(
+        'Booking not found.',
+        code: 'booking_not_found',
+      ),
+      'not_booking_owner' => const app_errors.BusinessException(
+        'This booking does not belong to you.',
+        code: 'not_booking_owner',
+      ),
+      'invalid_booking_state' => const app_errors.BusinessException(
+        'This booking can no longer be changed.',
+        code: 'invalid_booking_state',
+      ),
+      'coupon_not_found' => const app_errors.BusinessException(
+        'That promo code was not found.',
+        code: 'coupon_not_found',
+      ),
+      'coupon_inactive' => const app_errors.BusinessException(
+        'That promo code is no longer active.',
+        code: 'coupon_inactive',
+      ),
+      'coupon_not_started' => const app_errors.BusinessException(
+        'That promo code is not active yet.',
+        code: 'coupon_not_started',
+      ),
+      'coupon_expired' => const app_errors.BusinessException(
+        'That promo code has expired.',
+        code: 'coupon_expired',
+      ),
+      'coupon_min_amount_not_met' => const app_errors.BusinessException(
+        'Your booking does not meet the minimum amount for this promo code.',
+        code: 'coupon_min_amount_not_met',
+      ),
+      'coupon_usage_limit_reached' => const app_errors.BusinessException(
+        'That promo code has reached its usage limit.',
+        code: 'coupon_usage_limit_reached',
+      ),
+      'coupon_already_used_by_user' => const app_errors.BusinessException(
+        "You've already used that promo code.",
+        code: 'coupon_already_used_by_user',
+      ),
+      _ => app_errors.ServerException(
+        'Promo code service error.',
+        code: e.message,
+      ),
+    };
+  }
+
+  /// Collision-resistant booking reference, e.g. `BMS-26AB39`.
+  static String _bookingRef() {
+    final n = Random().nextInt(0xFFFFFF);
+    return 'BMS-${n.toRadixString(16).toUpperCase().padLeft(6, '0')}';
   }
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/test_id.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../domain/owner.dart';
@@ -110,15 +111,52 @@ class _OwnerDashboardBody extends ConsumerWidget {
           // plug-and-play sections from the venue list instead.
           onTap: () => context.push(AppRoutes.ownerVenues),
         ),
+        TestId(
+          E2eIds.ownerActionVenues,
+          child: _QuickAction(
+            icon: Icons.storefront_rounded,
+            label: l10n.myVenues,
+            onTap: () => context.push(AppRoutes.ownerVenues),
+          ),
+        ),
+        TestId(
+          E2eIds.ownerActionBookings,
+          child: _QuickAction(
+            icon: Icons.receipt_long_rounded,
+            label: 'Venue bookings',
+            onTap: () => context.push(AppRoutes.ownerBookings),
+          ),
+        ),
+        // release/v1.0 owner tools.
         _QuickAction(
-          icon: Icons.storefront_rounded,
-          label: l10n.myVenues,
-          onTap: () => context.push(AppRoutes.ownerVenues),
+          icon: Icons.event_note_rounded,
+          label: l10n.ownerBookings,
+          onTap: () => context.push(AppRoutes.ownerBookingsManager),
         ),
         _QuickAction(
-          icon: Icons.receipt_long_rounded,
-          label: 'Venue bookings',
-          onTap: () => context.push(AppRoutes.ownerBookings),
+          icon: Icons.calendar_month_rounded,
+          label: l10n.ownerCalendar,
+          onTap: () => context.push(AppRoutes.ownerCalendar),
+        ),
+        _QuickAction(
+          icon: Icons.qr_code_scanner_rounded,
+          label: l10n.qrCheckIn,
+          onTap: () => context.push(AppRoutes.checkIn),
+        ),
+        _QuickAction(
+          icon: Icons.location_on_rounded,
+          label: l10n.locationSubmissions,
+          onTap: () => context.push(AppRoutes.ownerLocations),
+        ),
+        _QuickAction(
+          icon: Icons.auto_graph_rounded,
+          label: l10n.venueOptimizer,
+          onTap: () => context.push(AppRoutes.ownerOptimizer),
+        ),
+        _QuickAction(
+          icon: Icons.history_rounded,
+          label: l10n.auditLog,
+          onTap: () => context.push(AppRoutes.adminAudit),
         ),
         _QuickAction(
           icon: Icons.notifications_rounded,
@@ -144,6 +182,11 @@ class _OwnerDashboardBody extends ConsumerWidget {
           icon: Icons.menu_book_rounded,
           label: 'My courses',
           onTap: () => context.push(AppRoutes.ownerCourses),
+        ),
+        _QuickAction(
+          icon: Icons.apartment_rounded,
+          label: l10n.institutePortal,
+          onTap: () => context.push(AppRoutes.ownerInstitute),
         ),
       ],
     );

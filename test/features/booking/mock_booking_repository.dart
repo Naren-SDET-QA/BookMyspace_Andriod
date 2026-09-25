@@ -2,6 +2,12 @@ import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/booking/domain/booking_repository.dart';
 
 class MockBookingRepository implements BookingRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   MockBookingRepository({
     this.bookings = const [],
     this.ownerBookings = const [],
@@ -66,6 +72,7 @@ class MockBookingRepository implements BookingRepository {
     required double amount,
     required double taxAmount,
     required double totalAmount,
+    Map<String, dynamic> metadata = const {},
   }) async {
     return Booking(
       id: 'b1',

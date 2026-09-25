@@ -78,12 +78,14 @@ enum BookingStatus {
   held,
   pending,
   awaitingOwnerApproval,
+  pendingOwnerApproval,
   ownerRejected,
   approvalExpired,
   confirmed,
   completed,
   cancelled,
   refunded,
+  rejected,
   noShow,
   unknown;
 
@@ -91,12 +93,14 @@ enum BookingStatus {
         'held' => BookingStatus.held,
         'pending' => BookingStatus.pending,
         'awaiting_owner_approval' => BookingStatus.awaitingOwnerApproval,
+        'pending_owner_approval' => BookingStatus.pendingOwnerApproval,
         'owner_rejected' => BookingStatus.ownerRejected,
         'approval_expired' => BookingStatus.approvalExpired,
         'confirmed' => BookingStatus.confirmed,
         'completed' => BookingStatus.completed,
         'cancelled' => BookingStatus.cancelled,
         'refunded' => BookingStatus.refunded,
+        'rejected' => BookingStatus.rejected,
         'no_show' => BookingStatus.noShow,
         _ => BookingStatus.unknown,
       };
@@ -105,18 +109,29 @@ enum BookingStatus {
         BookingStatus.held => 'held',
         BookingStatus.pending => 'pending',
         BookingStatus.awaitingOwnerApproval => 'awaiting_owner_approval',
+        BookingStatus.pendingOwnerApproval => 'pending_owner_approval',
         BookingStatus.ownerRejected => 'owner_rejected',
         BookingStatus.approvalExpired => 'approval_expired',
         BookingStatus.confirmed => 'confirmed',
         BookingStatus.completed => 'completed',
         BookingStatus.cancelled => 'cancelled',
         BookingStatus.refunded => 'refunded',
+        BookingStatus.rejected => 'rejected',
         BookingStatus.noShow => 'no_show',
         BookingStatus.unknown => 'unknown',
       };
+
+  /// Waiting for the venue owner, under either lineage's status name.
+  bool get isAwaitingOwner =>
+      this == BookingStatus.awaitingOwnerApproval ||
+      this == BookingStatus.pendingOwnerApproval;
+
+  /// Declined by the venue owner, under either lineage's status name.
+  bool get isOwnerRejected =>
+      this == BookingStatus.ownerRejected || this == BookingStatus.rejected;
 }
 
-/// A booking made by the user.
+/// A booking made by the user (or recorded offline by an owner).
 class Booking {
   const Booking({
     required this.id,
@@ -130,6 +145,7 @@ class Booking {
     required this.amount,
     required this.taxAmount,
     required this.totalAmount,
+    this.discountAmount = 0,
     this.venueName = '',
     this.venueCity = '',
     this.slotLabel = '',
@@ -142,6 +158,13 @@ class Booking {
     this.rejectionReason,
     this.receiptNumber,
     this.receiptIssuedAt,
+    this.customerName = '',
+    this.customerPhone = '',
+    this.isOffline = false,
+    this.paymentMethod = '',
+    this.paymentRef = '',
+    this.paidAt,
+    this.metadata = const {},
   });
 
   final String id;
@@ -155,6 +178,11 @@ class Booking {
   final double amount;
   final double taxAmount;
   final double totalAmount;
+
+  /// Discount applied by a redeemed coupon (0 when none). Always the
+  /// server-computed value persisted on the `bookings` row — never
+  /// derived on the client.
+  final double discountAmount;
 
   /// Hydrated venue display fields (empty when not joined).
   final String venueName;
@@ -170,6 +198,26 @@ class Booking {
   final String? receiptNumber;
   final DateTime? receiptIssuedAt;
 
+  /// Customer fields recorded on offline (walk-in) bookings.
+  final String customerName;
+  final String customerPhone;
+  final bool isOffline;
+
+  /// Payment details (hydrated from the `payments` embed).
+  final String paymentMethod;
+  final String paymentRef;
+  final DateTime? paidAt;
+
+  /// Raw `metadata` jsonb, e.g. guests / sharing / deposit info.
+  final Map<String, dynamic> metadata;
+
+  /// Server hold-expiry timestamp when the pending booking is still held.
+  DateTime? get holdExpiresAt {
+    final raw = metadata['hold_expires_at'];
+    if (raw is String) return DateTime.tryParse(raw)?.toLocal();
+    return null;
+  }
+
   bool get isActive =>
       status == BookingStatus.pending ||
       status == BookingStatus.awaitingOwnerApproval ||
@@ -181,7 +229,13 @@ class Booking {
       status == BookingStatus.awaitingOwnerApproval ||
       status == BookingStatus.pending;
 
-  bool get canPay => status == BookingStatus.pending && approvedAt != null;
+  /// Payable once the owner approved (main flow) or when no approval gate
+  /// applies; held bookings are payable directly (release/v1.0 flow).
+  bool get canPay =>
+      status == BookingStatus.held ||
+      (status == BookingStatus.pending &&
+          (approvedAt != null || !approvalRequired));
+
 
   /// Confirmed (captured) bookings can be refunded.
   bool get canRefund => status == BookingStatus.confirmed;
@@ -198,6 +252,7 @@ class Booking {
       status == BookingStatus.cancelled ||
       status == BookingStatus.refunded ||
       status == BookingStatus.ownerRejected ||
+      status == BookingStatus.rejected ||
       status == BookingStatus.approvalExpired;
 
   /// Bookings whose payment was captured can produce an itemized receipt.
@@ -219,6 +274,12 @@ class Booking {
   bool get canExportCalendar =>
       status == BookingStatus.confirmed ||
       status == BookingStatus.completed;
+  /// An invoice is available for paid/terminal bookings.
+  bool get canViewInvoice =>
+      status == BookingStatus.confirmed ||
+      status == BookingStatus.completed ||
+      status == BookingStatus.refunded ||
+      status == BookingStatus.noShow;
 
   String get displayStart =>
       startTime.length >= 5 ? startTime.substring(0, 5) : startTime;
@@ -236,6 +297,18 @@ class Booking {
                 receiptValue.first is Map
             ? Map<String, dynamic>.from(receiptValue.first as Map)
             : null;
+    final paymentsRaw = json['payments'];
+    final payment = paymentsRaw is List && paymentsRaw.isNotEmpty
+        ? paymentsRaw.first is Map
+              ? Map<String, dynamic>.from(paymentsRaw.first as Map)
+              : null
+        : paymentsRaw is Map
+        ? Map<String, dynamic>.from(paymentsRaw as Map)
+        : null;
+    final metadataRaw = json['metadata'];
+    final metadata = metadataRaw is Map
+        ? Map<String, dynamic>.from(metadataRaw as Map)
+        : const <String, dynamic>{};
     return Booking(
       id: json['id'] as String? ?? '',
       bookingRef: json['booking_ref'] as String? ?? '',
@@ -249,6 +322,7 @@ class Booking {
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       taxAmount: (json['tax_amount'] as num?)?.toDouble() ?? 0,
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0,
+      discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
       venueName: venueRaw is Map<String, dynamic>
           ? (venueRaw['name'] as String? ?? '')
@@ -272,6 +346,15 @@ class Booking {
       receiptIssuedAt: DateTime.tryParse(
         receiptRaw?['issued_at'] as String? ?? '',
       ),
+      customerName: metadata['customer_name'] as String? ?? '',
+      customerPhone: metadata['customer_phone'] as String? ?? '',
+      isOffline: metadata['offline_booking'] == true,
+      paymentMethod: payment?['method'] as String? ?? '',
+      paymentRef: payment?['provider_payment_id'] as String? ?? '',
+      paidAt: payment?['created_at'] != null
+          ? DateTime.tryParse(payment!['created_at'] as String? ?? '')
+          : null,
+      metadata: metadata,
     );
   }
 }
@@ -292,14 +375,18 @@ class BookingHold {
   final String? status;
   final double? totalAmount;
 
-  factory BookingHold.fromResponse(Map<String, dynamic> json) {
+  factory BookingHold.fromResponse(
+    Map<String, dynamic> json, {
+    DateTime? now,
+  }) {
     final expiresIn = (json['expires_in_minutes'] as num?)?.toInt() ?? 10;
-    final expiresAt = DateTime.tryParse(
-          json['approval_expires_at'] as String? ??
-              json['expires_at'] as String? ??
-              '',
-        ) ??
-        DateTime.now().add(Duration(minutes: expiresIn));
+    final parsed = DateTime.tryParse(
+      json['approval_expires_at'] as String? ??
+          json['expires_at'] as String? ??
+          '',
+    );
+    final expiresAt = parsed?.toLocal() ??
+        (now ?? DateTime.now()).add(Duration(minutes: expiresIn));
     return BookingHold(
       id: json['hold_id'] as String? ?? '',
       expiresAt: expiresAt,
@@ -307,5 +394,23 @@ class BookingHold {
       status: json['status'] as String?,
       totalAmount: (json['total_amount'] as num?)?.toDouble(),
     );
+  }
+
+  bool isExpired([DateTime? now]) => !((now ?? DateTime.now()).isBefore(expiresAt));
+
+  Duration remaining([DateTime? now]) {
+    final left = expiresAt.difference(now ?? DateTime.now());
+    return left.isNegative ? Duration.zero : left;
+  }
+}
+
+/// Formats a hold countdown from the server expiry timestamp.
+class HoldCountdown {
+  static String format(Duration remaining) {
+    final total = remaining.inSeconds;
+    if (total <= 0) return '00:00';
+    final minutes = (total ~/ 60).toString().padLeft(2, '0');
+    final seconds = (total % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 }

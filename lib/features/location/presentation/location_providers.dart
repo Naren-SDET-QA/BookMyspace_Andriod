@@ -1,10 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../auth/presentation/auth_providers.dart';
 import '../domain/gps_location.dart';
 import '../domain/pin_code_location.dart';
 import '../infrastructure/geolocator_gps_location_service.dart';
 import '../infrastructure/india_post_pin_code_repository.dart';
+import '../domain/search_area.dart';
+import '../domain/location_node.dart';
+import '../domain/location_query_bounds.dart';
+import '../domain/location_repository.dart';
+import '../infrastructure/geocoding_service.dart';
+import '../infrastructure/supabase_location_repository.dart';
 
 final gpsLocationServiceProvider = Provider<GpsLocationService>((ref) {
   return const GeolocatorGpsLocationService();
@@ -13,3 +18,63 @@ final gpsLocationServiceProvider = Provider<GpsLocationService>((ref) {
 final pinCodeRepositoryProvider = Provider<PinCodeRepository>((ref) {
   return IndiaPostPinCodeRepository(client: ref.watch(supabaseProvider));
 });
+
+/// Geocoding / device-location service instance.
+final geocodingServiceProvider = Provider<GeocodingService>((ref) {
+  return GeocodingService();
+});
+
+final supabaseLocationRepositoryProvider = Provider<SupabaseLocationRepository>(
+  (ref) {
+    return SupabaseLocationRepository(ref.watch(supabaseProvider));
+  },
+);
+
+final locationRepositoryProvider = Provider<LocationRepository>((ref) {
+  return ref.watch(supabaseLocationRepositoryProvider);
+});
+
+final locationChildrenProvider = FutureProvider.autoDispose
+    .family<List<LocationNode>, ({String? parentId, LocationNodeLevel level})>(
+      (ref, request) => ref
+          .watch(locationRepositoryProvider)
+          .children(
+            parentId: request.parentId,
+            level: request.level,
+            limit: LocationQueryBounds.childrenPageSize,
+          ),
+    );
+
+final locationSearchProvider = FutureProvider.autoDispose
+    .family<List<LocationNode>, String>((ref, query) {
+      if (query.trim().isEmpty) return const [];
+      return ref
+          .watch(locationRepositoryProvider)
+          .search(query.trim(), limit: LocationQueryBounds.searchPageSize);
+    });
+
+/// The currently selected search area (label + coordinates + radius).
+///
+/// Shared by the home screen, search screen, map screen and any future
+/// section flow so location stays consistent app-wide.
+final searchAreaProvider = StateProvider<SearchArea>((ref) {
+  return SearchArea.defaultArea;
+});
+
+/// Result of asking the device for its current position. `null` while
+/// unknown / denied; the async error carries the reason.
+final deviceLocationProvider = FutureProvider.autoDispose<SearchArea>((ref) {
+  return ref.watch(geocodingServiceProvider).deviceLocation();
+});
+
+/// Forward geocoding of a free-text place name (Nominatim).
+final geocodePlaceProvider = FutureProvider.autoDispose
+    .family<SearchArea?, String>((ref, query) {
+      return ref.watch(geocodingServiceProvider).geocode(query);
+    });
+
+/// Reverse geocoding of map coordinates to a readable label.
+final reverseGeocodeProvider = FutureProvider.autoDispose
+    .family<String, (double, double)>((ref, point) {
+      return ref.watch(geocodingServiceProvider).reverse(point.$1, point.$2);
+    });

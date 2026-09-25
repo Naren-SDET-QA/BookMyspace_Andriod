@@ -32,6 +32,22 @@ val googleMapsApiKey: String by lazy {
         ?: ""
 }
 
+val signingProperties = Properties()
+val signingFile = rootProject.file("key.properties")
+if (signingFile.exists()) {
+    signingFile.inputStream().use { signingProperties.load(it) }
+}
+
+fun signingValue(name: String): String? =
+    signingProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: System.getenv("ANDROID_${name.uppercase()}")?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signingValue("storeFile")
+val releaseStorePassword = signingValue("storePassword")
+val releaseKeyAlias = signingValue("keyAlias")
+val releaseKeyPassword = signingValue("keyPassword")
+val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it != null }
+
 android {
     namespace = "com.bookmyspace.bookmyspace"
     compileSdk = flutter.compileSdkVersion
@@ -40,6 +56,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -58,13 +75,26 @@ android {
         manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+    if (hasReleaseSigning) {
+        signingConfigs.create("release") {
+            storeFile = rootProject.file(releaseStoreFile!!)
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
         }
     }
+
+    buildTypes {
+        release {
+            // Never fall back to the debug keystore. CI/local release signing is
+            // supplied through ignored key.properties or ANDROID_* environment vars.
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {

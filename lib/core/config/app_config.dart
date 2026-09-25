@@ -16,31 +16,31 @@ enum AppEnvironment {
   ),
   development(
     name: 'development',
-    supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-    supabaseAnonKey: 'DEV_ANON_KEY',
+    supabaseUrl: 'https://configure-supabase-url.invalid',
+    supabaseAnonKey: 'SUPABASE_ANON_KEY_REQUIRED',
     razorpayKeyId: 'rzp_test_PLACEHOLDER',
-    apiBaseUrl: 'https://YOUR_PROJECT.supabase.co/functions/v1',
+    apiBaseUrl: 'https://configure-supabase-url.invalid/functions/v1',
   ),
   testing(
     name: 'testing',
-    supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-    supabaseAnonKey: 'TEST_ANON_KEY',
+    supabaseUrl: 'https://configure-supabase-url.invalid',
+    supabaseAnonKey: 'SUPABASE_ANON_KEY_REQUIRED',
     razorpayKeyId: 'rzp_test_PLACEHOLDER',
-    apiBaseUrl: 'https://YOUR_PROJECT.supabase.co/functions/v1',
+    apiBaseUrl: 'https://configure-supabase-url.invalid/functions/v1',
   ),
   staging(
     name: 'staging',
-    supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-    supabaseAnonKey: 'STAGING_ANON_KEY',
+    supabaseUrl: 'https://configure-supabase-url.invalid',
+    supabaseAnonKey: 'SUPABASE_ANON_KEY_REQUIRED',
     razorpayKeyId: 'rzp_test_PLACEHOLDER',
-    apiBaseUrl: 'https://YOUR_PROJECT.supabase.co/functions/v1',
+    apiBaseUrl: 'https://configure-supabase-url.invalid/functions/v1',
   ),
   production(
     name: 'production',
-    supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-    supabaseAnonKey: 'PROD_ANON_KEY',
+    supabaseUrl: 'https://configure-supabase-url.invalid',
+    supabaseAnonKey: 'SUPABASE_ANON_KEY_REQUIRED',
     razorpayKeyId: 'rzp_live_PLACEHOLDER',
-    apiBaseUrl: 'https://YOUR_PROJECT.supabase.co/functions/v1',
+    apiBaseUrl: 'https://configure-supabase-url.invalid/functions/v1',
   );
 
   const AppEnvironment({
@@ -61,12 +61,12 @@ enum AppEnvironment {
 
   /// Converts environment to [EnvModel].
   EnvModel toModel() => EnvModel(
-        name: name,
-        supabaseUrl: supabaseUrl,
-        supabaseAnonKey: supabaseAnonKey,
-        razorpayKeyId: razorpayKeyId,
-        apiBaseUrl: apiBaseUrl,
-      );
+    name: name,
+    supabaseUrl: supabaseUrl,
+    supabaseAnonKey: supabaseAnonKey,
+    razorpayKeyId: razorpayKeyId,
+    apiBaseUrl: apiBaseUrl,
+  );
 
   /// Resolves the active environment from `--dart-define=APP_ENV=...`.
   static AppEnvironment get current {
@@ -86,29 +86,55 @@ enum AppEnvironment {
 class AppConfig {
   const AppConfig._();
 
-  static const String _supabaseUrlDefine =
-      String.fromEnvironment('SUPABASE_URL');
-  static const String _supabaseAnonKeyDefine =
-      String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String _supabaseUrlDefine = String.fromEnvironment(
+    'SUPABASE_URL',
+  );
+  static const String _supabaseAnonKeyDefine = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+  );
+  static const String _apiBaseUrlDefine = String.fromEnvironment(
+    'API_BASE_URL',
+  );
+  static const String _razorpayKeyIdDefine = String.fromEnvironment(
+    'RAZORPAY_KEY_ID',
+  );
+  static const String _razorpayTestKeyIdDefine = String.fromEnvironment(
+    'RAZORPAY_TEST_KEY_ID',
+  );
+  static const String _devTestEmailDefine = String.fromEnvironment(
+    'DEV_TEST_EMAIL',
+  );
+  static const String _devTestPasswordDefine = String.fromEnvironment(
+    'DEV_TEST_PASSWORD',
+  );
+  static const String _webAuthRedirectDefine = String.fromEnvironment(
+    'WEB_AUTH_REDIRECT_URI',
+  );
+
+  /// OneSignal App ID (public client identifier, not a secret). Sourced
+  /// from --dart-define=ONESIGNAL_APP_ID=... at build time; never hardcode
+  /// a real value here. Empty means push registration is disabled (mirrors
+  /// how Firebase push silently no-op'd without native config).
+  static const String _oneSignalAppIdDefine = String.fromEnvironment(
+    'ONESIGNAL_APP_ID',
+  );
   static const String _supabasePublishableKeyDefine =
       String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
   static const String _developmentOtpEnabledDefine =
       String.fromEnvironment('BMS_DEV_OTP_ENABLED');
   static const String _uiTestModeDefine =
       String.fromEnvironment('BMS_UI_TEST_MODE');
-  static const String _razorpayKeyIdDefine =
-      String.fromEnvironment('RAZORPAY_KEY_ID');
 
   static AppEnvironment get environment => AppEnvironment.current;
 
   /// Returns active [EnvModel] populated from environment and dart-defines.
   static EnvModel get activeEnv => EnvModel(
-        name: environment.name,
-        supabaseUrl: supabaseUrl,
-        supabaseAnonKey: supabaseAnonKey,
-        razorpayKeyId: razorpayKeyId,
-        apiBaseUrl: apiBaseUrl,
-      );
+    name: environment.name,
+    supabaseUrl: supabaseUrl,
+    supabaseAnonKey: supabaseAnonKey,
+    razorpayKeyId: razorpayKeyId,
+    apiBaseUrl: apiBaseUrl,
+  );
 
   static String get supabaseUrl => _supabaseUrlDefine.isNotEmpty
       ? _supabaseUrlDefine
@@ -118,16 +144,63 @@ class AppConfig {
       : (_supabaseAnonKeyDefine.isNotEmpty
           ? _supabaseAnonKeyDefine
           : environment.supabaseAnonKey);
-  static String get razorpayKeyId => _razorpayKeyIdDefine.isNotEmpty
-      ? _razorpayKeyIdDefine
-      : environment.razorpayKeyId;
-  static String get apiBaseUrl {
-    if (!isPlaceholderSupabaseHost &&
-        (supabaseUrl.startsWith('https://') ||
-            supabaseUrl.startsWith('http://'))) {
-      return '${supabaseUrl.replaceAll(RegExp(r'/$'), '')}/functions/v1';
+  static String get razorpayKeyId {
+    final testKey = _razorpayTestKeyIdDefine.isNotEmpty
+        ? _razorpayTestKeyIdDefine
+        : _razorpayKeyIdDefine;
+    if (environment == AppEnvironment.production) {
+      // Never let a DEV TEST key override production configuration.
+      if (testKey.startsWith('rzp_test_')) return environment.razorpayKeyId;
+      return _razorpayKeyIdDefine.isNotEmpty
+          ? _razorpayKeyIdDefine
+          : environment.razorpayKeyId;
     }
-    return environment.apiBaseUrl;
+    return testKey.isNotEmpty ? testKey : environment.razorpayKeyId;
+  }
+
+  static String get apiBaseUrl {
+    if (_apiBaseUrlDefine.isNotEmpty) return _apiBaseUrlDefine;
+    if (environment == AppEnvironment.local) return environment.apiBaseUrl;
+    if (isPlaceholderSupabaseHost ||
+        !(supabaseUrl.startsWith('https://') ||
+            supabaseUrl.startsWith('http://'))) {
+      return environment.apiBaseUrl;
+    }
+    return '${supabaseUrl.replaceFirst(RegExp(r'/$'), '')}/functions/v1';
+  }
+  static String get devTestEmail => _devTestEmailDefine;
+  static String get devTestPassword => _devTestPasswordDefine;
+  static String get oneSignalAppId => _oneSignalAppIdDefine;
+
+  /// The callback must stay on the origin that created the PKCE verifier.
+  /// A dart-define can pin this for a stable local port; otherwise the
+  /// browser's current origin is used.
+  static String get webAuthRedirectUri {
+    if (_webAuthRedirectDefine.isNotEmpty) return _webAuthRedirectDefine;
+    if (kIsWeb) {
+      final uri = Uri.base;
+      return uri.replace(path: '/', query: '', fragment: '').toString();
+    }
+    return '';
+  }
+
+  /// Native (iOS/Android) OAuth deep-link redirect. A fixed app-scheme URL
+  /// (not environment-dependent like [webAuthRedirectUri]) that iOS/Android
+  /// are registered to hand back to this app after Google/Apple sign-in.
+  /// Must also be added to the Supabase project's Redirect URLs allow-list.
+  static const String nativeAuthRedirectUri =
+      'com.bookmyspace.bookmyspace://login-callback/';
+
+  /// Redirect target for the password-recovery email.
+  /// Web lands on `/reset-password`; native reuses the existing OAuth scheme.
+  static String get passwordResetRedirectUri {
+    if (kIsWeb) {
+      final base = Uri.tryParse(webAuthRedirectUri);
+      if (base != null && base.hasScheme) {
+        return base.replace(path: '/reset-password', query: '', fragment: '').toString();
+      }
+    }
+    return nativeAuthRedirectUri;
   }
 
   static String get appName => 'BookMySpace';
@@ -174,6 +247,12 @@ class AppConfig {
       environment == AppEnvironment.local;
   static bool get isStaging => environment == AppEnvironment.staging;
   static bool get isProduction => environment == AppEnvironment.production;
+
+  /// Allows navigation-only test access in non-production environments.
+  /// This never creates or claims an authenticated Supabase session.
+  static bool get allowUnauthenticatedTestAccess =>
+      environment == AppEnvironment.development ||
+      environment == AppEnvironment.testing;
   static bool get isRazorpayTestMode => razorpayKeyId.startsWith('rzp_test_');
 
   /// Enables the temporary phone OTP only for local debug development builds.

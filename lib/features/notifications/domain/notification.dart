@@ -1,15 +1,52 @@
+enum NotificationType {
+  bookingConfirmed,
+  bookingCancelled,
+  paymentReceived,
+  refundProcessed,
+  slotReminder,
+  system,
+  supportReply,
+  admin;
+
+  static NotificationType fromDb(String value) => switch (value) {
+    'booking_confirmed' => NotificationType.bookingConfirmed,
+    'booking_cancelled' => NotificationType.bookingCancelled,
+    'payment_received' => NotificationType.paymentReceived,
+    'refund_processed' => NotificationType.refundProcessed,
+    'slot_reminder' => NotificationType.slotReminder,
+    'system' => NotificationType.system,
+    'support_reply' => NotificationType.supportReply,
+    'admin' => NotificationType.admin,
+    _ => NotificationType.system,
+  };
+
+  String get dbValue => switch (this) {
+    NotificationType.bookingConfirmed => 'booking_confirmed',
+    NotificationType.bookingCancelled => 'booking_cancelled',
+    NotificationType.paymentReceived => 'payment_received',
+    NotificationType.refundProcessed => 'refund_processed',
+    NotificationType.slotReminder => 'slot_reminder',
+    NotificationType.system => 'system',
+    NotificationType.supportReply => 'support_reply',
+    NotificationType.admin => 'admin',
+  };
+}
+
 class Notification {
-  const Notification({
+  /// [type] accepts the stored string value or a [NotificationType]
+  /// (release/v1.0 API). [createdAt] defaults to "now" when omitted.
+  Notification({
     required this.id,
     required this.userId,
     required this.title,
     required this.body,
-    this.type = 'general',
+    Object type = 'general',
     this.read = false,
     this.data,
     this.readAt,
-    required this.createdAt,
-  });
+    DateTime? createdAt,
+  })  : type = type is NotificationType ? type.dbValue : '$type',
+        createdAt = createdAt ?? DateTime.now();
 
   final String id;
   final String userId;
@@ -78,4 +115,7 @@ class Notification {
       createdAt: createdAt ?? this.createdAt,
     );
   }
+
+  /// Typed view of [type] (release/v1.0 API).
+  NotificationType get kind => NotificationType.fromDb(type);
 }

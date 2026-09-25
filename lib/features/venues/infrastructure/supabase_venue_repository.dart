@@ -1,8 +1,6 @@
 import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/errors/app_exceptions.dart'
     show BusinessException, NotFoundException, mapError;
 import '../domain/listing_template.dart';
@@ -10,6 +8,10 @@ import '../../../core/firebase/error_logger.dart';
 import '../../../core/network/retry.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
+import 'package:flutter/foundation.dart';
+import '../../../core/errors/app_exceptions.dart'
+    show NotFoundException, mapError;
+import '../../home/domain/customer_section_catalog.dart';
 
 /// Supabase-backed [VenueRepository].
 ///
@@ -197,15 +199,19 @@ class SupabaseVenueRepository implements VenueRepository {
     String categoryId, {
     bool activeOnly = false,
   }) {
-    var filtered = _client
+    // Realtime streams accept a single filter; the active flag is applied
+    // client-side (supabase_flutter >= 2.8).
+    return _client
         .from('venue_subsections')
-        .stream(primaryKey: ['id']).eq('category_id', categoryId);
-    if (activeOnly) filtered = filtered.eq('is_active', true);
-    return filtered
+        .stream(primaryKey: ['id'])
+        .eq('category_id', categoryId)
         .order('display_order', ascending: true)
-        .order('name', ascending: true)
         .map(
-          (rows) => rows.map(VenueSubsection.fromJson).toList(growable: false),
+          (rows) => _sortSubsections(
+            rows
+                .where((row) => !activeOnly || row['is_active'] == true)
+                .map(VenueSubsection.fromJson),
+          ),
         );
   }
 
@@ -213,13 +219,16 @@ class SupabaseVenueRepository implements VenueRepository {
   Stream<List<VenueSubsection>> subsectionCatalogStream({
     bool activeOnly = true,
   }) {
-    var filtered = _client.from('venue_subsections').stream(primaryKey: ['id']);
-    if (activeOnly) filtered = filtered.eq('is_active', true);
-    return filtered
+    return _client
+        .from('venue_subsections')
+        .stream(primaryKey: ['id'])
         .order('display_order', ascending: true)
-        .order('name', ascending: true)
         .map(
-          (rows) => rows.map(VenueSubsection.fromJson).toList(growable: false),
+          (rows) => _sortSubsections(
+            rows
+                .where((row) => !activeOnly || row['is_active'] == true)
+                .map(VenueSubsection.fromJson),
+          ),
         );
   }
 
@@ -809,4 +818,24 @@ class SupabaseVenueRepository implements VenueRepository {
 
   /// Maps an RPC row (which lacks embedded collections) to a [Venue].
   Venue _fromRow(Map<String, dynamic> row) => Venue.fromJson(row);
+
+  // --- merged from release/v1.0 ---
+  String _serverSort(VenueSortBy sort) => switch (sort) {
+    VenueSortBy.distance => 'nearest',
+    VenueSortBy.priceAsc => 'lowest_price',
+    VenueSortBy.priceDesc => 'highest_price',
+    VenueSortBy.rating => 'highest_rating',
+    VenueSortBy.relevance => 'recommended',
+  };
+
+  static List<VenueSubsection> _sortSubsections(
+    Iterable<VenueSubsection> items,
+  ) {
+    final list = items.toList()
+      ..sort((a, b) {
+        final byOrder = a.displayOrder.compareTo(b.displayOrder);
+        return byOrder != 0 ? byOrder : a.name.compareTo(b.name);
+      });
+    return List.unmodifiable(list);
+  }
 }

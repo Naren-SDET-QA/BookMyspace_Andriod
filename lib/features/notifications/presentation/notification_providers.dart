@@ -6,6 +6,10 @@ import '../domain/notification.dart';
 import '../domain/notification_repository.dart';
 import '../domain/push_notification_types.dart';
 import '../infrastructure/push_notification_service.dart';
+import '../domain/device_token_repository.dart';
+import '../domain/notification.dart';
+import '../domain/notification_repository.dart';
+import '../infrastructure/supabase_device_token_repository.dart';
 import '../infrastructure/supabase_notification_repository.dart';
 
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
@@ -35,6 +39,13 @@ final pushTokenProvider = Provider<String?>((ref) {
 final is1HourReminderEnabledProvider = StateProvider<bool>((ref) {
   final service = ref.watch(pushNotificationServiceProvider);
   return service.is1HourReminderEnabled;
+});
+
+/// Registers/deregisters this device's push notification token against the
+/// signed-in user (see `OneSignalPushService.onSignedIn`/`onSignedOut`).
+final deviceTokenRepositoryProvider = Provider<DeviceTokenRepository>((ref) {
+  final client = ref.watch(supabaseProvider);
+  return SupabaseDeviceTokenRepository(client);
 });
 
 final myNotificationsProvider = FutureProvider<List<Notification>>((ref) {

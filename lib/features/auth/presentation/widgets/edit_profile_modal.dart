@@ -71,10 +71,9 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
     setState(() => _isSaving = true);
 
     try {
-      await ref.read(authNotifierProvider.notifier).updateProfile(
-            fullName: newName,
-            avatarUrl: newAvatar,
-          );
+      await ref
+          .read(authNotifierProvider.notifier)
+          .updateProfile(fullName: newName, avatarUrl: newAvatar);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -291,7 +290,8 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                     separatorBuilder: (_, __) => const SizedBox(width: 10),
                     itemBuilder: (context, index) {
                       final url = kPresetAvatars[index];
-                      final isSelected = _selectedAvatarUrl == url &&
+                      final isSelected =
+                          _selectedAvatarUrl == url &&
                           _avatarUrlController.text.isEmpty;
 
                       return GestureDetector(
@@ -318,10 +318,7 @@ class _EditProfileModalState extends ConsumerState<EditProfileModal> {
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              AppNetworkImage(
-                                url: url,
-                                fit: BoxFit.cover,
-                              ),
+                              AppNetworkImage(url: url, fit: BoxFit.cover),
                               if (isSelected)
                                 Container(
                                   color: AppTheme.violet.withValues(alpha: 0.3),

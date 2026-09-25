@@ -6,6 +6,12 @@ import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 
 /// In-memory mock used for unit tests and widget tests.
 class MockAuthRepository implements AuthRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   MockAuthRepository({AuthUser? initialUser}) : _user = initialUser {
     _controller = StreamController<AuthUser?>.broadcast();
   }
