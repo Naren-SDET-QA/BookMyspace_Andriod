@@ -93,6 +93,8 @@ class AppLocalizations {
   String get navBookings => _t('navBookings');
   String get navSaved => _t('navSaved');
   String get navProfile => _t('navProfile');
+  String get navExplore => _t('navExplore');
+  String get navChat => _t('navChat');
 
   // Venues
   String get venues => _t('venues');
@@ -533,6 +535,8 @@ class AppLocalizations {
       'navSearch': 'Search',
       'navBookings': 'Bookings',
       'navSaved': 'Saved',
+      'navExplore': 'Explore',
+      'navChat': 'Chat',
       'navProfile': 'Profile',
       'venues': 'Venues',
       'venueDetails': 'Venue details',
@@ -956,6 +960,8 @@ class AppLocalizations {
       'navSearch': 'శోధన',
       'navBookings': 'బుకింగ్స్',
       'navSaved': 'సేవ్డ్',
+      'navExplore': 'అన్వేషించండి',
+      'navChat': 'చాట్',
       'navProfile': 'ప్రొఫైల్',
       'venues': 'వేదికలు',
       'venueDetails': 'వేదిక వివరాలు',
@@ -1322,6 +1328,8 @@ class AppLocalizations {
       'navSearch': 'खोज',
       'navBookings': 'बुकिंग',
       'navSaved': 'सेव्ड',
+      'navExplore': 'एक्सप्लोर',
+      'navChat': 'चैट',
       'navProfile': 'प्रोफ़ाइल',
       'bookNow': 'अभी बुक करें',
       'nearbyVenues': 'नज़दीकी स्थान',

@@ -28,8 +28,42 @@ const shellDestinationCatalog = [
   ShellDestination(branchIndex: 5, id: 'saved'),
 ];
 
-List<ShellDestination> visibleShellDestinations(FeatureRegistry registry) {
-  return shellDestinationCatalog
+/// Admin-selectable bottom-nav style (Admin settings -> Home UI ->
+/// `bottom_nav_style`). `classic` (default, unchanged) is the original 6-tab
+/// bar above; `modern` is the optional 5-tab Home / Explore / Bookings /
+/// Chat / Profile bar that goes with the modern Home page. Map and Saved
+/// stay reachable as routes in both styles.
+enum ShellNavStyle {
+  modern,
+  classic;
+
+  static ShellNavStyle fromSetting(Object? value) =>
+      value?.toString() == 'modern' ? ShellNavStyle.modern : ShellNavStyle.classic;
+}
+
+/// Branch index of the Chat (AI assistant) shell branch.
+const chatShellBranchIndex = 6;
+
+const modernShellDestinationCatalog = [
+  ShellDestination(branchIndex: 0, id: 'home'),
+  ShellDestination(branchIndex: 2, id: 'search', feature: FeatureId.search),
+  ShellDestination(branchIndex: 3, id: 'bookings', feature: FeatureId.booking),
+  ShellDestination(
+    branchIndex: chatShellBranchIndex,
+    id: 'chat',
+    feature: FeatureId.ai,
+  ),
+  ShellDestination(branchIndex: 4, id: 'profile'),
+];
+
+List<ShellDestination> visibleShellDestinations(
+  FeatureRegistry registry, {
+  ShellNavStyle style = ShellNavStyle.classic,
+}) {
+  final catalog = style == ShellNavStyle.modern
+      ? modernShellDestinationCatalog
+      : shellDestinationCatalog;
+  return catalog
       .where(
         (item) =>
             item.feature == null ||

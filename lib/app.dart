@@ -47,6 +47,22 @@ class BookMySpaceApp extends ConsumerWidget {
         }
       }
     });
+    // Admin settings -> Push Notifications / OneSignal. OFF (default, or
+    // settings not loaded/failed) never initialises OneSignal; ON
+    // initialises it with the configured ONESIGNAL_APP_ID and registers the
+    // signed-in user, if any.
+    ref.listen<AsyncValue<AdminSettings>>(adminSettingsProvider, (
+      previous,
+      next,
+    ) {
+      final settings = next.valueOrNull;
+      if (settings == null) return;
+      unawaited(
+        OneSignalPushService.instance.setEnabled(
+          settings.pushNotificationsEnabled,
+        ),
+      );
+    });
     ref.listen(authStateProvider, (previous, next) {
       final user = next.value;
       if (user != null) {

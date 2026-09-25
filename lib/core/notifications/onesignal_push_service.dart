@@ -30,35 +30,119 @@ import 'push_route_resolver.dart';
 ///    foreground display is still handled locally rather than left to
 ///    OneSignal's own default display).
 ///
-/// Every public method is fully defensive: it is a no-op whenever
-/// [AppConfig.oneSignalAppId] is empty (no
-/// `--dart-define=ONESIGNAL_APP_ID=...` supplied -- e.g. in this dev
-/// environment, or in `flutter test`, which never calls
-/// `OneSignal.initialize`). This means importing and calling this service
-/// can never crash the app or break existing widget tests, even though
-/// push notifications will not actually be delivered until a real
-/// OneSignal App ID is configured.
+/// Admin-controlled: nothing touches the OneSignal SDK until
+/// [setEnabled] is called with `true` (driven by Admin settings -> Push
+/// Notifications / OneSignal, see `AdminSettings.pushNotificationsEnabled`)
+/// AND a valid [AppConfig.oneSignalAppId] is configured via
+/// `--dart-define=ONESIGNAL_APP_ID=...` / `--dart-define-from-file`.
+/// While OFF (the default) OneSignal is never initialised, no permission
+/// is requested, no External ID login happens and no subscription id is
+/// registered, so existing app behaviour is unchanged. Only the public App
+/// ID is ever used here; the OneSignal REST API key stays server-side in
+/// Supabase Edge Function secrets.
 class OneSignalPushService {
-  OneSignalPushService._();
+  OneSignalPushService._({PushSdk? sdk, String? appId})
+    : _sdkOverride = sdk,
+      _appIdOverride = appId;
+
+  /// Test seam: a service backed by a fake [PushSdk] and explicit App ID.
+  @visibleForTesting
+  factory OneSignalPushService.forTesting({
+    required PushSdk sdk,
+    required String appId,
+  }) => OneSignalPushService._(sdk: sdk, appId: appId);
 
   static final OneSignalPushService instance = OneSignalPushService._();
+
+  final PushSdk? _sdkOverride;
+  final String? _appIdOverride;
+  late final PushSdk _sdk = _sdkOverride ?? _OneSignalSdk(this);
+  String get _appId => _appIdOverride ?? AppConfig.oneSignalAppId;
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  bool _initialized = false;
-  bool get _ready => AppConfig.oneSignalAppId.isNotEmpty;
+  static final _appIdPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
+  /// True when [appId] looks like a OneSignal App ID (a UUID).
+  static bool isValidAppId(String appId) => _appIdPattern.hasMatch(appId);
+
+  bool _enabled = false;
+  bool _sdkInitialized = false;
+
+  /// True only when an admin enabled push and the SDK was initialised.
+  bool get isActive => _enabled && _sdkInitialized;
+
+  /// Whether the SDK has ever been initialised in this process.
+  bool get isSdkInitialized => _sdkInitialized;
+
+  bool get _ready => isActive;
 
   DeviceTokenRepository? _tokenRepository;
+  String? _signedInUserId;
 
   // Kept as a field (rather than a closure created inline) so the exact
   // same callback reference can be passed to removeObserver in
-  // onSignedOut -- OneSignal's addObserver/removeObserver pair matches by
-  // reference, not by subscription handle.
-  void Function(OSPushSubscriptionChangedState state)? _subscriptionObserver;
+  // onSignedOut -- addObserver/removeObserver match by reference.
+  void Function(String? subscriptionId)? _subscriptionObserver;
 
-  /// Call once at startup, before a user is necessarily signed in.
-  /// Initializes the OneSignal SDK and wires the foreground-display and
+  /// Applies the admin Push Notifications switch.
+  ///
+  /// ON: initialises OneSignal with the configured App ID (once per
+  /// process) and, if a user is already signed in, registers them.
+  /// OFF: if push was active, deregisters this device, logs out of the
+  /// External ID and opts the subscription out. OneSignal cannot be
+  /// un-initialised mid-process, so a fully uninitialised state resumes on
+  /// the next cold start (when the switch is read as OFF before any init).
+  Future<void> setEnabled(bool enabled) async {
+    if (enabled) {
+      if (_enabled && _sdkInitialized) return;
+      _enabled = true;
+      final appId = _appId;
+      if (!isValidAppId(appId)) {
+        debugPrint(
+          'OneSignalPushService: push enabled by admin but ONESIGNAL_APP_ID '
+          'is missing or invalid; push stays disabled.',
+        );
+        _enabled = false;
+        return;
+      }
+      try {
+        if (!_sdkInitialized) {
+          await _sdk.initialize(appId);
+          _sdkInitialized = true;
+        } else {
+          _sdk.optIn();
+        }
+      } catch (e) {
+        debugPrint('OneSignalPushService.setEnabled failed: $e');
+        _enabled = false;
+        return;
+      }
+      final repository = _tokenRepository;
+      final userId = _signedInUserId;
+      if (repository != null && userId != null) {
+        await _register(repository, userId);
+      }
+    } else {
+      final wasActive = isActive;
+      if (wasActive) {
+        await _unregister();
+        try {
+          _sdk.optOut();
+        } catch (e) {
+          debugPrint('OneSignalPushService optOut failed: $e');
+        }
+      }
+      _enabled = false;
+    }
+  }
+
+  /// Called at most once per process, by [setEnabled] when an admin has
+  /// turned push ON. Initializes the OneSignal SDK and wires the
+  /// foreground-display and
   /// notification-click listeners. Does NOT request permission or
   /// associate a user with this device -- that happens in [onSignedIn],
   /// matching the previous FCM implementation's ordering (permission is
@@ -75,20 +159,12 @@ class OneSignalPushService {
   /// always displays natively) fall back to OneSignal's default channel
   /// until that dashboard configuration is added -- see the production
   /// setup notes for this task.
-  Future<void> init() async {
-    if (_initialized) return;
-    _initialized = true;
-    if (!_ready) {
-      debugPrint(
-        'OneSignalPushService: ONESIGNAL_APP_ID not configured, push disabled.',
-      );
-      return;
+  Future<void> _initializeOneSignal(String appId) async {
+    if (kDebugMode) {
+      OneSignal.Debug.setLogLevel(OSLogLevel.warn);
     }
+    OneSignal.initialize(appId);
     try {
-      if (kDebugMode) {
-        OneSignal.Debug.setLogLevel(OSLogLevel.warn);
-      }
-      OneSignal.initialize(AppConfig.oneSignalAppId);
       await _initLocalNotifications();
 
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
@@ -107,7 +183,7 @@ class OneSignalPushService {
         );
       });
     } catch (e) {
-      debugPrint('OneSignalPushService.init failed: $e');
+      debugPrint('OneSignalPushService listener setup failed: $e');
     }
   }
 
@@ -181,18 +257,24 @@ class OneSignalPushService {
   /// sign-in with the just-authenticated user's id.
   Future<void> onSignedIn(DeviceTokenRepository repository, String userId) async {
     _tokenRepository = repository;
-    if (!_ready || userId.isEmpty) return;
+    if (userId.isEmpty) return;
+    _signedInUserId = userId;
+    if (!_ready) return;
+    await _register(repository, userId);
+  }
+
+  Future<void> _register(DeviceTokenRepository repository, String userId) async {
     try {
-      await OneSignal.Notifications.requestPermission(true);
+      await _sdk.requestPermission();
 
       // Associates this device's push subscription(s) with our own user id
       // on OneSignal's backend. This -- not local bookkeeping -- is what
       // send-push-outbox actually targets, and what prevents a previous
       // account's pushes from continuing to arrive after a different user
       // signs in on the same device (see onSignedOut for the logout half).
-      OneSignal.login(userId);
+      _sdk.login(userId);
 
-      final currentId = OneSignal.User.pushSubscription.id;
+      final currentId = _sdk.subscriptionId;
       if (currentId != null && currentId.isNotEmpty) {
         await repository.registerToken(
           token: currentId,
@@ -201,15 +283,14 @@ class OneSignalPushService {
       }
 
       _removeSubscriptionObserver();
-      _subscriptionObserver = (state) {
-        final id = state.current.id;
+      _subscriptionObserver = (id) {
         if (id != null && id.isNotEmpty) {
           unawaited(
             repository.registerToken(token: id, platform: _platformName()),
           );
         }
       };
-      OneSignal.User.pushSubscription.addObserver(_subscriptionObserver!);
+      _sdk.addSubscriptionObserver(_subscriptionObserver!);
     } catch (e) {
       debugPrint('OneSignalPushService.onSignedIn failed: $e');
     }
@@ -220,33 +301,39 @@ class OneSignalPushService {
   /// sign-out (while the Supabase session is still valid, so RLS still
   /// permits deleting the `device_tokens` row) so a shared device does not
   /// keep receiving push notifications for the previous account.
-  ///
-  /// `OneSignal.logout()` is the critical call here: without it, this
-  /// device stays associated with the signed-out user's external id on
-  /// OneSignal's backend and would keep receiving their pushes even after
-  /// a different user signs in, since login()/logout() -- not our local
-  /// device_tokens table -- is the source of truth OneSignal's send API
-  /// targets.
+  /// A no-op for the SDK while push is disabled by admin.
   Future<void> onSignedOut() async {
+    try {
+      await _unregister();
+    } finally {
+      _tokenRepository = null;
+      _signedInUserId = null;
+    }
+  }
+
+  Future<void> _unregister() async {
     final repository = _tokenRepository;
     try {
       if (_ready && repository != null) {
-        final id = OneSignal.User.pushSubscription.id;
+        final id = _sdk.subscriptionId;
         if (id != null && id.isNotEmpty) await repository.deregisterToken(id);
       }
-      if (_ready) OneSignal.logout();
+      if (_ready) _sdk.logout();
     } catch (e) {
       debugPrint('OneSignalPushService.onSignedOut failed: $e');
     } finally {
       _removeSubscriptionObserver();
-      _tokenRepository = null;
     }
   }
 
   void _removeSubscriptionObserver() {
     final observer = _subscriptionObserver;
-    if (observer != null && _ready) {
-      OneSignal.User.pushSubscription.removeObserver(observer);
+    if (observer != null && _sdkInitialized) {
+      try {
+        _sdk.removeSubscriptionObserver(observer);
+      } catch (e) {
+        debugPrint('OneSignalPushService removeObserver failed: $e');
+      }
     }
     _subscriptionObserver = null;
   }
@@ -254,5 +341,71 @@ class OneSignalPushService {
   String _platformName() {
     if (kIsWeb) return 'web';
     return defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+  }
+}
+
+/// Minimal seam over the OneSignal SDK calls this service makes, so the
+/// admin enable/disable behaviour can be unit-tested without the native
+/// platform channel.
+abstract class PushSdk {
+  Future<void> initialize(String appId);
+  Future<void> requestPermission();
+  void login(String externalId);
+  void logout();
+  void optIn();
+  void optOut();
+  String? get subscriptionId;
+  void addSubscriptionObserver(void Function(String? id) observer);
+  void removeSubscriptionObserver(void Function(String? id) observer);
+}
+
+class _OneSignalSdk implements PushSdk {
+  _OneSignalSdk(this._service);
+
+  final OneSignalPushService _service;
+  final Map<
+    void Function(String? id),
+    void Function(OSPushSubscriptionChangedState state)
+  >
+  _observers = {};
+
+  @override
+  Future<void> initialize(String appId) =>
+      _service._initializeOneSignal(appId);
+
+  @override
+  Future<void> requestPermission() async {
+    await OneSignal.Notifications.requestPermission(true);
+  }
+
+  @override
+  void login(String externalId) => OneSignal.login(externalId);
+
+  @override
+  void logout() => OneSignal.logout();
+
+  @override
+  void optIn() => OneSignal.User.pushSubscription.optIn();
+
+  @override
+  void optOut() => OneSignal.User.pushSubscription.optOut();
+
+  @override
+  String? get subscriptionId => OneSignal.User.pushSubscription.id;
+
+  @override
+  void addSubscriptionObserver(void Function(String? id) observer) {
+    void wrapped(OSPushSubscriptionChangedState state) =>
+        observer(state.current.id);
+    _observers[observer] = wrapped;
+    OneSignal.User.pushSubscription.addObserver(wrapped);
+  }
+
+  @override
+  void removeSubscriptionObserver(void Function(String? id) observer) {
+    final wrapped = _observers.remove(observer);
+    if (wrapped != null) {
+      OneSignal.User.pushSubscription.removeObserver(wrapped);
+    }
   }
 }

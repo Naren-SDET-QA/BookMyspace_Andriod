@@ -41,6 +41,8 @@ import '../customer_category_preferences_providers.dart';
 import '../widgets/category_carousel.dart';
 import '../widgets/home_discovery_widgets.dart';
 import '../widgets/home_v2_widgets.dart';
+import '../widgets/home_modern_widgets.dart';
+import '../../../notifications/presentation/notification_providers.dart';
 
 /// The 4 primary sections of BookMySpace
 enum MainHomeSection {
@@ -147,9 +149,13 @@ List<AmenityFilter> _amenitiesFor(CustomerSection? section) {
 /// - First Screen: ONLY 4 Main Sections in a fast, responsive, attractive layout
 /// - Section Drill-Down: Category Index -> Location -> Search & Voice Booking -> Results -> Direct Booking/Call/WhatsApp
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key, this.initialSection});
+  const HomeScreen({super.key, this.initialSection, this.forceModernLayout});
 
   final CustomerSection? initialSection;
+
+  /// When true, always shows the extra modern Home page regardless of the
+  /// admin `home_layout` setting (used by the /home-modern preview route).
+  final bool? forceModernLayout;
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -272,6 +278,148 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// Modern layout first screen (admin `home_layout: modern`). Tiles reuse
+  /// the existing section drill-down / routes; each tile, the banner and the
+  /// lower sections can be hidden from Admin settings -> Home UI.
+  List<Widget> _modernFirstScreen({
+    required BuildContext context,
+    required ResponsiveInfo responsive,
+    required Map<String, dynamic> homeConfig,
+    required String locationLabel,
+    required AsyncValue<List<Venue>> venues,
+  }) {
+    final features = ref.watch(featureRegistryProvider);
+    final sections = _visibleHomeSections(ref).map((s) => s.id).toSet();
+    bool shown(String key) =>
+        AdminSettings.flag(homeConfig[key], fallback: true);
+    final pad = responsive.horizontalPadding;
+
+    final tiles = <ModernCategoryTile>[
+      if (shown('tile_spaces_visible') &&
+          sections.contains(CustomerSection.functionHalls.id))
+        ModernCategoryTile(
+          id: 'spaces',
+          title: 'Spaces',
+          subtitle: 'Halls, Venues & Event Spaces',
+          emoji: '🏠',
+          accent: const Color(0xFF3B82F6),
+          onTap: () => selectCustomerSection(ref, CustomerSection.functionHalls),
+        ),
+      if (shown('tile_institutes_visible') &&
+          features.isExposed(FeatureId.institutes))
+        ModernCategoryTile(
+          id: 'institutes',
+          title: 'Institutes',
+          subtitle: 'Find courses & coaching',
+          emoji: '🎓',
+          accent: const Color(0xFF7C3AED),
+          onTap: () => context.push(AppRoutes.institutesList),
+        ),
+      if (shown('tile_classes_visible') &&
+          features.isExposed(FeatureId.courses))
+        ModernCategoryTile(
+          id: 'classes',
+          title: 'Classes',
+          subtitle: 'Dance, Music & Skill Training',
+          emoji: '🧑‍🏫',
+          accent: const Color(0xFF10B981),
+          onTap: () => context.push(AppRoutes.coursesList),
+        ),
+      if (shown('tile_pg_visible') &&
+          sections.contains(CustomerSection.pgHostels.id))
+        ModernCategoryTile(
+          id: 'pg_hostels',
+          title: 'PG / Hostels',
+          subtitle: 'Comfortable Living Spaces',
+          emoji: '🛏️',
+          accent: const Color(0xFFF59E0B),
+          onTap: () => selectCustomerSection(ref, CustomerSection.pgHostels),
+        ),
+      if (shown('tile_stays_visible') &&
+          sections.contains(CustomerSection.lodgeRooms.id))
+        ModernCategoryTile(
+          id: 'stays',
+          title: 'Stays',
+          subtitle: 'Hotels, Guest Houses & Day Rooms',
+          emoji: '🏨',
+          accent: const Color(0xFFEC4899),
+          onTap: () => selectCustomerSection(ref, CustomerSection.lodgeRooms),
+        ),
+      if (shown('tile_shopping_visible') && features.isExposed(FeatureId.search))
+        ModernCategoryTile(
+          id: 'shopping',
+          title: 'Shopping',
+          subtitle: 'Best Deals Near You',
+          emoji: '🛍️',
+          accent: const Color(0xFFF43F5E),
+          onTap: () => _openHomeSearch('shopping'),
+        ),
+    ];
+
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(pad, 6, pad, 14),
+          child: ModernHomeSearchBar(
+            hint: AdminSettings.text(
+              homeConfig['modern_search_placeholder'],
+              'Search spaces, events, classes, PGs...',
+            ),
+            onSubmit: _openHomeSearch,
+            onVoiceTap: features.isExposed(FeatureId.voice)
+                ? () => _showVoiceBookingDialog(context)
+                : null,
+            onScanTap: features.isQrVisible()
+                ? () => context.push(AppRoutes.checkIn)
+                : null,
+          ),
+        ),
+      ),
+      if (tiles.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(pad, 0, pad, 14),
+            child: ModernCategoryGrid(tiles: tiles),
+          ),
+        ),
+      if (shown('home_banner_visible'))
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(pad, 0, pad, 16),
+            child: ModernHeroBanner(
+              settings: homeConfig,
+              onTap: () => context.push(AppRoutes.search),
+            ),
+          ),
+        ),
+      if (shown('space_radar_visible'))
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(pad, 0, pad, 16),
+            child: ModernSpaceRadar(
+              locationLabel: locationLabel,
+              venues: venues,
+              onViewAll: () => context.push(AppRoutes.search),
+              onVenueTap: (venue) => context.push(
+                AppRoutes.venueDetails.replaceAll(':id', venue.id),
+              ),
+              onRetry: () => ref.invalidate(nearbyVenuesProvider),
+            ),
+          ),
+        ),
+      if (shown('activity_visible'))
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(pad, 0, pad, 24),
+            child: ModernActivitySection(
+              onBookingsTap: () => context.push(AppRoutes.bookings),
+              onSavedTap: () => context.push(AppRoutes.saved),
+            ),
+          ),
+        ),
+    ];
+  }
+
   void _openHomeSearch(String query) {
     final trimmed = query.trim();
     context.push(
@@ -315,6 +463,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final adminSettings =
         ref.watch(adminSettingsProvider).valueOrNull ?? AdminSettings.defaults;
     final homeConfig = adminSettings.home;
+    // Admin chooses the Home page: 'glass' (existing, default) or the extra
+    // 'modern' page. Glass behaviour is unchanged when not opted in.
+    final modernLayout =
+        widget.forceModernLayout ??
+        homeConfig['home_layout']?.toString() == 'modern';
     final selectedSection = selectedCatalog == null
         ? null
         : MainHomeSection.values.firstWhere(
@@ -337,6 +490,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   // Top App Bar
+                  if (modernLayout)
+                    SliverToBoxAdapter(
+                      child: ModernHomeHeader(
+                        user: user,
+                        locationLabel: area.label,
+                        horizontalPadding: responsive.horizontalPadding,
+                        showNotifications: features.isExposed(
+                          FeatureId.notifications,
+                        ),
+                        unreadCount: features.isExposed(FeatureId.notifications)
+                            ? ref
+                                      .watch(unreadNotificationsCountProvider)
+                                      .valueOrNull ??
+                                  0
+                            : 0,
+                        onLocationTap: _showLocationPickerModal,
+                        onNotificationsTap: () =>
+                            context.push(AppRoutes.notifications),
+                        onProfileTap: () => context.push(AppRoutes.profile),
+                        onLoginTap: () => context.push(AppRoutes.login),
+                      ),
+                    ),
+                  if (modernLayout && selectedSection == null)
+                    ..._modernFirstScreen(
+                      context: context,
+                      responsive: responsive,
+                      homeConfig: homeConfig,
+                      locationLabel: area.label,
+                      venues: popularVenuesAsync,
+                    ),
+                  if (!modernLayout)
                   SliverToBoxAdapter(
                     child: _TopHeaderBar(
                       user: user,
@@ -356,7 +540,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onLocationTap: _showLocationPickerModal,
                     ),
                   ),
-                  if (selectedSection == null)
+                  if (selectedSection == null && !modernLayout)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -377,6 +561,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   if (selectedSection == null &&
+                      !modernLayout &&
                       AdminSettings.flag(
                         homeConfig['home_banner_visible'],
                         fallback: true,
@@ -393,7 +578,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                  if (selectedSection == null)
+                  if (selectedSection == null && !modernLayout)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -431,7 +616,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // 🌟 FIRST SCREEN: EXACTLY 4 MAIN SECTIONS ONLY
                   // =========================================================
                   // First screen: modern presentation over the existing release contracts.
-                  if (selectedSection == null) ...[
+                  if (selectedSection == null && !modernLayout) ...[
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -492,7 +677,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // =========================================================
                   // 🚀 SECTION DRILL-DOWN: Category Index -> Location -> Results
                   // =========================================================
-                  else ...[
+                  else if (selectedSection != null) ...[
                     // Section Back & Title Header
                     SliverToBoxAdapter(
                       child: Padding(

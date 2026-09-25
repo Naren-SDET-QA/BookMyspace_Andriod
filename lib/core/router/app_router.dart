@@ -106,6 +106,8 @@ import '../modular/feature_id.dart';
 import '../modular/feature_providers.dart';
 import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
+import '../theme/app_theme.dart';
+import '../../features/admin/presentation/admin_settings_providers.dart';
 import '../widgets/test_id.dart';
 
 /// Route names used for navigation.
@@ -167,6 +169,8 @@ abstract class AppRoutes {
   static const unifiedRegistration = '/register';
   static const adminLocations = '/admin/locations';
   static const assistant = '/assistant';
+  static const chat = '/chat';
+  static const homeModern = '/home-modern';
   static const checkIn = '/check-in';
   static const institutesList = '/institutes';
   static const instituteDetails = '/institutes/:id';
@@ -295,6 +299,14 @@ GoRouter createAppRouter({
         path: AppRoutes.assistant,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AssistantScreen(),
+      ),
+      // Extra Home page (modern design) — preview without changing the
+      // admin setting. The default Home tab is unchanged.
+      GoRoute(
+        path: AppRoutes.homeModern,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const HomeScreen(forceModernLayout: true),
       ),
       GoRoute(
         path: AppRoutes.checkIn,
@@ -902,6 +914,16 @@ GoRouter createAppRouter({
               ),
             ],
           ),
+          // Chat tab (modern bottom-nav style): the existing AI assistant
+          // screen hosted inside the shell. /assistant stays a pushed route.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.chat,
+                builder: (context, state) => const AssistantScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -994,17 +1016,27 @@ class _AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final simpleMode = ref.watch(simpleModeProvider);
+    final navStyle = ShellNavStyle.fromSetting(
+      ref.watch(adminSettingsProvider).valueOrNull?.home['bottom_nav_style'],
+    );
     final visible = visibleShellDestinations(
       ref.watch(featureRegistryProvider),
+      style: navStyle,
     );
     final selected = selectedShellIndex(
       currentBranch: navigationShell.currentIndex,
       visible: visible,
     );
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        labelBehavior: simpleMode
+    final modern = navStyle == ShellNavStyle.modern;
+    final theme = Theme.of(context);
+    final navBar = NavigationBar(
+        backgroundColor: modern ? theme.colorScheme.surface : null,
+        surfaceTintColor: modern ? Colors.transparent : null,
+        indicatorColor: modern
+            ? AppTheme.brand.withValues(alpha: 0.12)
+            : null,
+        height: modern ? 72 : null,
+        labelBehavior: simpleMode || modern
             ? NavigationDestinationLabelBehavior.alwaysShow
             : NavigationDestinationLabelBehavior.onlyShowSelected,
         selectedIndex: selected,
@@ -1023,11 +1055,49 @@ class _AppShell extends ConsumerWidget {
                 key: ValueKey('shell_${item.id}'),
                 icon: Icon(_shellIcon(item.id, selected: false)),
                 selectedIcon: Icon(_shellIcon(item.id, selected: true)),
-                label: _shellLabel(item.id, l10n),
+                label: _shellLabel(item.id, l10n, modern: modern),
               ),
             ),
         ],
-      ),
+      );
+    return Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: modern
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.brand.withValues(alpha: 0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: NavigationBarTheme(
+                data: NavigationBarThemeData(
+                  labelTextStyle: WidgetStateProperty.resolveWith(
+                    (states) => TextStyle(
+                      fontSize: 12,
+                      fontWeight: states.contains(WidgetState.selected)
+                          ? FontWeight.w800
+                          : FontWeight.w500,
+                      color: states.contains(WidgetState.selected)
+                          ? AppTheme.brand
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  iconTheme: WidgetStateProperty.resolveWith(
+                    (states) => IconThemeData(
+                      color: states.contains(WidgetState.selected)
+                          ? AppTheme.brand
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                child: navBar,
+              ),
+            )
+          : navBar,
     );
   }
 }
@@ -1041,14 +1111,17 @@ IconData _shellIcon(String id, {required bool selected}) {
     'profile' => selected ? Icons.person_rounded : Icons.person_outline_rounded,
     'saved' =>
       selected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+    'chat' =>
+      selected ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
     _ => selected ? Icons.home_rounded : Icons.home_outlined,
   };
 }
 
-String _shellLabel(String id, AppLocalizations l10n) {
+String _shellLabel(String id, AppLocalizations l10n, {bool modern = false}) {
   return switch (id) {
     'map' => l10n.navMap,
-    'search' => l10n.navSearch,
+    'search' => modern ? l10n.navExplore : l10n.navSearch,
+    'chat' => l10n.navChat,
     'bookings' => l10n.navBookings,
     'profile' => l10n.navProfile,
     'saved' => l10n.navSaved,

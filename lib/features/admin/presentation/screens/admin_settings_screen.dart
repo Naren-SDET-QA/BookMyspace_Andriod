@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/config/app_config.dart';
+import '../../../../core/notifications/onesignal_push_service.dart';
 import '../../domain/admin_settings.dart';
 import '../admin_settings_providers.dart';
 import '../../../auth/presentation/auth_providers.dart';
@@ -31,6 +33,7 @@ class AdminSettingsScreen extends ConsumerWidget {
             _HomeSection(settings: settings),
             _ThemeSection(settings: settings),
             _ModuleSection(settings: settings),
+            _PushSection(settings: settings),
             const _ExistingSettingsLinks(),
           ],
         ),
@@ -98,9 +101,54 @@ class _HomeSectionState extends ConsumerState<_HomeSection> {
           }),
         ),
       ),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<String>(
+        initialValue: values['home_layout']?.toString() == 'modern'
+            ? 'modern'
+            : 'glass',
+        decoration: const InputDecoration(labelText: 'Home layout'),
+        items: const [
+          DropdownMenuItem(
+            value: 'glass',
+            child: Text('Glass — current Home (default)'),
+          ),
+          DropdownMenuItem(
+            value: 'modern',
+            child: Text('Modern — new category-tile Home'),
+          ),
+        ],
+        onChanged: (v) => setState(() => values['home_layout'] = v),
+      ),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<String>(
+        initialValue: values['bottom_nav_style']?.toString() == 'modern'
+            ? 'modern'
+            : 'classic',
+        decoration: const InputDecoration(labelText: 'Bottom navigation'),
+        items: const [
+          DropdownMenuItem(
+            value: 'classic',
+            child: Text('Classic — current 6 tabs (default)'),
+          ),
+          DropdownMenuItem(
+            value: 'modern',
+            child: Text('Modern — Home, Explore, Bookings, Chat, Profile'),
+          ),
+        ],
+        onChanged: (v) => setState(() => values['bottom_nav_style'] = v),
+      ),
+      const SizedBox(height: 8),
       for (final item in const [
         ('home_banner_visible', 'Home banner'),
         ('search_banner_visible', 'Search banner'),
+        ('tile_spaces_visible', 'Tile: Spaces'),
+        ('tile_institutes_visible', 'Tile: Institutes'),
+        ('tile_classes_visible', 'Tile: Classes'),
+        ('tile_pg_visible', 'Tile: PG / Hostels'),
+        ('tile_stays_visible', 'Tile: Stays'),
+        ('tile_shopping_visible', 'Tile: Shopping'),
+        ('space_radar_visible', 'Your Space Radar'),
+        ('activity_visible', 'Your Activity'),
       ])
         SwitchListTile(
           title: Text(item.$2),
@@ -187,6 +235,59 @@ class _ModuleSectionState extends State<_ModuleSection> {
       _SaveButton(section: 'modules', values: values),
     ],
   );
+}
+
+/// Admin settings -> Push Notifications / OneSignal.
+///
+/// Only the on/off switch is stored (module_feature_configs, module_key
+/// `push_notifications`). The OneSignal App ID comes from the build
+/// environment (ONESIGNAL_APP_ID); the REST API key is a Supabase Edge
+/// Function secret and is never entered or shown here.
+class _PushSection extends StatefulWidget {
+  const _PushSection({required this.settings});
+  final AdminSettings settings;
+  @override
+  State<_PushSection> createState() => _PushSectionState();
+}
+
+class _PushSectionState extends State<_PushSection> {
+  late Map<String, dynamic> values;
+  @override
+  void initState() {
+    super.initState();
+    values = {...widget.settings.push};
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appIdConfigured = OneSignalPushService.isValidAppId(
+      AppConfig.oneSignalAppId,
+    );
+    return _SectionCard(
+      title: 'Push Notifications / OneSignal',
+      children: [
+        SwitchListTile(
+          key: const ValueKey('admin_push_onesignal_switch'),
+          title: const Text('Enable OneSignal push notifications'),
+          subtitle: Text(
+            appIdConfigured
+                ? 'OneSignal App ID is configured for this build.'
+                : 'ONESIGNAL_APP_ID is not configured for this build, so '
+                      'push stays off even when enabled.',
+          ),
+          value: AdminSettings.flag(values[AdminSettings.pushEnabledKey]),
+          onChanged: (v) =>
+              setState(() => values[AdminSettings.pushEnabledKey] = v),
+        ),
+        const Text(
+          'When off, OneSignal is not initialised and devices are not '
+          'registered. Turning it off stops delivery immediately; the SDK is '
+          'fully unloaded on the next app launch.',
+        ),
+        _SaveButton(section: AdminSettings.pushSection, values: values),
+      ],
+    );
+  }
 }
 
 class _SaveButton extends ConsumerWidget {

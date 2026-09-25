@@ -18,7 +18,19 @@ void main() {
     expect(pubspec, isNot(contains('firebase_performance')));
     expect(main, isNot(contains('initializeFirebase')));
     expect(main, contains('initSupabase'));
-    expect(main, contains('OneSignalPushService'));
+  });
+
+  test('OneSignal is admin-gated, never initialised unconditionally', () {
+    final main = read('lib/main.dart');
+    final app = read('lib/app.dart');
+    final service = read('lib/core/notifications/onesignal_push_service.dart');
+
+    expect(main, isNot(contains('OneSignalPushService.instance.init(')));
+    expect(app, contains('OneSignalPushService.instance.setEnabled('));
+    expect(app, contains('pushNotificationsEnabled'));
+    // Only the public App ID is used client-side; no REST API key.
+    expect(service, isNot(contains('REST_API_KEY')));
+    expect(service, isNot(contains('rest_api_key')));
   });
 
   test('venue repository has no Firebase logging dependency', () {

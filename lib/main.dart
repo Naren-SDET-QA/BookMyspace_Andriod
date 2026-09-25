@@ -8,7 +8,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'app.dart';
 import 'core/config/settings_controller.dart';
-import 'core/notifications/onesignal_push_service.dart';
 import 'core/offline/offline_providers.dart';
 import 'core/offline/preferences_offline_store.dart';
 import 'features/auth/presentation/auth_providers.dart';
@@ -19,10 +18,11 @@ import 'core/health/app_health.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize push notifications (OneSignal). No-op when
-  // ONESIGNAL_APP_ID is not configured, e.g. in this dev environment or
-  // in flutter test.
-  await OneSignalPushService.instance.init();
+  // Push notifications (OneSignal) are admin-controlled: nothing is
+  // initialised here. BookMySpaceApp calls
+  // OneSignalPushService.instance.setEnabled(...) once Admin settings ->
+  // Push Notifications / OneSignal has loaded, and only initialises the SDK
+  // when that switch is ON and ONESIGNAL_APP_ID is configured.
 
   // Initialize Supabase
   await initSupabase();

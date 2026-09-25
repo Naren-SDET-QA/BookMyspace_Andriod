@@ -146,7 +146,7 @@ class FeatureRegistry {
     if (location == '/institutes' || location.startsWith('/institutes')) {
       return FeatureId.institutes;
     }
-    if (location == '/assistant') return FeatureId.ai;
+    if (location == '/assistant' || location == '/chat') return FeatureId.ai;
     if (location == '/notifications') return FeatureId.notifications;
     if (location == '/payments' || location.endsWith('/pay')) {
       return FeatureId.payments;

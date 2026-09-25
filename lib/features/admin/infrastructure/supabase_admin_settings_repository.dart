@@ -21,6 +21,7 @@ class SupabaseAdminSettingsRepository {
       home: {...AdminSettings.defaults.home, ...?maps['home_ui']},
       theme: {...AdminSettings.defaults.theme, ...?maps['theme']},
       modules: maps['modules'] ?? const {},
+      push: maps[AdminSettings.pushSection] ?? const {},
     );
   }
 
