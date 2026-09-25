@@ -252,7 +252,7 @@ void main() {
 
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
     expect(find.text('Pay now'), findsNothing);
-    expect(find.text('Cancel booking'), findsOneWidget);
+    expect(find.text('Cancel Booking'), findsOneWidget);
   });
 
   testWidgets('booking still works and does not open /pay when payments is off', (
@@ -261,7 +261,7 @@ void main() {
     FeatureRegistry.configure(FeatureId.payments, enabled: false);
     final bookingRepo = MockBookingRepository();
     final router = createAppRouter(
-      initialLocation: '/venues/v1',
+      initialLocation: '/v1/venues/v1',
       currentUser: _user,
       authReady: true,
       features: FeatureRegistry.instance,
@@ -292,7 +292,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm booking').last);
+    await tester.tap(find.text('Confirm Booking').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();

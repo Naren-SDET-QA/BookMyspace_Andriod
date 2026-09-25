@@ -426,7 +426,7 @@ class _BookingScreenState extends ConsumerState<BookingScreenV1> {
   /// disposed; [LoginScreen] pops back to it on a successful sign-in
   /// instead of navigating to the shell (see LoginScreen._onSignedIn).
   Future<void> _promptSignIn() async {
-    await context.push(AppRoutes.login);
+    await context.push(AppRoutes.v1Login);
   }
 
   CategoryConfiguration? _categoryConfig(WidgetRef ref) {

@@ -304,7 +304,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreenV1> {
                 E2eIds.checkoutSummary,
                 child: _SummaryCard(booking: _booking),
               ),
-              if (_booking.holdExpiresAt != null && _booking.canPay) ...[
+              if (_booking.holdExpiresAt != null && _booking.canPayDirect) ...[
                 const SizedBox(height: 12),
                 BookingHoldCountdown(
                   expiresAt: _booking.holdExpiresAt!,
@@ -321,7 +321,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreenV1> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_booking.canPay) ...[
+              if (_booking.canPayDirect) ...[
                 _PaymentMethodCard(
                   selected: _paymentMethod,
                   onChanged: (method) =>
@@ -329,7 +329,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreenV1> {
                 ),
                 const SizedBox(height: 12),
               ],
-              if (_booking.canPay)
+              if (_booking.canPayDirect)
                 _PromoCodeCard(
                   controller: _promoController,
                   appliedCode: _appliedCode,

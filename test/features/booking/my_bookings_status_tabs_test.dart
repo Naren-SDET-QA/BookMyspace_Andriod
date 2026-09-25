@@ -35,6 +35,11 @@ void main() {
     BookingStatus.cancelled: E2eIds.bookingsTabCancelled,
     BookingStatus.rejected: E2eIds.bookingsTabCancelled,
     BookingStatus.refunded: E2eIds.bookingsTabCancelled,
+    // Statuses added by the main lineage (merged in).
+    BookingStatus.awaitingOwnerApproval: E2eIds.bookingsTabUpcoming,
+    BookingStatus.unknown: E2eIds.bookingsTabUpcoming,
+    BookingStatus.ownerRejected: E2eIds.bookingsTabCancelled,
+    BookingStatus.approvalExpired: E2eIds.bookingsTabCancelled,
   };
 
   test('every booking status is assigned a tab', () {

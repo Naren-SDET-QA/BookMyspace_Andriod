@@ -512,7 +512,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                         onNotificationsTap: () =>
                             context.push(AppRoutes.notifications),
                         onProfileTap: () => context.push(AppRoutes.profile),
-                        onLoginTap: () => context.push(AppRoutes.login),
+                        onLoginTap: () => context.push(AppRoutes.v1Login),
                       ),
                     ),
                   if (modernLayout && selectedSection == null)
@@ -534,7 +534,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                         FeatureId.notifications,
                       ),
                       showCheckIn: features.isQrVisible(),
-                      onLoginTap: () => context.push(AppRoutes.login),
+                      onLoginTap: () => context.push(AppRoutes.v1Login),
                       onProfileTap: () => context.push(AppRoutes.profile),
                       onNotificationsTap: () =>
                           context.push(AppRoutes.notifications),
@@ -2130,7 +2130,7 @@ class _SectionVenueCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
+                  AppNetworkImage(url: venue.coverOrSampleImageUrl, fit: BoxFit.cover),
                   if (venue.avgRating > 0)
                     Positioned(
                       top: 8,

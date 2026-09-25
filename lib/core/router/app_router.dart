@@ -406,7 +406,8 @@ final appRouterProvider = Provider.family<GoRouter, String>((
     final previousUserId = previous?.user?.id;
     final nextUserId = next.user?.id;
     if (previous.runtimeType == next.runtimeType &&
-        previousUserId == nextUserId) {
+        previousUserId == nextUserId &&
+        previous?.user?.role == next.user?.role) {
       return;
     }
     refresh.value++;
@@ -596,11 +597,6 @@ GoRouter createAppRouter({
         path: AppRoutes.ownerInstitute,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const InstituteOwnerDashboardScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.adminDashboard,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AdminDashboardScreen(),
       ),
       GoRoute(
         path: AppRoutes.adminListings,
@@ -1652,10 +1648,15 @@ String? resolveAppRedirect({
     if (!isPublic) return AppRoutes.login;
   }
   if (currentUser != null) {
-    final isAdminRoute =
-        location == AppRoutes.adminDashboard || location.startsWith('/admin/');
-    final isOwnerRoute =
-        location.startsWith('/owner') || location == AppRoutes.analytics;
+    // Main-lineage routes are guarded by RoleGate with the fine-grained
+    // database roles (administrator, support agent, institute owner, ...);
+    // the coarse role check below applies to the release/v1.0 routes only.
+    final gatedByWidget = _roleGateRoutes.contains(location);
+    final isAdminRoute = !gatedByWidget &&
+        (location == AppRoutes.adminDashboard ||
+            location.startsWith('/admin/'));
+    final isOwnerRoute = !gatedByWidget &&
+        (location.startsWith('/owner') || location == AppRoutes.analytics);
     if (isAdminRoute && !currentUser.isAdmin) return AppRoutes.profile;
     if (isOwnerRoute && !currentUser.isOwner) return AppRoutes.profile;
     if (location == AppRoutes.resetPassword) return null;
@@ -1667,6 +1668,18 @@ String? resolveAppRedirect({
   }
   return _featureRedirect(location, features);
 }
+
+/// Routes whose screens are wrapped in [RoleGate] (main lineage).
+const _roleGateRoutes = {
+  '/analytics', '/admin', '/admin/users', '/admin/owners', '/admin/venues',
+  '/admin/categories', '/admin/payments', '/admin/payments/ledger',
+  '/admin/events', '/admin/courses', '/admin/education', '/admin/support',
+  '/admin/audit', '/admin/cms', '/admin/integrations', '/admin/modules',
+  '/admin/home-layout', '/admin/theme', '/admin/nav-tabs', '/admin/catalog',
+  '/admin/media', '/owner', '/owner/categories', '/owner/venues',
+  '/owner/bookings', '/owner/institute', '/owner/courses',
+  '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
+};
 
 /// These Phase-1 flows require schemas/RPCs that are present only on the
 /// Phase branch. Keep them out of PROD until their backend contracts have
@@ -1792,22 +1805,19 @@ class _AppShell extends ConsumerWidget {
             },
             destinations: [
               for (final entry in tabs)
-                TestId(
-                  E2eIds.nav(entry.tab.id),
-                  child: NavigationDestination(
-                    key: ValueKey('shell_${entry.tab.id}'),
-                    icon: _navTabIcon(
-                      entry,
-                      actionableBookings: actionableBookings,
-                      selected: false,
-                    ),
-                    selectedIcon: _navTabIcon(
-                      entry,
-                      actionableBookings: actionableBookings,
-                      selected: true,
-                    ),
-                    label: navTabLabel(entry, l10n, isCompact: isCompact),
+                NavigationDestination(
+                  key: ValueKey('shell_${entry.tab.id}'),
+                  icon: _navTabIcon(
+                    entry,
+                    actionableBookings: actionableBookings,
+                    selected: false,
                   ),
+                  selectedIcon: _navTabIcon(
+                    entry,
+                    actionableBookings: actionableBookings,
+                    selected: true,
+                  ),
+                  label: navTabLabel(entry, l10n, isCompact: isCompact),
                 ),
             ],
           ),

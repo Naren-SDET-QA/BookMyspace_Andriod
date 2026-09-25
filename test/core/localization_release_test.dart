@@ -61,7 +61,8 @@ void main() {
         final l10n = AppLocalizations(Locale(code));
         expect(l10n.bookNow, isNotEmpty);
         expect(l10n.bookNow, isNot(en.bookNow), reason: code);
-        expect(l10n.privacyPolicy, en.privacyPolicy, reason: code);
+        // Main-lineage tables translate some keys (e.g. Tamil privacyPolicy)
+        // that release/v1.0 left in English, so no English-equality check.
         expect(AppLocalizations.languageLabel(Locale(code)), isNot(code));
       }
     });
@@ -69,9 +70,9 @@ void main() {
     test('Hindi falls back to English for missing keys', () {
       final hi = AppLocalizations(const Locale('hi'));
       final en = AppLocalizations(const Locale('en'));
-      expect(hi.appName, isNot(en.appName));
+      // The main lineage keeps the brand name untranslated.
+      expect(hi.appName, en.appName);
       expect(hi.bookNow, isNotEmpty);
-      expect(hi.privacyPolicy, en.privacyPolicy);
       expect(hi.viewOnMap, isNot(en.viewOnMap));
       expect(hi.unifiedRegistration, isNot(en.unifiedRegistration));
     });
@@ -85,8 +86,8 @@ void main() {
     test('Telugu translation exists for core strings', () {
       final te = AppLocalizations(const Locale('te'));
       final en = AppLocalizations(const Locale('en'));
-      expect(te.appName, isNot(en.appName));
-      expect(te.bookNow, isNotEmpty);
+      expect(te.appName, en.appName);
+      expect(te.bookNow, isNot(en.bookNow));
     });
 
     test(
@@ -232,11 +233,11 @@ void main() {
     testWidgets('renders first page and advances to next', (tester) async {
       await tester.pumpWidget(_wrap(const OnboardingScreen()));
       await tester.pumpAndSettle();
-      expect(find.text('Discover venues'), findsOneWidget);
+      expect(find.text('Find Your Perfect Space'), findsOneWidget);
 
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
-      expect(find.text('Book in seconds'), findsOneWidget);
+      expect(find.text('Real-Time Availability'), findsOneWidget);
     });
   });
 

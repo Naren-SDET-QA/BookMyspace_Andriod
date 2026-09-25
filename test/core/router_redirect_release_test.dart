@@ -154,7 +154,9 @@ void main() {
   testWidgets('customer cannot enter owner or admin routes', (tester) async {
     final ownerUri = await _redirectTo(
       tester,
-      initialLocation: AppRoutes.ownerDashboard,
+      // '/owner' itself is guarded in-screen by RoleGate after the merge;
+      // release-only owner routes keep the redirect to /profile.
+      initialLocation: AppRoutes.ownerBookingsManager,
       currentUser: const AuthUser(id: 'u1'),
       authReady: true,
     );

@@ -72,7 +72,7 @@ void main() {
   testWidgets('venue navigation reaches booking step without payment', (
     tester,
   ) async {
-    await tester.pumpWidget(testApp('/venues/v1'));
+    await tester.pumpWidget(testApp('/v1/venues/v1'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Book Now'), findsOneWidget);
     await tester.tap(find.textContaining('Book Now'));
@@ -83,7 +83,7 @@ void main() {
     await tester.ensureVisible(find.text('Morning'));
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
-    expect(find.text('Confirm booking'), findsOneWidget);
+    expect(find.text('Confirm Booking'), findsOneWidget);
     expect(find.text('Sign in to continue'), findsNothing);
   });
 }

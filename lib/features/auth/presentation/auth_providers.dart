@@ -157,7 +157,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         previous.user.email == user.email &&
         previous.user.phone == user.phone &&
         previous.user.fullName == user.fullName &&
-        previous.user.avatarUrl == user.avatarUrl) {
+        previous.user.avatarUrl == user.avatarUrl &&
+        previous.user.role == user.role &&
+        previous.user.verificationStatus == user.verificationStatus) {
       return;
     }
 

@@ -88,7 +88,7 @@ class _VenueTile extends ConsumerWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: AppNetworkImage(
-                    url: venue.coverImageUrl,
+                    url: venue.coverOrSampleImageUrl,
                     width: 64,
                     height: 64,
                     fit: BoxFit.cover,

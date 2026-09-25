@@ -49,8 +49,10 @@ void main() {
       }
     });
 
-    test('unknown status falls back to pending', () {
-      expect(BookingStatus.fromDb('weird'), BookingStatus.pending);
+    // Merged: unknown statuses map to BookingStatus.unknown (main lineage)
+    // so they are never mistaken for an actionable pending booking.
+    test('unknown status falls back to unknown', () {
+      expect(BookingStatus.fromDb('weird'), BookingStatus.unknown);
     });
   });
 
@@ -87,7 +89,15 @@ void main() {
 
     test('held and pending bookings can pay; confirmed cannot', () {
       expect(Booking.fromJson({'status': 'held'}).canPay, isTrue);
-      expect(Booking.fromJson({'status': 'pending'}).canPay, isTrue);
+      // Merged: a pending booking is payable only after owner approval.
+      expect(Booking.fromJson({'status': 'pending'}).canPay, isFalse);
+      expect(
+        Booking.fromJson({
+          'status': 'pending',
+          'approved_at': '2026-09-12T10:00:00Z',
+        }).canPay,
+        isTrue,
+      );
       expect(Booking.fromJson({'status': 'confirmed'}).canPay, isFalse);
     });
 

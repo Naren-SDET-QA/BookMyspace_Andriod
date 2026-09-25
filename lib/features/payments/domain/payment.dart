@@ -111,7 +111,11 @@ class Payment {
         currency: json['currency'] as String? ?? 'INR',
         status: PaymentStatus.fromDb(json['status'] as String? ?? 'pending'),
         method: json['method'] as String?,
-        isRefundable: json['is_refundable'] as bool? ?? true,
+        // Explicit column wins; otherwise only captured money is refundable.
+        isRefundable: json['is_refundable'] as bool? ??
+            _refundableStatus(
+              PaymentStatus.fromDb(json['status'] as String? ?? 'pending'),
+            ),
         metadata: json['metadata'] is Map<String, dynamic>
             ? json['metadata'] as Map<String, dynamic>
             : null,
@@ -209,3 +213,7 @@ enum PaymentMethodType {
   final String title;
   final String subtitle;
 }
+
+bool _refundableStatus(PaymentStatus status) =>
+    status == PaymentStatus.captured ||
+    status == PaymentStatus.partiallyRefunded;

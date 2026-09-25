@@ -7,11 +7,13 @@ import 'package:bookmyspace/features/booking/presentation/booking_providers.dart
 import 'package:bookmyspace/features/notifications/domain/notification.dart'
     as notif_domain;
 import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
+import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../booking/mock_booking_repository_release.dart';
 import '../auth/mock_auth_repository_release.dart';
 import '../booking/mock_booking_repository_release.dart';
 import 'mock_notification_repository.dart';
@@ -20,6 +22,8 @@ Widget _app(MockNotificationRepository notificationRepo) {
   return ProviderScope(
     overrides: [
       notificationRepositoryProvider.overrideWithValue(notificationRepo),
+      // Tapping a booking notification opens the (merged) bookings tab.
+      bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
       authRepositoryProvider.overrideWithValue(
         MockAuthRepository(
           initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
@@ -28,7 +32,7 @@ Widget _app(MockNotificationRepository notificationRepo) {
     ],
     child: MaterialApp.router(
       routerConfig: createAppRouter(
-        initialLocation: AppRoutes.notifications,
+        initialLocation: AppRoutes.v1Notifications,
         currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
       ),
       localizationsDelegates: const [
@@ -191,7 +195,7 @@ void main() {
         ],
         child: MaterialApp.router(
           routerConfig: createAppRouter(
-            initialLocation: AppRoutes.notifications,
+            initialLocation: AppRoutes.v1Notifications,
             currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
           ),
           localizationsDelegates: const [
@@ -237,7 +241,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Navigated to bookings tab.
-      expect(find.text('My bookings'), findsOneWidget);
+      expect(find.text('My Bookings'), findsOneWidget);
     },
   );
 

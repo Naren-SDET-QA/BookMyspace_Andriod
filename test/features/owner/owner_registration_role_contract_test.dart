@@ -48,7 +48,7 @@ void main() {
     'owner registration screen uses the Supabase owner creation provider',
     () {
       final screen = File(
-        'lib/features/owner/presentation/screens/owner_registration_screen.dart',
+        'lib/features/owner/presentation/screens/owner_registration_screen_v1.dart',
       ).readAsStringSync();
       final providers = File(
         'lib/features/owner/presentation/owner_providers.dart',

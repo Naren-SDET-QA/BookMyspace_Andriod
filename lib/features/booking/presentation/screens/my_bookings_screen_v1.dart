@@ -164,7 +164,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreenV1> {
                         booking.status == BookingStatus.confirmed ||
                         booking.status == BookingStatus.pending ||
                         booking.status == BookingStatus.held ||
-                        booking.status == BookingStatus.pendingOwnerApproval,
+                        booking.status == BookingStatus.pendingOwnerApproval ||
+                        booking.status ==
+                            BookingStatus.awaitingOwnerApproval ||
+                        booking.status == BookingStatus.unknown,
                   )
                   .toList(),
             1 =>
@@ -181,7 +184,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreenV1> {
                     (booking) =>
                         booking.status == BookingStatus.cancelled ||
                         booking.status == BookingStatus.rejected ||
-                        booking.status == BookingStatus.refunded,
+                        booking.status == BookingStatus.refunded ||
+                        booking.status == BookingStatus.ownerRejected ||
+                        booking.status == BookingStatus.approvalExpired,
                   )
                   .toList(),
           };
@@ -259,7 +264,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreenV1> {
                                     ? () => _requestRefund(filtered[i])
                                     : null,
                                 onPay:
-                                    filtered[i].canPay &&
+                                    filtered[i].canPayDirect &&
                                         isCheckoutExposed(
                                           ref.watch(featureRegistryProvider),
                                         )

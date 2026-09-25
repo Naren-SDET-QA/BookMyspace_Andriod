@@ -221,7 +221,9 @@ class AppConfig {
 
   static bool isPlaceholderSupabaseHostFor(String url) {
     final host = (Uri.tryParse(url)?.host ?? url).toLowerCase();
-    return host.contains('your_project');
+    return host.contains('your_project') ||
+        host.endsWith('.invalid') ||
+        host.contains('configure-supabase-url');
   }
 
   /// Whether the app has real Supabase runtime configuration rather than the
@@ -233,11 +235,14 @@ class AppConfig {
       'TEST_ANON_KEY',
       'STAGING_ANON_KEY',
       'PROD_ANON_KEY',
-      'sb_publishable_dev_key',
+      'SUPABASE_ANON_KEY_REQUIRED',
     };
+    // Example files use "<prefix>_dev_key" style placeholders.
+    final isExampleKey = supabaseAnonKey.endsWith('_dev_key');
     return (supabaseUrl.startsWith('https://') ||
             supabaseUrl.startsWith('http://')) &&
         !isPlaceholderSupabaseHost &&
+        !isExampleKey &&
         !placeholderKeys.contains(supabaseAnonKey);
   }
 

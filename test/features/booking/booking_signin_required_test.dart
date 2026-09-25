@@ -43,7 +43,7 @@ Widget _app({
   required MockBookingRepository bookingRepo,
   AuthUser? currentUser,
   bool allowUnauthenticatedTestAccess = false,
-  String initialLocation = '/venues/v1',
+  String initialLocation = '/v1/venues/v1',
 }) {
   return ProviderScope(
     overrides: [
@@ -135,7 +135,7 @@ void main() {
       // there is no "[null] ..." snackbar anywhere -- the null-prefixed
       // AuthException.toString() form must never reach the user.
       expect(find.text('Sign in to continue'), findsOneWidget);
-      expect(find.text('Confirm booking'), findsNothing);
+      expect(find.text('Confirm Booking'), findsNothing);
       expect(find.textContaining('[null]'), findsNothing);
 
       // There is no way to trigger a hold acquisition without authenticating
@@ -207,10 +207,10 @@ void main() {
       expect(find.byType(LoginScreenV1), findsNothing);
       expect(find.text('Sunrise Function Hall'), findsOneWidget);
       expect(find.text('Sign in to continue'), findsNothing);
-      expect(find.text('Confirm booking'), findsWidgets);
+      expect(find.text('Confirm Booking'), findsWidgets);
 
       // The user can now continue and actually confirm the booking.
-      await tester.tap(find.text('Confirm booking').last);
+      await tester.tap(find.text('Confirm Booking').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm'));
       await tester.pumpAndSettle();
@@ -242,12 +242,12 @@ void main() {
       await tester.tap(find.text('Morning'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Confirm booking'), findsWidgets);
+      expect(find.text('Confirm Booking'), findsWidgets);
       expect(find.text('Sign in to continue'), findsNothing);
 
       // Existing authorization behaviour is unchanged: confirming still
       // acquires a hold and creates the booking exactly as before.
-      await tester.tap(find.text('Confirm booking').last);
+      await tester.tap(find.text('Confirm Booking').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm'));
       await tester.pumpAndSettle();

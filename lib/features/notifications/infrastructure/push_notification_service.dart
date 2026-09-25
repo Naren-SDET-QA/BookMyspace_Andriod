@@ -919,9 +919,14 @@ class PushNotificationService {
     // 1. Directions action: open venue map
     if (targetAction == 'directions') {
       if (venueId != null && venueId.isNotEmpty) {
-        navContext.go(AppRoutes.map, extra: {'venueId': venueId});
+        navContext.go(
+          Uri(
+            path: AppRoutes.venueMap,
+            queryParameters: {'venueId': venueId},
+          ).toString(),
+        );
       } else {
-        navContext.go(AppRoutes.map);
+        navContext.go(AppRoutes.venueMap);
       }
       return;
     }

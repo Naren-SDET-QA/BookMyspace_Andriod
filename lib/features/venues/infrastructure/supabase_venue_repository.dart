@@ -1,10 +1,8 @@
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_exceptions.dart'
     show BusinessException, NotFoundException, mapError;
 import '../domain/listing_template.dart';
-import '../../../core/firebase/error_logger.dart';
 import '../../../core/network/retry.dart';
 import '../domain/venue.dart';
 import '../domain/venue_repository.dart';
@@ -719,9 +717,10 @@ class SupabaseVenueRepository implements VenueRepository {
             "${query.city != null && query.city!.trim().isNotEmpty ? " AND city ILIKE '%${query.city!.trim()}%'" : ""}"
             " ORDER BY $orderColumn ${ascending ? 'ASC' : 'DESC'} LIMIT ${query.limit.clamp(1, 50)};";
 
-        ErrorLogger.logMessage(
-          'Executing PostgREST Category Search SQL (Phase 9XM-1 single-query slug filter) [slug=${query.categorySlug}]: $executedSql',
-          context: 'SupabaseVenueRepository.search',
+        debugPrint(
+          'LOG: Executing PostgREST Category Search SQL (Phase 9XM-1 '
+          'single-query slug filter) [slug=${query.categorySlug}]: '
+          '$executedSql [SupabaseVenueRepository.search]',
         );
       }
 

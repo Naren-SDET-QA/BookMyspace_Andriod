@@ -189,7 +189,7 @@ void main() {
   testWidgets('institute details error retries', (tester) async {
     final repo = MockCourseRepository()..failInstituteDetail = true;
     await tester.pumpWidget(
-      _routerApp(repo, location: '/institutes/i1'),
+      _routerApp(repo, location: '/education/institutes/i1'),
     );
     await tester.pumpAndSettle();
     expect(find.text('Try Again'), findsOneWidget);

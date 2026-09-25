@@ -2,7 +2,7 @@ import 'package:bookmyspace/features/venues/domain/sample_venue_images.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'mock_venue_repository.dart';
+import 'mock_venue_repository_release.dart';
 
 void main() {
   test('venue hydrates normalized location association', () {
@@ -72,13 +72,18 @@ void main() {
       expect(venue.coverImageUrl, 'b.jpg');
     });
 
+    test('coverImageUrl is empty with no images', () {
+      const venue = Venue(id: 'v', name: 'V', latitude: 0, longitude: 0);
+      expect(venue.coverImageUrl, isEmpty);
+    });
+
     test(
-      'coverImageUrl uses a deterministic sample fallback with no images',
+      'coverOrSampleImageUrl uses a deterministic sample fallback with no images',
       () {
         const venue = Venue(id: 'v', name: 'V', latitude: 0, longitude: 0);
         const sameVenue = Venue(id: 'v', name: 'V', latitude: 0, longitude: 0);
-        expect(venue.coverImageUrl, contains('images.unsplash.com'));
-        expect(sameVenue.coverImageUrl, venue.coverImageUrl);
+        expect(venue.coverOrSampleImageUrl, contains('images.unsplash.com'));
+        expect(sameVenue.coverOrSampleImageUrl, venue.coverOrSampleImageUrl);
       },
     );
 
@@ -101,11 +106,11 @@ void main() {
             ),
           ],
         );
-        expect(venue.coverImageUrl, contains('images.unsplash.com'));
-        expect(venue.coverImageUrl, isNot(contains('photo-1519167758481')));
+        expect(venue.coverOrSampleImageUrl, contains('images.unsplash.com'));
+        expect(venue.coverOrSampleImageUrl, isNot(contains('photo-1519167758481')));
         expect(
           SampleVenueImages.forVenue(id: 'hotel-1', categorySlug: 'hotel_stay'),
-          venue.coverImageUrl,
+          venue.coverOrSampleImageUrl,
         );
       },
     );

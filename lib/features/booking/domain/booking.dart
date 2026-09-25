@@ -229,12 +229,16 @@ class Booking {
       status == BookingStatus.awaitingOwnerApproval ||
       status == BookingStatus.pending;
 
-  /// Payable once the owner approved (main flow) or when no approval gate
-  /// applies; held bookings are payable directly (release/v1.0 flow).
+  /// Payable once the owner approved (main flow); held bookings are payable
+  /// directly (release/v1.0 hold flow).
   bool get canPay =>
       status == BookingStatus.held ||
-      (status == BookingStatus.pending &&
-          (approvedAt != null || !approvalRequired));
+      (status == BookingStatus.pending && approvedAt != null);
+
+  /// release/v1.0 rule used by the v1 screens: held and pending bookings go
+  /// straight to server-verified checkout (that flow has no approval gate).
+  bool get canPayDirect =>
+      status == BookingStatus.pending || status == BookingStatus.held;
 
 
   /// Confirmed (captured) bookings can be refunded.

@@ -401,7 +401,7 @@ class ProfileScreenV1 extends ConsumerWidget {
                     onPressed: () async {
                       await ref.read(authNotifierProvider.notifier).signOut();
                       if (context.mounted) {
-                        context.go(AppRoutes.login);
+                        context.go(AppRoutes.v1Login);
                       }
                     },
                     style: OutlinedButton.styleFrom(

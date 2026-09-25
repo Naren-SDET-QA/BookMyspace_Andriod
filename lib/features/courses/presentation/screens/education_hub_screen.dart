@@ -1503,7 +1503,7 @@ class InstituteListingCard extends StatelessWidget {
         borderRadius: 18,
         accentGradient: AppTheme.violetGradient,
         onTap: () => context.push(
-          AppRoutes.instituteDetails.replaceAll(':id', institute.id),
+          AppRoutes.educationInstituteDetails.replaceAll(':id', institute.id),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1680,7 +1680,7 @@ class InstituteCard extends StatelessWidget {
       borderRadius: 16,
       accentGradient: AppTheme.violetGradient,
       onTap: () => context.push(
-        AppRoutes.instituteDetails.replaceAll(':id', institute.id),
+        AppRoutes.educationInstituteDetails.replaceAll(':id', institute.id),
       ),
       padding: const EdgeInsets.all(12),
       child: Row(

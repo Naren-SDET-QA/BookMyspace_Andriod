@@ -46,7 +46,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Section-scoped chips: halls only.
-    expect(find.text('All categories'), findsOneWidget);
+    expect(find.text('All Categories'), findsOneWidget);
     expect(find.textContaining('Marriage Hall'), findsOneWidget);
     // Results contain only halls (Sunrise) and no lodge/PG.
     expect(find.text('Sunrise Function Hall'), findsOneWidget);
@@ -149,7 +149,7 @@ void main() {
       expect(find.text('Secret Hall'), findsNothing);
       expect(find.text('Marriage Hall'), findsNothing);
       expect(find.text('Convention Hall'), findsNothing);
-      expect(find.text('All categories'), findsWidgets);
+      expect(find.text('All Categories'), findsWidgets);
     },
   );
 

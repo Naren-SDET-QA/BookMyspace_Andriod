@@ -87,7 +87,8 @@ void main() {
 
     test('ordered lists every destination, enabled or not', () {
       expect(NavTabsConfig.defaults.ordered.length, NavTab.values.length);
-      expect(NavTabsConfig.defaults.ordered.last.tab, NavTab.assistant);
+      // Map/Saved/Chat (from release/v1.0) ship after the assistant.
+      expect(NavTabsConfig.defaults.ordered.last.tab, NavTab.chat);
     });
   });
 
@@ -160,7 +161,8 @@ void main() {
       // never mentioned keeps its shipped default.
       expect(config.configFor(NavTab.assistant)?.enabled, isTrue);
       expect(config.configFor(NavTab.assistant)?.order, 20);
-      expect(config.visible.length, NavTab.values.length);
+      // Map/Saved/Chat keep their shipped default (disabled).
+      expect(config.visible.length, NavTab.values.length - 3);
       expect(config.visible.first.tab, NavTab.home);
     });
 

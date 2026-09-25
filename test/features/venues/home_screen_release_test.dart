@@ -90,10 +90,10 @@ void main() {
     expect(find.text('Choose Category'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
-    expect(find.text('Try again'), findsWidgets);
+    expect(find.text('Try Again'), findsWidgets);
 
     repo.failRequests = false;
-    final retry = find.widgetWithText(FilledButton, 'Try again');
+    final retry = find.widgetWithText(FilledButton, 'Try Again');
     expect(retry, findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -250));
     await tester.pumpAndSettle();

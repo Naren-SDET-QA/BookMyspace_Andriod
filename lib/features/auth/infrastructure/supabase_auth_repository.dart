@@ -24,14 +24,38 @@ class SupabaseAuthRepository implements AuthRepository {
   final supabase.SupabaseClient _client;
   final bool isConfigured;
 
+  /// Coarse role / verification loaded from `user_roles` (release/v1.0
+  /// route gating), cached per user so [currentUser] stays synchronous.
+  final Map<String, (UserRole, VerificationStatus)> _hydrated = {};
+
   @override
-  AuthUser? get currentUser => _mapUser(_client.auth.currentUser);
+  AuthUser? get currentUser => _withHydration(_mapUser(_client.auth.currentUser));
+
+  AuthUser? _withHydration(AuthUser? user) {
+    if (user == null) return null;
+    final cached = _hydrated[user.id];
+    if (cached == null) return user;
+    return user.copyWith(role: cached.$1, verificationStatus: cached.$2);
+  }
 
   @override
   Stream<AuthUser?> authStateChanges() {
-    return _client.auth.onAuthStateChange.map(
-      (state) => _mapUser(state.session?.user),
-    );
+    return _client.auth.onAuthStateChange.asyncExpand((state) async* {
+      final sessionUser = state.session?.user;
+      final mapped = _withHydration(_mapUser(sessionUser));
+      yield mapped;
+      if (sessionUser == null || mapped == null) return;
+      // Then publish the authoritative coarse role from the database.
+      final loaded = await _loadAuthoritativeUser(sessionUser);
+      _hydrated[mapped.id] = (loaded.role, loaded.verificationStatus);
+      if (loaded.role != mapped.role ||
+          loaded.verificationStatus != mapped.verificationStatus) {
+        yield mapped.copyWith(
+          role: loaded.role,
+          verificationStatus: loaded.verificationStatus,
+        );
+      }
+    });
   }
 
   @override

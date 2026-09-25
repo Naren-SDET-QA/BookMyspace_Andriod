@@ -129,7 +129,7 @@ void main() {
     await tester.pump();
     expect(notificationRepo.created, hasLength(1));
     expect(
-      notificationRepo.created.single.type,
+      notificationRepo.created.single.kind,
       NotificationType.bookingConfirmed,
     );
   });
@@ -311,7 +311,7 @@ void main() {
       expect(find.text('Online (Razorpay)'), findsOneWidget);
       expect(find.text('Pay at venue'), findsOneWidget);
       expect(find.text('Pay now'), findsOneWidget);
-      expect(find.text('Confirm booking'), findsNothing);
+      expect(find.text('Confirm Booking'), findsNothing);
     });
 
     testWidgets(
@@ -326,7 +326,7 @@ void main() {
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Confirm booking'), findsOneWidget);
+        expect(find.text('Confirm Booking'), findsOneWidget);
         expect(find.text('Pay now'), findsNothing);
         expect(paymentRepo.lastPayAtVenueBookingId, isNull);
         expect(paymentRepo.lastOrderBookingId, isNull);
@@ -345,7 +345,7 @@ void main() {
         await tester.ensureVisible(find.text('Pay at venue'));
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm booking'));
+        await tester.tap(find.text('Confirm Booking'));
         await _pumpThroughPayment(tester);
 
         expect(paymentRepo.lastPayAtVenueBookingId, 'b1');
@@ -378,7 +378,7 @@ void main() {
         await tester.ensureVisible(find.text('Pay at venue'));
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm booking'));
+        await tester.tap(find.text('Confirm Booking'));
         await _pumpThroughPayment(tester);
 
         expect(find.textContaining('payment_in_progress'), findsOneWidget);
@@ -407,7 +407,7 @@ void main() {
         await tester.ensureVisible(find.text('Pay at venue'));
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm booking'));
+        await tester.tap(find.text('Confirm Booking'));
         await _pumpThroughPayment(tester);
 
         // Only the booking id crosses the wire; select_pay_at_venue reads

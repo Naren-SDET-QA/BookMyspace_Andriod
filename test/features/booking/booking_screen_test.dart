@@ -81,7 +81,7 @@ void main() {
     tester,
   ) async {
     final bookingRepo = MockBookingRepository();
-    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/venues/v1'));
+    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/v1/venues/v1'));
 
     // Start on venue details, then enter the existing hold booking flow.
     await tester.pumpAndSettle();
@@ -99,7 +99,7 @@ void main() {
     tester,
   ) async {
     final bookingRepo = MockBookingRepository();
-    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/venues/v1'));
+    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/v1/venues/v1'));
 
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Book Now'));
@@ -109,9 +109,9 @@ void main() {
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Confirm booking'), findsWidgets);
+    expect(find.text('Confirm Booking'), findsWidgets);
 
-    await tester.tap(find.text('Confirm booking').last);
+    await tester.tap(find.text('Confirm Booking').last);
     await tester.pumpAndSettle();
 
     // Confirmation dialog.
@@ -129,7 +129,7 @@ void main() {
     tester,
   ) async {
     final bookingRepo = MockBookingRepository()..failAcquire = true;
-    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/venues/v1'));
+    await tester.pumpWidget(_app(bookingRepo, initialLocation: '/v1/venues/v1'));
 
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Book Now'));
@@ -138,7 +138,7 @@ void main() {
 
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm booking').last);
+    await tester.tap(find.text('Confirm Booking').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
@@ -189,11 +189,11 @@ void main() {
     expect(find.text('Sunrise Function Hall'), findsNWidgets(2));
 
     // Only the pending booking shows a cancel button.
-    expect(find.text('Cancel booking'), findsOneWidget);
-    await tester.tap(find.text('Cancel booking'));
+    expect(find.text('Cancel Booking'), findsOneWidget);
+    await tester.tap(find.text('Cancel Booking'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Keep booking'), findsOneWidget);
+    expect(find.text('Keep'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
@@ -205,7 +205,7 @@ void main() {
     await tester.pump();
     expect(notificationRepo.created, hasLength(1));
     expect(
-      notificationRepo.created.single.type,
+      notificationRepo.created.single.kind,
       NotificationType.bookingCancelled,
     );
   });
@@ -248,25 +248,25 @@ void main() {
     await tester.pumpAndSettle();
 
     // A confirmed booking offers a refund, not a cancel.
-    expect(find.text('Request refund'), findsOneWidget);
-    expect(find.text('Cancel booking'), findsNothing);
+    expect(find.text('Request Refund'), findsOneWidget);
+    expect(find.text('Cancel Booking'), findsNothing);
 
-    await tester.tap(find.text('Request refund'));
+    await tester.tap(find.text('Request Refund'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('full refund'), findsOneWidget);
-    await tester.tap(find.text('Request refund').last);
+    expect(find.textContaining('request a refund'), findsOneWidget);
+    await tester.tap(find.text('Request Refund').last);
     await tester.pumpAndSettle();
 
     expect(paymentRepo.lastRefundBookingId, 'b1');
     expect(paymentRepo.lastRefundAmount, 41300);
-    expect(find.textContaining('Refund requested'), findsOneWidget);
+    expect(find.textContaining('Refund request submitted'), findsOneWidget);
 
     // Requesting a refund records a notification.
     await tester.pump();
     expect(notificationRepo.created, hasLength(1));
     expect(
-      notificationRepo.created.single.type,
+      notificationRepo.created.single.kind,
       NotificationType.refundProcessed,
     );
   });

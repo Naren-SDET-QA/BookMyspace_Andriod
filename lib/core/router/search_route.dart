@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../../features/venues/domain/venue.dart';
+import 'app_router.dart' show AppRoutes;
 
 /// Canonical search/map discovery query encoded in the route URI.
 ///
@@ -121,7 +122,7 @@ class SearchRouteParams {
 
   String get searchLocation => _location('/search');
 
-  String get mapLocation => _location('/map');
+  String get mapLocation => _location(AppRoutes.venueMap);
 
   static String locationFor(VenueSearchQuery query) {
     return SearchRouteParams.fromQuery(query).searchLocation;

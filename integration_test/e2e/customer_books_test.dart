@@ -48,7 +48,7 @@ void main() {
         GoRouter.of(tester.state(find.byType(Navigator).first).context);
     // Venue details first: the booking route requires the Venue object as
     // `extra`, which only the details screen's Book CTA provides.
-    router.go('/venues/$venueId');
+    router.go('/v1/venues/$venueId');
     await pumpFor(tester, 8);
     await tester.tap(find.textContaining('Book Now').first);
     await pumpFor(tester, 8);

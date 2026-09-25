@@ -21,7 +21,7 @@ void main() {
       visible.map((item) => item.id).toList(),
       ['home', 'map', 'search', 'bookings', 'profile', 'saved'],
     );
-    expect(visible.map((item) => item.branchIndex).toList(), [0, 1, 2, 3, 4, 5]);
+    expect(visible.map((item) => item.branchIndex).toList(), [0, 7, 2, 3, 5, 8]);
   });
 
   test('disabled feature tabs disappear without duplicating config', () {
