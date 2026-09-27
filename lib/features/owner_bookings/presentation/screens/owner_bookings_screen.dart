@@ -16,6 +16,7 @@ import '../../../owner_venues/presentation/providers/owner_venue_providers.dart'
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../owner_booking_providers.dart';
+import '../widgets/reject_reason_dialog.dart';
 
 /// Bookings across the owner's venues with status management actions.
 class OwnerBookingsScreen extends ConsumerStatefulWidget {
@@ -77,51 +78,56 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
   ) async {
     final l10n = AppLocalizations.of(context);
     final isApprove = decision == OwnerBookingDecision.approve;
-    final title = isApprove ? l10n.approveBooking : l10n.rejectBooking;
-    final message = isApprove
-        ? l10n.approveBookingConfirm
-        : l10n.rejectBookingConfirm;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TestId(
-            E2eIds.ownerDecisionConfirm,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(title),
+    String? reason;
+    if (isApprove) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.approveBooking),
+          content: Text(l10n.approveBookingConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel),
             ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+            TestId(
+              E2eIds.ownerDecisionConfirm,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(l10n.approveBooking),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    } else {
+      reason = await showRejectReasonDialog(
+        context,
+        title: l10n.rejectBooking,
+        message:
+            '${l10n.rejectBookingConfirm}\n\n'
+            'Tell the customer why — the reason is shared with them.',
+        confirmLabel: l10n.rejectBooking,
+      );
+      if (reason == null) return;
+    }
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final outcome = await ref
           .read(ownerBookingRepositoryProvider)
-          .decideBooking(booking.id, decision);
+          .decideBooking(booking.id, decision, reason: reason);
       ref.invalidate(ownerBookingsProvider);
-      if (!mounted) return;
       final resultMessage = isApprove
           ? l10n.bookingApproved
           : (outcome.refundStatus != null
                 ? l10n.bookingRejectedRefundRequested
                 : l10n.bookingRejected);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(resultMessage)));
+      messenger.showSnackBar(SnackBar(content: Text(resultMessage)));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -207,15 +213,13 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
                             list[i].status == BookingStatus.confirmed
                         ? () => _applyStatus(list[i], OwnerBookingAction.cancel)
                         : null,
-                    onApprove:
-                        list[i].status == BookingStatus.pendingOwnerApproval
+                    onApprove: list[i].status.isAwaitingOwner
                         ? () => _applyDecision(
                             list[i],
                             OwnerBookingDecision.approve,
                           )
                         : null,
-                    onReject:
-                        list[i].status == BookingStatus.pendingOwnerApproval
+                    onReject: list[i].status.isAwaitingOwner
                         ? () => _applyDecision(
                             list[i],
                             OwnerBookingDecision.reject,

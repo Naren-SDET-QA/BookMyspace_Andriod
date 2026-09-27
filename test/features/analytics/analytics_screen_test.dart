@@ -53,8 +53,9 @@ class _EmptyOwnerBookingRepository implements OwnerBookingRepository {
   @override
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
-    OwnerBookingDecision decision,
-  ) => throw UnimplementedError();
+    OwnerBookingDecision decision, {
+    String? reason,
+  }) => throw UnimplementedError();
 }
 
 const _data = RevenueAnalytics(

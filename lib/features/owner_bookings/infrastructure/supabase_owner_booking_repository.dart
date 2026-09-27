@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -129,12 +130,29 @@ class SupabaseOwnerBookingRepository implements OwnerBookingRepository {
   @override
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
-    OwnerBookingDecision decision,
-  ) async {
+    OwnerBookingDecision decision, {
+    String? reason,
+  }) async {
+    final trimmedReason = reason?.trim();
     try {
+      final current = await _client
+          .from('bookings')
+          .select('status')
+          .eq('id', bookingId)
+          .maybeSingle();
+      if (current?['status'] == 'awaiting_owner_approval') {
+        return await _decideRequest(bookingId, decision, trimmedReason);
+      }
       final response = await _client.functions.invoke(
         'owner-booking-manage',
-        body: {'action': decision.dbValue, 'booking_id': bookingId},
+        body: {
+          'action': decision.dbValue,
+          'booking_id': bookingId,
+          if (decision == OwnerBookingDecision.reject &&
+              trimmedReason != null &&
+              trimmedReason.isNotEmpty)
+            'reason': trimmedReason,
+        },
       );
       final data = response.data;
       if (data is! Map<String, dynamic>) {
@@ -162,6 +180,55 @@ class SupabaseOwnerBookingRepository implements OwnerBookingRepository {
     } catch (e) {
       throw app_errors.mapError(e);
     }
+  }
+
+  /// Decides a pre-payment booking request (`awaiting_owner_approval`)
+  /// through the approval RPCs; `reject_venue_booking` stores [reason] in
+  /// `bookings.rejection_reason`.
+  Future<BookingDecisionOutcome> _decideRequest(
+    String bookingId,
+    OwnerBookingDecision decision,
+    String? reason,
+  ) async {
+    final isApprove = decision == OwnerBookingDecision.approve;
+    final response = await _client.rpc<dynamic>(
+      isApprove ? 'approve_venue_booking' : 'reject_venue_booking',
+      params: {
+        'p_booking_id': bookingId,
+        'p_idempotency_key': _newUuid(),
+        if (!isApprove)
+          'p_reason': (reason == null || reason.isEmpty) ? null : reason,
+      },
+    );
+    if (response is Map && response['success'] == false) {
+      final code = response['error_code']?.toString() ?? 'decision_failed';
+      throw app_errors.BusinessException(
+        code == 'INVALID_STATUS'
+            ? 'This booking cannot be moved to that status.'
+            : code == 'NOT_OWNER_OR_NOT_FOUND'
+            ? 'You are not allowed to manage this booking.'
+            : 'The booking decision could not be saved ($code).',
+        code: code,
+      );
+    }
+    final row = await _client
+        .from('bookings')
+        .select(_bookingSelect)
+        .eq('id', bookingId)
+        .single();
+    return BookingDecisionOutcome(booking: Booking.fromJson(row));
+  }
+
+  static String _newUuid() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0F) | 0x40;
+    bytes[8] = (bytes[8] & 0x3F) | 0x80;
+    String hex(int i) => bytes[i].toRadixString(16).padLeft(2, '0');
+    return '${hex(0)}${hex(1)}${hex(2)}${hex(3)}-'
+        '${hex(4)}${hex(5)}-${hex(6)}${hex(7)}-'
+        '${hex(8)}${hex(9)}-'
+        '${hex(10)}${hex(11)}${hex(12)}${hex(13)}${hex(14)}${hex(15)}';
   }
 
   app_errors.AppException _mapFunctionException(FunctionException e) {
