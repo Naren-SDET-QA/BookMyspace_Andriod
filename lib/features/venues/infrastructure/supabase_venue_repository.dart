@@ -718,7 +718,13 @@ class SupabaseVenueRepository implements VenueRepository {
           .eq('is_active', true);
 
       if (query.query.trim().isNotEmpty) {
-        builder = builder.textSearch('search_document', query.query.trim());
+        // websearch syntax accepts free text ("badminton court hyderabad");
+        // the default to_tsquery form rejected any multi-word query (42601).
+        builder = builder.textSearch(
+          'search_document',
+          query.query.trim(),
+          type: TextSearchType.websearch,
+        );
       }
       if (query.categorySlug != null) {
         builder = builder.eq('venue_categories.slug', query.categorySlug!);

@@ -270,7 +270,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             if (_appliedCoupon != null)
               _SummaryRow(
                 label: 'Coupon',
-                value: '\${_appliedCoupon!.code} (settled at payment)',
+                value: '${_appliedCoupon!.code} (settled at payment)',
                 discountRow: true,
               ),
             _SummaryRow(label: l10n.taxRate, value: formatInr(tax)),
@@ -606,7 +606,7 @@ class _CouponField extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '\${appliedCoupon!.code} — \${appliedCoupon!.valueLabel} applied',
+                '${appliedCoupon!.code} — ${appliedCoupon!.valueLabel} applied',
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: Colors.green.shade700),
               ),

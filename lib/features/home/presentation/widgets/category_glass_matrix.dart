@@ -6,6 +6,7 @@ import '../../../venues/domain/venue.dart';
 import '../home_category_catalog.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
+import '../../../../core/widgets/category_icon_text.dart';
 
 /// Responsive category discovery panel with master carousel + sub-section grid.
 ///
@@ -52,7 +53,7 @@ class CategoryDiscoveryPanel extends StatefulWidget {
   final ValueChanged<MainHomeSection> onMasterChanged;
   final ValueChanged<MainHomeSection> onMasterExplore;
   final void Function(MainHomeSection section, HomeSubSection sub)
-      onSubSectionTap;
+  onSubSectionTap;
   final VoidCallback onExploreAll;
 
   /// True while the categories/venues this panel renders from are still
@@ -86,31 +87,38 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
     final categoriesById = <String, VenueCategory>{
       for (final category in widget.categories) category.id: category,
     };
-    final managed = widget.dynamicSubsections.where((subsection) {
-      final category = categoriesById[subsection.categoryId];
-      return category != null && _categoryBelongsToSection(category, section);
-    }).map(
-      (subsection) => HomeSubSection(
-        label: subsection.name,
-        emoji: subsection.icon?.isNotEmpty == true
-            ? subsection.icon!
-            : categoriesById[subsection.categoryId]?.icon ?? section.emoji,
-        slug: subsection.slug,
-      ),
-    );
+    final managed = widget.dynamicSubsections
+        .where((subsection) {
+          final category = categoriesById[subsection.categoryId];
+          return category != null &&
+              _categoryBelongsToSection(category, section);
+        })
+        .map(
+          (subsection) => HomeSubSection(
+            label: subsection.name,
+            emoji:
+                categoryIconOrNull(subsection.icon) ??
+                categoryIconOrNull(
+                  categoriesById[subsection.categoryId]?.icon,
+                ) ??
+                section.emoji,
+            slug: subsection.slug,
+          ),
+        );
     final items = <HomeSubSection>[...managed];
     for (final category in widget.categories) {
       if (!category.isActive || !_categoryBelongsToSection(category, section)) {
         continue;
       }
       if (items.any(
-          (item) => item.slug.toLowerCase() == category.slug.toLowerCase())) {
+        (item) => item.slug.toLowerCase() == category.slug.toLowerCase(),
+      )) {
         continue;
       }
       items.add(
         HomeSubSection(
           label: category.name,
-          emoji: category.icon?.isNotEmpty == true ? category.icon! : '🏷️',
+          emoji: categoryIconText(category.icon, fallback: '🏷️'),
           slug: category.slug,
         ),
       );
@@ -144,8 +152,9 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
 
   int? _countFor(VenueCategory? matched) {
     if (matched == null) return null;
-    final n =
-        widget.venues.where((v) => v.category?.slug == matched.slug).length;
+    final n = widget.venues
+        .where((v) => v.category?.slug == matched.slug)
+        .length;
     return n > 0 ? n : null;
   }
 
@@ -174,14 +183,18 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
 
   CmsCategoryStyle _styleFor(MainHomeSection section) {
     return CmsCategoryStyle.resolve(
-        section, widget.categoryImageBySlot[section.imageSlot]);
+      section,
+      widget.categoryImageBySlot[section.imageSlot],
+    );
   }
 
   int _liveCountFor(MainHomeSection section) {
     return widget.venues
-        .where((v) =>
-            section.searchAliases.contains(v.category?.slug) ||
-            v.category?.parentSection == section.id)
+        .where(
+          (v) =>
+              section.searchAliases.contains(v.category?.slug) ||
+              v.category?.parentSection == section.id,
+        )
         .length;
   }
 
@@ -239,7 +252,10 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
         // mode below, none of them ever show just one item.
         if (widget.isLoadingLiveData)
           _SkeletonCards(
-              mode: _mode, count: sections.length, compact: isCompact)
+            mode: _mode,
+            count: sections.length,
+            compact: isCompact,
+          )
         else if (sections.isEmpty)
           const _EmptyCategoriesState()
         else
@@ -251,28 +267,28 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
               key: ValueKey(_mode),
               child: switch (_mode) {
                 _ViewMode.matrix3d => _MatrixCardRow(
-                    sections: sections,
-                    selected: selected,
-                    compact: isCompact,
-                    onTap: handleMasterTap,
-                    imageFor: _imageFor,
-                    styleFor: _styleFor,
-                    liveCountFor: _liveCountFor,
-                  ),
+                  sections: sections,
+                  selected: selected,
+                  compact: isCompact,
+                  onTap: handleMasterTap,
+                  imageFor: _imageFor,
+                  styleFor: _styleFor,
+                  liveCountFor: _liveCountFor,
+                ),
                 _ViewMode.grid => _MatrixCardGrid(
-                    sections: sections,
-                    selected: selected,
-                    liveCountFor: _liveCountFor,
-                    onTap: handleMasterTap,
-                    styleFor: _styleFor,
-                  ),
+                  sections: sections,
+                  selected: selected,
+                  liveCountFor: _liveCountFor,
+                  onTap: handleMasterTap,
+                  styleFor: _styleFor,
+                ),
                 _ViewMode.list => _MatrixListColumn(
-                    sections: sections,
-                    selected: selected,
-                    liveCountFor: _liveCountFor,
-                    onTap: handleMasterTap,
-                    styleFor: _styleFor,
-                  ),
+                  sections: sections,
+                  selected: selected,
+                  liveCountFor: _liveCountFor,
+                  onTap: handleMasterTap,
+                  styleFor: _styleFor,
+                ),
               },
             ),
           ),
@@ -341,8 +357,11 @@ class _UiModeSelector extends StatelessWidget {
               child: Row(
                 children: [
                   if (m == mode)
-                    Icon(Icons.check_rounded,
-                        size: 16, color: theme.colorScheme.tertiary)
+                    Icon(
+                      Icons.check_rounded,
+                      size: 16,
+                      color: theme.colorScheme.tertiary,
+                    )
                   else
                     const SizedBox(width: 16),
                   const SizedBox(width: 8),
@@ -450,12 +469,12 @@ class _MatrixCardGrid extends StatelessWidget {
     final columns = width < 600
         ? 2
         : width < 900
-            ? 2
-            : width < 1200
-                ? 3
-                : width < 1440
-                    ? 4
-                    : 5;
+        ? 2
+        : width < 1200
+        ? 3
+        : width < 1440
+        ? 4
+        : 5;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -512,8 +531,9 @@ class _MasterGridTile extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              color: (selected ? accent : theme.colorScheme.outline)
-                  .withValues(alpha: selected ? 0.16 : 0.06),
+              color: (selected ? accent : theme.colorScheme.outline).withValues(
+                alpha: selected ? 0.16 : 0.06,
+              ),
               border: Border.all(
                 color: accent.withValues(alpha: selected ? 0.65 : 0.25),
                 width: selected ? 1.6 : 1,
@@ -540,8 +560,10 @@ class _MasterGridTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$liveCount live',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: accent, fontWeight: FontWeight.w700),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -574,60 +596,76 @@ class _MatrixListColumn extends StatelessWidget {
     return Column(
       children: [
         for (final section in sections)
-          Builder(builder: (context) {
-            final style = styleFor(section);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Material(
-                  color: (section == selected
-                          ? style.accentColor
-                          : theme.colorScheme.outline)
-                      .withValues(alpha: section == selected ? 0.14 : 0.05),
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
+          Builder(
+            builder: (context) {
+              final style = styleFor(section);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Material(
+                    color:
+                        (section == selected
+                                ? style.accentColor
+                                : theme.colorScheme.outline)
+                            .withValues(
+                              alpha: section == selected ? 0.14 : 0.05,
+                            ),
                     borderRadius: BorderRadius.circular(14),
-                    onTap: () => onTap(section),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      child: Row(
-                        children: [
-                          if (style.icon != null)
-                            Icon(style.icon, size: 18, color: style.accentColor)
-                          else
-                            Text(section.emoji,
-                                style: const TextStyle(fontSize: 18)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              section.displayTitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelLarge
-                                  ?.copyWith(fontWeight: FontWeight.w800),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => onTap(section),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            if (style.icon != null)
+                              Icon(
+                                style.icon,
+                                size: 18,
+                                color: style.accentColor,
+                              )
+                            else
+                              Text(
+                                section.emoji,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                section.displayTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${liveCountFor(section)} live',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: style.badgeColor,
-                              fontWeight: FontWeight.w700,
+                            Text(
+                              '${liveCountFor(section)} live',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: style.badgeColor,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(Icons.chevron_right_rounded,
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.chevron_right_rounded,
                               size: 18,
-                              color: theme.colorScheme.onSurfaceVariant),
-                        ],
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
       ],
     );
   }
@@ -673,10 +711,7 @@ class _SkeletonCards extends StatelessWidget {
         itemCount: count,
         itemBuilder: (context, index) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          child: SizedBox(
-            width: compact ? 148 : 190,
-            child: placeholder,
-          ),
+          child: SizedBox(width: compact ? 148 : 190, child: placeholder),
         ),
       ),
     );
@@ -696,13 +731,17 @@ class _EmptyCategoriesState extends StatelessWidget {
       alignment: Alignment.center,
       child: Column(
         children: [
-          Icon(Icons.category_outlined,
-              size: 28, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.category_outlined,
+            size: 28,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 8),
           Text(
             'No categories are available right now.',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -790,10 +829,11 @@ class _MiniBadge extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: (compact
-                      ? theme.textTheme.labelSmall
-                      : theme.textTheme.labelMedium)
-                  ?.copyWith(fontWeight: FontWeight.w700, color: color),
+              style:
+                  (compact
+                          ? theme.textTheme.labelSmall
+                          : theme.textTheme.labelMedium)
+                      ?.copyWith(fontWeight: FontWeight.w700, color: color),
             ),
           ),
         ],
@@ -879,10 +919,15 @@ class _MasterHeroCard extends StatelessWidget {
                       border: Border.all(color: accent.withValues(alpha: 0.4)),
                     ),
                     child: style.icon != null
-                        ? Icon(style.icon,
-                            size: compact ? 22 : 26, color: accent)
-                        : Text(section.emoji,
-                            style: TextStyle(fontSize: compact ? 20 : 24)),
+                        ? Icon(
+                            style.icon,
+                            size: compact ? 22 : 26,
+                            color: accent,
+                          )
+                        : Text(
+                            section.emoji,
+                            style: TextStyle(fontSize: compact ? 20 : 24),
+                          ),
                   ),
                   SizedBox(width: compact ? 12 : 16),
                   Expanded(
@@ -893,13 +938,14 @@ class _MasterHeroCard extends StatelessWidget {
                           section.displayTitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: (compact
-                                  ? theme.textTheme.titleMedium
-                                  : theme.textTheme.titleLarge)
-                              ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: theme.colorScheme.onSurface,
-                          ),
+                          style:
+                              (compact
+                                      ? theme.textTheme.titleMedium
+                                      : theme.textTheme.titleLarge)
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -970,13 +1016,15 @@ class _MasterGlassCard extends StatelessWidget {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return AnimatedScale(
       scale: selected ? 1.0 : 0.9,
-      duration:
-          reduceMotion ? Duration.zero : const Duration(milliseconds: 380),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 380),
       curve: Curves.easeOutBack,
       child: AnimatedOpacity(
         opacity: selected ? 1 : 0.72,
-        duration:
-            reduceMotion ? Duration.zero : const Duration(milliseconds: 280),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 280),
         child: Transform(
           alignment: Alignment.center,
           transformHitTests: false,
@@ -994,8 +1042,8 @@ class _MasterGlassCard extends StatelessWidget {
                   color: selected
                       ? style.accentColor.withValues(alpha: 0.7)
                       : (isDark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : const Color(0xFFE2E8F0)),
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : const Color(0xFFE2E8F0)),
                   width: selected ? 1.8 : 1,
                 ),
                 boxShadow: [
@@ -1018,10 +1066,7 @@ class _MasterGlassCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    AppNetworkImage(
-                      url: imageUrl,
-                      fit: BoxFit.cover,
-                    ),
+                    AppNetworkImage(url: imageUrl, fit: BoxFit.cover),
                     DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -1040,11 +1085,16 @@ class _MasterGlassCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (style.icon != null)
-                            Icon(style.icon,
-                                size: compact ? 20 : 22, color: Colors.white)
+                            Icon(
+                              style.icon,
+                              size: compact ? 20 : 22,
+                              color: Colors.white,
+                            )
                           else
-                            Text(section.emoji,
-                                style: TextStyle(fontSize: compact ? 18 : 20)),
+                            Text(
+                              section.emoji,
+                              style: TextStyle(fontSize: compact ? 18 : 20),
+                            ),
                           SizedBox(height: compact ? 6 : 8),
                           Expanded(
                             child: Align(
@@ -1053,14 +1103,15 @@ class _MasterGlassCard extends StatelessWidget {
                                 section.displayTitle,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: (compact
-                                        ? theme.textTheme.labelLarge
-                                        : theme.textTheme.titleSmall)
-                                    ?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.15,
-                                  color: Colors.white,
-                                ),
+                                style:
+                                    (compact
+                                            ? theme.textTheme.labelLarge
+                                            : theme.textTheme.titleSmall)
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.15,
+                                          color: Colors.white,
+                                        ),
                               ),
                             ),
                           ),
@@ -1074,7 +1125,9 @@ class _MasterGlassCard extends StatelessWidget {
                         right: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 3),
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.55),
                             borderRadius: BorderRadius.circular(20),
@@ -1112,14 +1165,17 @@ class _MasterGlassCard extends StatelessWidget {
                           onTap: onAiHelp,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: style.accentColor.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      style.accentColor.withValues(alpha: 0.4),
+                                  color: style.accentColor.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -1128,8 +1184,11 @@ class _MasterGlassCard extends StatelessWidget {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.auto_awesome_rounded,
-                                    size: 12, color: Colors.white),
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
                                 SizedBox(width: 4),
                                 Text(
                                   'AI Help',
@@ -1216,11 +1275,7 @@ class _ResponsiveSubSectionGrid extends StatelessWidget {
 
     // Few items: horizontal scroll strip on mobile, grid on tablet+
     if (isCompact) {
-      return _buildHorizontalStrip(
-        context,
-        items: items,
-        spacing: spacing,
-      );
+      return _buildHorizontalStrip(context, items: items, spacing: spacing);
     }
 
     return _buildGrid(
@@ -1358,8 +1413,8 @@ class _GlassTile extends StatelessWidget {
               color: selected
                   ? accent.withValues(alpha: 0.75)
                   : (isDark
-                      ? Colors.white.withValues(alpha: 0.14)
-                      : Colors.white.withValues(alpha: 0.9)),
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.white.withValues(alpha: 0.9)),
               width: selected ? 1.6 : 1,
             ),
             gradient: LinearGradient(

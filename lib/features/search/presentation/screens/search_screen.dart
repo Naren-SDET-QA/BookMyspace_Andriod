@@ -20,6 +20,7 @@ import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
 import '../widgets/voice_search_bottom_sheet.dart';
+import '../../../../core/widgets/category_icon_text.dart';
 
 /// Search screen: text query + category chips + sort/filter sheet.
 ///
@@ -398,7 +399,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   label: Text(
                     bookingPrefs.guests == 1
                         ? '1 Guest'
-                        : '\${bookingPrefs.guests} Guests',
+                        : '${bookingPrefs.guests} Guests',
                   ),
                   onPressed: () => _showGuestPicker(bookingPrefs.guests),
                 ),
@@ -426,7 +427,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: AnimatedCategoryChip(
                       label: c.name,
-                      emoji: c.icon,
+                      emoji: categoryIconOrNull(c.icon),
                       selected: query.categorySlug == c.slug,
                       onTap: () {
                         _commitQuery(
@@ -656,7 +657,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         ...widget.categories.map(
                           (c) => AnimatedCategoryChip(
                             label: c.name,
-                            emoji: c.icon,
+                            emoji: categoryIconOrNull(c.icon),
                             selected: _categorySlug == c.slug,
                             onTap: () => setState(() {
                               _categorySlug = c.slug;

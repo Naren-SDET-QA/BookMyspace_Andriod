@@ -5,6 +5,7 @@ import '../../domain/customer_category_preferences.dart';
 import '../../../venues/domain/category_configuration.dart';
 import '../../../venues/presentation/category_configuration_providers.dart';
 import '../customer_category_preferences_providers.dart';
+import '../../../../core/widgets/category_icon_text.dart';
 
 class CustomerCategoryPreferencesScreen extends ConsumerWidget {
   const CustomerCategoryPreferencesScreen({super.key});
@@ -110,7 +111,7 @@ class _BodyState extends ConsumerState<_Body> {
               : category.id;
           return Card(
             child: SwitchListTile.adaptive(
-              secondary: Text(category.icon.isNotEmpty ? category.icon : '✨'),
+              secondary: Text(categoryIconText(category.icon, fallback: '✨')),
               title: Text(category.name),
               value: values[id] ?? true,
               onChanged: (value) => setState(() => values[id] = value),

@@ -12,6 +12,7 @@ import '../../../../core/widgets/error_view.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../widgets/listing_template_editor.dart';
+import '../../../../core/widgets/category_icon_text.dart';
 
 const _supportedLanguageLabels = <String, String>{
   'en': 'English',
@@ -2266,7 +2267,7 @@ class _DesktopCategoryDetailsCard extends StatelessWidget {
                   color: const Color(0xFFECE5FF),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Text(category.icon ?? '🏷️',
+                child: Text(categoryIconText(category.icon, fallback: '🏷️'),
                     style: const TextStyle(fontSize: 25)),
               ),
               OutlinedButton.icon(
@@ -2617,7 +2618,7 @@ class _CategoryThumbnail extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: category.imageUrl.isEmpty
-          ? Text(category.icon ?? '🏷️',
+          ? Text(categoryIconText(category.icon, fallback: '🏷️'),
               style: TextStyle(fontSize: size * 0.45))
           : ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -2652,7 +2653,7 @@ class _CategoryImagePreview extends StatelessWidget {
         color: const Color(0xFFE9F0F8),
         alignment: Alignment.center,
         child: category.imageUrl.isEmpty
-            ? Text(category.icon ?? '🏷️', style: const TextStyle(fontSize: 26))
+            ? Text(categoryIconText(category.icon, fallback: '🏷️'), style: const TextStyle(fontSize: 26))
             : Image.network(
                 category.imageUrl,
                 width: size,
@@ -3240,7 +3241,7 @@ class _SubsectionThumbnail extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: subsection.imageUrl.isEmpty
-          ? Text(subsection.icon ?? '◈', style: const TextStyle(fontSize: 17))
+          ? Text(categoryIconText(subsection.icon, fallback: '◈'), style: const TextStyle(fontSize: 17))
           : ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: Image.network(
@@ -3509,7 +3510,7 @@ class _CategoryPreview extends StatelessWidget {
                 child: Image.network(category.imageUrl,
                     width: 52, height: 52, fit: BoxFit.cover),
               )
-            : Text(category.icon?.isNotEmpty == true ? category.icon! : '🏷️',
+            : Text(categoryIconText(category.icon, fallback: '🏷️'),
                 style: const TextStyle(fontSize: 26)),
         title: Text(category.name),
         subtitle: Text(category.description.isEmpty
