@@ -10,6 +10,7 @@ import '../../domain/catalog_validation.dart';
 import '../../domain/facility_capabilities.dart';
 import '../catalog_content_providers.dart';
 import '../widgets/capability_editor.dart';
+import '../../../../core/widgets/publish_feedback.dart';
 
 /// Languages an admin can translate content into.
 ///
@@ -110,27 +111,36 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
       return;
     }
 
+    // Resolve everything that needs this screen's context before awaiting:
+    // publishing rebuilds parts of the app, see [showSnackBarAfterFrame].
+    final controller = ref.read(catalogContentControllerProvider);
+    final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _saving = true);
     try {
-      await ref.read(catalogContentControllerProvider).save(draft);
-      if (!mounted) return;
-      setState(() => _draft = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Catalogue published')),
-      );
+      await controller.save(draft);
     } catch (error) {
-      if (!mounted) return;
       // The backend rejected the write. Never clear the draft here: the
       // admin's work must survive a failed publish.
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) setState(() => _saving = false);
+      showSnackBarAfterFrame(
+        messenger,
         SnackBar(
           content: Text('Could not publish: $error'),
           duration: const Duration(seconds: 6),
         ),
       );
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      return;
     }
+    if (mounted) {
+      setState(() {
+        _draft = null;
+        _saving = false;
+      });
+    }
+    showSnackBarAfterFrame(
+      messenger,
+      const SnackBar(content: Text('Catalogue published')),
+    );
   }
 
   Future<void> _discard() async {

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/home_appearance.dart';
 import '../../infrastructure/home_media_repository.dart';
 import '../home_appearance_providers.dart';
+import '../../../../core/widgets/publish_feedback.dart';
 
 /// Admin editor for the customer Home composition.
 ///
@@ -44,22 +45,31 @@ class _AdminHomeAppearanceScreenState
   Future<void> _save() async {
     final draft = _draft;
     if (draft == null) return;
+    // Resolve everything that needs this screen's context before awaiting:
+    // publishing rebuilds parts of the app, see [showSnackBarAfterFrame].
+    final controller = ref.read(homeAppearanceControllerProvider);
+    final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _saving = true);
     try {
-      await ref.read(homeAppearanceControllerProvider).save(draft);
-      if (!mounted) return;
-      setState(() => _draft = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Home layout published')),
-      );
+      await controller.save(draft);
     } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) setState(() => _saving = false);
+      showSnackBarAfterFrame(
+        messenger,
         SnackBar(content: Text('Could not publish: $error')),
       );
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      return;
     }
+    if (mounted) {
+      setState(() {
+        _draft = null;
+        _saving = false;
+      });
+    }
+    showSnackBarAfterFrame(
+      messenger,
+      const SnackBar(content: Text('Home layout published')),
+    );
   }
 
   @override

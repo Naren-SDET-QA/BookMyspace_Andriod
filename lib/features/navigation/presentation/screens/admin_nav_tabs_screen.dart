@@ -5,6 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../domain/nav_tabs.dart';
 import '../nav_tab_labels.dart';
 import '../nav_tabs_providers.dart';
+import '../../../../core/widgets/publish_feedback.dart';
 
 /// Admin editor for the customer bottom navigation bar.
 ///
@@ -36,22 +37,31 @@ class _AdminNavTabsScreenState extends ConsumerState<AdminNavTabsScreen> {
   Future<void> _save() async {
     final draft = _draft;
     if (draft == null) return;
+    // Resolve everything that needs this screen's context before awaiting:
+    // publishing rebuilds parts of the app, see [showSnackBarAfterFrame].
+    final controller = ref.read(navTabsControllerProvider);
+    final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _saving = true);
     try {
-      await ref.read(navTabsControllerProvider).save(draft);
-      if (!mounted) return;
-      setState(() => _draft = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bottom navigation published')),
-      );
+      await controller.save(draft);
     } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) setState(() => _saving = false);
+      showSnackBarAfterFrame(
+        messenger,
         SnackBar(content: Text('Could not publish: $error')),
       );
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      return;
     }
+    if (mounted) {
+      setState(() {
+        _draft = null;
+        _saving = false;
+      });
+    }
+    showSnackBarAfterFrame(
+      messenger,
+      const SnackBar(content: Text('Bottom navigation published')),
+    );
   }
 
   void _reorder(List<NavTabConfig> ordered, int index, int delta) {
