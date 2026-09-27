@@ -92,8 +92,14 @@ class AdminDashboardScreen extends ConsumerWidget {
             _AdminLink(
               icon: Icons.receipt_long_outlined,
               title: 'Bookings',
-              subtitle: 'Platform-wide booking list is not granted by RLS',
+              subtitle: 'Filter, search and manage platform bookings',
               onTap: () => context.push(AppRoutes.adminBookings),
+            ),
+            _AdminLink(
+              icon: Icons.verified_user_outlined,
+              title: 'Registration reviews',
+              subtitle: 'Approve or reject pending registration and KYC',
+              onTap: () => context.push(AppRoutes.adminRegistrationReviews),
             ),
             _AdminLink(
               icon: Icons.payments_outlined,

@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../domain/registration_form.dart';
+import '../domain/submission_review.dart';
 import '../infrastructure/supabase_registration_repository.dart';
+import '../infrastructure/supabase_submission_repository.dart';
 
 final registrationRepositoryProvider = Provider<RegistrationRepository>(
   (ref) => SupabaseRegistrationRepository(ref.watch(supabaseProvider)),
@@ -13,4 +15,17 @@ final myRegistrationFormsProvider =
 final registrationFormProvider =
     FutureProvider.family<RegistrationFormDefinition, String>(
       (ref, id) => ref.watch(registrationRepositoryProvider).form(id),
+    );
+
+/// Admin review of module registration / KYC submissions.
+final submissionReviewRepositoryProvider = Provider<SubmissionReviewRepository>(
+  (ref) => SupabaseSubmissionRepository(ref.watch(supabaseProvider)),
+);
+final pendingSubmissionReviewsProvider =
+    FutureProvider.autoDispose<List<ReviewableSubmission>>(
+      (ref) => ref.watch(submissionReviewRepositoryProvider).pendingReviews(),
+    );
+final submissionDocumentsProvider = FutureProvider.autoDispose
+    .family<List<SubmissionDocument>, String>(
+      (ref, id) => ref.watch(submissionReviewRepositoryProvider).documents(id),
     );
