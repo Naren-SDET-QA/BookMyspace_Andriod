@@ -58,6 +58,7 @@ import '../../features/business/presentation/screens/business_plan_configuration
 import '../../features/business/presentation/screens/business_pricing_configuration_screen.dart';
 import '../../features/checkin/presentation/screens/qr_check_in_screen.dart';
 import '../../features/courses/presentation/screens/course_detail_screen.dart';
+import '../../features/courses/presentation/screens/instructor_profile_screen.dart';
 import '../../features/courses/presentation/screens/courses_list_screen.dart';
 import '../../features/courses/presentation/screens/admin_education_screen.dart';
 import '../../features/courses/presentation/screens/education_hub_screen.dart';
@@ -203,6 +204,7 @@ abstract class AppRoutes {
   static const courseDetails = '/courses/:id';
   static const education = '/education';
   static const instituteDetails = '/institutes/:id';
+  static const instructorProfile = '/instructors/:id';
   static const myCourses = '/my-courses';
   static const pgList = '/pg';
   static const pgDetails = '/pg/:id';
@@ -829,6 +831,13 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) =>
             CourseDetailScreen(courseId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: AppRoutes.instructorProfile,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => InstructorProfileScreen(
+          facultyId: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: AppRoutes.education,

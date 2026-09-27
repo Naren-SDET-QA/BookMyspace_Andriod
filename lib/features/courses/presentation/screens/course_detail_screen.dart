@@ -19,6 +19,7 @@ import '../widgets/external_link.dart';
 import '../../domain/course.dart';
 import '../course_providers.dart';
 import '../widgets/course_demo_actions.dart';
+import '../widgets/course_spec_card.dart';
 import '../widgets/feedback_dialog.dart';
 
 /// Course details with batches and enroll/drop actions.
@@ -91,9 +92,9 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
     final link = 'https://bookmyspace.app/course/${course.id}';
     await Clipboard.setData(ClipboardData(text: '${course.title} — $link'));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.linkCopied)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.linkCopied)));
   }
 
   @override
@@ -107,7 +108,25 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
     final avgRating = feedback.isEmpty
         ? 0.0
         : feedback.map((f) => f.rating).reduce((a, b) => a + b) /
-            feedback.length;
+              feedback.length;
+    final categoryLabel = courseCategoryLabel(course);
+    final showFaculty =
+        course.instituteModules.enabled('faculty') &&
+        course.faculty.any((f) => f.isActive);
+    final branches = course.instituteId.isEmpty
+        ? const <InstituteBranch>[]
+        : ref
+                  .watch(instituteBranchesProvider(course.instituteId))
+                  .valueOrNull ??
+              const <InstituteBranch>[];
+    final institute = course.instituteId.isEmpty
+        ? null
+        : ref.watch(instituteDetailProvider(course.instituteId)).valueOrNull;
+    final campusLocation = campusLocationLabel(
+      branches: branches,
+      institute: institute,
+      fallbackCity: course.instituteCity,
+    );
 
     return Scaffold(
       body: CustomScrollView(
@@ -135,6 +154,23 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _ModeBadge(
+                        key: const Key('course-mode-badge'),
+                        label: _modeLabel(l10n, course.mode),
+                        mode: course.mode,
+                      ),
+                      if (categoryLabel.isNotEmpty)
+                        _CategoryChip(
+                          key: const Key('course-category-chip'),
+                          label: categoryLabel,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
@@ -146,18 +182,31 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                         ),
                       ),
                       if (course.instituteVerified)
-                        const Icon(Icons.verified_rounded,
-                            color: AppTheme.violet),
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: AppTheme.violet,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
-                          course.instituteName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        child: InkWell(
+                          key: const Key('course-institute-link'),
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: course.instituteId.isEmpty
+                              ? null
+                              : () => context.push(
+                                  AppRoutes.educationInstituteDetails
+                                      .replaceAll(':id', course.instituteId),
+                                ),
+                          child: Text(
+                            course.instituteName,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -171,9 +220,11 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.place_outlined,
-                            size: 15,
-                            color: theme.colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.place_outlined,
+                          size: 15,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           course.instituteCity,
@@ -196,6 +247,21 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                     ),
                     const SizedBox(height: 20),
                   ],
+                  CourseSpecCard(
+                    course: course,
+                    campusLocation: campusLocation,
+                  ),
+                  const SizedBox(height: 16),
+                  if (showFaculty) ...[
+                    for (final f in course.faculty.where((f) => f.isActive))
+                      InstructorPortfolioCard(
+                        faculty: f,
+                        onTap: () => context.push(
+                          AppRoutes.instructorProfile.replaceAll(':id', f.id),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                  ],
                   if (course.syllabusPoints.isNotEmpty) ...[
                     Text(l10n.whatYouLearn, style: theme.textTheme.titleMedium),
                     const SizedBox(height: 10),
@@ -205,8 +271,11 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.check_circle_rounded,
-                                size: 18, color: AppTheme.violet),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 18,
+                              color: AppTheme.violet,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -220,43 +289,15 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  if (course.instituteModules.enabled('faculty') &&
-                      course.faculty.isNotEmpty) ...[
-                    Text(l10n.faculty, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 10),
-                    ...course.faculty.map(_FacultyTile.new),
-                    const SizedBox(height: 20),
-                  ],
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _DetailChip(
-                        icon: Icons.school_rounded,
-                        label: _modeLabel(l10n, course.mode),
-                      ),
-                      _DetailChip(
-                        icon: Icons.calendar_month_rounded,
-                        label: l10n.durationWeeks.replaceAll(
-                          '{weeks}',
-                          '${course.durationWeeks}',
-                        ),
-                      ),
-                      if (course.instructorName.isNotEmpty)
-                        _DetailChip(
-                          icon: Icons.person_rounded,
-                          label: '${l10n.instructor}: ${course.instructorName}',
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
                   _FeeCard(course: course),
                   const SizedBox(height: 20),
                   if (course.hasDemo &&
                       demoEnabled &&
                       course.instituteModules.enabled('demo')) ...[
-                    Text(l10n.demoAndRegistration,
-                        style: theme.textTheme.titleMedium),
+                    Text(
+                      l10n.demoAndRegistration,
+                      style: theme.textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 10),
                     CourseDemoActions(course: course),
                     const SizedBox(height: 20),
@@ -362,8 +403,10 @@ class _StickyEnrollBar extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    l10n.durationWeeks
-                        .replaceAll('{weeks}', '${course.durationWeeks}'),
+                    l10n.durationWeeks.replaceAll(
+                      '{weeks}',
+                      '${course.durationWeeks}',
+                    ),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -375,29 +418,12 @@ class _StickyEnrollBar extends StatelessWidget {
             FilledButton(
               key: const Key("course-sticky-enroll-cta"),
               onPressed: onEnroll,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(160, 48),
-              ),
+              style: FilledButton.styleFrom(minimumSize: const Size(160, 48)),
               child: Text(l10n.enrollNow),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _DetailChip extends StatelessWidget {
-  const _DetailChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(icon, size: 18, color: AppTheme.violet),
-      label: Text(label),
     );
   }
 }
@@ -477,81 +503,14 @@ class _FeeRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: (bold
-                    ? theme.textTheme.titleMedium
-                    : theme.textTheme.bodyMedium)
-                ?.copyWith(
-              color: bold ? AppTheme.violet : null,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FacultyTile extends StatelessWidget {
-  const _FacultyTile(this.faculty);
-
-  final CourseFaculty faculty;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipOval(
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: faculty.photoUrl.isNotEmpty
-                  ? AppNetworkImage(url: faculty.photoUrl, fit: BoxFit.cover)
-                  : ColoredBox(
-                      color: AppTheme.violet.withValues(alpha: 0.12),
-                      child: const Icon(Icons.person_rounded,
-                          color: AppTheme.violet),
+            style:
+                (bold
+                        ? theme.textTheme.titleMedium
+                        : theme.textTheme.bodyMedium)
+                    ?.copyWith(
+                      color: bold ? AppTheme.violet : null,
+                      fontWeight: FontWeight.w700,
                     ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  faculty.name,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                if (faculty.role.isNotEmpty)
-                  Text(
-                    faculty.role,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.violet,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                if (faculty.qualification.isNotEmpty)
-                  Text(faculty.qualification, style: theme.textTheme.bodySmall),
-                if (faculty.specialization.isNotEmpty)
-                  Text(faculty.specialization,
-                      style: theme.textTheme.bodySmall),
-                if (faculty.experienceText.isNotEmpty)
-                  Text(faculty.experienceText,
-                      style: theme.textTheme.bodySmall),
-                if (faculty.bio.isNotEmpty)
-                  Text(
-                    faculty.bio,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
           ),
         ],
       ),
@@ -586,8 +545,9 @@ class _FaqTileState extends State<_FaqTile> {
           child: ExpansionTile(
             title: Text(
               widget.faq.question,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             onExpansionChanged: (v) => setState(() => _expanded = v),
             trailing: Icon(
@@ -708,13 +668,17 @@ class _FeedbackTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.star_rounded,
-                    size: 18, color: Colors.amber.shade700),
+                Icon(
+                  Icons.star_rounded,
+                  size: 18,
+                  color: Colors.amber.shade700,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '${feedback.rating}.0',
-                  style: theme.textTheme.labelLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const Spacer(),
                 if (feedback.authorName.isNotEmpty)
@@ -767,10 +731,9 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
       _error = null;
     });
     try {
-      await ref.read(courseEnrollmentControllerProvider).enroll(
-            courseId: widget.courseId,
-            batchId: batch.id,
-          );
+      await ref
+          .read(courseEnrollmentControllerProvider)
+          .enroll(courseId: widget.courseId, batchId: batch.id);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -804,14 +767,13 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
       _error = null;
     });
     try {
-      await ref.read(courseEnrollmentControllerProvider).drop(
-            courseId: widget.courseId,
-            batchId: batch.id,
-          );
+      await ref
+          .read(courseEnrollmentControllerProvider)
+          .drop(courseId: widget.courseId, batchId: batch.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.enrollmentDropped)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.enrollmentDropped)));
       }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -929,6 +891,62 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeBadge extends StatelessWidget {
+  const _ModeBadge({super.key, required this.label, required this.mode});
+
+  final String label;
+  final CourseMode mode;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (mode) {
+      CourseMode.online => const Color(0xFF0EA5E9),
+      CourseMode.hybrid => const Color(0xFFF59E0B),
+      _ => const Color(0xFF16A34A),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSecondaryContainer,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
