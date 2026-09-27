@@ -12,6 +12,8 @@ import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../cms/presentation/cms_providers.dart';
+import '../../../courses/domain/course.dart';
+import '../../../courses/presentation/course_providers.dart';
 import '../../../modules/presentation/module_providers.dart';
 import '../../../notifications/presentation/notification_providers.dart';
 import '../../../offers/domain/coupon.dart';
@@ -28,6 +30,7 @@ import '../recently_viewed.dart';
 import '../widgets/home_feed_sections.dart' show HomeGuestsPickerSheet;
 import '../widgets/home_ai_booking_card.dart';
 import '../widgets/location_picker_sheet.dart';
+import '../widgets/premium_promo_carousel.dart';
 
 /// "Premium" Home layout (admin Home settings -> Home layout -> Premium).
 ///
@@ -161,6 +164,132 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
   }
 
   // ---------------------------------------------------------------------------
+  // Promo carousel
+  // ---------------------------------------------------------------------------
+
+  /// Slides for the "Deals & Happenings" carousel, all from live data:
+  /// coupons, a class running today, a sports venue and a function hall.
+  /// Any kind without data is simply left out.
+  List<PromoSlide> _promoSlides({
+    required List<Coupon> coupons,
+    required List<Venue> venues,
+    required List<Course> courses,
+  }) {
+    final slides = <PromoSlide>[];
+    PromoSlide couponSlide(Coupon c, List<Color> colors) => PromoSlide(
+      id: 'coupon-${c.id}',
+      badge: 'BOOK MORE, SAVE MORE',
+      badgeIcon: Icons.local_offer_rounded,
+      title: 'Use code ${c.code}',
+      subtitle: c.description,
+      highlight: _offLabel(c),
+      highlightCaption: 'limited offer',
+      colors: colors,
+      onTap: () => _openSearch(),
+    );
+
+    if (coupons.isNotEmpty) {
+      slides.add(couponSlide(coupons.first, _slideColors[0]));
+    }
+
+    final today = DateUtils.dateOnly(DateTime.now());
+    for (final course in courses) {
+      final batch = course.batches.where((b) {
+        if (!b.isActive) return false;
+        final start = DateUtils.dateOnly(b.startsOn);
+        final end = b.endsOn == null ? null : DateUtils.dateOnly(b.endsOn!);
+        return start == today ||
+            (start.isBefore(today) && end != null && !end.isBefore(today));
+      }).firstOrNull;
+      if (batch == null) continue;
+      final where = [
+        course.instituteName,
+        course.instituteCity,
+      ].where((s) => s.trim().isNotEmpty).join(', ');
+      slides.add(
+        PromoSlide(
+          id: 'class-${course.id}',
+          badge: DateUtils.dateOnly(batch.startsOn) == today
+              ? 'CLASS STARTS TODAY'
+              : "TODAY'S CLASS",
+          badgeIcon: Icons.school_rounded,
+          title: course.title,
+          subtitle: course.instructorName.isEmpty
+              ? ''
+              : 'by ${course.instructorName}',
+          detail: [
+            if (batch.timing.trim().isNotEmpty) batch.timing.trim(),
+            if (where.isNotEmpty) where,
+          ].join(' · '),
+          detailIcon: Icons.schedule_rounded,
+          imageUrl: course.coverImage,
+          colors: _slideColors[1],
+          onTap: () => context.push(
+            AppRoutes.courseDetails.replaceAll(':id', course.id),
+          ),
+        ),
+      );
+      break;
+    }
+
+    PromoSlide? venueSlide(
+      bool Function(String slug) match,
+      String badge,
+      IconData icon,
+      List<Color> colors,
+    ) {
+      final venue = venues
+          .where((v) => match((v.category?.slug ?? '').toLowerCase()))
+          .fold<Venue?>(null, (best, v) {
+            if (best == null) return v;
+            return v.avgRating > best.avgRating ? v : best;
+          });
+      if (venue == null) return null;
+      final price = venue.pricingBaseAmount > 0
+          ? venue.pricingBaseAmount
+          : venue.price;
+      return PromoSlide(
+        id: 'venue-${venue.id}',
+        badge: badge,
+        badgeIcon: icon,
+        title: venue.name,
+        detail: venue.city,
+        highlight: price > 0 ? _inr.format(price) : '',
+        highlightCaption: price > 0 ? _priceSuffix(venue) : '',
+        imageUrl: venue.coverOrSampleImageUrl,
+        colors: colors,
+        onTap: () =>
+            context.push(AppRoutes.venueDetails.replaceAll(':id', venue.id)),
+      );
+    }
+
+    final sports = venueSlide(
+      (s) => s.contains('sport') || s.contains('turf') || s.contains('court'),
+      'SPORTS',
+      Icons.sports_soccer_rounded,
+      _slideColors[2],
+    );
+    if (sports != null) slides.add(sports);
+    final hall = venueSlide(
+      (s) =>
+          s.contains('function') ||
+          s.contains('hall') ||
+          s.contains('banquet') ||
+          s.contains('marriage') ||
+          s.contains('convention'),
+      'CELEBRATE',
+      Icons.celebration_rounded,
+      _slideColors[3],
+    );
+    if (hall != null) slides.add(hall);
+
+    for (final c in coupons.skip(1).take(2)) {
+      slides.add(couponSlide(c, _slideColors[4 + slides.length % 2]));
+    }
+    return slides;
+  }
+
+  // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
@@ -188,6 +317,13 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
         break;
       }
     }
+    final courses =
+        ref.watch(publishedCoursesProvider).valueOrNull ?? const <Course>[];
+    final promoSlides = _promoSlides(
+      coupons: coupons,
+      venues: [...venues, ...popular.valueOrNull ?? const <Venue>[]],
+      courses: courses,
+    );
     final showAiBooking = ref
         .watch(homeVisibleBlocksProvider)
         .any((block) => block.kind == HomeBlockKind.aiBooking);
@@ -270,17 +406,11 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
                     onSection: _openSection,
                   ),
                 ),
-                if (coupons.isNotEmpty)
+                if (promoSlides.isNotEmpty)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(pad, 24, pad, 0),
-                      child: _PromoBanner(
-                        coupon: coupons.first,
-                        imageUrl: venues.isNotEmpty
-                            ? venues.first.coverOrSampleImageUrl
-                            : heroImage,
-                        onTap: () => _openSearch(),
-                      ),
+                      child: PremiumPromoCarousel(slides: promoSlides),
                     ),
                   ),
                 if (venues.isNotEmpty || popular.isLoading) ...[
@@ -387,6 +517,16 @@ const _pink = Color(0xFFEC4899);
 const _teal = Color(0xFF14B8A6);
 
 const _brandGradient = LinearGradient(colors: [_indigo, _violet, _pink]);
+
+/// Per-slide gradients for the promo carousel, one colour story per kind.
+const _slideColors = <List<Color>>[
+  [Color(0xFF4F46E5), Color(0xFFEC4899)], // coupon
+  [Color(0xFFF59E0B), Color(0xFFEF4444)], // class
+  [Color(0xFF10B981), Color(0xFF0EA5E9)], // sports
+  [Color(0xFF7C3AED), Color(0xFFDB2777)], // function hall
+  [Color(0xFF0EA5E9), Color(0xFF6366F1)], // extra coupon
+  [Color(0xFFF97316), Color(0xFFD946EF)], // extra coupon
+];
 
 // -----------------------------------------------------------------------------
 // Hero
@@ -1540,157 +1680,6 @@ class _CategoryTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PromoBanner extends StatelessWidget {
-  const _PromoBanner({
-    required this.coupon,
-    required this.imageUrl,
-    required this.onTap,
-  });
-
-  final Coupon coupon;
-  final String imageUrl;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Material(
-        child: InkWell(
-          key: const Key('premium-promo'),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 150),
-            child: Stack(
-              children: [
-                if (imageUrl.isNotEmpty)
-                  Positioned.fill(child: AppNetworkImage(url: imageUrl)),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _indigo.withValues(alpha: 0.95),
-                          _violet.withValues(alpha: 0.55),
-                          _pink.withValues(alpha: 0.9),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: _SplitOrStack(
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Book More,\nSave More!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              height: 1.1,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(color: Colors.white70),
-                            ),
-                            child: Text(
-                              'Use code ${coupon.code}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white38),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Get ${_offLabel(coupon)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 220),
-                              child: Text(
-                                coupon.description.isEmpty
-                                    ? 'on your next booking'
-                                    : coupon.description,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Two children side by side (pushed to the edges) when there is room,
-/// stacked otherwise.
-class _SplitOrStack extends StatelessWidget {
-  const _SplitOrStack({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        if (c.maxWidth >= 560) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: children,
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) const SizedBox(height: 16),
-              children[i],
-            ],
-          ],
-        );
-      },
     );
   }
 }

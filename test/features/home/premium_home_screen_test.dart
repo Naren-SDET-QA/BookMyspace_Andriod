@@ -9,6 +9,8 @@ import 'package:bookmyspace/features/home/presentation/widgets/home_ai_booking_c
 import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/cms/presentation/cms_providers.dart';
+import 'package:bookmyspace/features/courses/domain/course.dart';
+import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/admin/domain/admin_settings.dart';
 import 'package:bookmyspace/features/admin/presentation/admin_settings_providers.dart';
 import 'package:bookmyspace/features/home/presentation/recently_viewed.dart';
@@ -90,6 +92,31 @@ const _coupons = [
   ),
 ];
 
+final _todayCourse = Course(
+  id: 'java1',
+  instituteId: 'i1',
+  title: 'Core Java',
+  description: '',
+  mode: CourseMode.offline,
+  durationWeeks: 12,
+  feeAmount: 5000,
+  status: 'published',
+  instructorName: 'Test Instructor',
+  instituteName: 'Test Institute',
+  instituteCity: 'Hyderabad',
+  batches: [
+    CourseBatch(
+      id: 'b1',
+      courseId: 'java1',
+      label: 'Morning',
+      startsOn: DateTime.now(),
+      capacity: 40,
+      enrolledCount: 10,
+      timing: '7:30 AM',
+    ),
+  ],
+);
+
 class _Nav {
   final pushed = <String>[];
 }
@@ -99,6 +126,7 @@ Future<_Nav> _pump(
   Size size = const Size(390, 844),
   List<Coupon> coupons = _coupons,
   Map<String, String>? prefs,
+  List<Course>? courses,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -127,6 +155,10 @@ Future<_Nav> _pump(
         builder: (_, s) => page('book:${s.pathParameters['id']}'),
       ),
       GoRoute(path: AppRoutes.login, builder: (_, __) => page('login')),
+      GoRoute(
+        path: AppRoutes.courseDetails,
+        builder: (_, s) => page('course:${s.pathParameters['id']}'),
+      ),
       GoRoute(path: AppRoutes.saved, builder: (_, __) => page('saved')),
       GoRoute(
         path: AppRoutes.notifications,
@@ -147,6 +179,9 @@ Future<_Nav> _pump(
         ),
         activeCouponsProvider.overrideWith((ref) async => coupons),
         activeCmsBannersProvider.overrideWith((ref) async => const []),
+        publishedCoursesProvider.overrideWith(
+          (ref) async => courses ?? [_todayCourse],
+        ),
         moduleEnabledProvider.overrideWith((ref, id) => true),
         homeVisibleBlocksProvider.overrideWith(
           (ref) => HomeAppearance.defaults.visible,
@@ -223,7 +258,7 @@ void main() {
 
   testWidgets('offer sections hide when there are no coupons', (tester) async {
     await _pump(tester, coupons: const []);
-    expect(find.byKey(const Key('premium-promo')), findsNothing);
+    expect(find.textContaining('Use code'), findsNothing);
     expect(find.text('Top Offers For You'), findsNothing);
     expect(find.text('Special Offer'), findsNothing);
   });
@@ -390,5 +425,59 @@ void main() {
     await tester.tap(find.byKey(const Key('premium-ai')));
     await tester.pumpAndSettle();
     expect(find.byType(AiBookingSheet), findsOneWidget);
+  });
+
+  testWidgets('promo carousel: coupon, today\'s class, sports, function hall', (
+    tester,
+  ) async {
+    await _pump(tester, size: const Size(1440, 1000));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('premium-promo-carousel')),
+      300,
+      scrollable: find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    // 1 coupon + class + sports + hall + 1 extra coupon.
+    expect(find.text('1/5'), findsOneWidget);
+    expect(find.text('Use code WELCOME10'), findsOneWidget);
+
+    // Arrows move between slides.
+    await tester.tap(find.byKey(const Key('premium-promo-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('2/5'), findsOneWidget);
+    expect(find.text('Core Java'), findsOneWidget);
+    expect(find.text('by Test Instructor'), findsOneWidget);
+    expect(find.textContaining('7:30 AM'), findsOneWidget);
+    expect(find.text('CLASS STARTS TODAY'), findsWidgets);
+
+    // Auto-advance.
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text('3/5'), findsOneWidget);
+    expect(find.text('SPORTS'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('premium-promo-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('CELEBRATE'), findsWidgets);
+
+    // Tapping the class slide opens the course.
+    // (Auto-advance keeps running, so step until the class slide is shown.)
+    final classSlide = find.byKey(const Key('premium-slide-class-java1'));
+    for (var i = 0; i < 6 && classSlide.hitTestable().evaluate().isEmpty; i++) {
+      await tester.tap(find.byKey(const Key('premium-promo-next')));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(classSlide);
+    await tester.pumpAndSettle();
+    expect(find.text('page:course:java1'), findsOneWidget);
+  });
+
+  testWidgets('no class slide when no batch runs today', (tester) async {
+    await _pump(tester, size: const Size(1440, 1000), courses: const []);
+    expect(find.byKey(const Key('premium-slide-class-java1')), findsNothing);
   });
 }
