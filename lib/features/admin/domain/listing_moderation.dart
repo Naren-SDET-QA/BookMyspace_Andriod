@@ -36,6 +36,9 @@ class OversightRow {
     required this.status,
     this.amount,
     this.createdAt,
+    this.reference = '',
+    this.customerName = '',
+    this.customerContact = '',
   });
 
   final String id;
@@ -44,4 +47,13 @@ class OversightRow {
   final String status;
   final double? amount;
   final DateTime? createdAt;
+
+  /// Human-facing reference (e.g. `booking_ref`), empty when unknown.
+  final String reference;
+
+  /// Customer display name for booking rows, empty when unknown.
+  final String customerName;
+
+  /// Customer email/phone for booking rows, empty when unknown.
+  final String customerContact;
 }
