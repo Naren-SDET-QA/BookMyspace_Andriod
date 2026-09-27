@@ -20,10 +20,12 @@ import '../../../modules/presentation/module_providers.dart';
 import '../../../search/presentation/widgets/voice_search_bottom_sheet.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart'
     show formatDistance, formatInr;
+import '../../domain/class_category_filter.dart';
 import '../../domain/course.dart';
 import '../../domain/education_category.dart';
 import '../course_providers.dart';
 import '../widgets/batch_class_card.dart';
+import '../widgets/class_category_filter_sheet.dart';
 
 enum _ListingScope { institutes, classes }
 
@@ -62,6 +64,40 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
   bool _parkingOnly = false;
   _HubSort _sort = _HubSort.distance;
 
+  /// Multi-category selection for the classes list (category checkbox
+  /// sheet). When non-empty it replaces the single [_category] for classes.
+  Set<EducationCategory> _classCategories = const {};
+  bool _includeFullAndUpcoming = true;
+
+  ClassCategoryFilter get _classFilter => ClassCategoryFilter(
+    categories: _classCategories.isNotEmpty
+        ? _classCategories
+        : (_category == EducationCategory.all ? const {} : {_category}),
+    mode: _mode,
+    includeFullAndUpcoming: _includeFullAndUpcoming,
+  );
+
+  Future<void> _openClassCategoryFilter(List<Course> courses) async {
+    final result = await showClassCategoryFilterSheet(
+      context,
+      initial: _classFilter,
+      courses: courses,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _scope = _ListingScope.classes;
+      _mode = result.mode;
+      _includeFullAndUpcoming = result.includeFullAndUpcoming;
+      if (result.categories.length == 1) {
+        _category = result.categories.first;
+        _classCategories = const {};
+      } else {
+        _category = EducationCategory.all;
+        _classCategories = result.categories;
+      }
+    });
+  }
+
   static const _priceChipCap = 50000.0;
 
   @override
@@ -86,7 +122,8 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     final query = _query.trim().toLowerCase();
     return items.where((institute) {
       final matchesType = _typeFilter == null || institute.type == _typeFilter;
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           institute.name.toLowerCase().contains(query) ||
           institute.city.toLowerCase().contains(query) ||
           institute.address.toLowerCase().contains(query);
@@ -137,24 +174,16 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     List<Course> courses,
   ) {
     final query = _query.trim().toLowerCase();
+    final filter = _classFilter;
     final matches = <({Course course, CourseBatch batch})>[];
     for (final course in courses) {
       for (final batch in course.batches.where((item) => item.isActive)) {
-        if (_mode != null && (batch.mode ?? course.mode) != _mode) continue;
         if (_ongoingToday && !batch.isOngoingToday) continue;
         if (_waitlistOnly && !batch.waitlistEnabled) continue;
-        if (!_category.matches(
-          title: course.title,
-          subject: batch.subject,
-          categorySlug: batch.categorySlug.isNotEmpty
-              ? batch.categorySlug
-              : course.categoryId,
-          instructor: course.instructorName,
-        )) {
-          continue;
-        }
-        final fee =
-            batch.feeAmount > 0 ? batch.feeAmount : course.payableAmount;
+        if (!filter.matchesBatch(course, batch)) continue;
+        final fee = batch.feeAmount > 0
+            ? batch.feeAmount
+            : course.payableAmount;
         if (_maxFee != null && fee > _maxFee!) continue;
         if (query.isNotEmpty) {
           final haystack = [
@@ -173,9 +202,8 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     return matches;
   }
 
-  static bool _hasParking(Institute institute) => institute.amenities.any(
-        (item) => item.toLowerCase().contains('park'),
-      );
+  static bool _hasParking(Institute institute) =>
+      institute.amenities.any((item) => item.toLowerCase().contains('park'));
 
   static double? _lowestFee(Institute institute, List<Course> courses) {
     double? lowest;
@@ -213,22 +241,20 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     DiscoveryLocation location,
   ) {
     if (!location.hasCoordinates) return items;
-    final withDistance = items
-        .map((i) => (institute: i, distanceKm: _distanceKm(i, location)))
-        .toList()
-      ..sort((a, b) {
-        if (a.distanceKm == null && b.distanceKm == null) return 0;
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm!.compareTo(b.distanceKm!);
-      });
+    final withDistance =
+        items
+            .map((i) => (institute: i, distanceKm: _distanceKm(i, location)))
+            .toList()
+          ..sort((a, b) {
+            if (a.distanceKm == null && b.distanceKm == null) return 0;
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm!.compareTo(b.distanceKm!);
+          });
     return withDistance.map((e) => e.institute).toList();
   }
 
-  static double? _distanceKm(
-    Institute institute,
-    DiscoveryLocation location,
-  ) {
+  static double? _distanceKm(Institute institute, DiscoveryLocation location) {
     if (!location.hasCoordinates ||
         institute.latitude == null ||
         institute.longitude == null) {
@@ -369,6 +395,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
             setState(() {
               _typeFilter = next.typeFilter;
               _category = next.category;
+              _classCategories = const {};
               _mode = next.mode;
               _ongoingToday = next.ongoingToday;
               _waitlistOnly = next.waitlistOnly;
@@ -486,15 +513,18 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                             onAllInstitutes: () => setState(() {
                               _scope = _ListingScope.institutes;
                               _category = EducationCategory.all;
+                              _classCategories = const {};
                             }),
                             onAllClasses: () => setState(() {
                               _scope = _ListingScope.classes;
                               _category = EducationCategory.all;
+                              _classCategories = const {};
                             }),
                             onCourses: () => context.go(AppRoutes.coursesList),
                             onCategory: (value) => setState(() {
                               _scope = _ListingScope.institutes;
                               _category = value;
+                              _classCategories = const {};
                             }),
                           ),
                         ),
@@ -513,9 +543,8 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                             onTogglePrice: () => setState(() {
                               _maxFee = _maxFee == null ? _priceChipCap : null;
                             }),
-                            onToggleParking: () => setState(
-                              () => _parkingOnly = !_parkingOnly,
-                            ),
+                            onToggleParking: () =>
+                                setState(() => _parkingOnly = !_parkingOnly),
                           ),
                         ),
                         SliverPadding(
@@ -535,6 +564,28 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                             ),
                           ),
                         ),
+                        if (_scope == _ListingScope.classes)
+                          SliverPadding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: responsive.horizontalPadding,
+                            ),
+                            sliver: SliverToBoxAdapter(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: OutlinedButton.icon(
+                                  key: const Key('hub-class-category-filter'),
+                                  onPressed: () =>
+                                      _openClassCategoryFilter(courses),
+                                  icon: const Icon(Icons.checklist_rounded),
+                                  label: Text(
+                                    _classCategories.length > 1
+                                        ? 'Categories (${_classCategories.length})'
+                                        : 'Categories',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         if (_scope == _ListingScope.classes)
                           if (classCards.isEmpty)
                             const SliverToBoxAdapter(
@@ -597,11 +648,14 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                                 : SliverGrid(
                                     gridDelegate:
                                         SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: responsive.resultsColumns,
-                                      mainAxisSpacing: responsive.gridSpacing,
-                                      crossAxisSpacing: responsive.gridSpacing,
-                                      childAspectRatio: 0.82,
-                                    ),
+                                          crossAxisCount:
+                                              responsive.resultsColumns,
+                                          mainAxisSpacing:
+                                              responsive.gridSpacing,
+                                          crossAxisSpacing:
+                                              responsive.gridSpacing,
+                                          childAspectRatio: 0.82,
+                                        ),
                                     delegate: SliverChildBuilderDelegate(
                                       (_, i) => _heroCard(
                                         filtered[i],
@@ -624,7 +678,8 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
   int get _activeFilterCount {
     var n = 0;
     if (_typeFilter != null) n++;
-    if (_category != EducationCategory.all) n++;
+    if (_category != EducationCategory.all || _classCategories.isNotEmpty) n++;
+    if (!_includeFullAndUpcoming) n++;
     if (_mode != null) n++;
     if (_ongoingToday) n++;
     if (_waitlistOnly) n++;
@@ -720,9 +775,7 @@ class _SectionHero extends StatelessWidget {
             const Color(0xFF3E2A78).withValues(alpha: 0.88),
           ],
         ),
-        border: Border.all(
-          color: AppTheme.violet.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.35)),
       ),
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
       child: Row(
@@ -846,8 +899,9 @@ class _DiscoverySearchCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color:
-            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.45,
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
@@ -874,15 +928,17 @@ class _DiscoverySearchCard extends StatelessWidget {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color:
-                              theme.colorScheme.outline.withValues(alpha: 0.25),
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.25,
+                          ),
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color:
-                              theme.colorScheme.outline.withValues(alpha: 0.25),
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.25,
+                          ),
                         ),
                       ),
                     ),
@@ -891,8 +947,9 @@ class _DiscoverySearchCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Material(
-                color:
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.7,
+                ),
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
                   onTap: onLocationTap,
@@ -904,8 +961,11 @@ class _DiscoverySearchCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.location_on_rounded,
-                              size: 16, color: theme.colorScheme.primary),
+                          Icon(
+                            Icons.location_on_rounded,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 4),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 72),
@@ -1085,7 +1145,8 @@ class _ScopeChipRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: AnimatedCategoryChip(
-                selected: scope == _ListingScope.institutes &&
+                selected:
+                    scope == _ListingScope.institutes &&
                     category == EducationCategory.all,
                 emoji: '✨',
                 label: 'All Education & Institutes',
@@ -1095,7 +1156,8 @@ class _ScopeChipRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: AnimatedCategoryChip(
-                selected: scope == _ListingScope.classes &&
+                selected:
+                    scope == _ListingScope.classes &&
                     category == EducationCategory.all,
                 emoji: '✨',
                 label: 'All Classes',
@@ -1162,7 +1224,8 @@ class _QuickFilterRow extends StatelessWidget {
               child: FilterChip(
                 avatar: const Icon(Icons.tune_rounded, size: 16),
                 label: Text(
-                    filterCount > 0 ? 'Filters ($filterCount)' : 'Filters'),
+                  filterCount > 0 ? 'Filters ($filterCount)' : 'Filters',
+                ),
                 selected: filterCount > 0,
                 onSelected: (_) => onFilters(),
               ),
@@ -1208,11 +1271,11 @@ class _ResultsHeader extends StatelessWidget {
   final ValueChanged<_HubSort> onSort;
 
   String get _sortLabel => switch (sort) {
-        _HubSort.distance => 'Distance: Nearest',
-        _HubSort.name => 'Name',
-        _HubSort.priceLow => 'Price: Low to High',
-        _HubSort.priceHigh => 'Price: High to Low',
-      };
+    _HubSort.distance => 'Distance: Nearest',
+    _HubSort.name => 'Name',
+    _HubSort.priceLow => 'Price: Low to High',
+    _HubSort.priceHigh => 'Price: High to Low',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1247,8 +1310,9 @@ class _ResultsHeader extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.6),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.6,
+              ),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -1347,18 +1411,18 @@ class _EducationFilterSheetState extends State<_EducationFilterSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.filters,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    )),
+            Text(
+              l10n.filters,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -1399,24 +1463,27 @@ class _EducationFilterSheetState extends State<_EducationFilterSheet> {
                   label: const Text('OFFLINE'),
                   selected: _mode == CourseMode.offline,
                   onSelected: (_) => setState(() {
-                    _mode =
-                        _mode == CourseMode.offline ? null : CourseMode.offline;
+                    _mode = _mode == CourseMode.offline
+                        ? null
+                        : CourseMode.offline;
                   }),
                 ),
                 FilterChip(
                   label: const Text('ONLINE'),
                   selected: _mode == CourseMode.online,
                   onSelected: (_) => setState(() {
-                    _mode =
-                        _mode == CourseMode.online ? null : CourseMode.online;
+                    _mode = _mode == CourseMode.online
+                        ? null
+                        : CourseMode.online;
                   }),
                 ),
                 FilterChip(
                   label: const Text('HYBRID'),
                   selected: _mode == CourseMode.hybrid,
                   onSelected: (_) => setState(() {
-                    _mode =
-                        _mode == CourseMode.hybrid ? null : CourseMode.hybrid;
+                    _mode = _mode == CourseMode.hybrid
+                        ? null
+                        : CourseMode.hybrid;
                   }),
                 ),
                 FilterChip(
@@ -1693,8 +1760,10 @@ class InstituteCard extends StatelessWidget {
             child: SizedBox(
               width: 56,
               height: 56,
-              child:
-                  AppNetworkImage(url: institute.logoImage, fit: BoxFit.cover),
+              child: AppNetworkImage(
+                url: institute.logoImage,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1710,14 +1779,18 @@ class InstituteCard extends StatelessWidget {
                         institute.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     if (institute.isVerified) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified_rounded,
-                          size: 16, color: AppTheme.violet),
+                      const Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: AppTheme.violet,
+                      ),
                     ],
                   ],
                 ),
