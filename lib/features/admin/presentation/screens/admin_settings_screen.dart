@@ -103,9 +103,11 @@ class _HomeSectionState extends ConsumerState<_HomeSection> {
       ),
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(
-        initialValue: values['home_layout']?.toString() == 'modern'
-            ? 'modern'
-            : 'glass',
+        initialValue: switch (values['home_layout']?.toString()) {
+          'modern' => 'modern',
+          'premium' => 'premium',
+          _ => 'glass',
+        },
         decoration: const InputDecoration(labelText: 'Home layout'),
         items: const [
           DropdownMenuItem(
@@ -115,6 +117,10 @@ class _HomeSectionState extends ConsumerState<_HomeSection> {
           DropdownMenuItem(
             value: 'modern',
             child: Text('Modern — new category-tile Home'),
+          ),
+          DropdownMenuItem(
+            value: 'premium',
+            child: Text('Premium — hero search, offers & recently viewed'),
           ),
         ],
         onChanged: (v) => setState(() => values['home_layout'] = v),

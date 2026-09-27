@@ -73,6 +73,8 @@ import '../../features/events/presentation/screens/event_detail_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
 import '../../features/home/presentation/screens/customer_category_preferences_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/home_layout_switch.dart';
+import '../../features/home/presentation/screens/premium_home_screen.dart';
 import '../../features/institutes/presentation/screens/institute_detail_screen.dart';
 import '../../features/institutes/presentation/screens/institute_owner_dashboard_screen.dart';
 import '../../features/institutes/presentation/screens/institutes_list_screen.dart';
@@ -251,6 +253,7 @@ abstract class AppRoutes {
   static const assistant = '/ai-assistant';
   static const chat = '/chat';
   static const homeModern = '/home-modern';
+  static const homePremium = '/home-premium';
   static const checkIn = '/check-in';
   static const institutesList = '/institutes';
   /// Institute *listing* dashboard (release/v1.0). The education dashboard
@@ -575,6 +578,12 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) =>
             const HomeScreenV1(forceModernLayout: true),
+      ),
+      // Premium Home design — preview without changing the admin setting.
+      GoRoute(
+        path: AppRoutes.homePremium,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const PremiumHomeScreen(),
       ),
       GoRoute(
         path: AppRoutes.checkIn,
@@ -1499,7 +1508,7 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.home,
-                builder: (context, state) => const HomeScreen(),
+                builder: (context, state) => const HomeLayoutSwitch(),
               ),
             ],
           ),

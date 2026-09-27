@@ -29,6 +29,7 @@ import '../../domain/venue.dart';
 import '../venue_providers.dart';
 import '../widgets/listing_availability.dart';
 import '../widgets/venue_badges.dart';
+import '../../../home/presentation/recently_viewed.dart';
 
 /// Unified listing detail used by every category. Layout is template-driven;
 /// missing live fields hide their section instead of inventing content.
@@ -70,6 +71,16 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
 
   Venue get venue => widget.venue;
   ListingTemplateConfig get template => venue.listingTemplate;
+
+  @override
+  void initState() {
+    super.initState();
+    // Feeds Home's "Your Recently Viewed" row (local to this device).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(recentlyViewedProvider.notifier).record(venue);
+    });
+  }
 
   Future<void> _openAvailability() async {
     final slot = await showListingAvailabilitySheet(

@@ -34,7 +34,8 @@ class AdminSettings {
       'home_banner_visible': true,
       'search_banner_visible': true,
       // Optional extra Home page: admin chooses which Home is shown.
-      // home_layout: 'glass' (existing, default) | 'modern' (category tiles).
+      // home_layout: 'glass' (existing, default) | 'modern' (category tiles)
+      // | 'premium' (hero search, offers, recently viewed).
       // bottom_nav_style: 'classic' (existing 6 tabs, default) | 'modern'.
       'home_layout': 'glass',
       'bottom_nav_style': 'classic',
