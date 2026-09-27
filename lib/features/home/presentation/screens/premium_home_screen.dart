@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/config/settings_controller.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/search_route.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
+import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../cms/presentation/cms_providers.dart';
 import '../../../modules/presentation/module_providers.dart';
@@ -16,11 +19,14 @@ import '../../../offers/presentation/coupon_providers.dart';
 import '../../../search/presentation/widgets/voice_search_bottom_sheet.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
+import '../../domain/home_appearance.dart';
 import '../discovery_booking_prefs.dart';
 import '../discovery_location.dart';
+import '../home_appearance_providers.dart';
 import '../home_category_catalog.dart';
 import '../recently_viewed.dart';
 import '../widgets/home_feed_sections.dart' show HomeGuestsPickerSheet;
+import '../widgets/home_ai_booking_card.dart';
 import '../widgets/location_picker_sheet.dart';
 
 /// "Premium" Home layout (admin Home settings -> Home layout -> Premium).
@@ -182,6 +188,9 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
         break;
       }
     }
+    final showAiBooking = ref
+        .watch(homeVisibleBlocksProvider)
+        .any((block) => block.kind == HomeBlockKind.aiBooking);
     final place =
         location.label.trim().isEmpty ||
             location.label.toLowerCase().contains('select')
@@ -233,6 +242,15 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
                     ),
                   ),
                 ),
+                // Same admin switch as the Glass Home: the AI booking block
+                // shows when Admin -> Home layout keeps it visible.
+                if (showAiBooking)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(pad, 20, pad, 0),
+                      child: const RepaintBoundary(child: HomeAiBookingCard()),
+                    ),
+                  ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(pad, 24, pad, 8),
@@ -594,16 +612,18 @@ class _HeaderBar extends ConsumerWidget {
             children: [
               const Icon(Icons.location_on_rounded, size: 16, color: _violet),
               const SizedBox(width: 4),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 140),
-                child: Text(
-                  locationLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  child: Text(
+                    locationLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
@@ -651,6 +671,13 @@ class _HeaderBar extends ConsumerWidget {
     );
 
     final actions = <Widget>[
+      const _LanguageButton(),
+      _HeaderIcon(
+        key: const Key('premium-ai'),
+        icon: Icons.auto_awesome_rounded,
+        tooltip: 'AI booking assistant',
+        onTap: () => AiBookingSheet.show(context),
+      ),
       _HeaderIcon(
         key: const Key('premium-notifications'),
         icon: Icons.notifications_none_rounded,
@@ -718,6 +745,10 @@ class _HeaderBar extends ConsumerWidget {
         ),
       );
     }
+    // Phones: brand + account on top, location + quick actions below, so
+    // nothing gets squeezed (the brand needs ~40px for its mark alone).
+    final account = actions.last;
+    final quick = actions.sublist(0, actions.length - 2); // no spacer/account
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -728,13 +759,110 @@ class _HeaderBar extends ConsumerWidget {
               Expanded(
                 child: Align(alignment: Alignment.centerLeft, child: brand),
               ),
-              ...actions,
+              account,
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        location,
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: Align(alignment: Alignment.centerLeft, child: location),
+            ),
+            ...quick,
+          ],
+        ),
       ],
+    );
+  }
+}
+
+/// Language switcher: every locale the app ships, shown in its own script.
+class _LanguageButton extends ConsumerWidget {
+  const _LanguageButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    return Tooltip(
+      message: 'Language',
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.16),
+        shape: StadiumBorder(
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+        ),
+        child: InkWell(
+          key: const Key('premium-language'),
+          customBorder: const StadiumBorder(),
+          onTap: () => _pick(context, ref),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.language_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                // Phones: icon only, so the header never overflows.
+                if (MediaQuery.sizeOf(context).width >= 600) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    AppLocalizations.languageLabel(locale),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _pick(BuildContext context, WidgetRef ref) {
+    final current = ref.read(localeProvider).languageCode;
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.7,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Text(
+                  'Choose language',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+              for (final locale in AppLocalizations.supportedLocales)
+                ListTile(
+                  key: Key('premium-language-${locale.languageCode}'),
+                  title: Text(AppLocalizations.languageLabel(locale)),
+                  trailing: locale.languageCode == current
+                      ? const Icon(Icons.check_rounded, color: _violet)
+                      : null,
+                  onTap: () {
+                    ref.read(localeProvider.notifier).setLocale(locale);
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -758,6 +886,7 @@ class _HeaderIcon extends StatelessWidget {
     return IconButton(
       tooltip: tooltip,
       onPressed: onTap,
+      visualDensity: VisualDensity.compact,
       icon: Badge(
         isLabelVisible: badge > 0,
         label: Text(badge > 9 ? '9+' : '$badge'),

@@ -1,6 +1,11 @@
 import 'dart:convert';
 
 import 'package:bookmyspace/core/config/settings_controller.dart';
+import 'package:bookmyspace/core/localization/app_localizations.dart';
+import 'package:bookmyspace/features/ai_booking/presentation/widgets/ai_booking_sheet.dart';
+import 'package:bookmyspace/features/home/domain/home_appearance.dart';
+import 'package:bookmyspace/features/home/presentation/home_appearance_providers.dart';
+import 'package:bookmyspace/features/home/presentation/widgets/home_ai_booking_card.dart';
 import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/cms/presentation/cms_providers.dart';
@@ -16,6 +21,7 @@ import 'package:bookmyspace/features/offers/presentation/coupon_providers.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -142,8 +148,20 @@ Future<_Nav> _pump(
         activeCouponsProvider.overrideWith((ref) async => coupons),
         activeCmsBannersProvider.overrideWith((ref) async => const []),
         moduleEnabledProvider.overrideWith((ref, id) => true),
+        homeVisibleBlocksProvider.overrideWith(
+          (ref) => HomeAppearance.defaults.visible,
+        ),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -339,4 +357,38 @@ void main() {
       expect(find.byType(HomeScreen), premium ? findsNothing : findsOneWidget);
     });
   }
+
+  testWidgets('language button lists every language and switches locale', (
+    tester,
+  ) async {
+    await _pump(tester, size: const Size(1440, 1000));
+    await tester.tap(find.byKey(const Key('premium-language')));
+    await tester.pumpAndSettle();
+    for (final locale in AppLocalizations.supportedLocales) {
+      expect(
+        find.byKey(Key('premium-language-${locale.languageCode}')),
+        findsOneWidget,
+        reason: locale.languageCode,
+      );
+    }
+    await tester.tap(find.byKey(const Key('premium-language-hi')));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PremiumHomeScreen));
+    expect(
+      ProviderScope.containerOf(context).read(localeProvider).languageCode,
+      'hi',
+    );
+    // The header shows the new language in its own script.
+    expect(find.text('हिन्दी'), findsOneWidget);
+  });
+
+  testWidgets('AI booking: header button and Home card are present', (
+    tester,
+  ) async {
+    await _pump(tester, size: const Size(1440, 1000));
+    expect(find.byType(HomeAiBookingCard), findsOneWidget);
+    await tester.tap(find.byKey(const Key('premium-ai')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AiBookingSheet), findsOneWidget);
+  });
 }
