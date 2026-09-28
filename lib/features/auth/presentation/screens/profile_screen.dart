@@ -8,9 +8,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../booking/presentation/booking_providers.dart';
+import '../../../modules/presentation/module_providers.dart';
 import '../../../venues/presentation/venue_providers.dart';
-import '../auth_providers.dart';
 import '../../domain/app_role.dart';
+import '../auth_providers.dart';
 import '../role_providers.dart';
 import '../widgets/edit_profile_modal.dart';
 
@@ -30,6 +31,11 @@ class ProfileScreen extends ConsumerWidget {
     final isAdmin = roles.canViewAdminTools;
     final bookings = ref.watch(myBookingsProvider);
     final saved = ref.watch(savedVenuesProvider);
+    final signedIn = user != null;
+    final isInstituteOwner = roles.contains(AppRole.instituteOwner);
+    final coursesEnabled = ref.watch(moduleEnabledProvider('courses'));
+    final referralsEnabled = ref.watch(moduleEnabledProvider('referrals'));
+    final analyticsEnabled = ref.watch(moduleEnabledProvider('analytics'));
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -61,8 +67,9 @@ class ProfileScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                     side: BorderSide(
-                      color: theme.colorScheme.outlineVariant
-                          .withValues(alpha: 0.4),
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.4,
+                      ),
                     ),
                   ),
                   child: Padding(
@@ -95,15 +102,15 @@ class ProfileScreen extends ConsumerWidget {
                                           child: Text(
                                             user?.fullName.isNotEmpty == true
                                                 ? user!.fullName[0]
-                                                    .toUpperCase()
+                                                      .toUpperCase()
                                                 : user?.email.isNotEmpty == true
-                                                    ? user!.email[0]
-                                                        .toUpperCase()
-                                                    : 'U',
+                                                ? user!.email[0].toUpperCase()
+                                                : 'U',
                                             style: TextStyle(
                                               fontSize: 28,
                                               fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme
+                                              color: theme
+                                                  .colorScheme
                                                   .onPrimaryContainer,
                                             ),
                                           ),
@@ -163,11 +170,12 @@ class ProfileScreen extends ConsumerWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       user!.phone,
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                     ),
                                   ],
                                 ],
@@ -257,6 +265,30 @@ class ProfileScreen extends ConsumerWidget {
                   subtitle: 'Institutes, batches, and enrollments',
                   onTap: () => context.push(AppRoutes.coursesList),
                 ),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-payment-history'),
+                    icon: Icons.payments_outlined,
+                    title: l10n.paymentHistory,
+                    subtitle: 'Completed transactions and receipts',
+                    onTap: () => context.push(AppRoutes.paymentHistory),
+                  ),
+                if (signedIn && referralsEnabled)
+                  _ProfileMenuTile(
+                    key: const Key('profile-refer-earn'),
+                    icon: Icons.card_giftcard_outlined,
+                    title: 'Refer & Earn',
+                    subtitle: 'Share your code and track rewards',
+                    onTap: () => context.push(AppRoutes.referrals),
+                  ),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-kyc-registration'),
+                    icon: Icons.verified_user_outlined,
+                    title: 'Complete KYC / registration',
+                    subtitle: 'Verify your details and module registrations',
+                    onTap: () => context.push(AppRoutes.unifiedRegistration),
+                  ),
                 _ProfileMenuTile(
                   icon: Icons.notifications_none_rounded,
                   title: 'Notifications & Alerts',
@@ -277,10 +309,29 @@ class ProfileScreen extends ConsumerWidget {
                   subtitle: isVenueOwner
                       ? 'List your spaces, halls, and classes'
                       : 'List your spaces, halls, and classes',
-                  onTap: () => context.push(isVenueOwner
-                      ? AppRoutes.ownerDashboard
-                      : AppRoutes.ownerRegistration),
+                  onTap: () => context.push(
+                    isVenueOwner
+                        ? AppRoutes.ownerDashboard
+                        : AppRoutes.ownerRegistration,
+                  ),
                 ),
+                if (coursesEnabled && (isInstituteOwner || isAdmin))
+                  _ProfileMenuTile(
+                    key: const Key('profile-institute-portal'),
+                    icon: Icons.school_outlined,
+                    title: l10n.instituteOwnerPortal,
+                    subtitle: 'Faculty, batches, admissions and demo sessions',
+                    onTap: () =>
+                        context.push(AppRoutes.ownerInstituteDashboard),
+                  ),
+                if (analyticsEnabled && (isVenueOwner || isAdmin))
+                  _ProfileMenuTile(
+                    key: const Key('profile-owner-analytics'),
+                    icon: Icons.insights_outlined,
+                    title: l10n.analytics,
+                    subtitle: 'Bookings, revenue and occupancy trends',
+                    onTap: () => context.push(AppRoutes.analytics),
+                  ),
                 if (isAdmin)
                   _ProfileMenuTile(
                     icon: Icons.admin_panel_settings_outlined,
@@ -353,9 +404,7 @@ class _MetricCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -391,6 +440,7 @@ class _MetricCard extends StatelessWidget {
 
 class _ProfileMenuTile extends StatelessWidget {
   const _ProfileMenuTile({
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -447,13 +497,16 @@ class _ProfileMenuTile extends StatelessWidget {
                       Text(
                         title,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         subtitle,
                         style: TextStyle(
-                            fontSize: 11.5,
-                            color: theme.colorScheme.onSurfaceVariant),
+                          fontSize: 11.5,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
