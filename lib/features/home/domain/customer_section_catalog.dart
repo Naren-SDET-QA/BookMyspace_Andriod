@@ -370,6 +370,10 @@ class CustomerSectionCatalog {
         venue.capacity > query.maxCapacity!) {
       return false;
     }
+    if (query.minStarRating != null &&
+        (venue.starRating ?? 0) < query.minStarRating!) {
+      return false;
+    }
     if (query.minRating != null && venue.avgRating < query.minRating!) {
       return false;
     }

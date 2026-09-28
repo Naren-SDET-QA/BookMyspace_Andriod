@@ -91,6 +91,13 @@ void main() {
     test('hotel star class is skipped', () {
       expect(_p('4 star hotel').minRating, isNull);
     });
+
+    test('hotel star class maps to minStarRating', () {
+      expect(_p('4 star hotel').minStarRating, 4);
+      expect(_p('5-star resorts in goa').minStarRating, 5);
+      expect(_p('4 star hotel').toVenueSearchQuery().minStarRating, 4);
+      expect(_p('4 star and above halls').minStarRating, isNull);
+    });
   });
 
   group('capacity', () {

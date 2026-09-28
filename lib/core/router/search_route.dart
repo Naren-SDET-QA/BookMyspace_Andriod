@@ -23,6 +23,7 @@ class SearchRouteParams {
     this.pincode,
     this.facility,
     this.minRating,
+    this.minStarRating,
     this.minCapacity,
     this.maxCapacity,
     this.gender,
@@ -43,6 +44,7 @@ class SearchRouteParams {
   static const pinParam = 'pin';
   static const facilityParam = 'facility';
   static const minRatingParam = 'rating';
+  static const minStarRatingParam = 'stars';
   static const minCapacityParam = 'minGuests';
   static const maxCapacityParam = 'maxGuests';
   static const genderParam = 'gender';
@@ -62,6 +64,7 @@ class SearchRouteParams {
   final String? pincode;
   final String? facility;
   final double? minRating;
+  final int? minStarRating;
   final int? minCapacity;
   final int? maxCapacity;
   final String? gender;
@@ -82,6 +85,7 @@ class SearchRouteParams {
       pincode: query.pincode,
       facility: query.facility,
       minRating: query.minRating,
+      minStarRating: query.minStarRating,
       minCapacity: query.minCapacity,
       maxCapacity: query.maxCapacity,
       gender: query.gender,
@@ -122,6 +126,7 @@ class SearchRouteParams {
       pincode: routeOrExtra(pinParam),
       facility: routeOrExtra(facilityParam),
       minRating: _parseDouble(routeOrExtra(minRatingParam)),
+      minStarRating: _parseInt(routeOrExtra(minStarRatingParam)),
       minCapacity: _parseInt(routeOrExtra(minCapacityParam)),
       maxCapacity: _parseInt(routeOrExtra(maxCapacityParam)),
       gender: routeOrExtra(genderParam),
@@ -148,6 +153,7 @@ class SearchRouteParams {
       pincode: pincode,
       facility: facility,
       minRating: minRating,
+      minStarRating: minStarRating,
       minCapacity: minCapacity,
       maxCapacity: maxCapacity,
       gender: gender,
@@ -179,6 +185,7 @@ class SearchRouteParams {
       pincode: query.pincode,
       facility: query.facility,
       minRating: query.minRating,
+      minStarRating: query.minStarRating,
       minCapacity: query.minCapacity,
       maxCapacity: query.maxCapacity,
       gender: query.gender,
@@ -214,6 +221,9 @@ class SearchRouteParams {
       params[facilityParam] = facility!.trim();
     }
     if (minRating != null) params[minRatingParam] = _formatNumber(minRating!);
+    if (minStarRating != null) {
+      params[minStarRatingParam] = '$minStarRating';
+    }
     if (minCapacity != null) params[minCapacityParam] = '$minCapacity';
     if (maxCapacity != null) params[maxCapacityParam] = '$maxCapacity';
     if (gender != null && gender!.trim().isNotEmpty) {

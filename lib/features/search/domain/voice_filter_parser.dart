@@ -29,6 +29,7 @@ class VoiceFilterResult {
     this.pgGender,
     this.sharing,
     this.minRating,
+    this.minStarRating,
     this.minCapacity,
     this.maxCapacity,
     this.amenities = const {},
@@ -55,6 +56,9 @@ class VoiceFilterResult {
   /// Minimum average rating (e.g. 4.0 for "top rated" / "above 4").
   final double? minRating;
 
+  /// Minimum hotel class ("4 star hotel"), distinct from [minRating].
+  final int? minStarRating;
+
   /// Minimum guests the space must hold ("for 200 people").
   final int? minCapacity;
 
@@ -80,6 +84,7 @@ class VoiceFilterResult {
       gender: pgGender,
       sharing: sharing,
       minRating: minRating,
+      minStarRating: minStarRating,
       minCapacity: minCapacity,
       maxCapacity: maxCapacity,
       amenities: amenities,
@@ -123,6 +128,7 @@ class VoiceCommandFilterParser {
     String? pgGender;
     String? sharing;
     double? minRating;
+    int? minStarRating;
     int? minCapacity;
     int? maxCapacity;
     final amenities = <String>{};
@@ -370,6 +376,22 @@ class VoiceCommandFilterParser {
       );
     }
 
+    // 3d-2. Hotel class ("4 star hotel", "5-star resorts") -- a property
+    // classification, never an average review rating.
+    final hotelClass = RegExp(
+      r'([1-5])\s*(?:-\s*)?(?:star|stars|★)\s+(?:hotel|hotels|resort|resorts|stay|stays)',
+    ).firstMatch(lower);
+    if (hotelClass != null && minRating == null) {
+      minStarRating = int.parse(hotelClass.group(1)!);
+      badges.add(
+        VoiceFilterBadge(
+          iconEmoji: '🏨',
+          title: 'Hotel class',
+          value: '$minStarRating★ & up',
+        ),
+      );
+    }
+
     // 3e. Amenities
     for (final spec in _amenitySpecs) {
       if (spec.id == 'rooms' &&
@@ -543,6 +565,7 @@ class VoiceCommandFilterParser {
         'private room',
       ],
       if (minRating != null) ..._ratingWords,
+      if (minStarRating != null) ...['star', 'stars', '★'],
       if (sortBy == VenueSortBy.priceDesc) ..._priceDescWords,
       if (sortBy == VenueSortBy.capacity) ..._capacitySortWords,
       if (sortBy == VenueSortBy.distance) ..._nearestWords,
@@ -595,6 +618,7 @@ class VoiceCommandFilterParser {
       pgGender: pgGender,
       sharing: sharing,
       minRating: minRating,
+      minStarRating: minStarRating,
       minCapacity: minCapacity,
       maxCapacity: maxCapacity,
       amenities: amenities,

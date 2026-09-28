@@ -54,6 +54,33 @@ class VerifiedBadge extends StatelessWidget {
   }
 }
 
+/// Hotel class badge, e.g. "4-star hotel".
+class HotelClassBadge extends StatelessWidget {
+  const HotelClassBadge({super.key, required this.stars});
+
+  final int stars;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '${'★' * stars} $stars-star hotel',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
 /// A badge displaying average rating and review count.
 class RatingBadge extends StatelessWidget {
   const RatingBadge({super.key, required this.rating, required this.count});

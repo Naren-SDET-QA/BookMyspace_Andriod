@@ -750,6 +750,9 @@ class SupabaseVenueRepository implements VenueRepository {
       if (query.minRating != null) {
         builder = builder.gte('avg_rating', query.minRating!);
       }
+      if (query.minStarRating != null) {
+        builder = builder.gte('star_rating', query.minStarRating!);
+      }
       if (query.minCapacity != null) {
         builder = builder.gte('capacity', query.minCapacity!);
       }
@@ -898,6 +901,7 @@ class SupabaseVenueRepository implements VenueRepository {
   ) {
     final attributes = VenueSearchQuery(
       minRating: query.minRating,
+      minStarRating: query.minStarRating,
       minCapacity: query.minCapacity,
       maxCapacity: query.maxCapacity,
       gender: query.gender,

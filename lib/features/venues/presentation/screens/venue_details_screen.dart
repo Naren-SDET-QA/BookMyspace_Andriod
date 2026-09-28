@@ -527,9 +527,21 @@ class _ListingBody extends StatelessWidget {
               ],
             ),
           ),
-          if (venue.ratingCount > 0) ...[
+          if (venue.ratingCount > 0 || (venue.starRating ?? 0) > 0) ...[
             const SizedBox(height: 6),
-            RatingBadge(rating: venue.avgRating, count: venue.ratingCount),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (venue.ratingCount > 0)
+                  RatingBadge(
+                    rating: venue.avgRating,
+                    count: venue.ratingCount,
+                  ),
+                if ((venue.starRating ?? 0) > 0)
+                  HotelClassBadge(stars: venue.starRating!),
+              ],
+            ),
           ],
           // BMS2 quick-fact chips: real venue data only (hidden when a
           // venue has none of capacity / parking / food info).

@@ -219,6 +219,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           '${query.minRating!.toStringAsFixed(1)}+ ★',
           () => query.copyWith(minRating: () => null),
         ),
+      if (query.minStarRating != null)
+        chip(
+          '${query.minStarRating}★ hotel & up',
+          () => query.copyWith(minStarRating: () => null),
+        ),
       if (query.minCapacity != null)
         chip(
           '${query.minCapacity}+ guests',
@@ -596,11 +601,13 @@ class _FilterSheetState extends State<_FilterSheet> {
   late final TextEditingController _maxController;
   String? _categorySlug;
   String? _facility;
+  int? _minStars;
 
   @override
   void initState() {
     super.initState();
     _sortBy = widget.initial.sortBy;
+    _minStars = widget.initial.minStarRating;
     _categorySlug = widget.initial.categorySlug;
     _facility = widget.initial.facility;
     _minController = TextEditingController(
@@ -632,6 +639,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       sortBy: _sortBy,
       categorySlug: () => _categorySlug,
       facility: () => _facility,
+      minStarRating: () => _minStars,
       minPrice: () => double.tryParse(_minController.text),
       maxPrice: () => double.tryParse(_maxController.text),
     );
@@ -671,6 +679,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       _sortBy = VenueSortBy.relevance;
                       _categorySlug = null;
                       _facility = null;
+                      _minStars = null;
                       _minController.clear();
                       _maxController.clear();
                     });
@@ -800,6 +809,25 @@ class _FilterSheetState extends State<_FilterSheet> {
                         );
                       }),
                     ],
+                    Text('Hotel class', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final stars in const [3, 4, 5])
+                          _SortChip(
+                            key: Key('filters_stars_$stars'),
+                            label: stars == 5 ? '5★' : '$stars★ & up',
+                            selected: _minStars == stars,
+                            onTap: () => setState(
+                              () => _minStars =
+                                  _minStars == stars ? null : stars,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     Text(l10n.pricing, style: theme.textTheme.titleSmall),
                     const SizedBox(height: 8),
                     Row(
@@ -862,6 +890,7 @@ List<ListingFilterGroup> _categoryFilterGroups(
 
 class _SortChip extends StatelessWidget {
   const _SortChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,

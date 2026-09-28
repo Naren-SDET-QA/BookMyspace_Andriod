@@ -393,6 +393,7 @@ class Venue {
     this.foodOptions = '',
     this.parkingCapacity = 0,
     this.avgRating = 0.0,
+    this.starRating,
     this.ratingCount = 0,
     this.isVerified = false,
     this.isActive = true,
@@ -431,6 +432,9 @@ class Venue {
   final String foodOptions;
   final int parkingCapacity;
   final double avgRating;
+
+  /// Hotel class, 1-5 stars. Null for non-hotel listings.
+  final int? starRating;
   final int ratingCount;
   final bool isVerified;
   final bool isActive;
@@ -604,6 +608,7 @@ class Venue {
       foodOptions: json['food_options'] as String? ?? '',
       parkingCapacity: (json['parking_capacity'] as num?)?.toInt() ?? 0,
       avgRating: (json['avg_rating'] as num?)?.toDouble() ?? 0.0,
+      starRating: (json['star_rating'] as num?)?.toInt(),
       ratingCount: json['rating_count'] as int? ?? 0,
       isVerified: json['is_verified'] as bool? ?? false,
       isActive: json['is_active'] as bool? ?? true,
@@ -648,6 +653,7 @@ class Venue {
     double? price,
     double? taxRate,
     double? avgRating,
+    int? starRating,
     int? ratingCount,
     bool? isVerified,
     bool? isActive,
@@ -684,6 +690,7 @@ class Venue {
       price: price ?? this.price,
       taxRate: taxRate ?? this.taxRate,
       avgRating: avgRating ?? this.avgRating,
+      starRating: starRating ?? this.starRating,
       ratingCount: ratingCount ?? this.ratingCount,
       isVerified: isVerified ?? this.isVerified,
       isActive: isActive ?? this.isActive,
@@ -737,6 +744,7 @@ class VenueSearchQuery {
     this.checkOut,
     this.roomType,
     this.minRating,
+    this.minStarRating,
     this.gender,
     this.sharing,
     this.foodIncluded,
@@ -774,6 +782,9 @@ class VenueSearchQuery {
   final DateTime? checkOut;
   final String? roomType;
   final double? minRating;
+
+  /// Minimum hotel class (1-5 stars).
+  final int? minStarRating;
   final String? gender;
   final String? sharing;
   final bool? foodIncluded;
@@ -815,6 +826,7 @@ class VenueSearchQuery {
       checkOut != null ||
       roomType != null ||
       minRating != null ||
+      minStarRating != null ||
       gender != null ||
       sharing != null ||
       foodIncluded != null ||
@@ -851,6 +863,7 @@ class VenueSearchQuery {
     DateTime? Function()? checkOut,
     String? Function()? roomType,
     double? Function()? minRating,
+    int? Function()? minStarRating,
     String? Function()? gender,
     String? Function()? sharing,
     bool? Function()? foodIncluded,
@@ -888,6 +901,8 @@ class VenueSearchQuery {
       checkOut: checkOut != null ? checkOut() : this.checkOut,
       roomType: roomType != null ? roomType() : this.roomType,
       minRating: minRating != null ? minRating() : this.minRating,
+      minStarRating:
+          minStarRating != null ? minStarRating() : this.minStarRating,
       gender: gender != null ? gender() : this.gender,
       sharing: sharing != null ? sharing() : this.sharing,
       foodIncluded: foodIncluded != null ? foodIncluded() : this.foodIncluded,
@@ -930,6 +945,7 @@ class VenueSearchQuery {
             checkOut == other.checkOut &&
             roomType == other.roomType &&
             minRating == other.minRating &&
+            minStarRating == other.minStarRating &&
             gender == other.gender &&
             sharing == other.sharing &&
             foodIncluded == other.foodIncluded &&
@@ -969,6 +985,7 @@ class VenueSearchQuery {
         checkOut,
         roomType,
         minRating,
+        minStarRating,
         gender,
         sharing,
         foodIncluded,

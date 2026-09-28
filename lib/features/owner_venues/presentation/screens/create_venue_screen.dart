@@ -10,6 +10,7 @@ import '../../../venues/presentation/venue_providers.dart';
 import '../../../venue_sections/domain/venue_section.dart';
 import '../../../venue_sections/presentation/venue_section_providers.dart';
 import '../../domain/owner_venue_repository.dart';
+import '../../infrastructure/venue_star_rating_writer.dart';
 import '../providers/owner_venue_providers.dart';
 
 /// Photo item representation in the gallery.
@@ -106,6 +107,9 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _priceController;
   late final TextEditingController _capacityController;
+
+  /// Hotel class (1-5 stars); null when not a hotel.
+  int? _starRating;
   late final TextEditingController _addressController;
   late final TextEditingController _cityController;
   late final TextEditingController _stateController;
@@ -171,6 +175,7 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
     _capacityController = TextEditingController(
       text: ev != null && ev.capacity > 0 ? ev.capacity.toString() : '500',
     );
+    _starRating = ev?.starRating;
     _addressController = TextEditingController(text: ev?.address ?? '');
     _cityController = TextEditingController(text: ev?.city ?? '');
     _stateController = TextEditingController(text: ev?.state ?? '');
@@ -609,6 +614,11 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
             )
             .toList(),
       );
+      if (_starRating != widget.existingVenue?.starRating) {
+        await ref
+            .read(venueStarRatingWriterProvider)
+            .set(saved.id, _starRating);
+      }
       await repo.replaceOperatingHours(saved.id, _operatingHours);
       await repo.replaceBlockedDates(saved.id, _blockedDates);
       final sectionRepo = ref.read(venueSectionRepositoryProvider);
@@ -1408,6 +1418,28 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int?>(
+                    key: const Key('venue_star_rating'),
+                    initialValue: _starRating,
+                    decoration: const InputDecoration(
+                      labelText: 'Hotel class (optional)',
+                      helperText: 'Only for hotels and resorts',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Not a hotel'),
+                      ),
+                      DropdownMenuItem<int?>(value: 1, child: Text('1 star')),
+                      DropdownMenuItem<int?>(value: 2, child: Text('2 star')),
+                      DropdownMenuItem<int?>(value: 3, child: Text('3 star')),
+                      DropdownMenuItem<int?>(value: 4, child: Text('4 star')),
+                      DropdownMenuItem<int?>(value: 5, child: Text('5 star')),
+                    ],
+                    onChanged: (value) => setState(() => _starRating = value),
                   ),
                 ],
               ),
