@@ -273,6 +273,10 @@ begin
 end;
 $$;
 
+-- Older lineages define enroll_in_course returning uuid; the return type
+-- cannot change in place.
+drop function if exists public.enroll_in_course(uuid, uuid);
+
 create or replace function public.enroll_in_course(p_batch_id uuid, p_user_id uuid)
 returns public.course_enrollments
 language plpgsql

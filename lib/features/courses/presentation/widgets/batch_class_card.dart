@@ -5,6 +5,7 @@ import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/course.dart';
 import '../../domain/education_category.dart';
+import 'batch_enroll_button.dart';
 import 'class_enrollment_sheet.dart';
 
 class BatchClassCard extends StatelessWidget {
@@ -258,26 +259,7 @@ class BatchClassCard extends StatelessWidget {
                       const Text('Free Trial', style: TextStyle(fontSize: 12)),
                 ),
               const SizedBox(width: 8),
-              FilledButton(
-                onPressed: batch.isFull && !batch.waitlistEnabled
-                    ? null
-                    : () => showClassEnrollmentSheet(
-                          context,
-                          course: course,
-                          batch: batch,
-                          isTrial: false,
-                        ),
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-                  minimumSize: const Size(0, 36),
-                  backgroundColor: AppTheme.violet,
-                ),
-                child: Text(
-                  batch.isFull ? 'Waitlist' : 'Enroll Now',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
+              BatchEnrollButton(course: course, batch: batch),
             ],
           ),
         ],
