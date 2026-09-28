@@ -39,6 +39,8 @@ import '../discovery_location.dart';
 import '../home_appearance_providers.dart';
 import '../home_category_catalog.dart';
 import '../../domain/home_appearance.dart';
+import '../recently_viewed.dart';
+import '../widgets/booking_intent_bar.dart';
 import '../widgets/category_glass_matrix.dart';
 import '../widgets/home_ai_booking_card.dart';
 import '../widgets/home_explore_showcase.dart';
@@ -60,6 +62,9 @@ enum _HomeResultTab { spaces, institutes, classes }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   MainHomeSection _selectedSection = MainHomeSection.functionHalls;
+  BookingIntent? _bookingIntent;
+  String? _hallEventSlug;
+  String _hallEventLabel = 'All halls';
 
   /// Empty means "All Categories". Slugs are live CMS category slugs or
   /// [MainHomeSection.id] values.
@@ -104,6 +109,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  void _searchFromIntent() {
+    final intent = _bookingIntent;
+    if (intent == null) {
+      _openSearch();
+      return;
+    }
+    if (intent == BookingIntent.institutes) {
+      context.push(AppRoutes.education);
+      return;
+    }
+    // Hotels and PG reserve through accommodation properties, not a
+    // one-date venue slot. Dates and party size stay in discovery prefs.
+    if (intent == BookingIntent.hotels || intent == BookingIntent.pg) {
+      final location = ref.read(discoveryLocationProvider);
+      final area = location.hasCity
+          ? location.city!.trim()
+          : (location.pincode?.trim() ?? '');
+      final path = intent == BookingIntent.pg
+          ? AppRoutes.pgList
+          : AppRoutes.staysList;
+      context.push(
+        area.isEmpty ? path : '$path?q=${Uri.encodeQueryComponent(area)}',
+      );
+      return;
+    }
+    final location = ref.read(discoveryLocationProvider);
+    final prefs = ref.read(discoveryBookingPrefsProvider);
+    final cats =
+        ref.read(venueCategoriesProvider).valueOrNull ?? const <VenueCategory>[];
+    const section = MainHomeSection.functionHalls;
+    final slug = _hallEventSlug ??
+        section.matchMaster(cats)?.slug ??
+        section.id;
+    context.go(
+      SearchRouteParams(
+        categorySlug: slug,
+        city: location.city,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radiusKm: location.hasCoordinates ? location.radiusKm : null,
+        pincode: location.pincode,
+        minCapacity: prefs.guests,
+      ).searchLocation,
+    );
   }
 
   void _openSearch({String? categorySlug, String? query}) {
@@ -251,18 +302,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       // a negative offset hid the search field labels.
                       child: Transform.translate(
                         offset: Offset.zero,
-                        child: HomeSearchBar(
-                          onTap: () => _openSearch(),
-                          onVoiceTap: () => _showVoiceBookingDialog(context),
-                          onLocationTap: _showLocationPickerModal,
-                          locationLabel: location.label,
-                          onDateTap: _pickHeroDate,
-                          dateLabel: _heroDateLabel(bookingPrefs.day),
-                          onGuestsTap: _pickHeroGuests,
-                          guestsLabel: bookingPrefs.guests == 1
-                              ? '1 Guest'
-                              : '${bookingPrefs.guests} Guests',
-                        ),
+                        child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          BookingIntentCards(
+                            selected: _bookingIntent,
+                            onSelected: (intent) {
+                              setState(() => _bookingIntent = intent);
+                              if (intent == BookingIntent.institutes) {
+                                context.push(AppRoutes.education);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          HomeSearchBar(
+                            onTap: _searchFromIntent,
+                            onVoiceTap: () => _showVoiceBookingDialog(context),
+                            onLocationTap: _showLocationPickerModal,
+                            locationLabel: location.label,
+                            onDateTap: _pickHeroDate,
+                            dateLabel: _heroDateLabel(bookingPrefs.day),
+                            dateFieldLabel: switch (_bookingIntent) {
+                              BookingIntent.hotels => 'Check-in',
+                              BookingIntent.pg => 'Move-in',
+                              _ => 'Date',
+                            },
+                            onGuestsTap: _pickHeroGuests,
+                            guestsLabel: bookingPrefs.guests == 1
+                                ? '1 Guest'
+                                : '${bookingPrefs.guests} Guests',
+                            extraFields: _intentFields(bookingPrefs),
+                          ),
+                        ],
+                      ),
                       ),
                     ),
                   ),
@@ -422,6 +494,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     favoritesEnabled: ref.watch(
                       moduleEnabledProvider('favorites'),
                     ),
+                    recentlyViewed:
+                        ref.watch(recentlyViewedProvider).valueOrNull ??
+                            const [],
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 48)),
                 ],
@@ -474,6 +549,193 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final picked = await HomeGuestsPickerSheet.show(context, selected: current);
     if (picked == null || !mounted) return;
     ref.read(discoveryBookingPrefsProvider.notifier).setGuests(picked);
+  }
+
+  Future<void> _pickCheckOut() async {
+    final prefs = ref.read(discoveryBookingPrefsProvider);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: prefs.checkOutDay,
+      firstDate: prefs.day.add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 366)),
+    );
+    if (picked == null || !mounted) return;
+    ref.read(discoveryBookingPrefsProvider.notifier).setCheckOut(picked);
+  }
+
+  Future<void> _pickRooms() async {
+    final current = ref.read(discoveryBookingPrefsProvider).rooms;
+    final picked = await HomeGuestsPickerSheet.show(
+      context,
+      selected: current,
+      unit: 'Room',
+    );
+    if (picked == null || !mounted) return;
+    ref.read(discoveryBookingPrefsProvider.notifier).setRooms(picked);
+  }
+
+  Future<void> _pickTenure() async {
+    final current = ref.read(discoveryBookingPrefsProvider).tenureMonths;
+    final picked = await HomeGuestsPickerSheet.show(
+      context,
+      selected: current,
+      maxGuests: 12,
+      unit: 'Month',
+    );
+    if (picked == null || !mounted) return;
+    ref.read(discoveryBookingPrefsProvider.notifier).setTenureMonths(picked);
+  }
+
+  Future<void> _pickHallEvent() async {
+    final subs = MainHomeSection.functionHalls.subSections;
+    final picked = await showModalBottomSheet<HomeSubSection?>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              title: const Text('All halls'),
+              onTap: () => Navigator.pop(context),
+            ),
+            for (final sub in subs)
+              ListTile(
+                title: Text('${sub.emoji} ${sub.label}'),
+                onTap: () => Navigator.pop(context, sub),
+              ),
+          ],
+        );
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _hallEventSlug = picked?.slug;
+      _hallEventLabel = picked?.label ?? 'All halls';
+    });
+  }
+
+  Future<void> _pickPgGender() async {
+    const options = <(String, String?)>[
+      ('Any', null),
+      ('Gents', 'gents'),
+      ('Ladies', 'ladies'),
+      ('Co-living', 'coliving'),
+    ];
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: [
+            for (final option in options)
+              ListTile(
+                title: Text(option.$1),
+                onTap: () => Navigator.pop(context, option.$2 ?? ''),
+              ),
+          ],
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    ref.read(discoveryBookingPrefsProvider.notifier).setGender(
+          picked.isEmpty ? null : picked,
+        );
+  }
+
+  Future<void> _pickPgSharing() async {
+    const options = <(String, String?)>[
+      ('Any sharing', null),
+      ('Single', 'single'),
+      ('Double', 'double'),
+      ('Triple', 'triple'),
+    ];
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: [
+            for (final option in options)
+              ListTile(
+                title: Text(option.$1),
+                onTap: () => Navigator.pop(context, option.$2 ?? ''),
+              ),
+          ],
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    ref.read(discoveryBookingPrefsProvider.notifier).setSharing(
+          picked.isEmpty ? null : picked,
+        );
+  }
+
+  List<HomeSearchField> _intentFields(DiscoveryBookingPrefs prefs) {
+    String genderLabel(String? gender) => switch (gender) {
+          'gents' => 'Gents',
+          'ladies' => 'Ladies',
+          'coliving' => 'Co-living',
+          _ => 'Any',
+        };
+    String sharingLabel(String? sharing) => switch (sharing) {
+          'single' => 'Single',
+          'double' => 'Double',
+          'triple' => 'Triple',
+          _ => 'Any',
+        };
+    return switch (_bookingIntent) {
+      BookingIntent.hotels => [
+          HomeSearchField(
+            icon: Icons.event_available_rounded,
+            label: 'Check-out',
+            value: _heroDateLabel(prefs.checkOutDay),
+            onTap: _pickCheckOut,
+          ),
+          HomeSearchField(
+            icon: Icons.meeting_room_outlined,
+            label: 'Rooms',
+            value: prefs.rooms == 1 ? '1 Room' : '${prefs.rooms} Rooms',
+            onTap: _pickRooms,
+          ),
+        ],
+      BookingIntent.halls => [
+          HomeSearchField(
+            icon: Icons.celebration_outlined,
+            label: 'Event type',
+            value: _hallEventLabel,
+            onTap: _pickHallEvent,
+          ),
+        ],
+      BookingIntent.pg => [
+          HomeSearchField(
+            icon: Icons.date_range_rounded,
+            label: 'Stay',
+            value: prefs.tenureMonths == 1
+                ? '1 Month'
+                : '${prefs.tenureMonths} Months',
+            onTap: _pickTenure,
+          ),
+          HomeSearchField(
+            icon: Icons.wc_rounded,
+            label: 'Occupancy',
+            value: '${genderLabel(prefs.gender)} · ${sharingLabel(prefs.sharing)}',
+            onTap: _pickPgGender,
+          ),
+          HomeSearchField(
+            icon: Icons.bed_outlined,
+            label: 'Sharing',
+            value: sharingLabel(prefs.sharing),
+            onTap: _pickPgSharing,
+          ),
+        ],
+      BookingIntent.institutes || null => const [],
+    };
   }
 
   bool _educationSelected() {
@@ -713,6 +975,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required List<Event> events,
     required List<Venue> saved,
     required bool favoritesEnabled,
+    required List<RecentlyViewedVenue> recentlyViewed,
   }) {
     final hPad = responsive.horizontalPadding;
     final sponsoredOn = blocks.any(
@@ -722,6 +985,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       (block) => block.kind == HomeBlockKind.recentBookings,
     );
     final children = <Widget>[];
+    if (recentlyViewed.isNotEmpty) {
+      children.add(HomeRecentlyViewed(venues: recentlyViewed));
+    }
     if (offersEnabled && coupons.isNotEmpty && !sponsoredOn) {
       children.add(HomeCouponRow(coupons: coupons));
     }

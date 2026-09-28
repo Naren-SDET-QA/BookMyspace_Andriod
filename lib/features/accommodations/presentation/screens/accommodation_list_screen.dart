@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../domain/accommodation.dart';
 import '../accommodation_providers.dart';
 
@@ -23,6 +25,20 @@ class _AccommodationListScreenState
     extends ConsumerState<AccommodationListScreen> {
   String _search = '';
   String? _type;
+  bool _appliedRouteQuery = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_appliedRouteQuery) return;
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+    _appliedRouteQuery = true;
+    final query = GoRouterState.of(context).uri.queryParameters['q']?.trim();
+    if (query != null && query.isNotEmpty) {
+      _search = query;
+    }
+  }
 
   List<(String, String)> get _types => widget.module == AccommodationModule.pg
       ? const [('Co-Living', 'co_living'), ('PG', 'pg')]
@@ -42,9 +58,9 @@ class _AccommodationListScreenState
       type: _type,
     );
     final result = ref.watch(accommodationSearchProvider(query));
-    final title = widget.module == AccommodationModule.pg
-        ? 'PG / Co-Living'
-        : 'Rooms & Stays';
+    final prefs = ref.watch(discoveryBookingPrefsProvider);
+    final isPg = widget.module == AccommodationModule.pg;
+    final title = isPg ? 'PG / Co-Living' : 'Rooms & Stays';
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: Column(
@@ -88,6 +104,20 @@ class _AccommodationListScreenState
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+            child: Text(
+              isPg
+                  ? 'Move-in ${_fmt(prefs.day)} · ${prefs.tenureMonths} '
+                      '${prefs.tenureMonths == 1 ? 'month' : 'months'}'
+                      '${prefs.gender == null ? '' : ' · ${prefs.gender}'}'
+                      '${prefs.sharing == null ? '' : ' · ${prefs.sharing}'}'
+                  : 'Check-in ${_fmt(prefs.day)} · Check-out ${_fmt(prefs.checkOutDay)} · '
+                      '${prefs.guests} guests · ${prefs.rooms} '
+                      '${prefs.rooms == 1 ? 'room' : 'rooms'}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
           const SizedBox(height: 8),
           Expanded(
             child: result.when(
@@ -97,28 +127,50 @@ class _AccommodationListScreenState
                 onRetry: () =>
                     ref.invalidate(accommodationSearchProvider(query)),
               ),
-              data: (items) => items.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.bedroom_parent_outlined,
-                      title: 'No properties found',
-                      message: 'Try another area or property type.',
-                    )
-                  : RefreshIndicator(
-                      onRefresh: () async =>
-                          ref.invalidate(accommodationSearchProvider(query)),
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) =>
-                            _PropertyCard(property: items[index]),
-                      ),
-                    ),
+              data: (items) {
+                final visible = _visible(items, prefs);
+                if (visible.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.bedroom_parent_outlined,
+                    title: 'No properties found',
+                    message: 'Try another area or property type.',
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: () async =>
+                      ref.invalidate(accommodationSearchProvider(query)),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                    itemCount: visible.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) =>
+                        _PropertyCard(property: visible[index]),
+                  ),
+                );
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  List<AccommodationProperty> _visible(
+    List<AccommodationProperty> items,
+    DiscoveryBookingPrefs prefs,
+  ) {
+    if (widget.module != AccommodationModule.pg) return items;
+    return items
+        .where((property) => genderPolicyAllows(property.genderPolicy, prefs.gender))
+        .toList(growable: false);
+  }
+
+  static String _fmt(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
   }
 }
 
@@ -138,19 +190,28 @@ class _PropertyCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              Container(
-                width: 82,
-                height: 92,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.brand, AppTheme.brandLight],
-                  ),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(
-                  isPg ? Icons.apartment_rounded : Icons.hotel_rounded,
-                  color: Colors.white,
-                  size: 36,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: SizedBox(
+                  width: 82,
+                  height: 92,
+                  child: property.coverImage.isEmpty
+                      ? DecoratedBox(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.brand, AppTheme.brandLight],
+                            ),
+                          ),
+                          child: Icon(
+                            isPg ? Icons.apartment_rounded : Icons.hotel_rounded,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        )
+                      : AppNetworkImage(
+                          url: property.coverImage,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
               const SizedBox(width: 13),
@@ -173,7 +234,9 @@ class _PropertyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'From ₹${property.startingPrice.toStringAsFixed(0)} ${isPg ? '/ month' : '/ night'}',
+                      property.startingPrice > 0
+                          ? 'From ₹${property.startingPrice.toStringAsFixed(0)} ${isPg ? '/ month' : '/ night'}'
+                          : 'Price unavailable',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w800,
@@ -181,13 +244,16 @@ class _PropertyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      property.hasAvailability
-                          ? '${property.units.length} room options available'
-                          : 'Currently unavailable',
+                      isPg
+                          ? [
+                              if (property.genderPolicy != null &&
+                                  property.genderPolicy!.trim().isNotEmpty)
+                                property.genderPolicy!,
+                              '${property.units.length} listed units',
+                            ].join(' · ')
+                          : 'Date availability is checked on the property',
                       style: TextStyle(
-                        color: property.hasAvailability
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.error,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),

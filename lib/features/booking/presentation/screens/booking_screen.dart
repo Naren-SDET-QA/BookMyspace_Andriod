@@ -56,6 +56,18 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     if (prefs.guests > 0) {
       _extraValues['guests'] = '${prefs.guests}';
     }
+    final templateId = widget.venue.listingTemplate.templateId;
+    if (templateId == 'hotel' && prefs.rooms > 0) {
+      _extraValues['rooms'] = '${prefs.rooms}';
+    } else if (templateId == 'pg') {
+      final sharing = switch (prefs.sharing) {
+        'single' => 'Single',
+        'double' => 'Double',
+        'triple' => 'Triple',
+        _ => null,
+      };
+      if (sharing != null) _extraValues['rooms'] = sharing;
+    }
   }
 
   /// Live slot price, used for coupon minimum-amount validation.
@@ -896,6 +908,9 @@ class _CouponField extends ConsumerWidget {
             padding: EdgeInsets.only(top: errorText != null ? 0 : 0),
             child: OutlinedButton(
               onPressed: onApply,
+              // The app theme sets minimumSize to Size.fromHeight(52), i.e.
+              // infinite width, which crashes layout inside this Row.
+              style: OutlinedButton.styleFrom(minimumSize: const Size(88, 48)),
               child: const Text('Apply'),
             ),
           ),

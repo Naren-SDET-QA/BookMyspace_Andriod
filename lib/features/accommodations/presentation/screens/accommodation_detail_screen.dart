@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../invoices/presentation/invoice_providers.dart';
 import '../../../registration/presentation/screens/registration_screens.dart';
 import '../../domain/accommodation.dart';
@@ -58,8 +59,75 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   int _children = 0;
   int _roomQuantity = 1;
   bool _submitting = false;
+  List<StayUnitAvailability>? _availability;
+  bool _availabilityFailed = false;
+  bool _checkingAvailability = false;
 
   bool get _isPg => widget.property.module == AccommodationModule.pg;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefs = ref.read(discoveryBookingPrefsProvider);
+    if (_isPg) {
+      _moveIn = prefs.day;
+      _guests = prefs.guests;
+    } else {
+      _checkIn = prefs.day;
+      _checkOut = prefs.checkOutDay;
+      _guests = prefs.guests;
+      _roomQuantity = prefs.rooms < 1 ? 1 : prefs.rooms;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshAvailability();
+      });
+    }
+  }
+
+  Future<void> _refreshAvailability() async {
+    if (_isPg || _checkIn == null || _checkOut == null) return;
+    if (!_checkOut!.isAfter(_checkIn!)) return;
+    setState(() {
+      _checkingAvailability = true;
+      _availabilityFailed = false;
+    });
+    try {
+      final rows = await ref.read(accommodationRepositoryProvider).availability(
+            propertyId: widget.property.id,
+            checkIn: _checkIn!,
+            checkOut: _checkOut!,
+            adults: _guests,
+            children: _children,
+          );
+      if (!mounted) return;
+      setState(() {
+        _availability = rows;
+        _checkingAvailability = false;
+        if (_unit != null && !_unitOpen(_unit!.id)) _unit = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _availability = null;
+        _availabilityFailed = true;
+        _checkingAvailability = false;
+        _unit = null;
+      });
+    }
+  }
+
+  StayUnitAvailability? _match(String unitId) {
+    final rows = _availability;
+    if (rows == null) return null;
+    for (final row in rows) {
+      if (row.unitId == unitId) return row;
+    }
+    return null;
+  }
+
+  bool _unitOpen(String unitId) {
+    final match = _match(unitId);
+    return match != null && match.available > 0;
+  }
 
   Future<DateTime?> _pickDate(DateTime initial) => showDatePicker(
     context: context,
@@ -75,6 +143,19 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         const SnackBar(content: Text('Select a room and valid dates.')),
       );
       return;
+    }
+    if (_isPg) {
+      final prefs = ref.read(discoveryBookingPrefsProvider);
+      if (!genderPolicyAllows(widget.property.genderPolicy, prefs.gender)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'This PG is listed as ${widget.property.genderPolicy}, which does not match ${prefs.gender}.',
+            ),
+          ),
+        );
+        return;
+      }
     }
     if (!_isPg) {
       final available = await ref
@@ -250,9 +331,25 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 const SizedBox(height: 10),
                 Chip(
                   label: Text(
-                    '${property.genderPolicy?.toUpperCase()} • ${property.foodIncluded ? 'Food included' : 'Food optional'}',
+                    '${(property.genderPolicy == null || property.genderPolicy!.trim().isEmpty) ? 'Gender not listed' : property.genderPolicy!.toUpperCase()} • ${property.foodIncluded ? 'Food included' : 'Food optional'}',
                   ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  'Stay length ${_stayLengthLabel()}. The reservation uses the move-in date and the unit you select.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              if (property.cancellationText.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Cancellation',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(property.cancellationText),
               ],
               const SizedBox(height: 20),
               Text(
@@ -277,14 +374,26 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 10),
-              for (final unit in property.units)
+              if (!_isPg)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    _checkingAvailability
+                        ? 'Checking availability for these dates…'
+                        : _availabilityFailed
+                            ? 'Availability unavailable'
+                            : 'Open rooms are from the stay availability check for your dates.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              for (final unit in _orderedUnits(property))
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Card(
                     margin: EdgeInsets.zero,
                     child: ListTile(
-                      enabled: unit.inventory > 0,
-                      onTap: unit.inventory > 0
+                      enabled: _canSelect(unit),
+                      onTap: _canSelect(unit)
                           ? () => setState(() => _unit = unit)
                           : null,
                       leading: _unitPhoto(unit) ??
@@ -300,11 +409,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                         unit.name,
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
-                      subtitle: Text(
-                        '${unit.occupancyType.toUpperCase()} • ${unit.inventory} available${_isPg ? ' • Deposit ₹${unit.deposit.toStringAsFixed(0)}' : ''}',
-                      ),
+                      subtitle: Text(_unitSubtitle(unit)),
                       trailing: Text(
-                        '₹${unit.price.toStringAsFixed(0)}\n${_isPg ? '/month' : '/night'}',
+                        _unitPrice(unit),
                         textAlign: TextAlign.end,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.primary,
@@ -322,6 +429,29 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                   label: const Text('Schedule Visit'),
                 ),
               const SizedBox(height: 10),
+              if (_isPg) ...[
+                Row(
+                  children: [
+                    const Text(
+                      'Guests',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: _guests > 1
+                          ? () => setState(() => _guests--)
+                          : null,
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    Text('$_guests'),
+                    IconButton(
+                      onPressed: () => setState(() => _guests++),
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
               if (_isPg)
                 FilledButton.tonalIcon(
                   onPressed: () async {
@@ -356,6 +486,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                                 _checkOut = date.add(const Duration(days: 1));
                               }
                             });
+                            await _refreshAvailability();
                           }
                         },
                         child: Text(
@@ -373,7 +504,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                             _checkOut ??
                                 DateTime.now().add(const Duration(days: 1)),
                           );
-                          if (date != null) setState(() => _checkOut = date);
+                          if (date != null) {
+                            setState(() => _checkOut = date);
+                            await _refreshAvailability();
+                          }
                         },
                         child: Text(
                           _checkOut == null
@@ -393,13 +527,19 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     const Spacer(),
                     IconButton(
                       onPressed: _children > 0
-                          ? () => setState(() => _children--)
+                          ? () {
+                              setState(() => _children--);
+                              _refreshAvailability();
+                            }
                           : null,
                       icon: const Icon(Icons.remove_circle_outline),
                     ),
                     Text('$_children'),
                     IconButton(
-                      onPressed: () => setState(() => _children++),
+                      onPressed: () {
+                        setState(() => _children++);
+                        _refreshAvailability();
+                      },
                       icon: const Icon(Icons.add_circle_outline),
                     ),
                   ],
@@ -434,13 +574,19 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     const Spacer(),
                     IconButton(
                       onPressed: _guests > 1
-                          ? () => setState(() => _guests--)
+                          ? () {
+                              setState(() => _guests--);
+                              _refreshAvailability();
+                            }
                           : null,
                       icon: const Icon(Icons.remove_circle_outline),
                     ),
                     Text('$_guests'),
                     IconButton(
-                      onPressed: () => setState(() => _guests++),
+                      onPressed: () {
+                        setState(() => _guests++);
+                        _refreshAvailability();
+                      },
                       icon: const Icon(Icons.add_circle_outline),
                     ),
                   ],
@@ -462,6 +608,73 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         ),
       ],
     );
+  }
+
+  String _stayLengthLabel() {
+    final months = ref.read(discoveryBookingPrefsProvider).tenureMonths;
+    return months == 1 ? '1 month' : '$months months';
+  }
+
+  List<AccommodationUnit> _orderedUnits(AccommodationProperty property) {
+    if (!_isPg) return property.units;
+    final sharing = ref.read(discoveryBookingPrefsProvider).sharing;
+    if (sharing == null || sharing.isEmpty) return property.units;
+    final matched = <AccommodationUnit>[];
+    final rest = <AccommodationUnit>[];
+    for (final unit in property.units) {
+      if (occupancyMatchesSharing(unit.occupancyType, sharing)) {
+        matched.add(unit);
+      } else {
+        rest.add(unit);
+      }
+    }
+    return [...matched, ...rest];
+  }
+
+  bool _canSelect(AccommodationUnit unit) {
+    if (_isPg) return unit.inventory > 0;
+    if (_checkingAvailability || _availabilityFailed || _availability == null) {
+      return false;
+    }
+    final match = _match(unit.id);
+    return match != null && match.available >= _roomQuantity && match.available > 0;
+  }
+
+  String _unitSubtitle(AccommodationUnit unit) {
+    if (_isPg) {
+      final sharing = ref.read(discoveryBookingPrefsProvider).sharing;
+      final matches = occupancyMatchesSharing(unit.occupancyType, sharing);
+      final deposit = unit.deposit > 0
+          ? ' · Deposit ₹${unit.deposit.toStringAsFixed(0)}'
+          : '';
+      return '${unit.occupancyType.isEmpty ? 'Occupancy not listed' : unit.occupancyType.toUpperCase()}'
+          ' · Listed stock ${unit.inventory}$deposit'
+          '${matches ? ' · Matches $sharing' : ''}';
+    }
+    if (_checkingAvailability) return 'Checking these dates…';
+    if (_availabilityFailed) return 'Availability unavailable';
+    final match = _match(unit.id);
+    if (match == null || match.available <= 0) {
+      return 'Not available for these dates';
+    }
+    return '${match.available} open for these dates · Sleeps ${unit.capacity}';
+  }
+
+  String _unitPrice(AccommodationUnit unit) {
+    if (_isPg) {
+      if (unit.rentMonthly != null && unit.rentMonthly! > 0) {
+        return '₹${unit.rentMonthly!.toStringAsFixed(0)}\n/month';
+      }
+      return 'Price unavailable';
+    }
+    final match = _match(unit.id);
+    if (match != null && match.nightlyRate > 0) {
+      return '₹${match.nightlyRate.toStringAsFixed(0)}\n/night';
+    }
+    if (unit.priceNightly != null && unit.priceNightly! > 0) {
+      return '₹${unit.priceNightly!.toStringAsFixed(0)}\n/night';
+    }
+    return 'Price unavailable';
   }
 
   Widget _propertyHeroFallback(bool isPg) => DecoratedBox(

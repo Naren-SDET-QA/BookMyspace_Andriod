@@ -13,6 +13,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/domain/customer_section_catalog.dart';
 import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../home/presentation/discovery_location.dart';
 import '../../../venues/domain/listing_template.dart';
@@ -537,11 +538,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         'Try a different keyword, category or price range.',
                   );
                 }
+                final section = CustomerSectionCatalog.fromAny(
+                  query.categorySlug,
+                );
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     final responsive = ResponsiveInfo.fromConstraints(
                       constraints,
                     );
+                    if (_usesCategoryRow(section)) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _SearchTripContext(section: section!),
+                          Expanded(
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: venues.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, i) =>
+                                  _categoryResultCard(section, venues[i]),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
                     if (responsive.resultsColumns <= 1) {
                       return ListView.separated(
                         padding: const EdgeInsets.all(16),
@@ -576,6 +598,84 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ],
       ),
     );
+  }
+
+  bool _usesCategoryRow(CustomerSection? section) {
+    return section == CustomerSection.lodgeRooms ||
+        section == CustomerSection.functionHalls ||
+        section == CustomerSection.pgHostels;
+  }
+
+  Widget _categoryResultCard(CustomerSection section, Venue venue) {
+    return switch (section) {
+      CustomerSection.lodgeRooms => HotelListCard(venue: venue),
+      CustomerSection.functionHalls => FunctionHallListCard(venue: venue),
+      CustomerSection.pgHostels => PgListCard(venue: venue),
+      CustomerSection.institutesClasses => VenueCard(venue: venue),
+    };
+  }
+}
+
+/// Dates and party size collected on Home. These are booking context, not
+/// a claim that the list was filtered by availability.
+class _SearchTripContext extends ConsumerWidget {
+  const _SearchTripContext({required this.section});
+
+  final CustomerSection section;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(discoveryBookingPrefsProvider);
+    final theme = Theme.of(context);
+    final checkIn = _shortDate(prefs.day);
+    final text = switch (section) {
+      CustomerSection.lodgeRooms =>
+        'These are venue listings. A multi-night hotel stay is reserved from Stay properties, not a one-date slot.',
+      CustomerSection.functionHalls =>
+        'Event date $checkIn · ${prefs.guests} guests. Open a hall to see its dates and slots.',
+      CustomerSection.pgHostels =>
+        'These are venue listings. A PG reservation uses PG properties, move-in $checkIn'
+        '${prefs.gender == null ? '' : ' · ${prefs.gender}'}'
+        '${prefs.sharing == null ? '' : ' · ${prefs.sharing}'}.',
+      CustomerSection.institutesClasses => '',
+    };
+    if (text.isEmpty) return const SizedBox.shrink();
+    final stayRoute = section == CustomerSection.pgHostels
+        ? AppRoutes.pgList
+        : section == CustomerSection.lodgeRooms
+            ? AppRoutes.staysList
+            : null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (stayRoute != null)
+            TextButton(
+              onPressed: () => context.push(stayRoute),
+              child: Text(
+                section == CustomerSection.pgHostels
+                    ? 'Open PG reservations'
+                    : 'Open hotel stays',
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _shortDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
   }
 }
 

@@ -235,6 +235,24 @@ class HomeLocationBanner extends StatelessWidget {
   }
 }
 
+/// One tappable field inside [HomeSearchBar], used for category-specific
+/// inputs (check-out, rooms, event type, stay length, gender).
+class HomeSearchField {
+  const HomeSearchField({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.fieldKey,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+  final Key? fieldKey;
+}
+
 class HomeSearchBar extends StatelessWidget {
   const HomeSearchBar({
     required this.onTap,
@@ -243,8 +261,10 @@ class HomeSearchBar extends StatelessWidget {
     this.locationLabel,
     this.onDateTap,
     this.dateLabel,
+    this.dateFieldLabel = 'Date',
     this.onGuestsTap,
     this.guestsLabel,
+    this.extraFields = const [],
   });
 
   final VoidCallback onTap;
@@ -253,8 +273,12 @@ class HomeSearchBar extends StatelessWidget {
   final String? locationLabel;
   final VoidCallback? onDateTap;
   final String? dateLabel;
+
+  /// Chip title for the date field. Hotels say "Check-in", PG says "Move-in".
+  final String dateFieldLabel;
   final VoidCallback? onGuestsTap;
   final String? guestsLabel;
+  final List<HomeSearchField> extraFields;
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +343,7 @@ class HomeSearchBar extends StatelessWidget {
           Expanded(
             child: _HeroMiniChip(
               icon: Icons.event_rounded,
-              label: 'Date',
+              label: dateFieldLabel,
               value: dateLabel ?? 'Today',
               onTap: onDateTap!,
             ),
@@ -336,6 +360,10 @@ class HomeSearchBar extends StatelessWidget {
               onTap: onGuestsTap!,
             ),
           ),
+          const SizedBox(width: 8),
+        ],
+        for (final field in extraFields) ...[
+          Expanded(child: _chipFor(field)),
           const SizedBox(width: 8),
         ],
         IconButton(
@@ -406,7 +434,7 @@ class HomeSearchBar extends StatelessWidget {
                 Expanded(
                   child: _HeroMiniChip(
                     icon: Icons.event_rounded,
-                    label: 'Date',
+                    label: dateFieldLabel,
                     value: dateLabel ?? 'Today',
                     onTap: onDateTap!,
                   ),
@@ -425,8 +453,29 @@ class HomeSearchBar extends StatelessWidget {
                 ),
             ],
           ),
+          if (extraFields.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                for (var i = 0; i < extraFields.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(child: _chipFor(extraFields[i])),
+                ],
+              ],
+            ),
+          ],
         ],
       ],
+    );
+  }
+
+  Widget _chipFor(HomeSearchField field) {
+    return _HeroMiniChip(
+      key: field.fieldKey,
+      icon: field.icon,
+      label: field.label,
+      value: field.value,
+      onTap: field.onTap,
     );
   }
 
@@ -471,15 +520,20 @@ class HomeGuestsPickerSheet extends StatelessWidget {
     super.key,
     required this.selected,
     this.maxGuests = 8,
+    this.unit = 'Guest',
   });
 
   final int selected;
   final int maxGuests;
 
+  /// Singular noun. "Guest" keeps the existing "1 Guest" / "4 Guests" labels.
+  final String unit;
+
   static Future<int?> show(
     BuildContext context, {
     required int selected,
     int maxGuests = 8,
+    String unit = 'Guest',
   }) {
     return showModalBottomSheet<int>(
       context: context,
@@ -491,6 +545,7 @@ class HomeGuestsPickerSheet extends StatelessWidget {
       builder: (context) => HomeGuestsPickerSheet(
         selected: selected,
         maxGuests: maxGuests,
+        unit: unit,
       ),
     );
   }
@@ -499,8 +554,9 @@ class HomeGuestsPickerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final maxHeight = (media.size.height - media.viewInsets.bottom) * 0.55;
+    final guestSheet = unit == 'Guest';
     return KeyedSubtree(
-      key: const Key('home-guests-sheet'),
+      key: Key(guestSheet ? 'home-guests-sheet' : 'home-count-sheet'),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: maxHeight.clamp(220.0, 460.0),
@@ -513,7 +569,7 @@ class HomeGuestsPickerSheet extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Guests',
+                  guestSheet ? 'Guests' : '${unit}s',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -527,7 +583,7 @@ class HomeGuestsPickerSheet extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final n = index + 1;
                   return ListTile(
-                    title: Text(n == 1 ? '1 Guest' : '$n Guests'),
+                    title: Text(n == 1 ? '1 $unit' : '$n ${unit}s'),
                     selected: n == selected,
                     onTap: () => Navigator.pop(context, n),
                   );

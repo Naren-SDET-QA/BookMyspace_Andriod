@@ -7,6 +7,8 @@ import '../../../../core/theme/category_accent.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../home/domain/customer_section_catalog.dart';
+import '../../domain/pg_rent.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
 import 'venue_badges.dart';
@@ -546,6 +548,11 @@ class HotelListCard extends ConsumerWidget {
                     spacing: 6,
                     runSpacing: 5,
                     children: [
+                      if (venue.starRating != null && venue.starRating! > 0)
+                        _InfoPill(
+                          icon: Icons.star_outline_rounded,
+                          label: '${venue.starRating}-star',
+                        ),
                       if (venue.avgRating > 0)
                         _InfoPill(
                           icon: Icons.star_rounded,
@@ -560,12 +567,24 @@ class HotelListCard extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          venue.price > 0 ? '${formatInr(venue.price)} / night' : 'Price on request',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: AppTheme.brand,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              venue.price > 0 ? '${formatInr(venue.price)} / night' : 'Price on request',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: AppTheme.brand,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (venue.price > 0 && venue.taxRate > 0)
+                              Text(
+                                'plus ${venue.taxRate.toStringAsFixed(0)}% taxes',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       OutlinedButton(
@@ -601,6 +620,183 @@ class HotelListCard extends ConsumerWidget {
             return horizontal
                 ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [image, Expanded(child: content)])
                 : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [image, content]);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// PG result row. Monthly rent and deposit come from [PgRentCalculator],
+/// which reads listing metadata when present and otherwise the venue price.
+class PgListCard extends ConsumerWidget {
+  const PgListCard({super.key, required this.venue});
+
+  final Venue venue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final favorite = ref.watch(isFavoriteProvider(venue.id));
+    final breakdown = PgRentCalculator.fromVenue(venue);
+    final details = PgDetails.tryFromVenue(venue);
+    final sharing = details == null || details.sharingOptions.isEmpty
+        ? null
+        : details.sharingOptions.first.typeName;
+    final facilities = venue.facilities
+        .where((item) => item.isAvailable && item.facility.trim().isNotEmpty)
+        .take(3)
+        .map((item) => item.facility)
+        .toList(growable: false);
+
+    void detailsPage() => context.push(
+      AppRoutes.venueDetails.replaceAll(':id', venue.id),
+    );
+    void reserve() => context.push(
+      AppRoutes.bookingFlow.replaceAll(':id', venue.id),
+      extra: venue,
+    );
+
+    return TestId(
+      E2eIds.venueCard(venue.id),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        margin: EdgeInsets.zero,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontal = constraints.maxWidth >= 560;
+            final image = SizedBox(
+              width: horizontal ? 220 : double.infinity,
+              height: horizontal ? 180 : 170,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  AppNetworkImage(url: venue.coverImageUrl, fit: BoxFit.cover),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: favorite.when(
+                      data: (value) => FavoriteButton(
+                        isFavorite: value,
+                        onPressed: () => ref
+                            .read(toggleFavoriteProvider(venue.id).future),
+                      ),
+                      loading: () => const FavoriteButton(
+                        isFavorite: false,
+                        onPressed: null,
+                      ),
+                      error: (_, _) => const FavoriteButton(
+                        isFavorite: false,
+                        onPressed: null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            final content = Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    venue.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      if (venue.city.isNotEmpty) venue.city,
+                      if (venue.avgRating > 0)
+                        '${venue.avgRating.toStringAsFixed(1)} (${venue.ratingCount})',
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      if (sharing != null && sharing.isNotEmpty)
+                        _InfoPill(icon: Icons.bed_outlined, label: sharing),
+                      if (breakdown.securityDeposit > 0)
+                        _InfoPill(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'Deposit ${formatInr(breakdown.securityDeposit)}',
+                        ),
+                      ...facilities.map(
+                        (item) => _InfoPill(
+                          icon: Icons.check_circle_outline,
+                          label: item,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          breakdown.monthlyBaseRent > 0
+                              ? '${formatInr(breakdown.monthlyBaseRent)} / month'
+                              : 'Rent on request',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: AppTheme.brand,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      OutlinedButton(
+                        onPressed: detailsPage,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('View PG'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: reserve,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          CustomerSectionCatalog.bookingCtaLabel(
+                            CustomerSection.pgHostels,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+            return horizontal
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [image, Expanded(child: content)],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [image, content],
+                  );
           },
         ),
       ),

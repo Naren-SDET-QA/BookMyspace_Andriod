@@ -30,7 +30,10 @@ import '../venue_providers.dart';
 import '../custom_listing_field_providers.dart';
 import '../widgets/custom_listing_fields_section.dart';
 import '../widgets/listing_availability.dart';
+import '../widgets/pg_rent_calculator_card.dart';
 import '../widgets/venue_badges.dart';
+import '../../../home/domain/customer_section_catalog.dart';
+import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../home/presentation/recently_viewed.dart';
 import '../../../analytics/domain/analytics_event.dart';
 import '../../../analytics/presentation/analytics_providers.dart';
@@ -593,6 +596,34 @@ class _ListingBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _PriceRow(venue: venue),
+          if (CustomerSectionCatalog.sectionForVenue(venue) ==
+                  CustomerSection.lodgeRooms &&
+              venue.taxRate > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Taxes ${venue.taxRate.toStringAsFixed(0)}% — the booking total is calculated from the slot you choose.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          if (PgRentCalculatorCard.appliesTo(venue)) ...[
+            const SizedBox(height: 16),
+            Consumer(
+              builder: (context, ref, _) => PgRentCalculatorCard(
+                venue: venue,
+                initialTenureMonths: ref
+                    .watch(discoveryBookingPrefsProvider)
+                    .tenureMonths,
+              ),
+            ),
+          ],
+          if (CustomerSectionCatalog.sectionForVenue(venue) ==
+              CustomerSection.lodgeRooms) ...[
+            const SizedBox(height: 16),
+            _HotelRoomsSection(venueId: venue.id),
+          ],
           VenueMediaTours(venue: venue),
           if (venue.description.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -741,6 +772,64 @@ class _ListingBody extends StatelessWidget {
   }
 }
 
+String _priceSuffix(Venue venue) {
+  if (venue.price <= 0) return '';
+  return switch (CustomerSectionCatalog.sectionForVenue(venue)) {
+    CustomerSection.lodgeRooms => ' / night',
+    CustomerSection.pgHostels => ' / month',
+    _ => '',
+  };
+}
+
+class _HotelRoomsSection extends ConsumerWidget {
+  const _HotelRoomsSection({required this.venueId});
+
+  final String venueId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rooms = ref.watch(hotelRoomTypesProvider(venueId));
+    return rooms.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Room types', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(
+              'Listed room types for this stay. Booking still holds one venue slot; these rows are not a separate room inventory reservation.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...items.map(
+              (room) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.bed_outlined),
+                  title: Text(room.name),
+                  subtitle: Text(
+                    [
+                      if (room.bedType.isNotEmpty) room.bedType,
+                      'Sleeps ${room.capacity}',
+                      if (room.amenities.isNotEmpty) room.amenities.join(', '),
+                    ].join(' · '),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _PriceRow extends StatelessWidget {
   const _PriceRow({required this.venue});
 
@@ -767,7 +856,7 @@ class _PriceRow extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Text(
-            formatInr(venue.price),
+            '${formatInr(venue.price)}${_priceSuffix(venue)}',
             style: theme.textTheme.headlineSmall?.copyWith(
               color: accent,
               fontWeight: FontWeight.w800,
