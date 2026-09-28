@@ -316,6 +316,7 @@ class VenueImage {
         if (altText != null) 'alt_text': altText,
         'is_cover': isCover,
         'sort_order': sortOrder,
+        'media_kind': mediaKind,
       };
 }
 
@@ -413,6 +414,8 @@ class Venue {
     this.contactWhatsapp = '',
     this.listingStatus,
     this.listingRejectionReason = '',
+    this.videoUrl = '',
+    this.tourUrl = '',
   });
 
   final String id;
@@ -458,6 +461,19 @@ class Venue {
   /// Server listing lifecycle. Null when the column is absent.
   final String? listingStatus;
   final String listingRejectionReason;
+
+  /// Walkthrough video (venue_images row with media_kind `video`).
+  final String videoUrl;
+
+  /// 3D model or 360° tour link (media_kind `model_3d` / `tour_360`).
+  final String tourUrl;
+
+  /// True when [tourUrl] is a glTF model the in-app viewer can render;
+  /// other links (Matterport, 360° pages) open in the browser.
+  bool get tourIsModel {
+    final path = Uri.tryParse(tourUrl)?.path.toLowerCase() ?? '';
+    return path.endsWith('.glb') || path.endsWith('.gltf');
+  }
 
   String get resolvedListingStatus {
     if (listingStatus != null && listingStatus!.isNotEmpty) {
@@ -538,19 +554,27 @@ class Venue {
       cat = VenueCategory.fromJson(json['category'] as Map<String, dynamic>);
     }
 
-    // Parse images
+    // Parse images. Video and 3D/360 rows share venue_images but are not
+    // gallery photos.
     final imagesList = <VenueImage>[];
-    if (json['venue_images'] is List) {
-      for (final item in json['venue_images'] as List) {
-        if (item is Map<String, dynamic>) {
-          imagesList.add(VenueImage.fromJson(item));
-        }
-      }
-    } else if (json['images'] is List) {
-      for (final item in json['images'] as List) {
-        if (item is Map<String, dynamic>) {
-          imagesList.add(VenueImage.fromJson(item));
-        }
+    var videoUrl = '';
+    var tourUrl = '';
+    final rawImages = json['venue_images'] is List
+        ? json['venue_images'] as List
+        : json['images'] is List
+            ? json['images'] as List
+            : const [];
+    for (final item in rawImages) {
+      if (item is! Map<String, dynamic>) continue;
+      final image = VenueImage.fromJson(item);
+      if (image.url.trim().isEmpty) continue;
+      if (image.isImage) {
+        imagesList.add(image);
+      } else if (image.mediaKind == 'video') {
+        if (videoUrl.isEmpty) videoUrl = image.url.trim();
+      } else if (image.mediaKind == 'model_3d' ||
+          image.mediaKind == 'tour_360') {
+        if (tourUrl.isEmpty) tourUrl = image.url.trim();
       }
     }
 
@@ -634,6 +658,8 @@ class Venue {
       listingStatus: json['listing_status'] as String?,
       listingRejectionReason:
           json['listing_rejection_reason'] as String? ?? '',
+      videoUrl: videoUrl,
+      tourUrl: tourUrl,
     );
   }
 
@@ -673,6 +699,8 @@ class Venue {
     String? contactWhatsapp,
     String? listingStatus,
     String? listingRejectionReason,
+    String? videoUrl,
+    String? tourUrl,
   }) {
     return Venue(
       id: id ?? this.id,
@@ -711,6 +739,8 @@ class Venue {
       listingStatus: listingStatus ?? this.listingStatus,
       listingRejectionReason:
           listingRejectionReason ?? this.listingRejectionReason,
+      videoUrl: videoUrl ?? this.videoUrl,
+      tourUrl: tourUrl ?? this.tourUrl,
     );
   }
 }

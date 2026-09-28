@@ -189,8 +189,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
 
     _videoTitleController =
         TextEditingController(text: 'Virtual Walkthrough Tour');
-    _videoUrlController = TextEditingController();
-    _tour3dUrlController = TextEditingController();
+    _videoUrlController = TextEditingController(text: ev?.videoUrl ?? '');
+    _tour3dUrlController = TextEditingController(text: ev?.tourUrl ?? '');
     _tour3dHotspotsController = TextEditingController(
         text: 'Grand Entrance, Main Ballroom, Dining Area');
 

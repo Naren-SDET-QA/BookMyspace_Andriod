@@ -23,7 +23,7 @@ class SupabaseVenueRepository implements VenueRepository {
   static const String _venueSelect = '''
     *,
     venue_categories (id, slug, name, icon, metadata, parent_section, is_active, description, image_url),
-    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order, media_kind),
     venue_facilities (facility, is_available)
   ''';
 
@@ -708,7 +708,7 @@ class SupabaseVenueRepository implements VenueRepository {
           ? '''
             *,
             venue_categories!inner (id, slug, name, icon, metadata, parent_section, is_active, description, image_url),
-            venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+            venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order, media_kind),
             venue_facilities (facility, is_available)
           '''
           : _venueSelect;

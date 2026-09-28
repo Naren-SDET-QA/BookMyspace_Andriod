@@ -20,7 +20,7 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
   static const String _venueSelect = '''
     *,
     venue_categories (id, slug, name, icon, metadata),
-    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order, media_kind),
     venue_facilities (facility, is_available)
   ''';
 
@@ -652,7 +652,7 @@ class SupabaseOwnerVenueRepository implements OwnerVenueRepository {
   static const _hydrateSelect = '''
     *,
     venue_categories (id, slug, name, icon),
-    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order),
+    venue_images (id, url, thumbnail_url, alt_text, is_cover, sort_order, media_kind),
     venue_facilities (facility, is_available)
   ''';
 

@@ -33,6 +33,7 @@ import '../../../home/presentation/recently_viewed.dart';
 import '../../../analytics/domain/analytics_event.dart';
 import '../../../analytics/presentation/analytics_providers.dart';
 import '../widgets/venue_enquiry_sheet.dart';
+import '../widgets/venue_media_tours.dart';
 
 /// Unified listing detail used by every category. Layout is template-driven;
 /// missing live fields hide their section instead of inventing content.
@@ -591,6 +592,7 @@ class _ListingBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _PriceRow(venue: venue),
+          VenueMediaTours(venue: venue),
           if (venue.description.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(l10n.aboutThisVenue, style: theme.textTheme.titleMedium),
