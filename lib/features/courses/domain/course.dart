@@ -534,6 +534,12 @@ class CourseBatch {
     this.admissionsOpen = true,
     this.subject = '',
     this.categorySlug = '',
+    this.createdAt,
+    this.todaysTopic = '',
+    this.highlightTag = '',
+    this.daysOfWeek = const [],
+    this.ageGroup = '',
+    this.skillLevel = '',
   });
 
   final String id;
@@ -553,6 +559,57 @@ class CourseBatch {
   final bool admissionsOpen;
   final String subject;
   final String categorySlug;
+  final DateTime? createdAt;
+
+  /// Topic of today's class, shown while the batch is live today.
+  final String todaysTopic;
+
+  /// Short owner tag, e.g. "Weekend special" or "Olympiad prep".
+  final String highlightTag;
+
+  /// ISO weekdays the batch meets (1 = Mon ... 7 = Sun). Empty = daily.
+  final List<int> daysOfWeek;
+  final String ageGroup;
+
+  /// `beginner`, `intermediate`, `advanced`, `all_levels` or empty.
+  final String skillLevel;
+
+  static const _weekdayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  /// "Mon · Wed · Fri", or empty when the batch meets daily / unset.
+  String get daysLabel {
+    final days = daysOfWeek.where((d) => d >= 1 && d <= 7).toSet().toList()
+      ..sort();
+    if (days.isEmpty || days.length == 7) return '';
+    return days.map((d) => _weekdayShort[d - 1]).join(' · ');
+  }
+
+  String get skillLevelLabel => switch (skillLevel) {
+        'beginner' => 'Beginner',
+        'intermediate' => 'Intermediate',
+        'advanced' => 'Advanced',
+        'all_levels' => 'All levels',
+        _ => '',
+      };
+
+  /// Live today, upcoming or newly added (in that priority). Null when
+  /// none applies.
+  BatchHighlight? highlightOn(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final start = DateTime(startsOn.year, startsOn.month, startsOn.day);
+    if (start.isAfter(today)) return BatchHighlight.upcoming;
+    final end = endsOn == null
+        ? null
+        : DateTime(endsOn!.year, endsOn!.month, endsOn!.day);
+    final running = end == null || !today.isAfter(end);
+    final meetsToday = daysOfWeek.isEmpty || daysOfWeek.contains(now.weekday);
+    if (isActive && running && meetsToday) return BatchHighlight.liveToday;
+    final created = createdAt;
+    if (created != null && now.difference(created).inDays < 14) {
+      return BatchHighlight.isNew;
+    }
+    return null;
+  }
 
   int get seatsLeft {
     final left = capacity - enrolledCount;
@@ -595,6 +652,15 @@ class CourseBatch {
         admissionsOpen: json['admissions_open'] as bool? ?? true,
         subject: json['subject'] as String? ?? '',
         categorySlug: json['category_slug'] as String? ?? '',
+        createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
+        todaysTopic: json['todays_topic'] as String? ?? '',
+        highlightTag: json['highlight_tag'] as String? ?? '',
+        daysOfWeek: (json['days_of_week'] as List? ?? const [])
+            .map((d) => d is num ? d.toInt() : int.tryParse('$d') ?? 0)
+            .where((d) => d >= 1 && d <= 7)
+            .toList(),
+        ageGroup: json['age_group'] as String? ?? '',
+        skillLevel: json['skill_level'] as String? ?? '',
       );
 
   CourseBatch copyWith({
@@ -629,8 +695,24 @@ class CourseBatch {
       admissionsOpen: admissionsOpen ?? this.admissionsOpen,
       subject: subject ?? this.subject,
       categorySlug: categorySlug ?? this.categorySlug,
+      createdAt: createdAt,
+      todaysTopic: todaysTopic,
+      highlightTag: highlightTag,
+      daysOfWeek: daysOfWeek,
+      ageGroup: ageGroup,
+      skillLevel: skillLevel,
     );
   }
+}
+
+/// Derived batch badge (see [CourseBatch.highlightOn]).
+enum BatchHighlight {
+  liveToday('Live today'),
+  upcoming('Upcoming'),
+  isNew('New');
+
+  const BatchHighlight(this.label);
+  final String label;
 }
 
 /// A structured faculty / instructor profile (`course_faculty`).

@@ -16,6 +16,7 @@ import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/course.dart';
 import '../../domain/education_category.dart';
 import '../course_providers.dart';
+import '../../infrastructure/batch_editor_writer.dart';
 import '../widgets/faculty_editor_sheet.dart';
 
 class OwnerInstituteDashboardScreen extends ConsumerWidget {
@@ -385,6 +386,8 @@ class _BatchesTab extends ConsumerWidget {
                                 capacity: batch.capacity,
                                 isActive: batch.isActive,
                                 admissionsOpen: value,
+                                waitlistEnabled: batch.waitlistEnabled,
+                                endsOn: batch.endsOn,
                                 timing: batch.timing,
                                 feeAmount: batch.feeAmount,
                                 mode: batch.mode,
@@ -1260,6 +1263,15 @@ Future<void> _openBatchEditor(
   var category = EducationCategory.fromSlug(existing?.categorySlug);
   var startsOn =
       existing?.startsOn ?? DateTime.now().add(const Duration(days: 7));
+  DateTime? endsOn = existing?.endsOn;
+  var waitlistEnabled = existing?.waitlistEnabled ?? false;
+  var admissionsOpen = existing?.admissionsOpen ?? true;
+  final days = <int>{...?existing?.daysOfWeek};
+  var skillLevel = existing?.skillLevel ?? '';
+  final topic = TextEditingController(text: existing?.todaysTopic ?? '');
+  final tag = TextEditingController(text: existing?.highlightTag ?? '');
+  final ageGroup = TextEditingController(text: existing?.ageGroup ?? '');
+  const weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   final saved = await showDialog<bool>(
     context: context,
@@ -1359,6 +1371,127 @@ Future<void> _openBatchEditor(
                         if (picked != null) setState(() => startsOn = picked);
                       },
                     ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('End date (optional)'),
+                      subtitle: Text(
+                        endsOn == null
+                            ? 'Not set'
+                            : DateFormat.yMMMd().format(endsOn!),
+                      ),
+                      trailing: endsOn == null
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear end date',
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => setState(() => endsOn = null),
+                            ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: endsOn ?? startsOn,
+                          firstDate: startsOn,
+                          lastDate:
+                              startsOn.add(const Duration(days: 1095)),
+                        );
+                        if (picked != null) setState(() => endsOn = picked);
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Class days (none selected = every day)',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (var d = 1; d <= 7; d++)
+                          FilterChip(
+                            key: Key('batch-day-$d'),
+                            label: Text(weekdayNames[d - 1]),
+                            selected: days.contains(d),
+                            onSelected: (on) => setState(() {
+                              if (on) {
+                                days.add(d);
+                              } else {
+                                days.remove(d);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: topic,
+                      decoration: const InputDecoration(
+                        labelText: "Today's topic",
+                        hintText: 'Shown while the batch is live today',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: tag,
+                      decoration: const InputDecoration(
+                        labelText: 'Highlight tag',
+                        hintText: 'e.g. Weekend special, Olympiad prep',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: ageGroup,
+                      decoration: const InputDecoration(
+                        labelText: 'Age group',
+                        hintText: 'e.g. 8-12 years, Adults',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: skillLevel,
+                      decoration:
+                          const InputDecoration(labelText: 'Skill level'),
+                      items: const [
+                        DropdownMenuItem(value: '', child: Text('Not set')),
+                        DropdownMenuItem(
+                          value: 'beginner',
+                          child: Text('Beginner'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'intermediate',
+                          child: Text('Intermediate'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'advanced',
+                          child: Text('Advanced'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'all_levels',
+                          child: Text('All levels'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => skillLevel = value ?? ''),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Admissions open'),
+                      value: admissionsOpen,
+                      onChanged: (v) => setState(() => admissionsOpen = v),
+                    ),
+                    SwitchListTile(
+                      key: const Key('batch-waitlist-switch'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Waitlist when full'),
+                      subtitle: const Text(
+                        'Learners queue up and get the next free seat',
+                      ),
+                      value: waitlistEnabled,
+                      onChanged: (v) => setState(() => waitlistEnabled = v),
+                    ),
                     Text(
                       'Primary faculty: ${course.instructorName.isEmpty ? 'Set on the course' : course.instructorName}',
                       style: TextStyle(
@@ -1387,16 +1520,38 @@ Future<void> _openBatchEditor(
     },
   );
   if (saved != true || title.text.trim().isEmpty) return;
-  await ref.read(ownerCourseControllerProvider).saveBatch(
-        batchId: existing?.id,
-        courseId: course.id,
-        label: title.text.trim(),
-        startsOn: startsOn,
-        capacity: int.tryParse(capacity.text.trim()) ?? 30,
-        timing: timing.text.trim(),
-        feeAmount: double.tryParse(fee.text.trim()) ?? 0,
-        mode: mode,
-        subject: subject.text.trim(),
-        categorySlug: category == EducationCategory.all ? '' : category.slug,
+  final batch = CourseBatch(
+    id: existing?.id ?? '',
+    courseId: course.id,
+    label: title.text.trim(),
+    startsOn: startsOn,
+    endsOn: endsOn,
+    capacity: int.tryParse(capacity.text.trim()) ?? 30,
+    enrolledCount: existing?.enrolledCount ?? 0,
+    isActive: existing?.isActive ?? true,
+    timing: timing.text.trim(),
+    feeAmount: double.tryParse(fee.text.trim()) ?? 0,
+    mode: mode,
+    waitlistEnabled: waitlistEnabled,
+    admissionsOpen: admissionsOpen,
+    subject: subject.text.trim(),
+    categorySlug: category == EducationCategory.all ? '' : category.slug,
+    todaysTopic: topic.text.trim(),
+    highlightTag: tag.text.trim(),
+    daysOfWeek: days.toList()..sort(),
+    ageGroup: ageGroup.text.trim(),
+    skillLevel: skillLevel,
+  );
+  try {
+    await ref.read(batchEditorWriterProvider).save(batch);
+    ref.invalidate(courseDetailProvider(course.id));
+    ref.invalidate(ownerCoursesProvider);
+    ref.invalidate(publishedCoursesProvider);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
       );
+    }
+  }
 }

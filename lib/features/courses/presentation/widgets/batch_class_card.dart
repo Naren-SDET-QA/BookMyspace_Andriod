@@ -30,6 +30,7 @@ class BatchClassCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final category = EducationCategory.fromSlug(
         batch.categorySlug.isNotEmpty ? batch.categorySlug : course.categoryId);
+    final highlight = batch.highlightOn(DateTime.now());
 
     return GlassmorphicCard(
       padding: const EdgeInsets.all(14),
@@ -141,11 +142,50 @@ class BatchClassCard extends StatelessWidget {
               ],
             ),
           const SizedBox(height: 8),
+          if (highlight == BatchHighlight.liveToday &&
+              batch.todaysTopic.isNotEmpty) ...[
+            Row(
+              key: const Key('batch-todays-topic'),
+              children: [
+                const Icon(Icons.podcasts_rounded,
+                    size: 14, color: Color(0xFFEF4444)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    "Today: ${batch.todaysTopic}",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+          ],
           // ── Row 4: Pills ──
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
+              if (highlight != null)
+                _pill(
+                  highlight.label.toUpperCase(),
+                  switch (highlight) {
+                    BatchHighlight.liveToday => const Color(0xFFEF4444),
+                    BatchHighlight.upcoming => AppTheme.cyan,
+                    BatchHighlight.isNew => AppTheme.success,
+                  },
+                  icon: switch (highlight) {
+                    BatchHighlight.liveToday => Icons.circle,
+                    BatchHighlight.upcoming => Icons.event_rounded,
+                    BatchHighlight.isNew => Icons.fiber_new_rounded,
+                  },
+                ),
+              if (batch.highlightTag.isNotEmpty)
+                _pill(batch.highlightTag, AppTheme.spotlightAmber,
+                    icon: Icons.local_offer_rounded),
               _pill(
                 mode.name.toUpperCase(),
                 AppTheme.violet,
@@ -161,6 +201,15 @@ class BatchClassCard extends StatelessWidget {
               if (category != EducationCategory.all)
                 _pill(category.label, AppTheme.brand,
                     icon: Icons.category_rounded),
+              if (batch.daysLabel.isNotEmpty)
+                _pill(batch.daysLabel, AppTheme.cyan,
+                    icon: Icons.calendar_view_week_rounded),
+              if (batch.ageGroup.isNotEmpty)
+                _pill(batch.ageGroup, AppTheme.brand,
+                    icon: Icons.child_care_rounded),
+              if (batch.skillLevelLabel.isNotEmpty)
+                _pill(batch.skillLevelLabel, AppTheme.violet,
+                    icon: Icons.signal_cellular_alt_rounded),
               if (batch.label.isNotEmpty)
                 _pill(batch.label, AppTheme.spotlightAmber),
               if (course.hasDemo)
