@@ -148,6 +148,7 @@ String experienceBadge(String text) {
 /// Credentials shown in "Official Certifications & Credentials": the
 /// qualification and specialization, split on `;`, `|` or new lines.
 List<String> facultyCredentials(CourseFaculty f) {
+  if (f.certifications.isNotEmpty) return f.certifications.toSet().toList();
   final parts = <String>[];
   for (final raw in [f.qualification, f.specialization]) {
     parts.addAll(
@@ -194,15 +195,22 @@ class _ProfileBody extends ConsumerWidget {
     final rating = ratings.isEmpty
         ? ''
         : (ratings.reduce((a, b) => a + b) / ratings.length).toStringAsFixed(2);
-    final students = profile.courses
+    final enrolled = profile.courses
         .expand((c) => c.batches)
         .fold<int>(0, (sum, b) => sum + b.enrolledCount);
+    // Institute-entered lifetime total wins over current enrollments.
+    final students = (f.studentsTrained ?? 0) > enrolled
+        ? f.studentsTrained!
+        : enrolled;
     final batchCount = profile.courses
         .expand((c) => c.batches)
         .where((b) => b.isActive)
         .length;
     final exp = experienceBadge(f.experienceText);
-    final split = splitPhilosophy(f.bio);
+    final parsed = splitPhilosophy(f.bio);
+    final split = f.teachingPhilosophy.trim().isNotEmpty
+        ? (bio: f.bio.trim(), philosophy: f.teachingPhilosophy.trim())
+        : parsed;
     final credentials = facultyCredentials(f);
     final designation = f.designation.isNotEmpty ? f.designation : f.role;
     final qualificationLine = [
@@ -536,6 +544,35 @@ class _ProfileBody extends ConsumerWidget {
               onPressed: () => openMediaUrl(f.resumeUrl),
               icon: const Icon(Icons.picture_as_pdf_outlined),
               label: const Text('View certificates & resume'),
+            ),
+        ],
+        if (f.achievements.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          _Heading('Achievements & Awards', color: accent),
+          const SizedBox(height: 10),
+          for (final a in f.achievements)
+            Padding(
+              key: Key('instructor-achievement-$a'),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _Section(
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.emoji_events_rounded,
+                      color: Color(0xFFF59E0B),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        a,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
         if (f.skills.isNotEmpty || f.languages.isNotEmpty) ...[

@@ -16,6 +16,7 @@ import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/course.dart';
 import '../../domain/education_category.dart';
 import '../course_providers.dart';
+import '../widgets/faculty_editor_sheet.dart';
 
 class OwnerInstituteDashboardScreen extends ConsumerWidget {
   const OwnerInstituteDashboardScreen({super.key});
@@ -651,6 +652,19 @@ class _FacultyTab extends ConsumerWidget {
             (item) => Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
+                key: Key('owner-faculty-${item.id}'),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: item.id.isEmpty
+                    ? null
+                    : () async {
+                        final saved =
+                            await showFacultyEditorSheet(context, item);
+                        if (saved == true && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Instructor updated')),
+                          );
+                        }
+                      },
                 leading: CircleAvatar(
                   backgroundColor: AppTheme.violet.withValues(alpha: 0.12),
                   child: Text(

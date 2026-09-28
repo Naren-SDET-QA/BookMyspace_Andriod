@@ -653,6 +653,10 @@ class CourseFaculty {
     this.demoUrl = '',
     this.resumeUrl = '',
     this.isActive = true,
+    this.certifications = const [],
+    this.achievements = const [],
+    this.studentsTrained,
+    this.teachingPhilosophy = '',
   });
 
   final String id;
@@ -672,6 +676,22 @@ class CourseFaculty {
   final String demoUrl;
   final String resumeUrl;
   final bool isActive;
+
+  /// Certificates / credentials (`certifications`).
+  final List<String> certifications;
+
+  /// Awards and achievements (`awards`).
+  final List<String> achievements;
+
+  /// Lifetime learners taught, as entered by the institute.
+  final int? studentsTrained;
+
+  final String teachingPhilosophy;
+
+  static List<String> _strings(Object? raw) => (raw as List? ?? const [])
+      .map((item) => item.toString().trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
 
   factory CourseFaculty.fromJson(Map<String, dynamic> json) => CourseFaculty(
         id: json['id'] as String? ?? '',
@@ -697,6 +717,10 @@ class CourseFaculty {
         demoUrl: json['demo_url'] as String? ?? '',
         resumeUrl: json['resume_url'] as String? ?? '',
         isActive: json['is_active'] as bool? ?? true,
+        certifications: _strings(json['certifications']),
+        achievements: _strings(json['awards']),
+        studentsTrained: (json['students_trained'] as num?)?.toInt(),
+        teachingPhilosophy: json['teaching_philosophy'] as String? ?? '',
       );
 }
 

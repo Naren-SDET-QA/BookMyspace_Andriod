@@ -28,7 +28,7 @@ class SupabaseCourseRepository implements CourseRepository {
     *,
     institutes (id, org_id, name, description, logo_image, is_verified, institute_type, category_id, address, city, latitude, longitude, phone, email, whatsapp, website, mode, timings, images, amenities, module_config, registration_form, profile),
     course_batches (id, course_id, label, starts_on, capacity, enrolled_count, is_active, timing, ends_on, fee_amount, mode, waitlist_enabled, waitlist_count, admissions_open, subject, category_slug),
-    course_faculty (id, course_id, institute_id, name, role, bio, photo_url, designation, department, qualification, specialization, experience_text, skills, languages, demo_url, resume_url, is_active),
+    course_faculty (id, course_id, institute_id, name, role, bio, photo_url, designation, department, qualification, specialization, experience_text, skills, languages, demo_url, resume_url, is_active, certifications, awards, students_trained, teaching_philosophy),
     course_faqs (id, course_id, question, answer, display_order)
   ''';
 
