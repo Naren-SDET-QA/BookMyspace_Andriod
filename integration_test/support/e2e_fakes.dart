@@ -67,8 +67,7 @@ class E2eAuthRepository implements AuthRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   E2eAuthRepository({AuthUser? initialUser, required this.directory})
     : _user = initialUser;
@@ -298,8 +297,7 @@ class E2eUserBookingRepository implements BookingRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   E2eUserBookingRepository(this._shared);
 
@@ -390,13 +388,21 @@ class E2ePaymentRepository extends MockPaymentRepository {
   int? approveAfterStatusReads;
 
   @override
-  Future<PaymentOrder> createOrder({required String bookingId}) async {
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  }) async {
     createOrderCalls++;
     if (failCreateOrderTimes > 0) {
       failCreateOrderTimes--;
       throw Exception('order creation failed');
     }
-    return super.createOrder(bookingId: bookingId);
+    return super.createOrder(
+      bookingId: bookingId,
+      paymentPlan: paymentPlan,
+      walletCreditAmount: walletCreditAmount,
+    );
   }
 
   @override
@@ -499,8 +505,7 @@ class E2eOwnerRepository implements OwnerRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   E2eOwnerRepository(this.auth);
 
@@ -560,8 +565,7 @@ class E2eOwnerAvailabilityRepository implements OwnerAvailabilityRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   final Map<String, List<OwnerOperatingHours>> hoursByVenue = {};
   final Map<String, List<OwnerTimeSlot>> slotsByVenue = {};

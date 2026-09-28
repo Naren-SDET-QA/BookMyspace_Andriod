@@ -10,11 +10,21 @@ import '../domain/checkout_service.dart';
 /// Requires a live test key: when [ConfigurationException] is thrown the
 /// caller should surface a friendly message instead of crashing.
 class RazorpayCheckoutService implements CheckoutService {
-  @override
-  CheckoutResponse? get lastResponse => null;
+  CheckoutResponse? _lastResponse;
 
   @override
-  CheckoutSuccessDetails? get lastSuccessDetails => null;
+  CheckoutResponse? get lastResponse => _lastResponse;
+
+  @override
+  CheckoutSuccessDetails? get lastSuccessDetails {
+    final response = _lastResponse;
+    if (response == null || response.result != CheckoutResult.paid) return null;
+    return CheckoutSuccessDetails(
+      paymentId: response.paymentId ?? '',
+      orderId: response.orderId ?? '',
+      signature: response.signature ?? '',
+    );
+  }
 
   @override
   Future<CheckoutResult> openCheckout({
@@ -22,13 +32,13 @@ class RazorpayCheckoutService implements CheckoutService {
     required double amount,
     required String currency,
     required String keyId,
-      String? venueName,
+    String? venueName,
     String? bookingRef,
     String? customerName,
     String? customerEmail,
     String? customerPhone,
     Map<String, dynamic>? notes,
-}) async {
+  }) async {
     if (keyId.trim().isEmpty || keyId.contains('PLACEHOLDER')) {
       throw const ConfigurationException(
         'Razorpay checkout is not configured. Add a test key to run payments.',
@@ -41,15 +51,26 @@ class RazorpayCheckoutService implements CheckoutService {
 
     void successHandler(PaymentSuccessResponse response) {
       razorpay.clear();
+      _lastResponse = CheckoutResponse(
+        result: CheckoutResult.paid,
+        paymentId: response.paymentId,
+        orderId: response.orderId ?? orderId,
+        signature: response.signature,
+      );
       completer.complete(CheckoutResult.paid);
     }
 
     void errorHandler(PaymentFailureResponse response) {
       razorpay.clear();
+      final cancelled = response.code == Razorpay.PAYMENT_CANCELLED;
+      _lastResponse = CheckoutResponse(
+        result: cancelled ? CheckoutResult.cancelled : CheckoutResult.failed,
+        orderId: orderId,
+        errorCode: response.code?.toString(),
+        errorMessage: response.message,
+      );
       completer.complete(
-        response.code == Razorpay.PAYMENT_CANCELLED
-            ? CheckoutResult.cancelled
-            : CheckoutResult.failed,
+        cancelled ? CheckoutResult.cancelled : CheckoutResult.failed,
       );
     }
 
@@ -69,6 +90,12 @@ class RazorpayCheckoutService implements CheckoutService {
       const Duration(minutes: 5),
       onTimeout: () {
         razorpay.clear();
+        _lastResponse = CheckoutResponse(
+          result: CheckoutResult.timedOut,
+          orderId: orderId,
+          errorCode: 'checkout_timeout',
+          errorMessage: 'Payment checkout timed out.',
+        );
         return CheckoutResult.timedOut;
       },
     );

@@ -103,9 +103,14 @@ Deno.serve(async (req) => {
     );
   }
 
+  let preparedBookingId: string | null = null;
   try {
     const body = await req.json();
-    const { booking_id } = body;
+    const {
+      booking_id,
+      payment_plan = "full",
+      wallet_credit_amount = 0,
+    } = body;
 
     if (!booking_id) {
       return new Response(JSON.stringify({ error: "missing_booking_id" }), {
@@ -185,14 +190,107 @@ Deno.serve(async (req) => {
       });
     }
 
-    const totalAmount = Number(booking.total_amount);
-    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    // Resolve the payment plan and wallet credit while holding the booking
+    // lock. The client may request a plan/credit, but the RPC caps it against
+    // the venue policy, the server total, and the current wallet balance.
+    const { data: quote, error: quoteError } = await userSupabase.rpc(
+      "prepare_booking_payment",
+      {
+        p_booking_id: booking.id,
+        p_payment_plan: String(payment_plan),
+        p_wallet_credit: Number(wallet_credit_amount) || 0,
+      },
+    );
+    if (quoteError || !quote || typeof quote !== "object") {
+      const safeCode = quoteError?.message?.split(" ")[0] ||
+        "payment_quote_failed";
+      return new Response(JSON.stringify({ error: safeCode }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const quoteJson = quote as Record<string, unknown>;
+    preparedBookingId = booking.id;
+    const totalAmount = Number(quoteJson.full_amount);
+    const payableAmount = Number(quoteJson.payable_amount);
+    const walletCredit = Number(quoteJson.wallet_credit_amount) || 0;
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0 ||
+      !Number.isFinite(payableAmount) || payableAmount < 0) {
       return new Response(JSON.stringify({ error: "invalid_booking_amount" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const amountInPaise = Math.round(totalAmount * 100);
+
+    // A wallet-only payment has no provider order. The same server-side
+    // approval, hold and wallet checks still apply, and the database records
+    // the captured wallet payment and confirmation atomically.
+    if (payableAmount <= 0) {
+      const { data: walletSettlement, error: walletError } =
+        await userSupabase.rpc("settle_booking_with_wallet", {
+          p_booking_id: booking.id,
+        });
+      if (walletError || !walletSettlement) {
+        await userSupabase.rpc("release_booking_wallet_credit", {
+          p_booking_id: booking.id,
+        });
+        return new Response(JSON.stringify({ error: "wallet_settlement_failed" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      preparedBookingId = null;
+      return new Response(JSON.stringify({
+        order_id: "",
+        amount: 0,
+        currency: "INR",
+        wallet_only: true,
+        wallet_credit_amount: walletCredit,
+        payment_plan: quoteJson.payment_plan,
+        notes: { booking_id: booking.id },
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const amountInPaise = Math.round(payableAmount * 100);
+
+    // Reuse an existing pending provider order for the same booking. This
+    // makes retries and double taps idempotent instead of creating a second
+    // Razorpay order for one server booking.
+    const { data: existingPayment } = await serviceSupabase
+      .from("payments")
+      .select("provider_order_id, amount, currency, status")
+      .eq("booking_id", booking.id)
+      .eq("provider", "razorpay")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingPayment?.provider_order_id) {
+      preparedBookingId = null;
+      return new Response(
+        JSON.stringify({ ...buildClientOrderResponse({
+          orderId: existingPayment.provider_order_id,
+          amount: Number(existingPayment.amount) || payableAmount,
+          currency: existingPayment.currency || "INR",
+          publicKeyId: RAZORPAY_KEY_ID,
+          bookingId: booking.id,
+        }),
+          payment_plan: quoteJson.payment_plan,
+          full_amount: totalAmount,
+          advance_amount: Number(quoteJson.advance_amount) || 0,
+          balance_due: Number(quoteJson.balance_due) || 0,
+          wallet_credit_amount: walletCredit,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
 
     const auth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
     const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
@@ -208,6 +306,8 @@ Deno.serve(async (req) => {
         notes: {
           booking_id: booking.id,
           user_id: user.id,
+          payment_plan: quoteJson.payment_plan,
+          wallet_credit_amount: walletCredit,
         },
       }),
     });
@@ -224,6 +324,9 @@ Deno.serve(async (req) => {
       } catch {
         // Never forward provider payloads; they can include account details.
       }
+      await userSupabase.rpc("release_booking_wallet_credit", {
+        p_booking_id: booking.id,
+      });
       return new Response(
         JSON.stringify({
           error: "payment_order_failed",
@@ -239,6 +342,9 @@ Deno.serve(async (req) => {
     const rzpData = await rzpRes.json();
     const orderId = typeof rzpData.id === "string" ? rzpData.id : "";
     if (orderId.length === 0) {
+      await userSupabase.rpc("release_booking_wallet_credit", {
+        p_booking_id: booking.id,
+      });
       return new Response(JSON.stringify({ error: "payment_order_invalid" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -253,32 +359,60 @@ Deno.serve(async (req) => {
           bookingId: booking.id,
           userId: user.id,
           providerOrderId: orderId,
-          amount: totalAmount,
+          amount: payableAmount,
           currency: "INR",
         }),
         { onConflict: "provider, provider_order_id" },
       );
     if (paymentError) {
+      await userSupabase.rpc("release_booking_wallet_credit", {
+        p_booking_id: booking.id,
+      });
       return new Response(JSON.stringify({ error: "payment_record_failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    await serviceSupabase
+      .from("payments")
+      .update({
+        method: "razorpay",
+        metadata: {
+          payment_plan: quoteJson.payment_plan,
+          full_amount: totalAmount,
+          wallet_credit_amount: walletCredit,
+          balance_due: Number(quoteJson.balance_due) || 0,
+        },
+      })
+      .eq("provider", "razorpay")
+      .eq("provider_order_id", orderId);
+
     return new Response(
-      JSON.stringify(buildClientOrderResponse({
+      JSON.stringify({ ...buildClientOrderResponse({
         orderId,
-        amount: totalAmount,
+        amount: payableAmount,
         currency: "INR",
         publicKeyId: RAZORPAY_KEY_ID,
         bookingId: booking.id,
-      })),
+      }),
+        payment_plan: quoteJson.payment_plan,
+        full_amount: totalAmount,
+        advance_amount: Number(quoteJson.advance_amount) || 0,
+        balance_due: Number(quoteJson.balance_due) || 0,
+        wallet_credit_amount: walletCredit,
+      }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
   } catch (err) {
+    if (preparedBookingId != null) {
+      await userSupabase.rpc("release_booking_wallet_credit", {
+        p_booking_id: preparedBookingId,
+      });
+    }
     const message = err instanceof Error
       ? err.message
       : "order_creation_failed";

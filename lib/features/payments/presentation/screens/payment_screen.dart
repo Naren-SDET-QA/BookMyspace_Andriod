@@ -10,6 +10,7 @@ import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/payment.dart';
 import '../payment_providers.dart';
+import '../widgets/payment_options_card.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 
 /// Payment checkout screen matching the Android native Razorpay payment experience.
@@ -27,6 +28,56 @@ class PaymentScreen extends ConsumerStatefulWidget {
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   PaymentMethodType _selectedMethod = PaymentMethodType.razorpayCheckout;
+  String _paymentPlan = 'full';
+  double _walletCreditAmount = 0;
+  CheckoutQuote? _quote;
+  VenuePaymentRules _paymentRules = const VenuePaymentRules();
+  bool _loadingPaymentConfig = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentConfig();
+  }
+
+  Future<void> _loadPaymentConfig() async {
+    try {
+      final repo = ref.read(paymentRepositoryProvider);
+      final quoteFuture = repo.checkoutQuote(
+        bookingId: widget.booking.id,
+        paymentPlan: _paymentPlan,
+      );
+      final rulesFuture = repo.paymentRules(venueId: widget.booking.venueId);
+      final quote = await quoteFuture;
+      final rules = await rulesFuture;
+      if (!mounted) return;
+      setState(() {
+        _quote = quote;
+        _paymentRules = rules;
+        _loadingPaymentConfig = false;
+        if (!_paymentRules.allows(_selectedMethod)) {
+          _selectedMethod = PaymentMethodType.values.firstWhere(
+            _paymentRules.allows,
+            orElse: () => PaymentMethodType.razorpayCheckout,
+          );
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingPaymentConfig = false);
+    }
+  }
+
+  Future<void> _changePaymentPlan(String plan) async {
+    if (_paymentPlan == plan) return;
+    setState(() {
+      _paymentPlan = plan;
+      _quote = null;
+      _walletCreditAmount = 0;
+      _loadingPaymentConfig = true;
+    });
+    await _loadPaymentConfig();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +89,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final fullTotal = booking.totalAmount > 0
         ? booking.totalAmount
         : (booking.amount + booking.taxAmount);
-    final payableAmount = fullTotal;
+    final quoteAmount = _quote?.advanceAmount ?? fullTotal;
+    final payableAmount = (quoteAmount - _walletCreditAmount)
+        .clamp(0.0, quoteAmount)
+        .toDouble();
     // Razorpay Checkout collects the full booking total; remaining venue due
     // is whatever of that total is not included in the payable amount.
-    final remainingDue =
-        (fullTotal - payableAmount).clamp(0.0, fullTotal).toDouble();
+    final remainingDue = (fullTotal - payableAmount)
+        .clamp(0.0, fullTotal)
+        .toDouble();
 
     // Deep links and stale navigation extras must not expose a payment
     // surface for an approval request. The Edge Function is the authoritative
@@ -83,9 +138,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           AppRoutes.bookingSuccess.replaceAll(':id', widget.booking.id),
         );
       });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -124,7 +177,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               // Error banner if any
               if (paymentState.isAwaitingConfirmation) ...[
                 _PendingConfirmationCard(
-                  message: paymentState.note ??
+                  message:
+                      paymentState.note ??
                       'Payment was submitted. Waiting for confirmation.',
                   onRefresh: _refreshPaymentStatus,
                 ),
@@ -142,20 +196,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               const SizedBox(height: 16),
 
               // Price breakdown card
-              _PriceBreakdownCard(
-                booking: booking,
-                totalAmount: fullTotal,
-              ),
+              _PriceBreakdownCard(booking: booking, totalAmount: fullTotal),
               const SizedBox(height: 16),
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.account_balance_wallet_outlined,
-                      color: theme.colorScheme.primary),
-                  title: const Text('Pay securely with Razorpay'),
-                  subtitle: const Text(
-                    'Choose UPI, cards or net banking in the secure checkout sheet.',
-                  ),
-                ),
+              PaymentOptionsCard(
+                selectedMethod: _selectedMethod,
+                paymentPlan: _paymentPlan,
+                rules: _paymentRules,
+                quote: _quote,
+                onMethodChanged: (method) =>
+                    setState(() => _selectedMethod = method),
+                onPlanChanged: _changePaymentPlan,
+                walletCreditAmount: _walletCreditAmount,
+                onWalletCreditChanged: (amount) =>
+                    setState(() => _walletCreditAmount = amount),
               ),
               const SizedBox(height: 80), // bottom bar spacing
             ],
@@ -165,7 +218,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       bottomNavigationBar: _BottomPayBar(
         payableAmount: payableAmount,
         isLoading: paymentState.isLoading,
-        isAwaitingConfirmation: paymentState.isAwaitingConfirmation,
+        isAwaitingConfirmation:
+            paymentState.isAwaitingConfirmation || _loadingPaymentConfig,
         onPayPressed: () => _executePayment(payableAmount, remainingDue),
       ),
     );
@@ -178,6 +232,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       selectedMethod: _selectedMethod,
       payableAmount: payable,
       remainingDueAtVenue: remainingDue,
+      paymentPlan: _paymentPlan,
+      walletCreditAmount: _walletCreditAmount,
     );
 
     if (success) {
@@ -196,9 +252,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         .refreshPaymentStatus(bookingId: widget.booking.id);
     if (success && mounted) {
       ref.invalidate(myBookingsProvider);
-      context.go(
-        AppRoutes.bookingSuccess.replaceAll(':id', widget.booking.id),
-      );
+      context.go(AppRoutes.bookingSuccess.replaceAll(':id', widget.booking.id));
     }
   }
 }
@@ -211,8 +265,9 @@ class _BookingSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final venueTitle =
-        booking.venueName.isNotEmpty ? booking.venueName : 'Space Reservation';
+    final venueTitle = booking.venueName.isNotEmpty
+        ? booking.venueName
+        : 'Space Reservation';
 
     return Card(
       elevation: 0,
@@ -225,8 +280,11 @@ class _BookingSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.location_on,
-                    size: 18, color: theme.colorScheme.primary),
+                Icon(
+                  Icons.location_on,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -239,8 +297,10 @@ class _BookingSummaryCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
@@ -261,21 +321,28 @@ class _BookingSummaryCard extends StatelessWidget {
             const Divider(height: 18),
             Row(
               children: [
-                Icon(Icons.calendar_today,
-                    size: 14, color: theme.colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   DateFormat.yMMMd().format(booking.bookDate),
                   style: theme.textTheme.bodySmall,
                 ),
                 const Spacer(),
-                Icon(Icons.access_time,
-                    size: 14, color: theme.colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   '${booking.displayStart} – ${booking.displayEnd}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -287,10 +354,7 @@ class _BookingSummaryCard extends StatelessWidget {
 }
 
 class _PriceBreakdownCard extends StatelessWidget {
-  const _PriceBreakdownCard({
-    required this.booking,
-    required this.totalAmount,
-  });
+  const _PriceBreakdownCard({required this.booking, required this.totalAmount});
 
   final Booking booking;
   final double totalAmount;
@@ -310,8 +374,9 @@ class _PriceBreakdownCard extends StatelessWidget {
           children: [
             Text(
               'Pricing Summary',
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
             _RowText(
@@ -423,8 +488,9 @@ class _BottomPayBar extends StatelessWidget {
                   minimumSize: const Size(160, 50),
                   shape: RoundedCornerShape(12),
                 ),
-                onPressed:
-                    isLoading || isAwaitingConfirmation ? null : onPayPressed,
+                onPressed: isLoading || isAwaitingConfirmation
+                    ? null
+                    : onPayPressed,
                 icon: isLoading
                     ? const SizedBox(
                         width: 18,
@@ -439,8 +505,8 @@ class _BottomPayBar extends StatelessWidget {
                   isLoading
                       ? 'Verifying Securely...'
                       : isAwaitingConfirmation
-                          ? 'Awaiting Confirmation'
-                          : 'Pay Securely',
+                      ? 'Awaiting Confirmation'
+                      : 'Pay Securely',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -478,8 +544,11 @@ class _PendingConfirmationCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.hourglass_top_rounded,
-                  color: theme.colorScheme.primary, size: 20),
+              Icon(
+                Icons.hourglass_top_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -503,10 +572,7 @@ class _PendingConfirmationCard extends StatelessWidget {
 }
 
 class _ErrorRecoveryCard extends StatelessWidget {
-  const _ErrorRecoveryCard({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorRecoveryCard({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -615,8 +681,9 @@ class _PaymentSuccessView extends StatelessWidget {
           Card(
             elevation: 0,
             shape: RoundedCornerShape(16),
-            color: theme.colorScheme.surfaceContainerHighest
-                .withValues(alpha: 0.5),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.5,
+            ),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -634,10 +701,13 @@ class _PaymentSuccessView extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
-                          color:
-                              const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF4CAF50,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(

@@ -10,8 +10,7 @@ class MockPaymentRepository implements PaymentRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   MockPaymentRepository();
 
@@ -66,11 +65,34 @@ class MockPaymentRepository implements PaymentRepository {
   );
 
   @override
-  Future<PaymentOrder> createOrder({required String bookingId}) async {
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  }) async {
     if (failCreateOrder) throw Exception('order creation failed');
     lastOrderBookingId = bookingId;
     return sampleOrder();
   }
+
+  @override
+  Future<CheckoutQuote> checkoutQuote({
+    required String bookingId,
+    String paymentPlan = 'full',
+  }) async => CheckoutQuote(
+    bookingId: bookingId,
+    currency: 'INR',
+    paymentPlan: paymentPlan,
+    fullAmount: 41300,
+    advanceAmount: 41300,
+    balanceDue: 0,
+    advanceEnabled: false,
+    minimumAdvanceAmount: 200,
+  );
+
+  @override
+  Future<VenuePaymentRules> paymentRules({required String venueId}) async =>
+      const VenuePaymentRules(allowPayAtVenue: true);
 
   @override
   Future<BookingStatus> selectPayAtVenue({required String bookingId}) async {
@@ -113,8 +135,7 @@ class FakeCheckoutService implements CheckoutService {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   FakeCheckoutService([this.result = CheckoutResult.paid]);
 

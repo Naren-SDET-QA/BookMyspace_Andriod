@@ -19,9 +19,10 @@ class RazorpayWebCheckoutService implements CheckoutService {
 
   JSObject? _activeCheckout;
   CheckoutSuccessDetails? _lastSuccessDetails;
+  CheckoutResponse? _lastResponse;
 
   @override
-  CheckoutResponse? get lastResponse => null;
+  CheckoutResponse? get lastResponse => _lastResponse;
 
   @override
   CheckoutSuccessDetails? get lastSuccessDetails => _lastSuccessDetails;
@@ -32,13 +33,13 @@ class RazorpayWebCheckoutService implements CheckoutService {
     required double amount,
     required String currency,
     required String keyId,
-      String? venueName,
+    String? venueName,
     String? bookingRef,
     String? customerName,
     String? customerEmail,
     String? customerPhone,
     Map<String, dynamic>? notes,
-}) async {
+  }) async {
     if (keyId.trim().isEmpty || keyId.contains('PLACEHOLDER')) {
       throw const ConfigurationException(
         'Razorpay checkout is not configured. Add a test key to run payments.',
@@ -66,6 +67,15 @@ class RazorpayWebCheckoutService implements CheckoutService {
       if (terminal) return;
       terminal = true;
       _lastSuccessDetails = successDetails;
+      _lastResponse = CheckoutResponse(
+        result: value,
+        paymentId: successDetails?.paymentId,
+        orderId: successDetails?.orderId ?? orderId,
+        signature: successDetails?.signature,
+        errorMessage: value == CheckoutResult.cancelled
+            ? 'Payment dismissed by user.'
+            : null,
+      );
       if (identical(_activeCheckout, instance)) _activeCheckout = null;
       debugPrint('[razorpay-web] checkout_future_completed');
       result.complete(value);

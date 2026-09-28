@@ -9,8 +9,7 @@ class MockPaymentRepository implements PaymentRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   MockPaymentRepository();
 
@@ -43,17 +42,21 @@ class MockPaymentRepository implements PaymentRepository {
       PaymentOrder(orderId: orderId, amount: 4720, currency: 'INR');
 
   static Refund sampleRefund() => const Refund(
-        id: 'r1',
-        paymentId: 'p1',
-        bookingId: 'b1',
-        amount: 41300,
-        status: 'processed',
-        reason: '',
-        providerRefundId: 'rfnd_1',
-      );
+    id: 'r1',
+    paymentId: 'p1',
+    bookingId: 'b1',
+    amount: 41300,
+    status: 'processed',
+    reason: '',
+    providerRefundId: 'rfnd_1',
+  );
 
   @override
-  Future<PaymentOrder> createOrder({required String bookingId}) async {
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  }) async {
     if (duplicateOrder) {
       throw const BusinessException(
         'A payment for this booking already exists.',
@@ -64,6 +67,25 @@ class MockPaymentRepository implements PaymentRepository {
     lastOrderBookingId = bookingId;
     return sampleOrder();
   }
+
+  @override
+  Future<CheckoutQuote> checkoutQuote({
+    required String bookingId,
+    String paymentPlan = 'full',
+  }) async => CheckoutQuote(
+    bookingId: bookingId,
+    currency: 'INR',
+    paymentPlan: paymentPlan,
+    fullAmount: 4720,
+    advanceAmount: 4720,
+    balanceDue: 0,
+    advanceEnabled: false,
+    minimumAdvanceAmount: 200,
+  );
+
+  @override
+  Future<VenuePaymentRules> paymentRules({required String venueId}) async =>
+      const VenuePaymentRules(allowPayAtVenue: true);
 
   @override
   Future<BookingStatus> bookingStatus(String bookingId) async {
@@ -97,8 +119,7 @@ class FakeCheckoutService implements CheckoutService {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   FakeCheckoutService([this.result = CheckoutResult.paid]);
 

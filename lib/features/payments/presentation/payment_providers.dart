@@ -10,7 +10,6 @@ import '../../booking/domain/booking.dart';
 import '../domain/checkout_service.dart';
 import '../domain/payment.dart';
 import '../domain/payment_repository.dart';
-import '../infrastructure/checkout_service_factory.dart';
 import '../infrastructure/supabase_payment_repository.dart';
 
 /// Provider for the [PaymentRepository].
@@ -33,8 +32,9 @@ final checkoutServiceProvider = Provider<CheckoutService>((ref) {
 });
 
 /// Provider fetching payments for the current user.
-final myPaymentsProvider =
-    FutureProvider.autoDispose<List<Payment>>((ref) async {
+final myPaymentsProvider = FutureProvider.autoDispose<List<Payment>>((
+  ref,
+) async {
   final repo = ref.watch(paymentRepositoryProvider);
   return repo.myPayments();
 });
@@ -105,6 +105,8 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     required PaymentMethodType selectedMethod,
     required double payableAmount,
     required double remainingDueAtVenue,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
     String? customerName,
     String? customerEmail,
     String? customerPhone,
@@ -118,21 +120,47 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     );
 
     try {
-      if (selectedMethod != PaymentMethodType.razorpayCheckout) {
-        throw const BusinessException(
-          'This payment option is not available yet. Use Razorpay Checkout.',
-          code: 'payment_method_unavailable',
+      if (selectedMethod == PaymentMethodType.payAtVenue) {
+        final status = await paymentRepository.selectPayAtVenue(
+          bookingId: booking.id,
         );
+        state = state.copyWith(
+          isLoading: false,
+          isSuccess: false,
+          isAwaitingConfirmation: status.isAwaitingOwner,
+          errorMessage: null,
+          note: 'Your request is waiting for the venue owner’s approval.',
+        );
+        return false;
       }
 
       // The Edge Function calculates the amount from the booking. The values
       // passed from the widget are display-only and are never trusted here.
-      final order = await paymentRepository.createOrder(bookingId: booking.id);
-      if (order.orderId.isEmpty || order.amount <= 0) {
+      final order = await paymentRepository.createOrder(
+        bookingId: booking.id,
+        paymentPlan: paymentPlan,
+        walletCreditAmount: walletCreditAmount,
+      );
+      if (!order.walletOnly && (order.orderId.isEmpty || order.amount <= 0)) {
         throw const ServerException(
           'Payment service returned an invalid order.',
           code: 'invalid_payment_order',
         );
+      }
+
+      if (order.walletOnly) {
+        final confirmed = await _waitForBookingConfirmation(booking.id);
+        state = state.copyWith(
+          isLoading: false,
+          isSuccess: confirmed,
+          isAwaitingConfirmation: !confirmed,
+          paymentId: null,
+          orderId: null,
+          note: confirmed
+              ? 'Payment confirmed by BookMySpace.'
+              : 'Wallet payment was submitted. Waiting for confirmation.',
+        );
+        return confirmed;
       }
 
       // Public key may come from the order function; never a secret key.
@@ -329,7 +357,10 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
 
 final paymentNotifierProvider =
     StateNotifierProvider.autoDispose<PaymentNotifier, PaymentState>((ref) {
-  final repo = ref.watch(paymentRepositoryProvider);
-  final checkout = ref.watch(checkoutServiceProvider);
-  return PaymentNotifier(paymentRepository: repo, checkoutService: checkout);
-});
+      final repo = ref.watch(paymentRepositoryProvider);
+      final checkout = ref.watch(checkoutServiceProvider);
+      return PaymentNotifier(
+        paymentRepository: repo,
+        checkoutService: checkout,
+      );
+    });
