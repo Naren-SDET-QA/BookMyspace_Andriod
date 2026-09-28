@@ -45,4 +45,44 @@ class SupabaseRegistrationConfigRepository {
         .update(changes)
         .eq('field_key', fieldKey);
   }
+
+  Future<RegistrationFieldConfig> saveField({
+    required String key,
+    required String label,
+    String type = 'text',
+    bool required = false,
+    String? regexPattern,
+    Map<String, dynamic> validationRules = const {},
+    String? presetKey,
+    int displayOrder = 0,
+  }) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'admin_create_registration_field',
+      params: {
+        'p_field_key': key,
+        'p_display_label': label,
+        'p_field_type': type,
+        'p_required': required,
+        'p_regex_pattern': regexPattern,
+        'p_validation_rules': validationRules,
+        'p_preset_key': presetKey,
+        'p_display_order': displayOrder,
+      },
+    );
+    return RegistrationFieldConfig.fromJson(row);
+  }
+
+  Future<void> deleteField(String key) async {
+    await _client.rpc<void>(
+      'admin_delete_registration_field',
+      params: {'p_field_key': key},
+    );
+  }
+
+  Future<void> reorderFields(List<String> keys) async {
+    await _client.rpc<void>(
+      'admin_reorder_registration_fields',
+      params: {'p_field_keys': keys},
+    );
+  }
 }
