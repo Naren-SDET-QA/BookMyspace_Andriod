@@ -4,6 +4,12 @@ abstract interface class NotificationRepository {
   Future<List<Notification>> myNotifications();
   Future<void> markRead(String notificationId);
   Future<void> markAllRead();
+
+  /// Permanently deletes one of my notifications.
+  Future<void> delete(String notificationId);
+
+  /// Permanently deletes all of my notifications.
+  Future<void> clearAll();
   Future<int> unreadCount();
   Future<void> addNotification(Notification notification);
   Future<void> registerPushToken(

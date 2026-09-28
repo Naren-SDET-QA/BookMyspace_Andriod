@@ -26,6 +26,54 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   String _selectedFilter = 'all';
 
+  /// Swiped-away ids, hidden immediately while the delete round-trips.
+  final Set<String> _dismissedIds = {};
+
+  Future<void> _deleteOne(String id) async {
+    setState(() => _dismissedIds.add(id));
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(notificationInboxControllerProvider).delete(id);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Notification deleted')),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _dismissedIds.remove(id));
+      ref.invalidate(myNotificationsProvider);
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _confirmClearAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear all notifications?'),
+        content: const Text('This permanently deletes every notification.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear all'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(notificationInboxControllerProvider).clearAll();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('All notifications cleared')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -58,6 +106,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               },
               child: const Text('Mark all read'),
             ),
+          if ((notificationsAsync.valueOrNull ?? const []).isNotEmpty)
+            IconButton(
+              tooltip: 'Clear all',
+              icon: const Icon(Icons.delete_sweep_outlined),
+              onPressed: _confirmClearAll,
+            ),
         ],
       ),
       body: notificationsAsync.when(
@@ -74,11 +128,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           onRetry: () => ref.invalidate(myNotificationsProvider),
         ),
         data: (items) {
+          final visible =
+              items.where((n) => !_dismissedIds.contains(n.id)).toList();
           final filteredItems = _selectedFilter == 'all'
-              ? items
+              ? visible
               : _selectedFilter == 'unread'
-                  ? items.where((n) => !n.read).toList()
-                  : items.where((n) => n.type == _selectedFilter).toList();
+                  ? visible.where((n) => !n.read).toList()
+                  : visible.where((n) => n.type == _selectedFilter).toList();
 
           return CustomScrollView(
             slivers: [
@@ -212,7 +268,25 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, i) => _NotificationTile(
+                      (context, i) => Dismissible(
+                        key: ValueKey('notification-${filteredItems[i].id}'),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.only(right: 20),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.delete_outline_rounded,
+                            color: Theme.of(context).colorScheme.onError,
+                          ),
+                        ),
+                        onDismissed: (_) =>
+                            _deleteOne(filteredItems[i].id),
+                        child: _NotificationTile(
                         notification: filteredItems[i],
                         onTap: () async {
                           await ref.read(
@@ -230,6 +304,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             }
                           }
                         },
+                      ),
                       ),
                       childCount: filteredItems.length,
                     ),

@@ -55,6 +55,14 @@ class MockNotificationRepository implements NotificationRepository {
   }
 
   @override
+  Future<void> delete(String notificationId) async {
+    _notifications.removeWhere((n) => n.id == notificationId);
+  }
+
+  @override
+  Future<void> clearAll() async => _notifications.clear();
+
+  @override
   Future<int> unreadCount() async =>
       _notifications.where((n) => !n.read).length;
 

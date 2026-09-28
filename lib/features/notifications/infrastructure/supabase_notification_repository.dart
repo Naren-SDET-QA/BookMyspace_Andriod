@@ -65,6 +65,32 @@ class SupabaseNotificationRepository implements NotificationRepository {
   }
 
   @override
+  Future<void> delete(String notificationId) async {
+    final userId = _userId;
+    if (userId == null) return;
+    try {
+      await _client
+          .from('notifications')
+          .delete()
+          .eq('id', notificationId)
+          .eq('user_id', userId);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<void> clearAll() async {
+    final userId = _userId;
+    if (userId == null) return;
+    try {
+      await _client.from('notifications').delete().eq('user_id', userId);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
   Future<int> unreadCount() async {
     final userId = _userId;
     if (userId == null) {

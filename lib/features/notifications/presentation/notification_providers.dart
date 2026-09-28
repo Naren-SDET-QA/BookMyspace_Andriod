@@ -73,6 +73,33 @@ final markAllNotificationsReadProvider = FutureProvider.autoDispose<void>((
   ref.invalidate(unreadNotificationsCountProvider);
 });
 
+/// Delete / clear-all actions for the inbox. Do not watch from build().
+class NotificationInboxController {
+  NotificationInboxController(this._ref);
+
+  final Ref _ref;
+
+  Future<void> delete(String notificationId) async {
+    await _ref.read(notificationRepositoryProvider).delete(notificationId);
+    _refresh();
+  }
+
+  Future<void> clearAll() async {
+    await _ref.read(notificationRepositoryProvider).clearAll();
+    _refresh();
+  }
+
+  void _refresh() {
+    _ref.invalidate(myNotificationsProvider);
+    _ref.invalidate(unreadNotificationsCountProvider);
+  }
+}
+
+final notificationInboxControllerProvider =
+    Provider<NotificationInboxController>(
+  (ref) => NotificationInboxController(ref),
+);
+
 final triggerTestReminderProvider =
     FutureProvider.autoDispose.family<void, Booking?>((ref, booking) async {
   final service = ref.watch(pushNotificationServiceProvider);
