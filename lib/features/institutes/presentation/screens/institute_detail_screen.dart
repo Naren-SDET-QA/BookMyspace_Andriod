@@ -10,6 +10,8 @@ import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../courses/domain/course.dart';
 import '../institute_providers.dart';
+import '../../../saved/domain/saved_item.dart';
+import '../../../saved/presentation/widgets/save_listing_button.dart';
 
 class InstituteDetailScreen extends ConsumerWidget {
   const InstituteDetailScreen({super.key, required this.instituteId});
@@ -32,6 +34,12 @@ class InstituteDetailScreen extends ConsumerWidget {
             SliverAppBar(
               expandedHeight: 220,
               pinned: true,
+              actions: [
+                SaveListingButton(
+                  type: SavedItemType.institute,
+                  id: institute.id,
+                ),
+              ],
               flexibleSpace: FlexibleSpaceBar(
                 title: Text(institute.name),
                 background: institute.coverUrl.isEmpty

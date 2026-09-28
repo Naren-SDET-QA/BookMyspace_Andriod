@@ -21,6 +21,8 @@ import '../course_providers.dart';
 import '../widgets/course_demo_actions.dart';
 import '../widgets/course_spec_card.dart';
 import '../widgets/feedback_dialog.dart';
+import '../../../saved/domain/saved_item.dart';
+import '../../../saved/presentation/widgets/save_listing_button.dart';
 
 /// Course details with batches and enroll/drop actions.
 ///
@@ -135,6 +137,7 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
             pinned: true,
             expandedHeight: 220,
             actions: [
+              SaveListingButton(type: SavedItemType.course, id: course.id),
               IconButton(
                 tooltip: l10n.share,
                 icon: const Icon(Icons.share_rounded),

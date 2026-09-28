@@ -12,7 +12,10 @@ import '../../../modules/presentation/module_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
+import '../../domain/saved_item.dart';
 import '../../domain/saved_venue_filter.dart';
+import '../saved_items_providers.dart';
+import '../widgets/saved_listings_tab.dart';
 
 /// Saved (favourited) venues with search (name / city) and a category
 /// filter derived from the saved venues.
@@ -49,9 +52,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     final user = ref.watch(currentUserProvider);
     final favorites = ref.watch(favoritesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.savedVenues)),
-      body: !enabled
+    final Widget venuesBody = !enabled
           ? const EmptyState(
               icon: Icons.favorite_border_rounded,
               title: 'Favorites are unavailable',
@@ -84,7 +85,39 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                 message: e.toString(),
                 onRetry: () => ref.invalidate(favoritesProvider),
               ),
-            ),
+            );
+
+    final savedIds = ref.watch(savedItemIdsProvider).valueOrNull ?? const {};
+    final showEducation = enabled &&
+        user != null &&
+        savedIds.values.any((ids) => ids.isNotEmpty);
+    if (!showEducation) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.savedVenues)),
+        body: venuesBody,
+      );
+    }
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Saved'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Venues'),
+              Tab(text: 'Courses'),
+              Tab(text: 'Institutes'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            venuesBody,
+            const SavedListingsTab(type: SavedItemType.course),
+            const SavedListingsTab(type: SavedItemType.institute),
+          ],
+        ),
+      ),
     );
   }
 

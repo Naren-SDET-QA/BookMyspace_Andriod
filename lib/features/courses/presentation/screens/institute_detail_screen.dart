@@ -11,6 +11,8 @@ import '../../domain/course.dart';
 import '../course_providers.dart';
 import '../widgets/course_card.dart';
 import '../widgets/external_link.dart';
+import '../../../saved/domain/saved_item.dart';
+import '../../../saved/presentation/widgets/save_listing_button.dart';
 
 /// Institute profile: logo, type, about, location, contact, timings and the
 /// published courses it offers.
@@ -63,6 +65,12 @@ class _InstituteBody extends ConsumerWidget {
         SliverAppBar(
           pinned: true,
           expandedHeight: 200,
+          actions: [
+            SaveListingButton(
+              type: SavedItemType.institute,
+              id: institute.id,
+            ),
+          ],
           flexibleSpace: FlexibleSpaceBar(
             background: AppNetworkImage(
               url: institute.images.isNotEmpty
