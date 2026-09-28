@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState, AuthUser;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    hide AuthState, AuthUser;
 
 import '../../features/accommodations/domain/accommodation.dart';
 import '../../features/accommodations/presentation/screens/accommodation_detail_screen.dart';
@@ -26,6 +27,7 @@ import '../../features/admin/presentation/screens/admin_feature_configuration_sc
 import '../../features/admin/presentation/screens/admin_health_screen.dart';
 import '../../features/admin/presentation/screens/admin_help_center_screen.dart';
 import '../../features/admin/presentation/screens/admin_listing_fields_screen.dart';
+import '../../features/admin/presentation/screens/admin_invoice_tax_settings_screen.dart';
 import '../../features/admin/presentation/screens/admin_listings_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_providers_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_screen.dart';
@@ -197,6 +199,7 @@ abstract class AppRoutes {
   static const receipt = '/bookings/:id/receipt';
   static const commercePayment = '/commerce/:id/pay';
   static const bookingResult = '/bookings/:id/status';
+
   /// Payment-side receipt (release/v1.0). The itemized GST receipt owns
   /// [receipt]; this one moved so both stay reachable.
   static const bookingReceipt = '/bookings/:id/payment-receipt';
@@ -248,12 +251,14 @@ abstract class AppRoutes {
   static const adminHelp = '/admin/help';
   static const adminPromotions = '/admin/promotions';
   static const adminListingFields = '/admin/listing-fields';
+  static const adminInvoiceTaxSettings = '/admin/invoice-tax-settings';
   static const adminVenueImport = '/admin/venue-import';
   static const adminVenueClaims = '/admin/venue-claims';
   static const adminRegistrationReviews = '/admin/registration-reviews';
   static const adminContent = '/admin/content';
   static const unifiedRegistration = '/register';
   static const adminLocations = '/admin/locations';
+
   /// Full-screen AI assistant (release/v1.0). [assistantTab] is the shell tab.
   static const assistant = '/ai-assistant';
   static const chat = '/chat';
@@ -261,6 +266,7 @@ abstract class AppRoutes {
   static const homePremium = '/home-premium';
   static const checkIn = '/check-in';
   static const institutesList = '/institutes';
+
   /// Institute *listing* dashboard (release/v1.0). The education dashboard
   /// owns [ownerInstituteDashboard] at `/owner/institute`.
   static const ownerInstitute = '/owner/institute-listing';
@@ -356,16 +362,28 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 // go_router 14.x requires these to be stable, top-level singletons — not
 // created inside build — so it can reliably resolve the correct navigator
 // when a parentNavigatorKey route (e.g. Settings) pushes above the shell.
-final _shellHomeNavKey      = GlobalKey<NavigatorState>(debugLabel: 'shell-home');
-final _shellAlertsNavKey    = GlobalKey<NavigatorState>(debugLabel: 'shell-alerts');
-final _shellSearchNavKey    = GlobalKey<NavigatorState>(debugLabel: 'shell-search');
-final _shellBookingsNavKey  = GlobalKey<NavigatorState>(debugLabel: 'shell-bookings');
-final _shellCoursesNavKey   = GlobalKey<NavigatorState>(debugLabel: 'shell-courses');
-final _shellProfileNavKey   = GlobalKey<NavigatorState>(debugLabel: 'shell-profile');
-final _shellAssistantNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell-assistant');
-final _shellMapNavKey       = GlobalKey<NavigatorState>(debugLabel: 'shell-map');
-final _shellSavedNavKey     = GlobalKey<NavigatorState>(debugLabel: 'shell-saved');
-final _shellChatNavKey      = GlobalKey<NavigatorState>(debugLabel: 'shell-chat');
+final _shellHomeNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell-home');
+final _shellAlertsNavKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shell-alerts',
+);
+final _shellSearchNavKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shell-search',
+);
+final _shellBookingsNavKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shell-bookings',
+);
+final _shellCoursesNavKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shell-courses',
+);
+final _shellProfileNavKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shell-profile',
+);
+final _shellAssistantNavKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shell-assistant',
+);
+final _shellMapNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell-map');
+final _shellSavedNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell-saved');
+final _shellChatNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell-chat');
 
 /// Returns an internal login URL that remembers the protected destination.
 ///
@@ -709,6 +727,14 @@ GoRouter createAppRouter({
         path: AppRoutes.adminListingFields,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AdminListingFieldsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminInvoiceTaxSettings,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminInvoiceTaxSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.adminContent,
@@ -1551,8 +1577,7 @@ GoRouter createAppRouter({
                 builder: (context, state) {
                   final params = SearchRouteParams.fromGoRouterState(state);
                   final extra = state.extra;
-                  final extraMap =
-                      extra is Map<String, dynamic> ? extra : null;
+                  final extraMap = extra is Map<String, dynamic> ? extra : null;
                   final category = extraMap?['category'] as String?;
                   final section = extraMap?['section'] as String?;
                   final query = extraMap?['query'] as String?;
@@ -1681,10 +1706,12 @@ String? resolveAppRedirect({
     // database roles (administrator, support agent, institute owner, ...);
     // the coarse role check below applies to the release/v1.0 routes only.
     final gatedByWidget = _roleGateRoutes.contains(location);
-    final isAdminRoute = !gatedByWidget &&
+    final isAdminRoute =
+        !gatedByWidget &&
         (location == AppRoutes.adminDashboard ||
             location.startsWith('/admin/'));
-    final isOwnerRoute = !gatedByWidget &&
+    final isOwnerRoute =
+        !gatedByWidget &&
         (location.startsWith('/owner') || location == AppRoutes.analytics);
     if (isAdminRoute && !currentUser.isAdmin) return AppRoutes.profile;
     if (isOwnerRoute && !currentUser.isOwner) return AppRoutes.profile;
@@ -1700,14 +1727,37 @@ String? resolveAppRedirect({
 
 /// Routes whose screens are wrapped in [RoleGate] (main lineage).
 const _roleGateRoutes = {
-  '/analytics', '/admin', '/admin/users', '/admin/owners', '/admin/venues',
-  '/admin/categories', '/admin/payments', '/admin/payments/ledger',
-  '/admin/events', '/admin/courses', '/admin/education', '/admin/support',
-  '/admin/audit', '/admin/cms', '/admin/integrations', '/admin/modules',
-  '/admin/home-layout', '/admin/theme', '/admin/nav-tabs', '/admin/catalog',
-  '/admin/media', '/admin/registration-reviews', '/owner', '/owner/categories', '/owner/venues',
-  '/owner/bookings', '/owner/institute', '/owner/courses',
-  '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
+  '/analytics',
+  '/admin',
+  '/admin/users',
+  '/admin/owners',
+  '/admin/venues',
+  '/admin/categories',
+  '/admin/payments',
+  '/admin/payments/ledger',
+  '/admin/events',
+  '/admin/courses',
+  '/admin/education',
+  '/admin/support',
+  '/admin/audit',
+  '/admin/cms',
+  '/admin/integrations',
+  '/admin/modules',
+  '/admin/home-layout',
+  '/admin/theme',
+  '/admin/nav-tabs',
+  '/admin/catalog',
+  '/admin/media',
+  '/admin/registration-reviews',
+  '/owner',
+  '/owner/categories',
+  '/owner/venues',
+  '/owner/bookings',
+  '/owner/institute',
+  '/owner/courses',
+  '/owner/courses/create',
+  '/owner/courses/edit',
+  '/owner/venues/create',
 };
 
 /// These Phase-1 flows require schemas/RPCs that are present only on the
@@ -1989,8 +2039,7 @@ IconData _shellIcon(String id, {required bool selected}) {
     'profile' => selected ? Icons.person_rounded : Icons.person_outline_rounded,
     'saved' =>
       selected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
-    'chat' =>
-      selected ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
+    'chat' => selected ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
     _ => selected ? Icons.home_rounded : Icons.home_outlined,
   };
 }
