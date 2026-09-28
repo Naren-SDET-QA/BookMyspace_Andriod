@@ -252,6 +252,7 @@ abstract class AppRoutes {
   static const adminInvoiceTaxSettings = '/admin/invoice-tax-settings';
   static const adminVenueImport = '/admin/venue-import';
   static const adminVenueClaims = '/admin/venue-claims';
+  static const ownerVenueDiscovery = '/owner/venue-discovery';
   static const adminRegistrationReviews = '/admin/registration-reviews';
   static const adminContent = '/admin/content';
   static const unifiedRegistration = '/register';
@@ -736,6 +737,17 @@ GoRouter createAppRouter({
         path: AppRoutes.adminVenueClaims,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AdminVenueClaimsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerVenueDiscovery,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => RoleGate(
+          requiredRoles: {AppRole.venueOwner},
+          child: VenueDiscoveryScreen(
+            repository: SupabaseDiscoveryRepository(Supabase.instance.client),
+            allowClaims: true,
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.unifiedRegistration,
@@ -1716,7 +1728,7 @@ const _roleGateRoutes = {
   '/admin/audit', '/admin/cms', '/admin/integrations', '/admin/modules',
   '/admin/home-layout', '/admin/theme', '/admin/nav-tabs', '/admin/catalog',
   '/admin/media', '/admin/registration-reviews', '/owner', '/owner/categories', '/owner/venues',
-  '/owner/bookings', '/owner/institute', '/owner/courses',
+  '/owner/bookings', '/owner/institute', '/owner/courses', '/owner/venue-discovery',
   '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
 };
 

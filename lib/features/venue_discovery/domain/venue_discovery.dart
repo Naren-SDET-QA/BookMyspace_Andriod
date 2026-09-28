@@ -19,6 +19,7 @@ class DiscoveredVenue {
     this.openingHours,
     this.category,
     this.sourceUrl,
+    this.stagingId,
     this.rawMetadata = const {},
     DateTime? discoveredAt,
   }) : discoveredAt = discoveredAt ?? null;
@@ -32,6 +33,11 @@ class DiscoveredVenue {
       openingHours,
       category,
       sourceUrl;
+
+  /// Database staging row, when this place came from the server discovery
+  /// pipeline. It is required for an owner claim and never treated as a
+  /// venue id.
+  final String? stagingId;
   final Map<String, dynamic> rawMetadata;
   final DateTime? discoveredAt;
 }

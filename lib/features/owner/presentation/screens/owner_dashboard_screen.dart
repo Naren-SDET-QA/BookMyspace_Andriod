@@ -119,6 +119,11 @@ class _OwnerDashboardBody extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.ownerVenues),
           ),
         ),
+        _QuickAction(
+          icon: Icons.travel_explore_rounded,
+          label: 'Find and claim a venue',
+          onTap: () => context.push(AppRoutes.ownerVenueDiscovery),
+        ),
         TestId(
           E2eIds.ownerActionBookings,
           child: _QuickAction(

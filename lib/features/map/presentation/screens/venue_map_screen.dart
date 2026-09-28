@@ -17,6 +17,8 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../home/presentation/discovery_location.dart';
+import '../../../venue_discovery/domain/discovered_place.dart';
+import '../../../venue_discovery/presentation/venue_discovery_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
@@ -145,6 +147,21 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     }
 
     _scrollToVenueInList(venue.id);
+  }
+
+  Future<void> _selectPlace(
+    DiscoveredPlace place, {
+    bool animateMap = true,
+  }) async {
+    final id = 'place:${place.id}';
+    setState(() => _selectedVenueId = id);
+    if (animateMap) {
+      await _animateTo(
+        LatLng(place.latitude, place.longitude),
+        math.max(_currentZoom, 14.5),
+      );
+    }
+    _scrollToVenueInList(id);
   }
 
   Future<void> _animateTo(LatLng target, double zoom) async {
@@ -277,6 +294,26 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     return markers;
   }
 
+  Set<Marker> _buildPlaceMarkers(List<DiscoveredPlace> places) {
+    return places
+        .map(
+          (place) => Marker(
+            markerId: MarkerId('place:${place.id}'),
+            position: LatLng(place.latitude, place.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueAzure,
+            ),
+            infoWindow: InfoWindow(
+              title: place.name,
+              snippet: 'External place · claim to list it',
+            ),
+            onTap: () => _selectPlace(place, animateMap: false),
+            zIndexInt: _selectedVenueId == 'place:${place.id}' ? 8 : 2,
+          ),
+        )
+        .toSet();
+  }
+
   List<fm.Marker> _buildOsmMarkers(List<VenueCluster> clusters) {
     final markers = <fm.Marker>[];
 
@@ -344,7 +381,34 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     return markers;
   }
 
-  LatLng _initialTarget(List<Venue> venues) {
+  List<fm.Marker> _buildOsmPlaceMarkers(List<DiscoveredPlace> places) {
+    return places
+        .map(
+          (place) => fm.Marker(
+            key: ValueKey('place:${place.id}'),
+            point: ll.LatLng(place.latitude, place.longitude),
+            width: 38,
+            height: 38,
+            alignment: Alignment.bottomCenter,
+            child: GestureDetector(
+              onTap: () => _selectPlace(place, animateMap: false),
+              child: Icon(
+                Icons.location_on,
+                color: _selectedVenueId == 'place:${place.id}'
+                    ? AppTheme.cyan
+                    : AppTheme.spotlightAmber,
+                size: 38,
+              ),
+            ),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  LatLng _initialTarget(
+    List<Venue> venues, [
+    List<DiscoveredPlace> places = const [],
+  ]) {
     if (_selectedVenueId != null) {
       final selected =
           venues.where((v) => v.id == _selectedVenueId).firstOrNull;
@@ -356,6 +420,10 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     if (firstWithCoords != null) {
       return LatLng(firstWithCoords.latitude, firstWithCoords.longitude);
     }
+    final firstPlace = places.firstOrNull;
+    if (firstPlace != null) {
+      return LatLng(firstPlace.latitude, firstPlace.longitude);
+    }
     return _mapCenter;
   }
 
@@ -366,6 +434,9 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     final query = _query;
     final categoriesAsync = ref.watch(venueCategoriesProvider);
     final searchResultsAsync = ref.watch(searchResultsProvider(query));
+    final externalPlacesAsync = ref.watch(
+      externalPlaceSearchProvider(query.query),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -417,8 +488,15 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
               Expanded(
                 child: searchResultsAsync.when(
                   data: (venues) {
+                    final places = DiscoveredPlace.deduplicate(
+                      externalPlacesAsync.valueOrNull ?? const [],
+                      venues,
+                    );
                     final clusters = _computeClusters(venues, _currentZoom);
-                    final markers = _buildMarkers(clusters);
+                    final markers = {
+                      ..._buildMarkers(clusters),
+                      ..._buildPlaceMarkers(places),
+                    };
 
                     // Ensure item keys for scrolling
                     for (final v in venues) {
@@ -432,14 +510,19 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                           // Left side: Interactive Map (55% width)
                           Expanded(
                             flex: 55,
-                            child: _buildLiveMap(markers, clusters, venues),
+                            child: _buildLiveMap(
+                              markers,
+                              clusters,
+                              venues,
+                              places,
+                            ),
                           ),
                           // Vertical divider
                           const VerticalDivider(width: 1, thickness: 1),
                           // Right side: Venue list with two-way selection (45% width)
                           Expanded(
                             flex: 45,
-                            child: _buildVenueList(venues, theme, l10n),
+                            child: _buildVenueList(venues, theme, l10n, places),
                           ),
                         ],
                       );
@@ -449,12 +532,17 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
                         children: [
                           Expanded(
                             flex: 55,
-                            child: _buildLiveMap(markers, clusters, venues),
+                            child: _buildLiveMap(
+                              markers,
+                              clusters,
+                              venues,
+                              places,
+                            ),
                           ),
                           const Divider(height: 1, thickness: 1),
                           Expanded(
                             flex: 45,
-                            child: _buildVenueList(venues, theme, l10n),
+                            child: _buildVenueList(venues, theme, l10n, places),
                           ),
                         ],
                       );
@@ -588,8 +676,9 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     Set<Marker> googleMarkers,
     List<VenueCluster> clusters,
     List<Venue> venues,
+    List<DiscoveredPlace> places,
   ) {
-    final initialTarget = _initialTarget(venues);
+    final initialTarget = _initialTarget(venues, places);
     if (kIsWeb) {
       return fm.FlutterMap(
         mapController: _osmController,
@@ -611,7 +700,12 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
         ),
         children: [
           const OsmTileLayer(),
-          fm.MarkerLayer(markers: _buildOsmMarkers(clusters)),
+          fm.MarkerLayer(
+            markers: [
+              ..._buildOsmMarkers(clusters),
+              ..._buildOsmPlaceMarkers(places),
+            ],
+          ),
           const OsmAttribution(),
         ],
       );
@@ -655,8 +749,9 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     List<Venue> venues,
     ThemeData theme,
     AppLocalizations l10n,
+    List<DiscoveredPlace> places,
   ) {
-    if (venues.isEmpty) {
+    if (venues.isEmpty && places.isEmpty) {
       return Center(
         child: EmptyState(
           icon: Icons.location_off_rounded,
@@ -669,9 +764,44 @@ class _VenueMapScreenState extends ConsumerState<VenueMapScreen> {
     return ListView.separated(
       controller: _listScrollController,
       padding: const EdgeInsets.all(12),
-      itemCount: venues.length,
+      itemCount: venues.length + places.length + (places.isEmpty ? 0 : 1),
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
+        if (places.isNotEmpty && index == venues.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 2),
+            child: Text(
+              'External places · not bookable yet',
+              style: theme.textTheme.titleSmall,
+            ),
+          );
+        }
+        if (index >= venues.length) {
+          final place = places[index - venues.length - 1];
+          final id = 'place:${place.id}';
+          final isSelected = id == _selectedVenueId;
+          _itemKeys.putIfAbsent(id, () => GlobalKey());
+          return KeyedSubtree(
+            key: _itemKeys[id],
+            child: Card(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerHighest,
+              child: ListTile(
+                leading: const Icon(Icons.location_on_outlined),
+                title: Text(place.name),
+                subtitle: Text(
+                  [
+                    if (place.address != null) place.address!,
+                    place.category ?? 'OpenStreetMap place',
+                  ].join('\n'),
+                ),
+                onTap: () => _selectPlace(place),
+              ),
+            ),
+          );
+        }
+
         final venue = venues[index];
         final isSelected = venue.id == _selectedVenueId;
 

@@ -4,9 +4,15 @@ import '../../infrastructure/overpass_discovery_service.dart';
 import '../../infrastructure/supabase_discovery_repository.dart';
 
 class VenueDiscoveryScreen extends StatefulWidget {
-  const VenueDiscoveryScreen({super.key, this.service, this.repository});
+  const VenueDiscoveryScreen({
+    super.key,
+    this.service,
+    this.repository,
+    this.allowClaims = false,
+  });
   final OverpassDiscoveryService? service;
   final SupabaseDiscoveryRepository? repository;
+  final bool allowClaims;
   @override
   State<VenueDiscoveryScreen> createState() => _VenueDiscoveryScreenState();
 }
@@ -69,6 +75,7 @@ class _VenueDiscoveryScreenState extends State<VenueDiscoveryScreen> {
                 openingHours: v['openingHours'] as String?,
                 category: v['category'] as String?,
                 sourceUrl: v['sourceUrl'] as String?,
+                stagingId: v['stagingId'] as String?,
                 rawMetadata: Map<String, dynamic>.from(
                   v['rawMetadata'] as Map? ?? const {},
                 ),
@@ -111,7 +118,13 @@ class _VenueDiscoveryScreenState extends State<VenueDiscoveryScreen> {
             Text('${venue.latitude}, ${venue.longitude}'),
             Text('${venue.source} • ${venue.sourcePlaceId}'),
             const SizedBox(height: 12),
-            if (alreadyStaged)
+            if (widget.allowClaims && venue.stagingId != null)
+              FilledButton.icon(
+                onPressed: () => _submitClaim(venue),
+                icon: const Icon(Icons.verified_user_outlined),
+                label: const Text('Claim this venue'),
+              )
+            else if (alreadyStaged)
               const Text(
                 'Already added to the admin review queue from this search.',
               )
@@ -128,6 +141,50 @@ class _VenueDiscoveryScreenState extends State<VenueDiscoveryScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitClaim(DiscoveredVenue venue) async {
+    final proof = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Claim this venue'),
+        content: TextField(
+          controller: proof,
+          maxLines: 4,
+          maxLength: 1000,
+          decoration: const InputDecoration(
+            labelText: 'Proof or contact note (optional)',
+            hintText: 'Tell the admin why you represent this place.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, proof.text.trim()),
+            child: const Text('Submit claim'),
+          ),
+        ],
+      ),
+    );
+    proof.dispose();
+    if (!mounted || note == null || venue.stagingId == null) return;
+    try {
+      await widget.repository!.submitClaim(venue.stagingId!, proofNote: note);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Claim submitted for admin approval.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not submit claim: $error')));
+    }
   }
 
   @override
