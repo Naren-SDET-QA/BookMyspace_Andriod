@@ -9,6 +9,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/router/search_route.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
+import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../cms/presentation/cms_providers.dart';
@@ -966,44 +967,7 @@ class _LanguageButton extends ConsumerWidget {
   }
 
   void _pick(BuildContext context, WidgetRef ref) {
-    final current = ref.read(localeProvider).languageCode;
-    showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.7,
-          ),
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: Text(
-                  'Choose language',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-              ),
-              for (final locale in AppLocalizations.supportedLocales)
-                ListTile(
-                  key: Key('premium-language-${locale.languageCode}'),
-                  title: Text(AppLocalizations.languageLabel(locale)),
-                  trailing: locale.languageCode == current
-                      ? const Icon(Icons.check_rounded, color: _violet)
-                      : null,
-                  onTap: () {
-                    ref.read(localeProvider.notifier).setLocale(locale);
-                    Navigator.pop(sheetContext);
-                  },
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+    showLanguagePickerSheet(context, ref, keyPrefix: 'premium-language');
   }
 }
 
