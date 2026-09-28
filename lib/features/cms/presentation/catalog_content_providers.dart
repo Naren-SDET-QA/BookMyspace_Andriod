@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/presentation/auth_providers.dart';
 import '../../modules/presentation/module_providers.dart';
 import '../domain/catalog_content.dart';
+import '../domain/category_health.dart';
+import '../infrastructure/supabase_category_listing_stats_repository.dart';
 
 /// Backend-driven discovery catalogue (Facility Type -> Section -> Subsection).
 ///
@@ -41,8 +44,10 @@ final visibleFacilityTypesProvider = Provider<List<CatalogFacilityType>>((ref) {
 
 /// One section by key, or `null` when this build's catalogue has no such
 /// section. Callers treat `null` as "fall back to the hardcoded entry".
-final catalogSectionProvider =
-    Provider.family<CatalogSection?, String>((ref, key) {
+final catalogSectionProvider = Provider.family<CatalogSection?, String>((
+  ref,
+  key,
+) {
   return ref.watch(catalogContentProvider).sectionFor(key);
 });
 
@@ -70,7 +75,9 @@ class CatalogContentController {
   /// admin that what they saved is not what they will get.
   Future<void> save(CatalogContent content) async {
     final flag = _ref.read(moduleFlagProvider(catalogContentFlagKey));
-    await _ref.read(featureFlagRepositoryProvider).saveFlag(
+    await _ref
+        .read(featureFlagRepositoryProvider)
+        .saveFlag(
           key: catalogContentFlagKey,
           enabled: true,
           platforms: flag.platforms.isEmpty
@@ -88,17 +95,34 @@ class CatalogContentController {
   /// [CatalogContent.defaults] on read.
   Future<void> resetToDefaults() async {
     final flag = _ref.read(moduleFlagProvider(catalogContentFlagKey));
-    await _ref.read(featureFlagRepositoryProvider).saveFlag(
-      key: catalogContentFlagKey,
-      enabled: true,
-      platforms: flag.platforms.isEmpty
-          ? const ['ios', 'android', 'web']
-          : flag.platforms,
-      config: const <String, dynamic>{},
-    );
+    await _ref
+        .read(featureFlagRepositoryProvider)
+        .saveFlag(
+          key: catalogContentFlagKey,
+          enabled: true,
+          platforms: flag.platforms.isEmpty
+              ? const ['ios', 'android', 'web']
+              : flag.platforms,
+          config: const <String, dynamic>{},
+        );
     _ref.invalidate(featureFlagsProvider);
   }
 }
 
-final catalogContentControllerProvider =
-    Provider<CatalogContentController>(CatalogContentController.new);
+final catalogContentControllerProvider = Provider<CatalogContentController>(
+  CatalogContentController.new,
+);
+
+/// Live listing counts per category slug for the admin catalogue health view.
+final categoryListingStatsRepositoryProvider =
+    Provider<CategoryListingStatsRepository>(
+      (ref) =>
+          SupabaseCategoryListingStatsRepository(ref.watch(supabaseProvider)),
+    );
+
+/// Listing stats keyed by `venue_categories.slug`. Loaded only when the
+/// health view is opened.
+final categoryListingStatsProvider =
+    FutureProvider.autoDispose<Map<String, CategoryListingStats>>(
+      (ref) => ref.watch(categoryListingStatsRepositoryProvider).statsBySlug(),
+    );

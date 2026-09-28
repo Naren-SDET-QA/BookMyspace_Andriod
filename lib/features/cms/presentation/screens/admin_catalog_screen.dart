@@ -7,6 +7,7 @@ import '../../domain/cms_icon.dart';
 import '../../domain/cms_localized_text.dart';
 import '../../domain/cms_media_ref.dart';
 import '../../domain/catalog_validation.dart';
+import '../../domain/category_health.dart';
 import '../../domain/facility_capabilities.dart';
 import '../catalog_content_providers.dart';
 import '../widgets/capability_editor.dart';
@@ -70,6 +71,12 @@ class CatalogSelection {
 /// removed.
 class AdminCatalogScreen extends ConsumerStatefulWidget {
   const AdminCatalogScreen({super.key});
+
+  static const healthButtonKey = Key('catalog-health-button');
+  static const needsHealingKey = Key('catalog-health-needs-healing');
+  static const healthListKey = Key('catalog-health-list');
+  static Key healthDisableKey(String key) => Key('catalog-health-disable-$key');
+  static Key healthEditKey(String key) => Key('catalog-health-edit-$key');
 
   @override
   ConsumerState<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
@@ -146,7 +153,8 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
   Future<void> _discard() async {
     final confirmed = await _confirm(
       title: 'Discard changes?',
-      message: 'Your unpublished edits will be lost. What customers currently '
+      message:
+          'Your unpublished edits will be lost. What customers currently '
           'see is not affected.',
       confirmLabel: 'Discard',
       destructive: true,
@@ -161,7 +169,8 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
   Future<void> _restoreDefaults() async {
     final confirmed = await _confirm(
       title: 'Restore the built-in catalogue?',
-      message: 'This replaces the whole catalogue with the one built into the '
+      message:
+          'This replaces the whole catalogue with the one built into the '
           'app. It is applied to your draft, so nothing changes for customers '
           'until you publish.',
       confirmLabel: 'Restore',
@@ -251,13 +260,15 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
       hint: 'for example stays',
     );
     if (created == null) return;
-    _mutate((content) => content.upsertFacilityType(
-          CatalogFacilityType(
-            key: created.key,
-            title: CmsLocalizedText(base: created.title),
-            order: _nextOrder(content.facilityTypes),
-          ),
-        ));
+    _mutate(
+      (content) => content.upsertFacilityType(
+        CatalogFacilityType(
+          key: created.key,
+          title: CmsLocalizedText(base: created.title),
+          order: _nextOrder(content.facilityTypes),
+        ),
+      ),
+    );
     _select(CatalogSelection(created.key));
   }
 
@@ -269,14 +280,16 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
     if (created == null) return;
     final type = _current().facilityTypeFor(typeKey);
     if (type == null) return;
-    _mutate((content) => content.upsertSection(
-          typeKey,
-          CatalogSection(
-            key: created.key,
-            title: CmsLocalizedText(base: created.title),
-            order: _nextOrder(type.sections),
-          ),
-        ));
+    _mutate(
+      (content) => content.upsertSection(
+        typeKey,
+        CatalogSection(
+          key: created.key,
+          title: CmsLocalizedText(base: created.title),
+          order: _nextOrder(type.sections),
+        ),
+      ),
+    );
     _select(CatalogSelection(typeKey, created.key));
   }
 
@@ -288,15 +301,17 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
     if (created == null) return;
     final section = _current().sectionFor(sectionKey);
     if (section == null) return;
-    _mutate((content) => content.upsertSubsection(
-          typeKey,
-          sectionKey,
-          CatalogSubsection(
-            key: created.key,
-            title: CmsLocalizedText(base: created.title),
-            order: _nextOrder(section.subsections),
-          ),
-        ));
+    _mutate(
+      (content) => content.upsertSubsection(
+        typeKey,
+        sectionKey,
+        CatalogSubsection(
+          key: created.key,
+          title: CmsLocalizedText(base: created.title),
+          order: _nextOrder(section.subsections),
+        ),
+      ),
+    );
     _select(CatalogSelection(typeKey, sectionKey, created.key));
   }
 
@@ -343,10 +358,8 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                     labelText: 'Id',
                     helperText: 'Permanent, $hint. Cannot be changed later.',
                   ),
-                  validator: (value) => CatalogValidator.fieldKey(
-                    value,
-                    existing: existing,
-                  ),
+                  validator: (value) =>
+                      CatalogValidator.fieldKey(value, existing: existing),
                   onChanged: (value) => key = value,
                 ),
               ],
@@ -377,13 +390,13 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
     final label = selection.isSubsection
         ? 'subsection'
         : selection.isSection
-            ? 'section'
-            : 'facility type';
+        ? 'section'
+        : 'facility type';
     final confirmed = await _confirm(
       title: 'Delete this $label?',
       message: selection.isSection
           ? 'Its subsections are deleted too. Nothing changes for customers '
-              'until you publish.'
+                'until you publish.'
           : 'Nothing changes for customers until you publish.',
       confirmLabel: 'Delete',
       destructive: true,
@@ -445,6 +458,63 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
   }
 
   // -------------------------------------------------------------------------
+  // Category health
+  // -------------------------------------------------------------------------
+
+  Future<void> _openHealth() async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final result = await showModalBottomSheet<_HealthFix>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: _CategoryHealthSheet(content: _current()),
+      ),
+    );
+    if (result == null || !mounted) return;
+    final item = result.item;
+    final selection = CatalogSelection(
+      item.typeKey,
+      item.sectionKey,
+      item.subsectionKey,
+    );
+    if (result.action == CategoryFixAction.edit) {
+      _select(selection);
+      return;
+    }
+    _mutate((content) {
+      final section = content.sectionFor(item.sectionKey);
+      if (section == null) return content;
+      final subKey = item.subsectionKey;
+      if (subKey == null) {
+        return content.upsertSection(
+          item.typeKey,
+          section.copyWith(enabled: false),
+        );
+      }
+      for (final sub in section.subsections) {
+        if (sub.key == subKey) {
+          return content.upsertSubsection(
+            item.typeKey,
+            item.sectionKey,
+            sub.copyWith(enabled: false),
+          );
+        }
+      }
+      return content;
+    });
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(
+          '"${item.title}" hidden in your draft. Publish to apply.',
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Build
   // -------------------------------------------------------------------------
 
@@ -489,6 +559,12 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
       appBar: AppBar(
         title: const Text('Discovery catalogue'),
         actions: [
+          IconButton(
+            key: AdminCatalogScreen.healthButtonKey,
+            tooltip: 'Category health',
+            icon: const Icon(Icons.health_and_safety_outlined),
+            onPressed: _openHealth,
+          ),
           if (!isWide)
             IconButton(
               tooltip: 'Preview',
@@ -497,10 +573,8 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                 context: context,
                 useRootNavigator: true,
                 isScrollControlled: true,
-                builder: (context) => FractionallySizedBox(
-                  heightFactor: 0.9,
-                  child: preview,
-                ),
+                builder: (context) =>
+                    FractionallySizedBox(heightFactor: 0.9, child: preview),
               ),
             ),
           PopupMenuButton<String>(
@@ -549,10 +623,7 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                 'previously published catalogue.',
               ),
               actions: [
-                TextButton(
-                  onPressed: _discard,
-                  child: const Text('Discard'),
-                ),
+                TextButton(onPressed: _discard, child: const Text('Discard')),
               ],
             ),
           Expanded(
@@ -571,16 +642,201 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                     ],
                   )
                 : _selection == null
-                    ? tree
-                    : Column(
-                        children: [
-                          _BackToTreeBar(onBack: () => _select(null)),
-                          Expanded(child: editor),
-                        ],
-                      ),
+                ? tree
+                : Column(
+                    children: [
+                      _BackToTreeBar(onBack: () => _select(null)),
+                      Expanded(child: editor),
+                    ],
+                  ),
           ),
         ],
       ),
+    );
+  }
+}
+
+@immutable
+class _HealthFix {
+  const _HealthFix(this.item, this.action);
+  final CategoryHealth item;
+  final CategoryFixAction action;
+}
+
+/// Health score per section/subsection with fix actions. Listing counts come
+/// from live venues; when they cannot be loaded only the content rules run.
+class _CategoryHealthSheet extends ConsumerStatefulWidget {
+  const _CategoryHealthSheet({required this.content});
+
+  final CatalogContent content;
+
+  @override
+  ConsumerState<_CategoryHealthSheet> createState() =>
+      _CategoryHealthSheetState();
+}
+
+class _CategoryHealthSheetState extends ConsumerState<_CategoryHealthSheet> {
+  bool _needsHealingOnly = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final statsAsync = ref.watch(categoryListingStatsProvider);
+    final stats = statsAsync.valueOrNull;
+    final all = CategoryHealthEngine.evaluate(
+      widget.content,
+      statsBySlug: stats,
+    );
+    final visible = _needsHealingOnly
+        ? all.where((h) => h.needsHealing).toList()
+        : all;
+    final attention = all.where((h) => h.needsHealing).length;
+    Color statusColor(CategoryHealthStatus status) => switch (status) {
+      CategoryHealthStatus.healthy => theme.colorScheme.primary,
+      CategoryHealthStatus.needsAttention => theme.colorScheme.tertiary,
+      CategoryHealthStatus.critical => theme.colorScheme.error,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Category health', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Text(
+                '$attention of ${all.length} categories need attention.',
+                style: theme.textTheme.bodySmall,
+              ),
+              if (statsAsync.isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: LinearProgressIndicator(),
+                ),
+              if (statsAsync.hasError)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Listing counts unavailable; only content checks ran.',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              FilterChip(
+                key: AdminCatalogScreen.needsHealingKey,
+                label: const Text('Needs healing'),
+                selected: _needsHealingOnly,
+                onSelected: (value) =>
+                    setState(() => _needsHealingOnly = value),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: visible.isEmpty
+              ? const Center(child: Text('Every category is healthy.'))
+              : ListView.separated(
+                  key: AdminCatalogScreen.healthListKey,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: visible.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final item = visible[i];
+                    final color = statusColor(item.status);
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleSmall,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${item.score} · ${item.status.label}',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              [
+                                item.subsectionKey == null
+                                    ? 'Section'
+                                    : 'Subsection',
+                                if (!item.enabled) 'hidden',
+                                if (item.stats != null)
+                                  '${item.stats!.listings} listing(s)',
+                              ].join(' · '),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                            for (final issue in item.issues)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  '• ${issue.message} (−${issue.penalty}) — '
+                                  '${issue.fixLabel}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                if (item.enabled)
+                                  TextButton.icon(
+                                    key: AdminCatalogScreen.healthDisableKey(
+                                      item.key,
+                                    ),
+                                    onPressed: () => Navigator.pop(
+                                      context,
+                                      _HealthFix(
+                                        item,
+                                        CategoryFixAction.disable,
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.visibility_off_outlined,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Disable'),
+                                  ),
+                                TextButton.icon(
+                                  key: AdminCatalogScreen.healthEditKey(
+                                    item.key,
+                                  ),
+                                  onPressed: () => Navigator.pop(
+                                    context,
+                                    _HealthFix(item, CategoryFixAction.edit),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Edit'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }
@@ -630,8 +886,8 @@ class _EmptyEditorHint extends StatelessWidget {
           'Pick something on the left to edit it.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
@@ -666,14 +922,16 @@ class _CatalogTree extends StatelessWidget {
   final void Function(List<CatalogNode>, int, int) onReorder;
 
   String _label(CatalogNode node) {
-    final resolved =
-        language.isEmpty ? node.title.base : node.title.resolve(language);
+    final resolved = language.isEmpty
+        ? node.title.base
+        : node.title.resolve(language);
     return resolved.trim().isEmpty ? node.key : resolved;
   }
 
   @override
   Widget build(BuildContext context) {
-    final types = [...content.facilityTypes]..sort((a, b) {
+    final types = [...content.facilityTypes]
+      ..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
       });
@@ -735,7 +993,8 @@ class _FacilityTypeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sections = [...type.sections]..sort((a, b) {
+    final sections = [...type.sections]
+      ..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
       });
@@ -830,11 +1089,13 @@ class _SectionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subs = [...section.subsections]..sort((a, b) {
+    final subs = [...section.subsections]
+      ..sort((a, b) {
         final byOrder = a.order.compareTo(b.order);
         return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
       });
-    final isSelected = selection?.sectionKey == section.key &&
+    final isSelected =
+        selection?.sectionKey == section.key &&
         selection?.subsectionKey == null;
 
     return Padding(
@@ -872,8 +1133,9 @@ class _SectionTile extends StatelessWidget {
               title: Text(
                 labelOf(subs[i]),
                 style: TextStyle(
-                  decoration:
-                      subs[i].enabled ? null : TextDecoration.lineThrough,
+                  decoration: subs[i].enabled
+                      ? null
+                      : TextDecoration.lineThrough,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -882,9 +1144,8 @@ class _SectionTile extends StatelessWidget {
                 canMoveDown: i < subs.length - 1,
                 onMove: (delta) => onReorder(subs, i, delta),
               ),
-              onTap: () => onSelect(
-                CatalogSelection(typeKey, section.key, subs[i].key),
-              ),
+              onTap: () =>
+                  onSelect(CatalogSelection(typeKey, section.key, subs[i].key)),
             ),
           Align(
             alignment: Alignment.centerLeft,
@@ -1054,7 +1315,9 @@ class _NodeEditor extends StatelessWidget {
   }
 
   static CatalogNode _copyDescription(
-      CatalogNode node, CmsLocalizedText value) {
+    CatalogNode node,
+    CmsLocalizedText value,
+  ) {
     if (node is CatalogFacilityType) return node.copyWith(description: value);
     if (node is CatalogSection) return node.copyWith(description: value);
     if (node is CatalogSubsection) return node.copyWith(description: value);
@@ -1071,27 +1334,30 @@ class _NodeEditor extends StatelessWidget {
   }) {
     if (node is CatalogFacilityType) {
       return node.copyWith(
-          iconId: iconId,
-          emoji: emoji,
-          media: media,
-          order: order,
-          enabled: enabled);
+        iconId: iconId,
+        emoji: emoji,
+        media: media,
+        order: order,
+        enabled: enabled,
+      );
     }
     if (node is CatalogSection) {
       return node.copyWith(
-          iconId: iconId,
-          emoji: emoji,
-          media: media,
-          order: order,
-          enabled: enabled);
+        iconId: iconId,
+        emoji: emoji,
+        media: media,
+        order: order,
+        enabled: enabled,
+      );
     }
     if (node is CatalogSubsection) {
       return node.copyWith(
-          iconId: iconId,
-          emoji: emoji,
-          media: media,
-          order: order,
-          enabled: enabled);
+        iconId: iconId,
+        emoji: emoji,
+        media: media,
+        order: order,
+        enabled: enabled,
+      );
     }
     return node;
   }
@@ -1122,28 +1388,33 @@ class _NodeEditor extends StatelessWidget {
 
     final theme = Theme.of(context);
     final isTranslating = language.isNotEmpty;
-    final canDelete = !selection.isFacilityType ||
+    final canDelete =
+        !selection.isFacilityType ||
         !CatalogContent.isShippedFacilityType(node.key);
 
     final levelLabel = selection.isSubsection
         ? 'Subsection'
         : selection.isSection
-            ? 'Section'
-            : 'Facility type';
+        ? 'Section'
+        : 'Facility type';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
         Text(levelLabel, style: theme.textTheme.labelMedium),
         const SizedBox(height: 2),
-        Text(node.key,
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800)),
+        Text(
+          node.key,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         Text(
           'Ids are permanent. Live venue categories are matched on them, so '
           'renaming one would disconnect content rather than move it.',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -1166,8 +1437,9 @@ class _NodeEditor extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               'Leave a field empty to use the default text.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         const SizedBox(height: 16),
@@ -1198,8 +1470,9 @@ class _NodeEditor extends StatelessWidget {
               ? node.description.overrides[language] ?? ''
               : node.description.base,
           decoration: InputDecoration(
-            labelText:
-                isTranslating ? 'Description translation' : 'Description',
+            labelText: isTranslating
+                ? 'Description translation'
+                : 'Description',
             border: const OutlineInputBorder(),
             helperText: 'Optional.',
             counterText: '',
@@ -1236,19 +1509,22 @@ class _NodeEditor extends StatelessWidget {
             decoration: const InputDecoration(
               labelText: 'Image address',
               border: OutlineInputBorder(),
-              helperText: 'Optional. Must start with https://. '
+              helperText:
+                  'Optional. Must start with https://. '
                   'Leave empty to use the built-in artwork.',
             ),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: CatalogValidator.fieldMediaUrl,
             onChanged: (value) {
               final trimmed = value.trim();
-              _write(_copyScalars(
-                node,
-                media: trimmed.isEmpty
-                    ? CmsMediaRef.none
-                    : CmsMediaRef.fromJson(trimmed),
-              ));
+              _write(
+                _copyScalars(
+                  node,
+                  media: trimmed.isEmpty
+                      ? CmsMediaRef.none
+                      : CmsMediaRef.fromJson(trimmed),
+                ),
+              );
             },
           ),
           if (node.media.isNotEmpty) ...[
@@ -1316,7 +1592,8 @@ class _NodeEditor extends StatelessWidget {
                   decoration: const InputDecoration(
                     labelText: 'Linked category slugs',
                     border: OutlineInputBorder(),
-                    helperText: 'Comma separated. These connect the section to '
+                    helperText:
+                        'Comma separated. These connect the section to '
                         'live venue categories. Leave as-is unless you know '
                         'the slug has changed.',
                   ),
@@ -1452,8 +1729,9 @@ class _CatalogPreview extends StatelessWidget {
           Text(
             'What customers would see if you published now. Hidden entries '
             'are left out.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           if (types.isEmpty)
@@ -1469,10 +1747,7 @@ class _CatalogPreview extends StatelessWidget {
             )
           else
             for (final type in types)
-              _PreviewFacilityType(
-                type: type,
-                languageCode: languageCode,
-              ),
+              _PreviewFacilityType(type: type, languageCode: languageCode),
         ],
       ),
     );
@@ -1480,10 +1755,7 @@ class _CatalogPreview extends StatelessWidget {
 }
 
 class _PreviewFacilityType extends StatelessWidget {
-  const _PreviewFacilityType({
-    required this.type,
-    required this.languageCode,
-  });
+  const _PreviewFacilityType({required this.type, required this.languageCode});
 
   final CatalogFacilityType type;
   final String languageCode;
@@ -1505,8 +1777,9 @@ class _PreviewFacilityType extends StatelessWidget {
               Flexible(
                 child: Text(
                   type.titleFor(languageCode, fallback: type.key),
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -1515,8 +1788,9 @@ class _PreviewFacilityType extends StatelessWidget {
           if (sections.isEmpty)
             Text(
               'No visible sections.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             )
           else
             for (final section in sections)
@@ -1577,8 +1851,9 @@ class _PreviewSection extends StatelessWidget {
                           languageCode,
                           fallback: section.key,
                         ),
-                        style: theme.textTheme.bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
