@@ -18,6 +18,7 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
   OwnerBookingAction? lastAction;
   String? lastDecidedBookingId;
   OwnerBookingDecision? lastDecision;
+  String? lastDecisionReason;
 
   @override
   Future<List<Booking>> myVenueBookings() async => List.of(_bookings);
@@ -103,10 +104,12 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
   @override
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
-    OwnerBookingDecision decision,
-  ) async {
+    OwnerBookingDecision decision, {
+    String? reason,
+  }) async {
     lastDecidedBookingId = bookingId;
     lastDecision = decision;
+    lastDecisionReason = reason;
     if (failDecideBooking) {
       throw decideBookingError ?? Exception('decide failed');
     }
@@ -138,6 +141,9 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
       paymentRef: current.paymentRef,
       paidAt: current.paidAt,
       metadata: current.metadata,
+      rejectionReason: decision == OwnerBookingDecision.reject
+          ? reason
+          : current.rejectionReason,
     );
     _bookings[index] = updated;
     return BookingDecisionOutcome(

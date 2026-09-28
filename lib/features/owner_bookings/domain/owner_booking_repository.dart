@@ -68,8 +68,17 @@ abstract interface class OwnerBookingRepository {
   /// (the server also creates a `booking_orders` row); reject moves it to
   /// `rejected` and, for a captured online payment, triggers the existing
   /// server-side refund flow.
+  ///
+  /// Requests that are still awaiting approval before payment
+  /// (`status == awaiting_owner_approval`) are decided through the
+  /// `approve_venue_booking` / `reject_venue_booking` RPCs instead.
+  ///
+  /// [reason] is the owner's rejection reason shown to the customer. It is
+  /// persisted by `reject_venue_booking(p_reason)` and forwarded to the
+  /// decision endpoint for paid bookings. Ignored for approvals.
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
-    OwnerBookingDecision decision,
-  );
+    OwnerBookingDecision decision, {
+    String? reason,
+  });
 }

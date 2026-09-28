@@ -6,6 +6,7 @@ import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/owner_bookings/domain/owner_booking_repository.dart';
 import 'package:bookmyspace/features/owner_bookings/presentation/owner_booking_providers.dart';
 import 'package:bookmyspace/features/owner_bookings/presentation/screens/owner_bookings_screen.dart';
+import 'package:bookmyspace/features/owner_bookings/presentation/widgets/reject_reason_dialog.dart';
 import 'package:bookmyspace/features/owner_venues/presentation/providers/owner_venue_providers.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:flutter/material.dart';
@@ -198,12 +199,14 @@ void main() {
       await tester.tap(find.text('Reject'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Reject'), findsNWidgets(3));
-      await tester.tap(find.text('Reject').last);
+      await tester.tap(find.byKey(RejectReasonDialog.presetKey(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(RejectReasonDialog.confirmKey));
       await tester.pumpAndSettle();
 
       expect(bookingRepo.lastDecidedBookingId, 'b1');
       expect(bookingRepo.lastDecision, OwnerBookingDecision.reject);
+      expect(bookingRepo.lastDecisionReason, kBookingRejectionPresets[1]);
       expect(find.text('Booking rejected. Refund requested.'), findsOneWidget);
     },
   );
@@ -221,36 +224,65 @@ void main() {
 
       await tester.tap(find.text('Reject'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reject').last);
+      await tester.enterText(
+        find.byKey(RejectReasonDialog.reasonFieldKey),
+        '  Hall closed for repairs  ',
+      );
+      await tester.tap(find.byKey(RejectReasonDialog.confirmKey));
       await tester.pumpAndSettle();
 
       expect(bookingRepo.lastDecision, OwnerBookingDecision.reject);
+      expect(bookingRepo.lastDecisionReason, 'Hall closed for repairs');
       expect(find.text('Booking rejected'), findsOneWidget);
     },
   );
 
-  testWidgets(
-    'a failed decision shows the error and leaves status unchanged',
-    (tester) async {
-      final bookingRepo = MockOwnerBookingRepository(
-        bookings: [_booking(status: BookingStatus.pendingOwnerApproval)],
-      )..failDecideBooking = true;
-      final ownerVenueRepo = MockOwnerVenueRepository();
+  testWidgets('reject requires a reason and can be cancelled', (tester) async {
+    final bookingRepo = MockOwnerBookingRepository(
+      bookings: [_booking(status: BookingStatus.awaitingOwnerApproval)],
+    );
+    final ownerVenueRepo = MockOwnerVenueRepository();
 
-      await tester.pumpWidget(_app(bookingRepo, ownerVenueRepo));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_app(bookingRepo, ownerVenueRepo));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Approve'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Approve').last);
-      await tester.pumpAndSettle();
+    // awaiting_owner_approval requests get the decision actions too.
+    expect(find.text('Approve'), findsOneWidget);
+    await tester.tap(find.text('Reject'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Exception: decide failed'), findsOneWidget);
-      // Buttons remain because the status never changed.
-      expect(find.text('Approve'), findsOneWidget);
-      expect(find.text('Reject'), findsOneWidget);
-    },
-  );
+    await tester.tap(find.byKey(RejectReasonDialog.confirmKey));
+    await tester.pumpAndSettle();
+    expect(find.text('Please enter a reason'), findsOneWidget);
+    expect(bookingRepo.lastDecision, isNull);
+
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(RejectReasonDialog), findsNothing);
+    expect(bookingRepo.lastDecision, isNull);
+  });
+
+  testWidgets('a failed decision shows the error and leaves status unchanged', (
+    tester,
+  ) async {
+    final bookingRepo = MockOwnerBookingRepository(
+      bookings: [_booking(status: BookingStatus.pendingOwnerApproval)],
+    )..failDecideBooking = true;
+    final ownerVenueRepo = MockOwnerVenueRepository();
+
+    await tester.pumpWidget(_app(bookingRepo, ownerVenueRepo));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Approve').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Exception: decide failed'), findsOneWidget);
+    // Buttons remain because the status never changed.
+    expect(find.text('Approve'), findsOneWidget);
+    expect(find.text('Reject'), findsOneWidget);
+  });
 
   testWidgets('shows empty state when the owner has no venues', (tester) async {
     final bookingRepo = MockOwnerBookingRepository();

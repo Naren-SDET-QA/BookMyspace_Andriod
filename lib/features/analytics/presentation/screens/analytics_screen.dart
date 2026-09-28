@@ -7,6 +7,7 @@ import '../../../../core/modular/feature_id.dart';
 import '../../../../core/modular/feature_providers.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../booking/domain/booking.dart';
 import '../../../owner_bookings/presentation/owner_booking_providers.dart';
 import '../../domain/analytics_display_config.dart';
 import '../../domain/peak_hours_analytics.dart';
@@ -19,6 +20,8 @@ import '../../domain/analytics_event.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
+
+  static const venueFilterKey = Key('analytics-venue-filter');
   @override
   ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
@@ -26,6 +29,29 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   late DateTimeRange _range;
   var _dayFilter = PeakHoursDayFilter.all;
+
+  /// Venue filter for the booking-level sections (null = all venues).
+  String? _venueId;
+
+  BusinessReport? _currentBusinessReport() {
+    final bookings = ref.read(ownerBookingsProvider).valueOrNull;
+    if (bookings == null) return null;
+    return BusinessReportCalculator.build(
+      bookings: bookings,
+      start: _range.start,
+      end: _range.end,
+      venueId: _venueId,
+    );
+  }
+
+  String? _venueName(List<Booking> bookings) {
+    if (_venueId == null) return null;
+    for (final b in bookings) {
+      if (b.venueId == _venueId && b.venueName.isNotEmpty) return b.venueName;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +67,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final enabled = ref.watch(moduleEnabledProvider('analytics'));
     if (!enabled) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context).analyticsLabel)),
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context).analyticsLabel),
+        ),
         body: const EmptyState(
           icon: Icons.analytics_outlined,
           title: 'Analytics is unavailable',
@@ -64,8 +92,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             IconButton(
               tooltip: 'Share report',
               icon: const Icon(Icons.share_rounded),
-              onPressed: () =>
-                  _shareReport(context, query.value!, _range),
+              onPressed: () => _shareReport(
+                context,
+                query.value!,
+                _range,
+                business: _currentBusinessReport(),
+                venueName: _venueName(
+                  ref.read(ownerBookingsProvider).valueOrNull ?? const [],
+                ),
+              ),
             ),
         ],
       ),
@@ -114,6 +149,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   )
                 : _Dashboard(data: data, display: display),
           ),
+          _businessReportSection(),
           if (display.showCharts) _peakHoursSection(),
           _recentEventsSection(),
         ],
@@ -148,24 +184,63 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   /// app's daily/weekly report share action, built from the same
   /// server-computed [RevenueAnalytics] already on screen (no separate
   /// report data source).
-  static String _reportSummaryText(RevenueAnalytics data, DateTimeRange range) {
+  static String _reportSummaryText(
+    RevenueAnalytics data,
+    DateTimeRange range, {
+    BusinessReport? business,
+    String? venueName,
+  }) {
     final fmt = DateFormat.yMMMd();
     String inr(double v) => '₹${v.toStringAsFixed(2)}';
-    return 'BookMySpace report: ${fmt.format(range.start)} - ${fmt.format(range.end)}\n'
-        'Total revenue: ${inr(data.totalRevenue)}\n'
-        'Net revenue: ${inr(data.netRevenue)}\n'
-        'Successful bookings: ${data.successfulBookings}\n'
-        'Cancelled bookings: ${data.cancelledBookings}\n'
-        'Refund amount: ${inr(data.refundAmount)}\n'
-        'Average booking value: ${inr(data.averageBookingValue)}';
+    final buffer = StringBuffer(
+      'BookMySpace report: ${fmt.format(range.start)} - ${fmt.format(range.end)}\n'
+      'Total revenue: ${inr(data.totalRevenue)}\n'
+      'Net revenue: ${inr(data.netRevenue)}\n'
+      'Successful bookings: ${data.successfulBookings}\n'
+      'Cancelled bookings: ${data.cancelledBookings}\n'
+      'Refund amount: ${inr(data.refundAmount)}\n'
+      'Average booking value: ${inr(data.averageBookingValue)}',
+    );
+    if (business != null && !business.isEmpty) {
+      buffer
+        ..write('\n\nBooking breakdown')
+        ..write(venueName == null ? ' (all venues)' : ' ($venueName)')
+        ..write(':\n')
+        ..write(
+          'Online: ${business.onlineCount} '
+          '(${business.onlinePercent.toStringAsFixed(0)}%) · '
+          'Pay at venue: ${business.payAtVenueCount} '
+          '(${business.payAtVenuePercent.toStringAsFixed(0)}%)\n',
+        );
+      for (final split in business.methodSplit) {
+        buffer.write(
+          '${split.kind.label}: ${inr(split.amount)} · ${split.count} '
+          '(${split.percent.toStringAsFixed(0)}%)\n',
+        );
+      }
+      buffer
+        ..write(
+          'Advance tokens collected: '
+          '${inr(business.advanceTokensCollected)}\n',
+        )
+        ..write('Total guests: ${business.totalGuests}');
+    }
+    return buffer.toString();
   }
 
   Future<void> _shareReport(
     BuildContext context,
     RevenueAnalytics data,
-    DateTimeRange range,
-  ) async {
-    final summary = _reportSummaryText(data, range);
+    DateTimeRange range, {
+    BusinessReport? business,
+    String? venueName,
+  }) async {
+    final summary = _reportSummaryText(
+      data,
+      range,
+      business: business,
+      venueName: venueName,
+    );
     await showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -228,6 +303,71 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
+  /// Payment-method split, online vs pay-at-venue, advance tokens and
+  /// guests, computed from the owner's booking rows with a venue filter.
+  Widget _businessReportSection() {
+    final bookings = ref.watch(ownerBookingsProvider);
+    return bookings.maybeWhen(
+      data: (items) {
+        final venues = <String, String>{};
+        for (final b in items) {
+          if (b.venueId.isEmpty) continue;
+          venues.putIfAbsent(
+            b.venueId,
+            () => b.venueName.isEmpty ? 'Venue' : b.venueName,
+          );
+        }
+        if (_venueId != null && !venues.containsKey(_venueId)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _venueId = null);
+          });
+        }
+        final report = BusinessReportCalculator.build(
+          bookings: items,
+          start: _range.start,
+          end: _range.end,
+          venueId: _venueId,
+        );
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: _BusinessReportCard(
+            report: report,
+            venueFilter: venues.length < 2
+                ? null
+                : DropdownButtonFormField<String?>(
+                    key: AnalyticsScreen.venueFilterKey,
+                    initialValue: venues.containsKey(_venueId)
+                        ? _venueId
+                        : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Venue',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('All venues'),
+                      ),
+                      for (final entry in venues.entries)
+                        DropdownMenuItem<String?>(
+                          value: entry.key,
+                          child: Text(
+                            entry.value,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _venueId = value),
+                  ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
   Widget _peakHoursSection() {
     final bookings = ref.watch(ownerBookingsProvider);
     return bookings.when(
@@ -248,6 +388,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           start: _range.start,
           end: _range.end,
           dayFilter: _dayFilter,
+          venueIds: _venueId == null ? null : {_venueId!},
         );
         return PeakHoursChart(
           report: report,
@@ -306,6 +447,129 @@ class _Dashboard extends StatelessWidget {
   }
 }
 
+class _BusinessReportCard extends StatelessWidget {
+  const _BusinessReportCard({required this.report, this.venueFilter});
+
+  final BusinessReport report;
+  final Widget? venueFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    String inr(double v) => '₹${v.toStringAsFixed(0)}';
+    Widget stat(String label, String value) => Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall,
+          ),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium,
+          ),
+        ],
+      ),
+    );
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Business report', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'Confirmed and paid bookings in the selected range.',
+              style: theme.textTheme.bodySmall,
+            ),
+            if (venueFilter != null) ...[
+              const SizedBox(height: 12),
+              venueFilter!,
+            ],
+            const SizedBox(height: 12),
+            if (report.isEmpty)
+              const Text('No confirmed bookings in this range.')
+            else ...[
+              Row(
+                children: [
+                  stat(
+                    'Online',
+                    '${report.onlineCount} · '
+                        '${report.onlinePercent.toStringAsFixed(0)}%',
+                  ),
+                  const SizedBox(width: 12),
+                  stat(
+                    'Pay at venue',
+                    '${report.payAtVenueCount} · '
+                        '${report.payAtVenuePercent.toStringAsFixed(0)}%',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: report.onlinePercent / 100,
+                  minHeight: 8,
+                  backgroundColor: theme.colorScheme.tertiaryContainer,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  stat('Advance tokens', inr(report.advanceTokensCollected)),
+                  const SizedBox(width: 12),
+                  stat('Total guests', '${report.totalGuests}'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text('Payment methods', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 4),
+              for (final split in report.methodSplit)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              split.kind.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            '${inr(split.amount)} · ${split.count} · '
+                            '${split.percent.toStringAsFixed(0)}%',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: split.percent / 100,
+                        minHeight: 4,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Kpi extends StatelessWidget {
   const _Kpi(this.label, this.value);
   final String label;
@@ -318,13 +582,22 @@ class _Kpi extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 6),
           Text(
-            value is double
-                ? '₹${(value as double).toStringAsFixed(2)}'
-                : '$value',
-            style: Theme.of(context).textTheme.titleMedium,
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value is double
+                  ? '₹${(value as double).toStringAsFixed(2)}'
+                  : '$value',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
         ],
       ),

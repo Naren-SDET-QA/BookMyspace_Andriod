@@ -31,6 +31,7 @@ import '../../features/admin/presentation/screens/admin_observability_providers_
 import '../../features/admin/presentation/screens/admin_observability_screen.dart';
 import '../../features/admin/presentation/screens/admin_oversight_screen.dart';
 import '../../features/admin/presentation/screens/admin_promotions_screen.dart';
+import '../../features/admin/presentation/screens/admin_registration_reviews_screen.dart';
 import '../../features/admin/presentation/screens/admin_settings_screen.dart';
 import '../../features/admin/presentation/screens/admin_tenant_configuration_screen.dart';
 import '../../features/admin/presentation/screens/admin_venue_claims_screen.dart';
@@ -248,6 +249,7 @@ abstract class AppRoutes {
   static const adminListingFields = '/admin/listing-fields';
   static const adminVenueImport = '/admin/venue-import';
   static const adminVenueClaims = '/admin/venue-claims';
+  static const adminRegistrationReviews = '/admin/registration-reviews';
   static const adminContent = '/admin/content';
   static const unifiedRegistration = '/register';
   static const adminLocations = '/admin/locations';
@@ -676,6 +678,14 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) =>
             const AdminOversightScreen(kind: AdminOversightKind.bookings),
+      ),
+      GoRoute(
+        path: AppRoutes.adminRegistrationReviews,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminRegistrationReviewsScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.adminPaymentsOversight,
@@ -1694,7 +1704,7 @@ const _roleGateRoutes = {
   '/admin/events', '/admin/courses', '/admin/education', '/admin/support',
   '/admin/audit', '/admin/cms', '/admin/integrations', '/admin/modules',
   '/admin/home-layout', '/admin/theme', '/admin/nav-tabs', '/admin/catalog',
-  '/admin/media', '/owner', '/owner/categories', '/owner/venues',
+  '/admin/media', '/admin/registration-reviews', '/owner', '/owner/categories', '/owner/venues',
   '/owner/bookings', '/owner/institute', '/owner/courses',
   '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
 };

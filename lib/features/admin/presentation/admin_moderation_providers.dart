@@ -24,7 +24,7 @@ final adminListingsProvider =
 final adminBookingsOversightProvider = FutureProvider<List<OversightRow>>((
   ref,
 ) {
-  return ref.watch(listingModerationRepositoryProvider).bookings();
+  return ref.watch(listingModerationRepositoryProvider).bookings(limit: 200);
 });
 
 final adminPaymentsOversightProvider = FutureProvider<List<OversightRow>>((

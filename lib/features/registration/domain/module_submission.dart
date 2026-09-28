@@ -7,6 +7,9 @@ class ModuleSubmission {
     this.bookingId,
     this.rejectionReason,
     this.createdAt,
+    this.customerUserId,
+    this.submittedAt,
+    this.values = const {},
   });
   final String id;
   final String moduleKey;
@@ -15,6 +18,11 @@ class ModuleSubmission {
   final String? bookingId;
   final String? rejectionReason;
   final DateTime? createdAt;
+  final String? customerUserId;
+  final DateTime? submittedAt;
+
+  /// Raw submitted form values keyed by field key.
+  final Map<String, dynamic> values;
 
   factory ModuleSubmission.fromJson(Map<String, dynamic> json) =>
       ModuleSubmission(
@@ -25,5 +33,10 @@ class ModuleSubmission {
         bookingId: json['booking_id'] as String?,
         rejectionReason: json['rejection_reason'] as String?,
         createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
+        customerUserId: json['customer_user_id'] as String?,
+        submittedAt: DateTime.tryParse(json['submitted_at'] as String? ?? ''),
+        values: json['values'] is Map
+            ? Map<String, dynamic>.from(json['values'] as Map)
+            : const {},
       );
 }
