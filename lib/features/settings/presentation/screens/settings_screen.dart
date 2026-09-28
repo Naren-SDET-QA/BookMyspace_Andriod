@@ -6,8 +6,9 @@ import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../auth/presentation/auth_providers.dart';
+import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../../core/widgets/responsive_layout.dart';
+import '../../../auth/presentation/auth_providers.dart';
 
 /// Settings screen: theme, language and account management entry points.
 class SettingsScreen extends ConsumerWidget {
@@ -22,8 +23,10 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: Text(l10n.settings,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          l10n.settings,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: ResponsiveLayoutBuilder(
         builder: (context, responsive) => ListView(
@@ -47,13 +50,16 @@ class SettingsScreen extends ConsumerWidget {
                         Text(
                           l10n.home3dEffects,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 14),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
                         Text(
                           l10n.home3dEffectsSubtitle,
                           style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onSurfaceVariant),
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -67,6 +73,25 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+            _SwitchSettingsTile(
+              key: const Key('settings-simple-mode'),
+              icon: Icons.accessibility_new_rounded,
+              title: 'Simple Mode',
+              subtitle: 'Larger text and easier controls',
+              value: ref.watch(simpleModeProvider),
+              onChanged: (enabled) =>
+                  ref.read(simpleModeProvider.notifier).setEnabled(enabled),
+            ),
+            _SwitchSettingsTile(
+              key: const Key('settings-quick-book'),
+              icon: Icons.flash_on_rounded,
+              title: '1-Tap Quick Booking',
+              subtitle: 'Skip optional steps when booking',
+              value: ref.watch(bookingModeProvider) == BookingMode.quick,
+              onChanged: (enabled) => ref
+                  .read(bookingModeProvider.notifier)
+                  .setMode(enabled ? BookingMode.quick : BookingMode.normal),
             ),
             _GlassSettingsTile(
               icon: Icons.language_rounded,
@@ -142,52 +167,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('English'),
-              onTap: () {
-                ref.read(localeProvider.notifier).setLocale(const Locale('en'));
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: const Text('తెలుగు'),
-              onTap: () {
-                ref.read(localeProvider.notifier).setLocale(const Locale('te'));
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: const Text('हिन्दी'),
-              onTap: () {
-                ref.read(localeProvider.notifier).setLocale(const Locale('hi'));
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: const Text('ಕನ್ನಡ'),
-              onTap: () {
-                ref.read(localeProvider.notifier).setLocale(const Locale('kn'));
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              title: const Text('தமிழ்'),
-              onTap: () {
-                ref.read(localeProvider.notifier).setLocale(const Locale('ta'));
-                Navigator.pop(sheetContext);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+    showLanguagePickerSheet(context, ref, keyPrefix: 'settings-language');
   }
 
   void _showAboutDialog(BuildContext context, AppLocalizations l10n) {
@@ -301,10 +281,10 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
+      ),
     );
   }
 }
@@ -397,14 +377,71 @@ class _GlassSettingsTile extends StatelessWidget {
                 if (onTap != null && child == null)
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: theme.colorScheme.onSurfaceVariant
-                        .withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.6,
+                    ),
                     size: 20,
                   ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SwitchSettingsTile extends StatelessWidget {
+  const _SwitchSettingsTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _GlassSettingsTile(
+      icon: icon,
+      iconColor: AppTheme.violet,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppTheme.violet,
+          ),
+        ],
       ),
     );
   }

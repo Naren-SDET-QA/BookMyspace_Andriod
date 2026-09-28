@@ -27,11 +27,7 @@ Future<void> showClassEnrollmentSheet(
     showDragHandle: true,
     builder: (context) => Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: _EnrollmentForm(
-        course: course,
-        batch: batch,
-        isTrial: isTrial,
-      ),
+      child: _EnrollmentForm(course: course, batch: batch, isTrial: isTrial),
     ),
   );
 }
@@ -56,13 +52,29 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
   final Map<String, dynamic> _answers = {};
   DateTime _start = DateTime.now();
   bool _busy = false;
+  bool _agreedToTerms = false;
+  CourseMode _modePreference = CourseMode.offline;
   String? _error;
 
+  /// Answer key under which the learner's offline/online preference for a
+  /// hybrid batch is stored in the enrollment's `form_answers`.
+  static const modePreferenceKey = 'delivery_mode_preference';
+
+  bool get _isHybrid =>
+      (widget.batch.mode ?? widget.course.mode) == CourseMode.hybrid;
+
   Future<void> _submit(ConfigurableFormSchema schema) async {
+    if (!_agreedToTerms) {
+      setState(() => _error = 'Please agree to the terms to continue.');
+      return;
+    }
     final errors = schema.validateAnswers(_answers);
     if (errors.isNotEmpty || !(_formKey.currentState?.validate() ?? false)) {
-      setState(() => _error =
-          errors.values.isEmpty ? 'Check the form.' : errors.values.first);
+      setState(
+        () => _error = errors.values.isEmpty
+            ? 'Check the form.'
+            : errors.values.first,
+      );
       return;
     }
     if (ref.read(currentUserProvider) == null) {
@@ -76,14 +88,19 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
       _error = null;
     });
     try {
-      final record = await ref.read(courseEnrollmentControllerProvider).enroll(
+      final record = await ref
+          .read(courseEnrollmentControllerProvider)
+          .enroll(
             courseId: widget.course.id,
             batchId: widget.batch.id,
             isTrial: widget.isTrial,
             studentName: (_answers['full_name'] ?? '').toString(),
             contactPhone: (_answers['mobile'] ?? '').toString(),
             preferredStart: _start,
-            formAnswers: Map<String, dynamic>.from(_answers),
+            formAnswers: {
+              ..._answers,
+              if (_isHybrid) modePreferenceKey: _modePreference.dbValue,
+            },
           );
       if (!mounted) return;
       Navigator.pop(context);
@@ -109,12 +126,15 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
     final seatsLeft = widget.batch.seatsLeft;
     final total = widget.batch.capacity;
     final isLow = seatsLeft <= 5 && !widget.isTrial;
-    final instituteAsync =
-        ref.watch(instituteDetailProvider(widget.course.instituteId));
+    final instituteAsync = ref.watch(
+      instituteDetailProvider(widget.course.instituteId),
+    );
     final institute = instituteAsync.valueOrNull;
-    final schema = institute?.publishedRegistrationForm ??
+    final schema =
+        institute?.publishedRegistrationForm ??
         ConfigurableFormSchema.defaults();
-    final showSeats = widget.course.instituteModules.enabled('seats') &&
+    final showSeats =
+        widget.course.instituteModules.enabled('seats') &&
         (institute?.modules.enabled('seats') ?? true);
 
     return SafeArea(
@@ -181,8 +201,9 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                                 Text(
                                   'Enroll now to secure your seat',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: const Color(0xFFEF4444)
-                                        .withValues(alpha: 0.8),
+                                    color: const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.8),
                                   ),
                                 ),
                             ],
@@ -214,13 +235,67 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                     if (picked != null) setState(() => _start = picked);
                   },
                 ),
+                if (_isHybrid) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'How would you like to attend?',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<CourseMode>(
+                    key: const Key('enroll-mode-preference'),
+                    segments: const [
+                      ButtonSegment(
+                        value: CourseMode.offline,
+                        icon: Icon(Icons.location_on_outlined),
+                        label: Text('Offline'),
+                      ),
+                      ButtonSegment(
+                        value: CourseMode.online,
+                        icon: Icon(Icons.laptop_rounded),
+                        label: Text('Online'),
+                      ),
+                    ],
+                    selected: {_modePreference},
+                    onSelectionChanged: (value) =>
+                        setState(() => _modePreference = value.first),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  key: const Key('enroll-terms-checkbox'),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: _agreedToTerms,
+                  onChanged: (value) => setState(() {
+                    _agreedToTerms = value ?? false;
+                    if (_agreedToTerms) _error = null;
+                  }),
+                  title: const Text(
+                    "I agree to the terms and the institute's policies",
+                  ),
+                  subtitle: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => context.push(AppRoutes.termsOfService),
+                      child: const Text('Read the terms'),
+                    ),
+                  ),
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   Text(_error!, style: const TextStyle(color: Colors.red)),
                 ],
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: _busy ? null : () => _submit(schema),
+                  key: const Key('enroll-submit'),
+                  onPressed: _busy || !_agreedToTerms
+                      ? null
+                      : () => _submit(schema),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.violet,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -238,10 +313,14 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text(
-                              'Securing your seat...',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
+                            Flexible(
+                              child: Text(
+                                'Securing your seat...',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
                               ),
                             ),
                           ],
@@ -266,8 +345,9 @@ Future<void> showEnrollmentVoucherDialog(
   return showDialog<void>(
     context: context,
     builder: (context) {
-      final code =
-          record.admissionCode.isEmpty ? record.id : record.admissionCode;
+      final code = record.admissionCode.isEmpty
+          ? record.id
+          : record.admissionCode;
       final theme = Theme.of(context);
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -307,15 +387,19 @@ Future<void> showEnrollmentVoucherDialog(
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Admission ID ──
-              Text('Admission ID',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
+              Text(
+                'Admission ID',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 4),
               Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.violet.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(8),
@@ -373,7 +457,9 @@ Future<void> showEnrollmentVoucherDialog(
                 _detailRow(Icons.location_on_outlined, course.instituteCity),
               if (course.contactPhone.isNotEmpty)
                 _detailRow(
-                    Icons.phone_outlined, 'Faculty: ${course.contactPhone}'),
+                  Icons.phone_outlined,
+                  'Faculty: ${course.contactPhone}',
+                ),
               if (course.instructorName.isNotEmpty)
                 _detailRow(Icons.person_outline_rounded, course.instructorName),
             ],
@@ -423,12 +509,7 @@ Widget _detailRow(IconData icon, String text) {
       children: [
         Icon(icon, size: 16, color: Colors.grey.shade600),
         const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13),
-          ),
-        ),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
       ],
     ),
   );
@@ -445,10 +526,7 @@ class _QrCodeWidget extends StatelessWidget {
   QrImage? _encode() {
     try {
       return QrImage(
-        QrCode.fromData(
-          data: data,
-          errorCorrectLevel: _errorCorrectLevel,
-        ),
+        QrCode.fromData(data: data, errorCorrectLevel: _errorCorrectLevel),
       );
     } on InputTooLongException {
       return null;
@@ -490,9 +568,7 @@ class _QrCodeWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.all(6),
-      child: CustomPaint(
-        painter: _QrMatrixPainter(image: image),
-      ),
+      child: CustomPaint(painter: _QrMatrixPainter(image: image)),
     );
   }
 }

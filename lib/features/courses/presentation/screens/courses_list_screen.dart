@@ -8,10 +8,12 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../domain/class_category_filter.dart';
 import '../../domain/course.dart';
 import '../../domain/education_category.dart';
 import '../course_providers.dart';
 import '../widgets/batch_class_card.dart';
+import '../widgets/class_category_filter_sheet.dart';
 import '../widgets/course_card.dart';
 
 /// All published courses with category selector, delivery mode filter,
@@ -34,6 +36,50 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
   bool _waitlistOnly = false;
   bool _showBatches = false;
 
+  /// Multi-category selection from the filter sheet. When non-empty it takes
+  /// precedence over the single [_category] chip.
+  Set<EducationCategory> _multiCategories = const {};
+  bool _includeFullAndUpcoming = true;
+
+  Set<EducationCategory> get _effectiveCategories {
+    if (_multiCategories.isNotEmpty) return _multiCategories;
+    if (_category != EducationCategory.all) return {_category};
+    return const {};
+  }
+
+  ClassCategoryFilter get _filter => ClassCategoryFilter(
+    categories: _effectiveCategories,
+    mode: _mode,
+    includeFullAndUpcoming: _includeFullAndUpcoming,
+  );
+
+  int get _sheetFilterCount {
+    var n = _effectiveCategories.length;
+    if (_mode != null) n++;
+    if (!_includeFullAndUpcoming) n++;
+    return n;
+  }
+
+  Future<void> _openFilterSheet(List<Course> items) async {
+    final result = await showClassCategoryFilterSheet(
+      context,
+      initial: _filter,
+      courses: items,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _mode = result.mode;
+      _includeFullAndUpcoming = result.includeFullAndUpcoming;
+      if (result.categories.length == 1) {
+        _category = result.categories.first;
+        _multiCategories = const {};
+      } else {
+        _category = EducationCategory.all;
+        _multiCategories = result.categories;
+      }
+    });
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -42,17 +88,9 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
 
   List<Course> _applyFilters(List<Course> items) {
     final query = _query.trim().toLowerCase();
+    final filter = _filter;
     return items.where((course) {
-      if (_mode != null && course.mode != _mode) return false;
-      if (_category != EducationCategory.all &&
-          !_category.matches(
-            title: course.title,
-            subject: course.description,
-            categorySlug: course.categoryId,
-            instructor: course.instructorName,
-          )) {
-        return false;
-      }
+      if (!filter.matchesCourse(course)) return false;
       if (query.isEmpty) return true;
       return course.title.toLowerCase().contains(query) ||
           course.instituteName.toLowerCase().contains(query) ||
@@ -65,23 +103,13 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
     List<Course> courses,
   ) {
     final query = _query.trim().toLowerCase();
+    final filter = _filter;
     final matches = <({Course course, CourseBatch batch})>[];
     for (final course in courses) {
       for (final batch in course.batches.where((b) => b.isActive)) {
-        if (_mode != null && (batch.mode ?? course.mode) != _mode) continue;
         if (_ongoingToday && !batch.isOngoingToday) continue;
         if (_waitlistOnly && !batch.waitlistEnabled) continue;
-        if (_category != EducationCategory.all &&
-            !_category.matches(
-              title: course.title,
-              subject: batch.subject,
-              categorySlug: batch.categorySlug.isNotEmpty
-                  ? batch.categorySlug
-                  : course.categoryId,
-              instructor: course.instructorName,
-            )) {
-          continue;
-        }
+        if (!filter.matchesBatch(course, batch)) continue;
         if (query.isNotEmpty) {
           final haystack = [
             course.title,
@@ -109,6 +137,17 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
       appBar: AppBar(
         title: Text(l10n.courses),
         actions: [
+          IconButton(
+            key: const Key('courses-filter-button'),
+            tooltip: 'Filter classes',
+            onPressed: () =>
+                _openFilterSheet(courses.valueOrNull ?? const <Course>[]),
+            icon: Badge(
+              isLabelVisible: _sheetFilterCount > 0,
+              label: Text('$_sheetFilterCount'),
+              child: const Icon(Icons.tune_rounded),
+            ),
+          ),
           IconButton(
             tooltip: l10n.institutes,
             icon: const Icon(Icons.account_balance_outlined),
@@ -153,7 +192,11 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                       const SizedBox(height: 12),
                       _CategoryChips(
                         selected: _category,
-                        onSelected: (c) => setState(() => _category = c),
+                        multi: _multiCategories,
+                        onSelected: (c) => setState(() {
+                          _category = c;
+                          _multiCategories = const {};
+                        }),
                       ),
                       const SizedBox(height: 10),
                       _ModeFilterRow(
@@ -296,8 +339,10 @@ class _SearchField extends StatelessWidget {
                   },
                 ),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -308,9 +353,11 @@ class _CategoryChips extends StatelessWidget {
   const _CategoryChips({
     required this.selected,
     required this.onSelected,
+    this.multi = const {},
   });
 
   final EducationCategory selected;
+  final Set<EducationCategory> multi;
   final ValueChanged<EducationCategory> onSelected;
 
   @override
@@ -323,7 +370,9 @@ class _CategoryChips extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final category = EducationCategory.values[i];
-          final isSelected = category == selected;
+          final isSelected = multi.isNotEmpty
+              ? multi.contains(category)
+              : category == selected;
           return ChoiceChip(
             label: Text(category.label),
             selected: isSelected,
@@ -381,8 +430,9 @@ class _ModeFilterRow extends StatelessWidget {
             selectedColor: AppTheme.violet,
             labelStyle: TextStyle(
               color: selectedMode == mode ? Colors.white : null,
-              fontWeight:
-                  selectedMode == mode ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: selectedMode == mode
+                  ? FontWeight.w700
+                  : FontWeight.w500,
               fontSize: 12,
             ),
           ),
@@ -404,10 +454,7 @@ class _ModeFilterRow extends StatelessWidget {
 }
 
 class _ViewToggle extends StatelessWidget {
-  const _ViewToggle({
-    required this.showBatches,
-    required this.onToggle,
-  });
+  const _ViewToggle({required this.showBatches, required this.onToggle});
 
   final bool showBatches;
   final ValueChanged<bool> onToggle;
@@ -463,8 +510,9 @@ class _ViewToggle extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color:
-                  selected ? Colors.white : theme.colorScheme.onSurfaceVariant,
+              color: selected
+                  ? Colors.white
+                  : theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 4),
             Text(

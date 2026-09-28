@@ -13,6 +13,7 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
+import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../auth/presentation/auth_providers.dart';
@@ -1470,49 +1471,7 @@ class _LanguagePill extends ConsumerWidget {
   }
 
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      // Above the shell's bottom navigation bar, not behind it.
-      useRootNavigator: true,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final current = ref.read(localeProvider);
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Choose language',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                ),
-              ),
-              for (final locale in AppLocalizations.supportedLocales)
-                RadioGroup<String>(
-                  groupValue: current.languageCode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(localeProvider.notifier).setLocale(locale);
-                      Navigator.pop(sheetContext);
-                    }
-                  },
-                  child: RadioListTile<String>(
-                    value: locale.languageCode,
-                    title: Text(
-                      _names[locale.languageCode] ?? locale.languageCode,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
+    showLanguagePickerSheet(context, ref, keyPrefix: 'home-language');
   }
 }
 
