@@ -19,6 +19,9 @@ import '../../domain/date_availability.dart';
 import '../booking_providers.dart';
 import '../../../offers/domain/coupon.dart';
 import '../../../offers/presentation/coupon_providers.dart';
+import '../../../admin/domain/platform_status.dart';
+import '../../../admin/presentation/platform_status_providers.dart';
+import '../../../admin/presentation/widgets/platform_status_banner.dart';
 
 /// Booking flow: pick a date, pick an available slot, and submit an owner
 /// approval request.
@@ -118,10 +121,21 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final date = _selectedDate;
     final template = widget.venue.listingTemplate;
     final dateAvailability = _dateAvailability(date);
-    final canBook = dateAvailability?.isBookable ?? true;
+    final platform =
+        ref.watch(platformStatusProvider).valueOrNull ?? PlatformStatus.none;
+    final canBook =
+        (dateAvailability?.isBookable ?? true) && !platform.maintenanceEnabled;
 
     return Scaffold(
-      appBar: AppBar(title: Text(template.ctaBook)),
+      appBar: AppBar(
+        title: Text(template.ctaBook),
+        bottom: platform.maintenanceEnabled
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(56),
+                child: PlatformStatusBanner(status: platform),
+              )
+            : null,
+      ),
       body: date == null
           ? const Center(child: CircularProgressIndicator())
           : ResponsiveLayoutBuilder(

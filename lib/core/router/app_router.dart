@@ -171,6 +171,7 @@ import '../modular/shell_destinations.dart';
 import '../theme/app_theme.dart';
 import '../../features/admin/presentation/admin_settings_providers.dart';
 import '../widgets/test_id.dart';
+import '../../features/admin/presentation/widgets/platform_status_banner.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {
@@ -1803,7 +1804,7 @@ class _AppShell extends ConsumerWidget {
     final selectedIndex = position >= 0 ? position : 0;
 
     return Scaffold(
-      body: navigationShell,
+      body: PlatformStatusShellBody(child: navigationShell),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF151A2C) : Colors.white,
@@ -1898,7 +1899,7 @@ class _AppShell extends ConsumerWidget {
       ],
     );
     return Scaffold(
-      body: navigationShell,
+      body: PlatformStatusShellBody(child: navigationShell),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           boxShadow: [
