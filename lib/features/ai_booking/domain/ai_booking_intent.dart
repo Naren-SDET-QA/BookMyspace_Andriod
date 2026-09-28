@@ -479,7 +479,9 @@ class AiBookingEngine {
       ));
     }
 
-    if (parsed.sortBy != VenueSortBy.relevance) {
+    // Only the sorts that have a localized chip label surface as a chip.
+    if (parsed.sortBy == VenueSortBy.priceAsc ||
+        parsed.sortBy == VenueSortBy.rating) {
       chips.add(AiIntentChip(
         emoji: parsed.sortBy == VenueSortBy.priceAsc ? '🏷️' : '⭐',
         slotKey: 'aiSlotSort',

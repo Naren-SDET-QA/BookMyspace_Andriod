@@ -255,6 +255,8 @@ class MockVenueRepository implements VenueRepository {
         );
       case VenueSortBy.rating:
         results.sort((a, b) => b.avgRating.compareTo(a.avgRating));
+      case VenueSortBy.capacity:
+        results.sort((a, b) => b.capacity.compareTo(a.capacity));
       case VenueSortBy.distance:
         results.sort(
           (a, b) => (a.distanceKm ?? 0).compareTo(b.distanceKm ?? 0),

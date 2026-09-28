@@ -22,6 +22,12 @@ class SearchRouteParams {
     this.radiusKm,
     this.pincode,
     this.facility,
+    this.minRating,
+    this.minCapacity,
+    this.maxCapacity,
+    this.gender,
+    this.sharing,
+    this.amenities = const {},
   });
 
   static const categoryParam = 'category';
@@ -36,6 +42,12 @@ class SearchRouteParams {
   static const radiusParam = 'radius';
   static const pinParam = 'pin';
   static const facilityParam = 'facility';
+  static const minRatingParam = 'rating';
+  static const minCapacityParam = 'minGuests';
+  static const maxCapacityParam = 'maxGuests';
+  static const genderParam = 'gender';
+  static const sharingParam = 'sharing';
+  static const amenitiesParam = 'amenities';
 
   final String query;
   final String? categorySlug;
@@ -49,6 +61,12 @@ class SearchRouteParams {
   final int? radiusKm;
   final String? pincode;
   final String? facility;
+  final double? minRating;
+  final int? minCapacity;
+  final int? maxCapacity;
+  final String? gender;
+  final String? sharing;
+  final Set<String> amenities;
 
   factory SearchRouteParams.fromQuery(VenueSearchQuery query) {
     return SearchRouteParams(
@@ -63,6 +81,12 @@ class SearchRouteParams {
       radiusKm: query.radiusKm,
       pincode: query.pincode,
       facility: query.facility,
+      minRating: query.minRating,
+      minCapacity: query.minCapacity,
+      maxCapacity: query.maxCapacity,
+      gender: query.gender,
+      sharing: query.sharing,
+      amenities: query.amenities,
     );
   }
 
@@ -97,6 +121,12 @@ class SearchRouteParams {
       radiusKm: _parseInt(routeOrExtra(radiusParam)),
       pincode: routeOrExtra(pinParam),
       facility: routeOrExtra(facilityParam),
+      minRating: _parseDouble(routeOrExtra(minRatingParam)),
+      minCapacity: _parseInt(routeOrExtra(minCapacityParam)),
+      maxCapacity: _parseInt(routeOrExtra(maxCapacityParam)),
+      gender: routeOrExtra(genderParam),
+      sharing: routeOrExtra(sharingParam),
+      amenities: _parseSet(routeOrExtra(amenitiesParam)),
     );
   }
 
@@ -117,6 +147,12 @@ class SearchRouteParams {
       radiusKm: radiusKm,
       pincode: pincode,
       facility: facility,
+      minRating: minRating,
+      minCapacity: minCapacity,
+      maxCapacity: maxCapacity,
+      gender: gender,
+      sharing: sharing,
+      amenities: amenities,
     );
   }
 
@@ -128,10 +164,7 @@ class SearchRouteParams {
     return SearchRouteParams.fromQuery(query).searchLocation;
   }
 
-  static String mapLocationFor(
-    VenueSearchQuery query, {
-    String? venueId,
-  }) {
+  static String mapLocationFor(VenueSearchQuery query, {String? venueId}) {
     return SearchRouteParams(
       query: query.query,
       categorySlug: query.categorySlug,
@@ -145,6 +178,12 @@ class SearchRouteParams {
       radiusKm: query.radiusKm,
       pincode: query.pincode,
       facility: query.facility,
+      minRating: query.minRating,
+      minCapacity: query.minCapacity,
+      maxCapacity: query.maxCapacity,
+      gender: query.gender,
+      sharing: query.sharing,
+      amenities: query.amenities,
     ).mapLocation;
   }
 
@@ -174,6 +213,18 @@ class SearchRouteParams {
     if (facility != null && facility!.trim().isNotEmpty) {
       params[facilityParam] = facility!.trim();
     }
+    if (minRating != null) params[minRatingParam] = _formatNumber(minRating!);
+    if (minCapacity != null) params[minCapacityParam] = '$minCapacity';
+    if (maxCapacity != null) params[maxCapacityParam] = '$maxCapacity';
+    if (gender != null && gender!.trim().isNotEmpty) {
+      params[genderParam] = gender!.trim();
+    }
+    if (sharing != null && sharing!.trim().isNotEmpty) {
+      params[sharingParam] = sharing!.trim();
+    }
+    if (amenities.isNotEmpty) {
+      params[amenitiesParam] = (amenities.toList()..sort()).join(',');
+    }
     return Uri(
       path: path,
       queryParameters: params.isEmpty ? null : params,
@@ -194,6 +245,15 @@ class SearchRouteParams {
   static int? _parseInt(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     return int.tryParse(value.trim());
+  }
+
+  static Set<String> _parseSet(String? value) {
+    if (value == null || value.trim().isEmpty) return const {};
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet();
   }
 
   static VenueSortBy _parseSort(String? value) {

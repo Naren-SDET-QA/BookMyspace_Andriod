@@ -30,6 +30,9 @@ import '../venue_providers.dart';
 import '../widgets/listing_availability.dart';
 import '../widgets/venue_badges.dart';
 import '../../../home/presentation/recently_viewed.dart';
+import '../../../analytics/domain/analytics_event.dart';
+import '../../../analytics/presentation/analytics_providers.dart';
+import '../widgets/venue_enquiry_sheet.dart';
 
 /// Unified listing detail used by every category. Layout is template-driven;
 /// missing live fields hide their section instead of inventing content.
@@ -79,6 +82,13 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(recentlyViewedProvider.notifier).record(venue);
+      ref.read(analyticsTrackerProvider).track(
+        AnalyticsEventType.viewVenueDetails,
+        {
+          'venue_id': venue.id,
+          if (venue.category?.slug != null) 'category': venue.category!.slug,
+        },
+      );
     });
   }
 
@@ -90,6 +100,26 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     );
     if (slot != null && mounted) {
       setState(() => _selectedSlot = slot);
+      ref.read(analyticsTrackerProvider).track(
+        AnalyticsEventType.selectTimeSlot,
+        {'venue_id': venue.id, 'slot_id': slot.slotId},
+      );
+    }
+  }
+
+  Future<void> _sendEnquiry() async {
+    if (ref.read(currentUserProvider) == null) {
+      context.push(AppRoutes.login);
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final sent = await showVenueEnquirySheet(context, venue);
+    if (sent) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Enquiry sent. Our team will get back to you soon.'),
+        ),
+      );
     }
   }
 
@@ -161,6 +191,7 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
             publishedSections: publishedSections,
             onOpenAvailability: _openAvailability,
             selectedSlot: _selectedSlot,
+            onSendEnquiry: supportEnabled ? _sendEnquiry : null,
           );
           if (responsive.isExpanded || responsive.isExtraWide) {
             final summaryWidth = responsive.isExtraWide ? 320.0 : 220.0;
@@ -458,6 +489,7 @@ class _ListingBody extends StatelessWidget {
     required this.publishedSections,
     required this.onOpenAvailability,
     this.selectedSlot,
+    this.onSendEnquiry,
   });
 
   final Venue venue;
@@ -465,6 +497,7 @@ class _ListingBody extends StatelessWidget {
   final AsyncValue<List<PublishedVenueSection>> publishedSections;
   final VoidCallback onOpenAvailability;
   final SlotAvailability? selectedSlot;
+  final VoidCallback? onSendEnquiry;
 
   @override
   Widget build(BuildContext context) {
@@ -640,6 +673,18 @@ class _ListingBody extends StatelessWidget {
               ),
             ),
           ),
+          if (onSendEnquiry != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                key: const Key('listing_send_enquiry'),
+                onPressed: onSendEnquiry,
+                icon: const Icon(Icons.mail_outline_rounded),
+                label: const Text('Send enquiry'),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           VenueReviewsSection(
             venueId: venue.id,

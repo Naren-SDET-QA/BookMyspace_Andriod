@@ -67,9 +67,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (GoRouter.maybeOf(context) == null) return;
-    final routeQuery =
-        SearchRouteParams.fromGoRouterState(GoRouterState.of(context))
-            .toQuery();
+    final routeQuery = SearchRouteParams.fromGoRouterState(
+      GoRouterState.of(context),
+    ).toQuery();
     if (_syncedRouteQueryText == routeQuery.query) return;
     _syncedRouteQueryText = routeQuery.query;
     if (_controller.text == routeQuery.query) return;
@@ -97,8 +97,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   VenueSearchQuery _effectiveQuery() {
     final routeQuery = GoRouter.maybeOf(context) != null
-        ? SearchRouteParams.fromGoRouterState(GoRouterState.of(context))
-            .toQuery()
+        ? SearchRouteParams.fromGoRouterState(
+            GoRouterState.of(context),
+          ).toQuery()
         : _detachedQuery ?? _constructorQuery();
     return ref.watch(discoveryLocationProvider).mergeInto(routeQuery);
   }
@@ -109,9 +110,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       setState(() => _detachedQuery = query);
       return;
     }
-    final current =
-        SearchRouteParams.fromGoRouterState(GoRouterState.of(context))
-            .toQuery();
+    final current = SearchRouteParams.fromGoRouterState(
+      GoRouterState.of(context),
+    ).toQuery();
     if (current == query) return;
     context.go(SearchRouteParams.locationFor(query));
   }
@@ -138,7 +139,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 child: Text(
                   '$guests',
                   style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               IconButton(
@@ -199,6 +202,69 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _commitQuery(_effectiveQuery().copyWith(query: value.trim()));
     });
   }
+
+  /// Removable chips for filters that only voice search (or deep links)
+  /// set: rating, guests, PG gender/sharing and amenities.
+  List<Widget> _attributeChips(VenueSearchQuery query) {
+    Widget chip(String label, VenueSearchQuery Function() without) {
+      return InputChip(
+        label: Text(label, overflow: TextOverflow.ellipsis),
+        onDeleted: () => _commitQuery(without()),
+      );
+    }
+
+    return [
+      if (query.minRating != null)
+        chip(
+          '${query.minRating!.toStringAsFixed(1)}+ ★',
+          () => query.copyWith(minRating: () => null),
+        ),
+      if (query.minCapacity != null)
+        chip(
+          '${query.minCapacity}+ guests',
+          () => query.copyWith(minCapacity: () => null),
+        ),
+      if (query.maxCapacity != null)
+        chip(
+          'Up to ${query.maxCapacity} guests',
+          () => query.copyWith(maxCapacity: () => null),
+        ),
+      if (query.gender != null)
+        chip(switch (query.gender!.toLowerCase()) {
+          'gents' => 'Gents',
+          'ladies' => 'Ladies',
+          'coliving' => 'Co-living',
+          final other => other,
+        }, () => query.copyWith(gender: () => null)),
+      if (query.sharing != null)
+        chip(switch (query.sharing!) {
+          'single' => 'Single room',
+          'double' => '2 sharing',
+          'triple' => '3 sharing',
+          final other => other,
+        }, () => query.copyWith(sharing: () => null)),
+      for (final amenity in (query.amenities.toList()..sort()))
+        chip(
+          _amenityLabels[amenity] ?? amenity,
+          () =>
+              query.copyWith(amenities: {...query.amenities}..remove(amenity)),
+        ),
+    ];
+  }
+
+  static const _amenityLabels = <String, String>{
+    'ac': 'AC',
+    'parking': 'Parking',
+    'wifi': 'Wi-Fi',
+    'catering': 'Catering',
+    'food': 'Food',
+    'pool': 'Pool',
+    'lawn': 'Lawn / Garden',
+    'power_backup': 'Power backup',
+    'stage_sound': 'Stage & sound',
+    'rooms': 'Guest rooms',
+    'alcohol': 'Bar / drinks',
+  };
 
   void _clearFilters() {
     _controller.clear();
@@ -266,7 +332,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             height: maxHeight,
             child: _FilterSheet(
               initial: _effectiveQuery(),
-              categories: ref.read(venueCategoriesProvider).valueOrNull ?? const [],
+              categories:
+                  ref.read(venueCategoriesProvider).valueOrNull ?? const [],
               onApply: _commitQuery,
             ),
           ),
@@ -290,9 +357,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           IconButton(
             icon: const Icon(Icons.map_rounded),
             tooltip: 'Live Map Discovery',
-            onPressed: () => context.push(
-              SearchRouteParams.mapLocationFor(query),
-            ),
+            onPressed: () =>
+                context.push(SearchRouteParams.mapLocationFor(query)),
           ),
         ],
       ),
@@ -321,8 +387,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               tooltip: 'Clear search',
                             ),
                           IconButton(
-                            icon: const Icon(Icons.mic_rounded,
-                                color: AppTheme.violet),
+                            icon: const Icon(
+                              Icons.mic_rounded,
+                              color: AppTheme.violet,
+                            ),
                             onPressed: _openVoiceSearch,
                             tooltip: 'Voice Search',
                           ),
@@ -368,6 +436,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       if (query.hasCoordinates) '${query.radiusKm ?? 10} km',
                     ].join(' • '),
                   ),
+                ),
+              ),
+            ),
+          if (_attributeChips(query).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  key: const Key('search_attribute_filters'),
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _attributeChips(query),
                 ),
               ),
             ),
@@ -453,8 +534,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 }
                 return LayoutBuilder(
                   builder: (context, constraints) {
-                    final responsive =
-                        ResponsiveInfo.fromConstraints(constraints);
+                    final responsive = ResponsiveInfo.fromConstraints(
+                      constraints,
+                    );
                     if (responsive.resultsColumns <= 1) {
                       return ListView.separated(
                         padding: const EdgeInsets.all(16),
@@ -640,6 +722,12 @@ class _FilterSheetState extends State<_FilterSheet> {
                           onTap: () =>
                               setState(() => _sortBy = VenueSortBy.rating),
                         ),
+                        _SortChip(
+                          label: 'Largest capacity',
+                          selected: _sortBy == VenueSortBy.capacity,
+                          onTap: () =>
+                              setState(() => _sortBy = VenueSortBy.capacity),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -668,8 +756,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    if (_categoryFilterGroups(widget.categories, _categorySlug)
-                        .isNotEmpty) ...[
+                    if (_categoryFilterGroups(
+                      widget.categories,
+                      _categorySlug,
+                    ).isNotEmpty) ...[
                       const SizedBox(height: 20),
                       ..._categoryFilterGroups(
                         widget.categories,
@@ -683,8 +773,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(group.label,
-                                  style: theme.textTheme.titleSmall),
+                              Text(
+                                group.label,
+                                style: theme.textTheme.titleSmall,
+                              ),
                               const SizedBox(height: 8),
                               Wrap(
                                 spacing: 8,
@@ -746,9 +838,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               child: FilledButton(
                 key: const Key('filters_apply'),
                 onPressed: _apply,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                ),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
                 child: Text(l10n.apply),
               ),
             ),

@@ -647,7 +647,7 @@ class SupabaseVenueRepository implements VenueRepository {
           maxDistanceKm: (query.radiusKm ?? 10).toDouble(),
           limit: query.limit.clamp(1, 50),
         );
-        return nearby.where((venue) {
+        final filtered = nearby.where((venue) {
           if (query.categorySlug != null &&
               query.categorySlug!.trim().isNotEmpty &&
               venue.category?.slug != query.categorySlug) {
@@ -679,6 +679,7 @@ class SupabaseVenueRepository implements VenueRepository {
           }
           return true;
         }).toList();
+        return _applyAttributeFilters(filtered, query);
       }
 
       // Phase 9XM-1 perf fix: previously this did a separate awaited
@@ -746,11 +747,21 @@ class SupabaseVenueRepository implements VenueRepository {
       if (query.maxPrice != null) {
         builder = builder.lte('pricing_base_amount', query.maxPrice!);
       }
+      if (query.minRating != null) {
+        builder = builder.gte('avg_rating', query.minRating!);
+      }
+      if (query.minCapacity != null) {
+        builder = builder.gte('capacity', query.minCapacity!);
+      }
+      if (query.maxCapacity != null) {
+        builder = builder.lte('capacity', query.maxCapacity!);
+      }
 
       final (orderColumn, ascending) = switch (query.sortBy) {
         VenueSortBy.priceAsc => ('pricing_base_amount', true),
         VenueSortBy.priceDesc => ('pricing_base_amount', false),
         VenueSortBy.rating => ('avg_rating', false),
+        VenueSortBy.capacity => ('capacity', false),
         // Distance ordering is handled by the RPC path; fall back to
         // popularity for the REST query.
         VenueSortBy.distance ||
@@ -804,7 +815,7 @@ class SupabaseVenueRepository implements VenueRepository {
             )
             .toList();
       }
-      return results;
+      return _applyAttributeFilters(results, query);
     } catch (e) {
       throw mapError(e);
     }
@@ -877,6 +888,30 @@ class SupabaseVenueRepository implements VenueRepository {
     }
   }
 
+  /// Client-side filters for attributes that have no dedicated column
+  /// (PG gender, sharing, amenities) plus rating/capacity on the RPC path.
+  /// Mirrors [CustomerSectionCatalog.matchesFilters] for just those fields
+  /// so unrelated section filters keep their existing (server-only) scope.
+  static List<Venue> _applyAttributeFilters(
+    List<Venue> venues,
+    VenueSearchQuery query,
+  ) {
+    final attributes = VenueSearchQuery(
+      minRating: query.minRating,
+      minCapacity: query.minCapacity,
+      maxCapacity: query.maxCapacity,
+      gender: query.gender,
+      sharing: query.sharing,
+      amenities: query.amenities,
+    );
+    if (!attributes.hasFilters) return venues;
+    return venues
+        .where(
+          (venue) => CustomerSectionCatalog.matchesFilters(venue, attributes),
+        )
+        .toList();
+  }
+
   /// Maps an RPC row (which lacks embedded collections) to a [Venue].
   Venue _fromRow(Map<String, dynamic> row) => Venue.fromJson(row);
 
@@ -886,7 +921,7 @@ class SupabaseVenueRepository implements VenueRepository {
     VenueSortBy.priceAsc => 'lowest_price',
     VenueSortBy.priceDesc => 'highest_price',
     VenueSortBy.rating => 'highest_rating',
-    VenueSortBy.relevance => 'recommended',
+    VenueSortBy.relevance || VenueSortBy.capacity => 'recommended',
   };
 
   static List<VenueSubsection> _sortSubsections(

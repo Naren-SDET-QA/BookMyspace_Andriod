@@ -13,7 +13,9 @@ import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/widgets/listing_availability.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
+import '../../../../core/errors/app_exceptions.dart';
 import '../../domain/booking.dart';
+import '../../domain/date_availability.dart';
 import '../booking_providers.dart';
 import '../../../offers/domain/coupon.dart';
 import '../../../offers/presentation/coupon_providers.dart';
@@ -96,10 +98,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     });
   }
 
+  /// Availability level of [date] computed from the slots already loaded
+  /// for it (same provider instance as the slot list; no extra request).
+  DateAvailability? _dateAvailability(DateTime? date) {
+    if (date == null) return null;
+    final slots = ref
+        .watch(
+          slotAvailabilityProvider(
+            SlotAvailabilityQuery(venueId: widget.venue.id, date: date),
+          ),
+        )
+        .valueOrNull;
+    if (slots == null) return null;
+    return DateAvailability.evaluate(slots, date);
+  }
+
   @override
   Widget build(BuildContext context) {
     final date = _selectedDate;
     final template = widget.venue.listingTemplate;
+    final dateAvailability = _dateAvailability(date);
+    final canBook = dateAvailability?.isBookable ?? true;
 
     return Scaffold(
       appBar: AppBar(title: Text(template.ctaBook)),
@@ -149,6 +168,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                                 });
                               },
                             ),
+                            _DateAvailabilityBadge(info: dateAvailability),
                             Expanded(child: slots),
                           ],
                         ),
@@ -168,7 +188,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                                 slot: _selectedSlot!,
                                 confirming: _confirming,
                                 ctaLabel: template.ctaBook,
-                                onConfirm: () => _confirmBooking(date),
+                                onConfirm: canBook
+                                    ? () => _confirmBooking(date)
+                                    : null,
                               ),
                       ),
                     ],
@@ -189,6 +211,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         });
                       },
                     ),
+                    _DateAvailabilityBadge(info: dateAvailability),
                     Expanded(child: slots),
                   ],
                 );
@@ -203,7 +226,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               slot: _selectedSlot!,
               confirming: _confirming,
               ctaLabel: template.ctaBook,
-              onConfirm: () => _confirmBooking(date),
+              onConfirm: canBook ? () => _confirmBooking(date) : null,
             )
           : null,
     );
@@ -311,6 +334,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       // This is a request acknowledgement, not a booking confirmation. The
       // server status is rendered by the destination screen.
       unawaited(context.push('/bookings/${booking.id}/success'));
+    } on BookingConflictException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'slot_unavailable') {
+        setState(() => _confirming = false);
+        await _offerAlternativeSlots(date, slot);
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -319,6 +352,210 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     } finally {
       if (mounted) setState(() => _confirming = false);
     }
+  }
+
+  /// The chosen slot was taken by someone else: refresh the date's slots and
+  /// offer the other currently-free slots on the same date to re-pick.
+  Future<void> _offerAlternativeSlots(
+    DateTime date,
+    SlotAvailability taken,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final provider = slotAvailabilityProvider(
+      SlotAvailabilityQuery(venueId: widget.venue.id, date: date),
+    );
+    ref.invalidate(provider);
+    setState(() => _selectedSlot = null);
+    List<SlotAvailability> fresh;
+    try {
+      fresh = await ref.read(provider.future);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('This slot was just taken. Please pick another.'),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final alternatives = DateAvailability.alternatives(
+      fresh,
+      excludeSlotId: taken.slotId,
+    );
+    final picked = await showModalBottomSheet<SlotAvailability>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _AlternativeSlotsSheet(
+        date: date,
+        taken: taken,
+        alternatives: alternatives,
+      ),
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _selectedSlot = picked);
+  }
+}
+
+class _AlternativeSlotsSheet extends StatelessWidget {
+  const _AlternativeSlotsSheet({
+    required this.date,
+    required this.taken,
+    required this.alternatives,
+  });
+
+  final DateTime date;
+  final SlotAvailability taken;
+  final List<SlotAvailability> alternatives;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        key: const Key('alternative_slots_sheet'),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This slot was just taken',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              alternatives.isEmpty
+                  ? 'No other slots are free on '
+                      '${DateFormat.yMMMd().format(date)}. '
+                      'Please pick another date.'
+                  : 'Other free slots on ${DateFormat.yMMMd().format(date)}:',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (alternatives.isNotEmpty)
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final slot in alternatives)
+                        ActionChip(
+                          key: ValueKey('alternative_slot_${slot.slotId}'),
+                          avatar: const Icon(Icons.schedule_rounded, size: 18),
+                          label: Text(
+                            '${slot.label.isNotEmpty ? '${slot.label} · ' : ''}'
+                            '${slot.displayStart} – ${slot.displayEnd} · '
+                            '${formatInr(slot.priceAmount)}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(slot),
+                        ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Choose another date'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Availability badge for the selected date ("Sold out", "Limited",
+/// "Filling fast", "Past"); hidden while loading or when plenty is free.
+class _DateAvailabilityBadge extends StatelessWidget {
+  const _DateAvailabilityBadge({required this.info});
+
+  final DateAvailability? info;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = this.info;
+    final label = info?.label;
+    if (info == null || label == null) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final (background, foreground, icon) = switch (info.status) {
+      DateAvailabilityStatus.soldOut => (
+          scheme.errorContainer,
+          scheme.onErrorContainer,
+          Icons.block_rounded,
+        ),
+      DateAvailabilityStatus.past => (
+          scheme.surfaceContainerHighest,
+          scheme.onSurfaceVariant,
+          Icons.history_rounded,
+        ),
+      DateAvailabilityStatus.limited => (
+          scheme.tertiaryContainer,
+          scheme.onTertiaryContainer,
+          Icons.local_fire_department_rounded,
+        ),
+      _ => (
+          scheme.secondaryContainer,
+          scheme.onSecondaryContainer,
+          Icons.trending_up_rounded,
+        ),
+    };
+    final detail = switch (info.status) {
+      DateAvailabilityStatus.soldOut => 'No slots left on this date',
+      DateAvailabilityStatus.past => 'This date has passed',
+      _ => '${info.freeSlots} of ${info.totalSlots} slots free',
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Row(
+        key: const Key('date_availability_badge'),
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: foreground),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: foreground, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              detail,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -466,7 +703,7 @@ class _ConfirmBar extends StatelessWidget {
   final DateTime date;
   final SlotAvailability slot;
   final bool confirming;
-  final VoidCallback onConfirm;
+  final VoidCallback? onConfirm;
   final String? ctaLabel;
 
   @override
