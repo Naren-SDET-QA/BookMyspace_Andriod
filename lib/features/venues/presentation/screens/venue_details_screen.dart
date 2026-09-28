@@ -27,6 +27,8 @@ import '../../../venue_sections/presentation/venue_section_providers.dart';
 import '../../domain/listing_template.dart';
 import '../../domain/venue.dart';
 import '../venue_providers.dart';
+import '../custom_listing_field_providers.dart';
+import '../widgets/custom_listing_fields_section.dart';
 import '../widgets/listing_availability.dart';
 import '../widgets/venue_badges.dart';
 import '../../../home/presentation/recently_viewed.dart';
@@ -83,13 +85,12 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(recentlyViewedProvider.notifier).record(venue);
-      ref.read(analyticsTrackerProvider).track(
-        AnalyticsEventType.viewVenueDetails,
-        {
-          'venue_id': venue.id,
-          if (venue.category?.slug != null) 'category': venue.category!.slug,
-        },
-      );
+      ref
+          .read(analyticsTrackerProvider)
+          .track(AnalyticsEventType.viewVenueDetails, {
+            'venue_id': venue.id,
+            if (venue.category?.slug != null) 'category': venue.category!.slug,
+          });
     });
   }
 
@@ -607,6 +608,14 @@ class _ListingBody extends StatelessWidget {
           ],
           const SizedBox(height: 20),
           _KeySpecsCard(venue: venue, template: template),
+          Consumer(
+            builder: (context, ref, _) => ref
+                .watch(venueListingCustomFieldsProvider(venue.id))
+                .maybeWhen(
+                  data: (fields) => CustomListingFieldsSection(fields: fields),
+                  orElse: () => const SizedBox.shrink(),
+                ),
+          ),
           if (venue.facilities.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(l10n.amenities, style: theme.textTheme.titleMedium),
