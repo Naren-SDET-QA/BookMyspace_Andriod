@@ -23,6 +23,7 @@ import '../../../courses/presentation/course_providers.dart';
 import '../../../events/presentation/event_providers.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../cms/presentation/cms_providers.dart';
+import '../../../cms/presentation/widgets/live_ui_text.dart';
 import '../../../courses/presentation/screens/education_hub_screen.dart';
 import '../../../events/domain/event.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
@@ -983,7 +984,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-class _ExploreCategoryCards extends StatelessWidget {
+class _ExploreCategoryCards extends ConsumerWidget {
   const _ExploreCategoryCards({
     required this.sections,
     required this.selectedSlugs,
@@ -1019,7 +1020,7 @@ class _ExploreCategoryCards extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final allSelected = selectedSlugs.isEmpty;
     final items = <_ExploreItem>[
@@ -1046,8 +1047,10 @@ class _ExploreCategoryCards extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                'Explore categories',
+              child: LiveUiText(
+                screenKey: 'home',
+                elementKey: 'explore.categories.title',
+                fallback: 'Explore categories',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),

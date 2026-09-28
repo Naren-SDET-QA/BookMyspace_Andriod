@@ -156,6 +156,18 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminIntegrations),
             ),
             _AdminLink(
+              icon: Icons.api_outlined,
+              title: 'Developer platform',
+              subtitle: 'API keys, signed webhooks and delivery history',
+              onTap: () => context.push(AppRoutes.adminDeveloperPlatform),
+            ),
+            _AdminLink(
+              icon: Icons.link_outlined,
+              title: 'Connector registry',
+              subtitle: 'Configure Google Calendar, Zapier, WhatsApp, Slack and custom sites',
+              onTap: () => context.push(AppRoutes.adminConnectorRegistry),
+            ),
+            _AdminLink(
               icon: Icons.tune_rounded,
               title: 'Optional modules',
               subtitle:
@@ -182,6 +194,12 @@ class AdminDashboardScreen extends ConsumerWidget {
               title: l10n.adminThemeTitle,
               subtitle: l10n.adminThemeSubtitle,
               onTap: () => context.push(AppRoutes.adminTheme),
+            ),
+            _AdminLink(
+              icon: Icons.edit_note_outlined,
+              title: 'Live element editor',
+              subtitle: 'Override customer copy or hide supported elements',
+              onTap: () => context.push(AppRoutes.adminUiElementOverrides),
             ),
             _AdminLink(
               icon: Icons.tab_unselected_outlined,

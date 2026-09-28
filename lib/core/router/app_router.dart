@@ -27,6 +27,9 @@ import '../../features/admin/presentation/screens/admin_health_screen.dart';
 import '../../features/admin/presentation/screens/admin_help_center_screen.dart';
 import '../../features/admin/presentation/screens/admin_listing_fields_screen.dart';
 import '../../features/admin/presentation/screens/admin_invoice_tax_settings_screen.dart';
+import '../../features/admin/presentation/screens/admin_ui_element_overrides_screen.dart';
+import '../../features/admin/presentation/screens/admin_developer_platform_screen.dart';
+import '../../features/admin/presentation/screens/admin_connector_registry_screen.dart';
 import '../../features/admin/presentation/screens/admin_listings_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_providers_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_screen.dart';
@@ -250,6 +253,9 @@ abstract class AppRoutes {
   static const adminPromotions = '/admin/promotions';
   static const adminListingFields = '/admin/listing-fields';
   static const adminInvoiceTaxSettings = '/admin/invoice-tax-settings';
+  static const adminUiElementOverrides = '/admin/ui-elements';
+  static const adminDeveloperPlatform = '/admin/developer-platform';
+  static const adminConnectorRegistry = '/admin/connector-registry';
   static const adminVenueImport = '/admin/venue-import';
   static const adminVenueClaims = '/admin/venue-claims';
   static const ownerVenueDiscovery = '/owner/venue-discovery';
@@ -719,6 +725,30 @@ GoRouter createAppRouter({
         builder: (context, state) => const RoleGate(
           requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
           child: AdminInvoiceTaxSettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminUiElementOverrides,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminUiElementOverridesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminDeveloperPlatform,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminDeveloperPlatformScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminConnectorRegistry,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminConnectorRegistryScreen(),
         ),
       ),
       GoRoute(
@@ -1727,7 +1757,7 @@ const _roleGateRoutes = {
   '/admin/events', '/admin/courses', '/admin/education', '/admin/support',
   '/admin/audit', '/admin/cms', '/admin/integrations', '/admin/modules',
   '/admin/home-layout', '/admin/theme', '/admin/nav-tabs', '/admin/catalog',
-  '/admin/media', '/admin/registration-reviews', '/owner', '/owner/categories', '/owner/venues',
+  '/admin/media', '/admin/registration-reviews', '/admin/ui-elements', '/admin/developer-platform', '/admin/connector-registry', '/owner', '/owner/categories', '/owner/venues',
   '/owner/bookings', '/owner/institute', '/owner/courses', '/owner/venue-discovery',
   '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
 };
