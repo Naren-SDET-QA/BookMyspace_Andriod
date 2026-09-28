@@ -6,6 +6,8 @@ import '../../../../core/notifications/onesignal_push_service.dart';
 import '../../../../core/router/app_router.dart';
 import '../../domain/admin_settings.dart';
 import '../admin_settings_providers.dart';
+import '../widgets/platform_finance_section.dart';
+import '../widgets/platform_status_section.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../promotions/presentation/widgets/existing_media_picker.dart';
 
@@ -30,6 +32,8 @@ class AdminSettingsScreen extends ConsumerWidget {
         data: (settings) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const PlatformStatusSection(),
+            const PlatformFinanceSection(),
             _HomeSection(settings: settings),
             _ThemeSection(settings: settings),
             _ModuleSection(settings: settings),
