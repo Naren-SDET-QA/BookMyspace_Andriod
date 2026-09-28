@@ -13,6 +13,7 @@ import '../../domain/analytics_display_config.dart';
 import '../../domain/peak_hours_analytics.dart';
 import '../../domain/revenue_analytics.dart';
 import '../analytics_providers.dart';
+import '../widgets/daily_report_preference_card.dart';
 import '../widgets/peak_hours_chart.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../modules/presentation/module_providers.dart';
@@ -107,6 +108,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const DailyReportPreferenceCard(),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             children: [
