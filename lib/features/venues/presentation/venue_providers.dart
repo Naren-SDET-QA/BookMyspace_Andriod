@@ -5,6 +5,7 @@ import '../../auth/presentation/auth_providers.dart';
 import '../../home/presentation/discovery_location.dart';
 import '../../location/presentation/location_providers.dart';
 import '../domain/venue.dart';
+import '../domain/venue_ranking.dart';
 import '../domain/venue_repository.dart';
 import '../domain/room_inventory.dart';
 import '../domain/room_inventory_repository.dart';
@@ -117,9 +118,60 @@ final searchResultsProvider =
     FutureProvider.autoDispose.family<List<Venue>, VenueSearchQuery>((
   ref,
   query,
-) {
-  return ref.watch(venueRepositoryProvider).search(query);
+) async {
+  final location =
+      query.hasCoordinates ? null : ref.watch(rankingLocationProvider);
+  final results = await ref.watch(venueRepositoryProvider).search(query);
+  if (location == null) return results;
+  return rankSearchResults(results, query, location);
 });
+
+/// The user's selected location hierarchy (explicit discovery city first,
+/// then the search area's resolved area/city/district/state).
+final rankingLocationProvider = Provider.autoDispose<RankingLocation>((ref) {
+  final discovery = ref.watch(discoveryLocationProvider);
+  final area = ref.watch(searchAreaProvider);
+  return RankingLocation.merge([
+    RankingLocation(
+      city: discovery.city,
+      district: discovery.district,
+      state: discovery.state,
+    ),
+    RankingLocation(
+      area: area.area,
+      city: area.city,
+      district: area.district,
+      state: area.state,
+    ),
+  ]);
+});
+
+/// Client-side "Relevance" / "Distance" ordering when the query carries no
+/// coordinates (the server can only order by popularity then): same
+/// area -> city -> district -> state -> others, ties broken by the
+/// recommended score `avgRating * (ratingCount + 1)`. Other sorts keep the
+/// server order.
+List<Venue> rankSearchResults(
+  List<Venue> results,
+  VenueSearchQuery query,
+  RankingLocation selected,
+) {
+  if (query.hasCoordinates) return results;
+  if (query.sortBy != VenueSortBy.relevance &&
+      query.sortBy != VenueSortBy.distance) {
+    return results;
+  }
+  final location = RankingLocation.merge([
+    RankingLocation(
+      area: query.area,
+      city: query.city,
+      district: query.district,
+      state: query.state,
+    ),
+    selected,
+  ]);
+  return VenueRanking.rankByLocation(results, location);
+}
 
 /// Venue details provider by venue ID.
 final venueDetailsProvider = FutureProvider.autoDispose.family<Venue, String>((

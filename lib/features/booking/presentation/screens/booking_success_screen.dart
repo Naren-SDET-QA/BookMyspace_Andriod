@@ -9,6 +9,7 @@ import '../../../../core/widgets/error_view.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
+import '../widgets/booking_start_countdown.dart';
 
 /// Dedicated confirmation surface after the server confirms a booking.
 ///
@@ -140,6 +141,10 @@ class _ConfirmedBody extends StatelessWidget {
                 ),
               ),
             ),
+            if (booking.status == BookingStatus.confirmed) ...[
+              const SizedBox(height: 10),
+              BookingStartCountdown(booking: booking),
+            ],
             if (booking.receiptNumber != null) ...[
               const SizedBox(height: 10),
               Card(

@@ -21,6 +21,7 @@ import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
+import '../widgets/booking_start_countdown.dart';
 import '../booking_providers.dart';
 
 /// Lists the signed-in user's bookings with status and cancel action.
@@ -571,19 +572,24 @@ class _BookingCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
             children: [
               _InfoChip(
                 icon: Icons.calendar_today_rounded,
                 label: DateFormat.yMMMd().format(booking.bookDate),
               ),
-              const SizedBox(width: 12),
               _InfoChip(
                 icon: Icons.schedule_rounded,
                 label: '${booking.displayStart} – ${booking.displayEnd}',
               ),
             ],
           ),
+          if (booking.status == BookingStatus.confirmed) ...[
+            const SizedBox(height: 10),
+            BookingStartCountdown(booking: booking),
+          ],
           const SizedBox(height: 12),
           const Divider(height: 1),
           const SizedBox(height: 12),

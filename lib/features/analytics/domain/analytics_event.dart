@@ -15,6 +15,8 @@ enum AnalyticsEventType {
   venueUpdated,
   notificationSent,
   crashReported,
+  viewVenueDetails,
+  selectTimeSlot,
   custom;
 
   static AnalyticsEventType fromDb(String value) => switch (value) {
@@ -34,6 +36,8 @@ enum AnalyticsEventType {
         'venue_updated' => AnalyticsEventType.venueUpdated,
         'notification_sent' => AnalyticsEventType.notificationSent,
         'crash_reported' => AnalyticsEventType.crashReported,
+        'view_venue_details' => AnalyticsEventType.viewVenueDetails,
+        'select_time_slot' => AnalyticsEventType.selectTimeSlot,
         _ => AnalyticsEventType.custom,
       };
 
@@ -54,6 +58,8 @@ enum AnalyticsEventType {
         AnalyticsEventType.venueUpdated => 'venue_updated',
         AnalyticsEventType.notificationSent => 'notification_sent',
         AnalyticsEventType.crashReported => 'crash_reported',
+        AnalyticsEventType.viewVenueDetails => 'view_venue_details',
+        AnalyticsEventType.selectTimeSlot => 'select_time_slot',
         AnalyticsEventType.custom => 'custom',
       };
 }

@@ -8,6 +8,9 @@ enum VenueSortBy {
   priceDesc,
   rating,
   distance,
+
+  /// Largest capacity first ("biggest halls").
+  capacity,
 }
 
 /// Category metadata for venues.
@@ -728,6 +731,7 @@ class VenueSearchQuery {
     this.radiusKm,
     this.maxDistanceKm,
     this.minCapacity,
+    this.maxCapacity,
     this.date,
     this.checkIn,
     this.checkOut,
@@ -764,6 +768,7 @@ class VenueSearchQuery {
   final int? radiusKm;
   final double? maxDistanceKm;
   final int? minCapacity;
+  final int? maxCapacity;
   final DateTime? date;
   final DateTime? checkIn;
   final DateTime? checkOut;
@@ -804,6 +809,7 @@ class VenueSearchQuery {
       radiusKm != null ||
       maxDistanceKm != null ||
       minCapacity != null ||
+      maxCapacity != null ||
       date != null ||
       checkIn != null ||
       checkOut != null ||
@@ -839,6 +845,7 @@ class VenueSearchQuery {
     int? Function()? radiusKm,
     double? Function()? maxDistanceKm,
     int? Function()? minCapacity,
+    int? Function()? maxCapacity,
     DateTime? Function()? date,
     DateTime? Function()? checkIn,
     DateTime? Function()? checkOut,
@@ -875,6 +882,7 @@ class VenueSearchQuery {
       radiusKm: radiusKm != null ? radiusKm() : this.radiusKm,
       maxDistanceKm: maxDistanceKm != null ? maxDistanceKm() : this.maxDistanceKm,
       minCapacity: minCapacity != null ? minCapacity() : this.minCapacity,
+      maxCapacity: maxCapacity != null ? maxCapacity() : this.maxCapacity,
       date: date != null ? date() : this.date,
       checkIn: checkIn != null ? checkIn() : this.checkIn,
       checkOut: checkOut != null ? checkOut() : this.checkOut,
@@ -916,6 +924,7 @@ class VenueSearchQuery {
             radiusKm == other.radiusKm &&
             maxDistanceKm == other.maxDistanceKm &&
             minCapacity == other.minCapacity &&
+            maxCapacity == other.maxCapacity &&
             date == other.date &&
             checkIn == other.checkIn &&
             checkOut == other.checkOut &&
@@ -954,6 +963,7 @@ class VenueSearchQuery {
         radiusKm,
         maxDistanceKm,
         minCapacity,
+        maxCapacity,
         date,
         checkIn,
         checkOut,
