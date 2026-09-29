@@ -25,19 +25,35 @@ class _AccommodationListScreenState
     extends ConsumerState<AccommodationListScreen> {
   String _search = '';
   String? _type;
-  bool _appliedRouteQuery = false;
+  String? _routeQuery;
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_appliedRouteQuery) return;
-    final router = GoRouter.maybeOf(context);
-    if (router == null) return;
-    _appliedRouteQuery = true;
-    final query = GoRouterState.of(context).uri.queryParameters['q']?.trim();
-    if (query != null && query.isNotEmpty) {
-      _search = query;
-    }
+    if (GoRouter.maybeOf(context) == null) return;
+    // Route query is the deep-link source. Re-read it when the URL changes
+    // (browser back/refresh) without resetting text the user is typing.
+    final query = GoRouterState.of(context).uri.queryParameters['q']?.trim() ?? '';
+    if (query == _routeQuery) return;
+    _routeQuery = query;
+    _search = query;
+    _searchController.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<(String, String)> get _types => widget.module == AccommodationModule.pg
@@ -68,6 +84,7 @@ class _AccommodationListScreenState
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search by property or city',
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -75,7 +92,10 @@ class _AccommodationListScreenState
                     ? null
                     : IconButton(
                         tooltip: 'Clear search',
-                        onPressed: () => setState(() => _search = ''),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _search = '');
+                        },
                         icon: const Icon(Icons.close_rounded),
                       ),
               ),
