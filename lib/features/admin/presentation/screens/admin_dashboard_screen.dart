@@ -196,9 +196,17 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminTheme),
             ),
             _AdminLink(
+              icon: Icons.auto_fix_high_outlined,
+              title: 'App Studio — edit everything',
+              subtitle:
+                  'Logo, branding, any text/image/field, banners, sections, theme',
+              onTap: () => context.push(AppRoutes.adminAppStudio),
+            ),
+            _AdminLink(
               icon: Icons.edit_note_outlined,
               title: 'Live element editor',
-              subtitle: 'Override customer copy or hide supported elements',
+              subtitle:
+                  'Override any text, image, field, link, color or hide any element',
               onTap: () => context.push(AppRoutes.adminUiElementOverrides),
             ),
             _AdminLink(

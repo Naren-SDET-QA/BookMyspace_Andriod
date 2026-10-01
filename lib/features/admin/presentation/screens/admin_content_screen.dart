@@ -23,6 +23,26 @@ class AdminContentScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const _ContentLink(
+          icon: Icons.auto_fix_high_outlined,
+          title: 'App Studio — edit everything',
+          subtitle:
+              'Logo, branding, any text/image/field, banners, sections, theme.',
+          route: AppRoutes.adminAppStudio,
+        ),
+        const _ContentLink(
+          icon: Icons.edit_note_outlined,
+          title: 'Live element editor',
+          subtitle:
+              'Any text, image, field, link, color or visibility on any screen.',
+          route: AppRoutes.adminUiElementOverrides,
+        ),
+        const _ContentLink(
+          icon: Icons.branding_watermark_outlined,
+          title: 'Logo & branding',
+          subtitle: 'App name, logo, splash and wordmark colors.',
+          route: AppRoutes.adminSettings,
+        ),
+        const _ContentLink(
           icon: Icons.view_agenda_outlined,
           title: 'Home sections',
           subtitle: 'Control which customer sections are visible.',

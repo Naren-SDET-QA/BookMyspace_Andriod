@@ -320,6 +320,11 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         title: Text(l10n.myBookings),
         actions: [
           IconButton(
+            icon: const Icon(Icons.receipt_long_rounded),
+            tooltip: 'Payment History & Receipts',
+            onPressed: () => context.push(AppRoutes.paymentHistory),
+          ),
+          IconButton(
             icon: const Icon(Icons.qr_code_scanner_rounded),
             tooltip: 'QR Check-In Scanner',
             onPressed: () => context.push(AppRoutes.qrScanner),

@@ -40,4 +40,43 @@ void main() {
       expect(targetWithFilter, '${AppRoutes.search}?category=hotel_rooms&city=Hyderabad');
     });
   });
+
+  group('Display all screens preview', () {
+    const customer = AuthUser(id: 'u1', email: 'test@bms.com');
+
+    test('a customer can open an owner place while preview is on', () {
+      expect(
+        resolveAppRedirect(
+          location: '/owner/payments',
+          currentUser: customer,
+          authReady: true,
+          allowPreviewAllScreens: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('a customer is sent to profile for that owner place when preview is off', () {
+      expect(
+        resolveAppRedirect(
+          location: '/owner/payments',
+          currentUser: customer,
+          authReady: true,
+        ),
+        AppRoutes.profile,
+      );
+    });
+
+    test('phase-one routes stay on home while preview is on', () {
+      expect(
+        resolveAppRedirect(
+          location: '/sports',
+          currentUser: customer,
+          authReady: true,
+          allowPreviewAllScreens: true,
+        ),
+        AppRoutes.home,
+      );
+    });
+  });
 }

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -446,25 +448,38 @@ class _MasterScreenDirectoryScreenState
     super.dispose();
   }
 
-  void _navigateToScreen(ScreenDirectoryItem item) {
-    // If the route has a parameter, use demoParamRoute or substitute
-    if (item.demoParamRoute != null && item.route.contains(':id')) {
-      // Check if real venues exist
-      final venues = ref.read(popularVenuesProvider).valueOrNull ?? [];
-      final realId = venues.isNotEmpty ? venues.first.id : 'preview-demo-venue';
-      final resolved = item.route.replaceAll(':id', realId);
-      context.push(resolved);
-      return;
-    }
-
-    try {
-      context.push(item.route);
-    } catch (_) {
-      if (item.demoParamRoute != null) {
-        context.push(item.demoParamRoute!);
-      } else {
-        context.push(AppRoutes.home);
+  /// Venue routes can use a live listing id. Every other parameterized
+  /// place keeps its own demo path so an institute or class is not opened
+  /// with a venue id. A demo path that is more specific than a shared list
+  /// route opens that place directly.
+  String _destinationFor(ScreenDirectoryItem item) {
+    if (item.route.contains(':id')) {
+      if (item.route.startsWith('/venues')) {
+        final venues = ref.read(popularVenuesProvider).valueOrNull ?? [];
+        final realId =
+            venues.isNotEmpty ? venues.first.id : 'preview-demo-venue';
+        return item.route.replaceAll(':id', realId);
       }
+      return item.demoParamRoute ?? item.route;
+    }
+    final demo = item.demoParamRoute;
+    if (demo != null && demo != item.route) return demo;
+    return item.route;
+  }
+
+  void _navigateToScreen(ScreenDirectoryItem item) {
+    final destination = _destinationFor(item);
+    try {
+      context.navigateSafely(destination);
+    } catch (_) {
+      final fallback = item.demoParamRoute;
+      if (fallback != null && fallback != destination) {
+        try {
+          context.navigateSafely(fallback);
+          return;
+        } catch (_) {}
+      }
+      context.go(AppRoutes.home);
     }
   }
 
@@ -517,45 +532,68 @@ class _MasterScreenDirectoryScreenState
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  previewModeActive
-                      ? Icons.verified_user_rounded
-                      : Icons.visibility_outlined,
-                  color: previewModeActive ? AppTheme.brandDark : theme.colorScheme.primary,
-                  size: 26,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Display All Screens Mode',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: previewModeActive ? AppTheme.brandDark : null,
-                        ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stacked = constraints.maxWidth < 520;
+                final copy = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Display All Screens Mode',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: previewModeActive ? AppTheme.brandDark : null,
                       ),
-                      Text(
-                        previewModeActive
-                            ? 'RoleGate bypass active: Admin & Owner portals unlocked for review.'
-                            : 'Enable to preview and test Admin and Owner screens freely.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                    ),
+                    Text(
+                      previewModeActive
+                          ? 'RoleGate bypass active: Admin and Owner portals are unlocked for review.'
+                          : 'Turn this on to open Admin and Owner places on this device.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
+                    ),
+                  ],
+                );
+                final toggle = Switch.adaptive(
                   value: previewModeActive,
                   onChanged: (val) {
                     ref.read(previewAllScreensModeProvider.notifier).state = val;
                   },
-                ),
-              ],
+                );
+                final icon = Icon(
+                  previewModeActive
+                      ? Icons.verified_user_rounded
+                      : Icons.visibility_outlined,
+                  color: previewModeActive
+                      ? AppTheme.brandDark
+                      : theme.colorScheme.primary,
+                  size: 26,
+                );
+                if (stacked) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          icon,
+                          const SizedBox(width: 12),
+                          Expanded(child: copy),
+                        ],
+                      ),
+                      Align(alignment: Alignment.centerRight, child: toggle),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    icon,
+                    const SizedBox(width: 12),
+                    Expanded(child: copy),
+                    toggle,
+                  ],
+                );
+              },
             ),
           ),
 
@@ -590,32 +628,30 @@ class _MasterScreenDirectoryScreenState
             ),
           ),
 
-          // Domain Filter Chips
-          SizedBox(
-            height: 48,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              scrollDirection: Axis.horizontal,
-              itemCount: ScreenDomain.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final d = ScreenDomain.values[index];
-                final isSelected = _selectedDomain == d;
-                final count = d == ScreenDomain.all
-                    ? masterScreenCatalog.length
-                    : masterScreenCatalog.where((i) => i.domain == d).length;
-
-                return FilterChip(
-                  avatar: Icon(d.icon, size: 16, color: isSelected ? Colors.white : d.color),
-                  label: Text('${d.label} ($count)'),
-                  selected: isSelected,
-                  selectedColor: d.color,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : theme.colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                  onSelected: (_) => setState(() => _selectedDomain = d),
+          // Every domain stays on screen. A horizontal strip clips the last
+          // places on a phone and hides them from a mouse wheel on desktop.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final chipTextWidth = math.max(80.0, constraints.maxWidth - 72);
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final d in ScreenDomain.values)
+                      _DomainChip(
+                        domain: d,
+                        count: d == ScreenDomain.all
+                            ? masterScreenCatalog.length
+                            : masterScreenCatalog
+                                .where((item) => item.domain == d)
+                                .length,
+                        selected: _selectedDomain == d,
+                        maxTextWidth: chipTextWidth,
+                        onSelected: () => setState(() => _selectedDomain = d),
+                      ),
+                  ],
                 );
               },
             ),
@@ -623,31 +659,61 @@ class _MasterScreenDirectoryScreenState
 
           const Divider(height: 1),
 
-          // Screen List
+          // Screen List. One column on a phone, two from a tablet, three
+          // on a wide desktop, so every place is reachable without a
+          // single stretched card.
           Expanded(
             child: filtered.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off_rounded, size: 48, color: theme.colorScheme.outline),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No screens match your query',
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off_rounded, size: 48, color: theme.colorScheme.outline),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No screens match your query',
+                            style: theme.textTheme.titleMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      return _ScreenCatalogCard(
-                        item: item,
-                        onOpen: () => _navigateToScreen(item),
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 1200
+                          ? 3
+                          : constraints.maxWidth >= 800
+                              ? 2
+                              : 1;
+                      final rowCount = (filtered.length / columns).ceil();
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: rowCount,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, row) {
+                          final start = row * columns;
+                          final end = math.min(start + columns, filtered.length);
+                          final slice = filtered.sublist(start, end);
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var column = 0; column < columns; column++) ...[
+                                if (column > 0) const SizedBox(width: 12),
+                                Expanded(
+                                  child: column < slice.length
+                                      ? _ScreenCatalogCard(
+                                          item: slice[column],
+                                          onOpen: () => _navigateToScreen(slice[column]),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       );
                     },
                   ),
@@ -670,6 +736,18 @@ class _ScreenCatalogCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final openButton = FilledButton.tonalIcon(
+      onPressed: onOpen,
+      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+      label: const Text('Open'),
+      style: FilledButton.styleFrom(
+        // Theme minimumSize is Size.fromHeight, which is infinite width.
+        minimumSize: const Size(0, 40),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
 
     return Card(
       elevation: 0,
@@ -682,108 +760,194 @@ class _ScreenCatalogCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 460;
+              final heading = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: item.domain.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(item.icon, color: item.domain.color, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: item.domain.color.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                item.domain.label,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: item.domain.color,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                item.audience,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                  Text(
+                    item.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  FilledButton.tonalIcon(
-                    onPressed: onOpen,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                    label: const Text('Open'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      visualDensity: VisualDensity.compact,
-                    ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _MetaPill(
+                        label: item.domain.label,
+                        color: item.domain.color,
+                        background: item.domain.color.withValues(alpha: 0.1),
+                      ),
+                      _MetaPill(
+                        label: item.audience,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        background: theme.colorScheme.surfaceContainerHighest,
+                      ),
+                    ],
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                item.description,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Route: ${item.route}',
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    color: theme.colorScheme.primary,
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (stacked) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _DomainIcon(item: item),
+                        const SizedBox(width: 12),
+                        Expanded(child: heading),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _DomainIcon(item: item),
+                        const SizedBox(width: 14),
+                        Expanded(child: heading),
+                        const SizedBox(width: 12),
+                        openButton,
+                      ],
+                    ),
+                  const SizedBox(height: 12),
+                  Text(
+                    item.description,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Route: ${item.route}',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  if (stacked) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(width: double.infinity, child: openButton),
+                  ],
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 }
+
+class _DomainIcon extends StatelessWidget {
+  const _DomainIcon({required this.item});
+
+  final ScreenDirectoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: item.domain.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(item.icon, color: item.domain.color, size: 24),
+    );
+  }
+}
+
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({
+    required this.label,
+    required this.color,
+    required this.background,
+  });
+
+  final String label;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _DomainChip extends StatelessWidget {
+  const _DomainChip({
+    required this.domain,
+    required this.count,
+    required this.selected,
+    required this.maxTextWidth,
+    required this.onSelected,
+  });
+
+  final ScreenDomain domain;
+  final int count;
+  final bool selected;
+  final double maxTextWidth;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FilterChip(
+      avatar: Icon(
+        domain.icon,
+        size: 16,
+        color: selected ? Colors.white : domain.color,
+      ),
+      label: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxTextWidth),
+        child: Text(
+          '${domain.label} ($count)',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+        ),
+      ),
+      selected: selected,
+      selectedColor: domain.color,
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : theme.colorScheme.onSurface,
+        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 12,
+      ),
+      onSelected: (_) => onSelected(),
+    );
+  }
+}
+

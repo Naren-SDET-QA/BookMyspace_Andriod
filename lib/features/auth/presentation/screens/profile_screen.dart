@@ -34,12 +34,13 @@ class ProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
     final roles = ref.watch(currentUserRolesProvider).valueOrNull ?? {};
-    final isVenueOwner = roles.canManageVenues;
-    final isAdmin = roles.canViewAdminTools;
+    final previewAll = ref.watch(previewAllScreensModeProvider);
+    final isVenueOwner = roles.canManageVenues || previewAll;
+    final isAdmin = roles.canViewAdminTools || previewAll;
     final bookings = ref.watch(myBookingsProvider);
     final saved = ref.watch(savedVenuesProvider);
-    final signedIn = user != null;
-    final isInstituteOwner = roles.contains(AppRole.instituteOwner);
+    final signedIn = user != null || previewAll;
+    final isInstituteOwner = roles.contains(AppRole.instituteOwner) || previewAll;
     final coursesEnabled = ref.watch(moduleEnabledProvider('courses'));
     final referralsEnabled = ref.watch(moduleEnabledProvider('referrals'));
     final analyticsEnabled = ref.watch(moduleEnabledProvider('analytics'));
@@ -236,7 +237,7 @@ class ProfileScreen extends ConsumerWidget {
                           orElse: () => '—',
                         ),
                         color: AppTheme.violet,
-                        onTap: () => context.push(AppRoutes.bookings),
+                        onTap: () => context.go(AppRoutes.bookings),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -249,7 +250,7 @@ class ProfileScreen extends ConsumerWidget {
                           orElse: () => '—',
                         ),
                         color: Colors.pink,
-                        onTap: () => context.push(AppRoutes.saved),
+                        onTap: () => context.go(AppRoutes.saved),
                       ),
                     ),
                   ],
@@ -299,7 +300,7 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.favorite_outline,
                   title: 'My Favorites & Saved Spaces',
                   subtitle: 'Venues and courts saved on your account',
-                  onTap: () => context.push(AppRoutes.saved),
+                  onTap: () => context.go(AppRoutes.saved),
                 ),
                 _ProfileMenuTile(
                   key: const Key('profile-past-coupons'),
@@ -431,13 +432,13 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.school_outlined,
                   title: 'Courses',
                   subtitle: 'Institutes, batches, and enrollments',
-                  onTap: () => context.push(AppRoutes.coursesList),
+                  onTap: () => context.go(AppRoutes.coursesList),
                 ),
                 _ProfileMenuTile(
                   icon: Icons.notifications_none_rounded,
                   title: 'Notifications & Alerts',
                   subtitle: 'Booking updates, reminders, and offers',
-                  onTap: () => context.push(AppRoutes.notifications),
+                  onTap: () => context.go(AppRoutes.notifications),
                 ),
                 _ProfileMenuTile(
                   icon: Icons.tune_rounded,
@@ -482,6 +483,21 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Admin console',
                     subtitle: 'Users, owners, venues, support, and audit',
                     onTap: () => context.push(AppRoutes.adminDashboard),
+                  ),
+                if (isAdmin)
+                  _ProfileMenuTile(
+                    icon: Icons.health_and_safety_outlined,
+                    title: 'System Health & Diagnostics',
+                    subtitle: 'Supabase, Razorpay, OneSignal, cache metrics',
+                    onTap: () => context.push(AppRoutes.adminHealth),
+                  ),
+                if (isVenueOwner)
+                  _ProfileMenuTile(
+                    icon: Icons.event_busy_outlined,
+                    title: 'Slot Availability & Blackout Management',
+                    subtitle:
+                        'Block slots for maintenance, tournaments, or rain closures',
+                    onTap: () => context.push(AppRoutes.ownerAvailability),
                   ),
                 if (roles.contains(AppRole.supportAgent) && !isAdmin)
                   _ProfileMenuTile(

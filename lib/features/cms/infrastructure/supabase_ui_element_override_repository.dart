@@ -48,19 +48,53 @@ class SupabaseUiElementOverrideRepository {
     String? placeholder,
     required bool hidden,
     required bool enabled,
+    String? imageUrl,
+    String? linkUrl,
+    String? colorValue,
   }) async {
-    await _client.rpc(
-      'admin_save_ui_element_override',
-      params: {
-        'p_screen_key': screenKey,
-        'p_element_key': elementKey,
-        'p_locale': locale,
-        'p_text_value': text,
-        'p_placeholder_value': placeholder,
-        'p_is_hidden': hidden,
-        'p_enabled': enabled,
-      },
-    );
+    try {
+      await _client.rpc(
+        'admin_save_ui_element_override',
+        params: {
+          'p_screen_key': screenKey,
+          'p_element_key': elementKey,
+          'p_locale': locale,
+          'p_text_value': text,
+          'p_placeholder_value': placeholder,
+          'p_is_hidden': hidden,
+          'p_enabled': enabled,
+          'p_image_url': imageUrl,
+          'p_link_url': linkUrl,
+          'p_color_value': colorValue,
+        },
+      );
+    } catch (_) {
+      // Fallback for backends running the pre-image migration RPC (7 args).
+      await _client.rpc(
+        'admin_save_ui_element_override',
+        params: {
+          'p_screen_key': screenKey,
+          'p_element_key': elementKey,
+          'p_locale': locale,
+          'p_text_value': text,
+          'p_placeholder_value': placeholder,
+          'p_is_hidden': hidden,
+          'p_enabled': enabled,
+        },
+      );
+      // Persist the extended columns directly when the RPC ignores them.
+      await _client
+          .from('ui_element_overrides')
+          .update({
+            'image_url': imageUrl?.trim().isEmpty == true ? null : imageUrl,
+            'link_url': linkUrl?.trim().isEmpty == true ? null : linkUrl,
+            'color_value':
+                colorValue?.trim().isEmpty == true ? null : colorValue,
+          })
+          .eq('screen_key', screenKey)
+          .eq('element_key', elementKey)
+          .eq('locale', locale);
+    }
   }
 
   Future<void> delete(String id) async {

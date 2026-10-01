@@ -117,7 +117,7 @@ class SettingsScreen extends ConsumerWidget {
             _GlassSettingsTile(
               icon: Icons.notifications_outlined,
               iconColor: AppTheme.violet,
-              onTap: () => context.push(AppRoutes.notifications),
+              onTap: () => context.go(AppRoutes.notifications),
               title: l10n.notifications,
             ),
             _GlassSettingsTile(

@@ -134,7 +134,7 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
               : '${AppRoutes.education}?q=${Uri.encodeQueryComponent(text)}',
         );
       case _SearchTab.classes:
-        context.push(AppRoutes.coursesList);
+        context.go(AppRoutes.coursesList);
       case _SearchTab.stays:
         context.push(
           text.isEmpty

@@ -53,7 +53,7 @@ class ConnectedAppsScreen extends ConsumerWidget {
             subtitle: const Text(
               'Open My Bookings, then export a calendar file from a confirmed receipt.',
             ),
-            onTap: () => context.push(AppRoutes.bookings),
+            onTap: () => context.go(AppRoutes.bookings),
           ),
           if (isAdmin) ...[
             ListTile(

@@ -26,6 +26,7 @@ class SupabaseAdminSettingsRepository {
         ...AdminSettings.defaults.install,
         ...?maps[AdminSettings.installSection],
       },
+      branding: maps[AdminSettings.brandingSection] ?? const {},
     );
   }
 

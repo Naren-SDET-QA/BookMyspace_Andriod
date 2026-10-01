@@ -251,7 +251,7 @@ class _SearchScreenState extends ConsumerState<SearchScreenV1> {
             ),
           if (features.isExposed(FeatureId.maps))
             IconButton(
-              onPressed: () => context.push(AppRoutes.map),
+              onPressed: () => context.go(AppRoutes.map),
               tooltip: l10n.viewOnMap,
               icon: const Icon(Icons.map_outlined),
             ),

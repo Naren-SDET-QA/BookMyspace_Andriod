@@ -20,12 +20,12 @@ import '../../features/home/presentation/screens/admin_home_appearance_screen.da
 import '../../features/theme/presentation/screens/admin_theme_customizer_screen.dart';
 import '../../features/admin/presentation/screens/admin_categories_screen.dart';
 import '../../features/admin/presentation/screens/admin_content_screen.dart';
-import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_feature_configuration_screen.dart';
 import '../../features/admin/presentation/screens/admin_health_screen.dart';
 import '../../features/admin/presentation/screens/admin_help_center_screen.dart';
 import '../../features/admin/presentation/screens/admin_listing_fields_screen.dart';
 import '../../features/admin/presentation/screens/admin_invoice_tax_settings_screen.dart';
+import '../../features/admin/presentation/screens/admin_app_studio_screen.dart';
 import '../../features/admin/presentation/screens/admin_ui_element_overrides_screen.dart';
 import '../../features/admin/presentation/screens/admin_developer_platform_screen.dart';
 import '../../features/admin/presentation/screens/admin_connector_registry_screen.dart';
@@ -44,6 +44,7 @@ import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/domain/auth_user.dart';
 import '../../features/auth/presentation/auth_providers.dart';
+import '../../features/auth/presentation/role_providers.dart';
 import '../../features/auth/domain/app_role.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -112,7 +113,6 @@ import '../../features/owner_bookings/presentation/screens/owner_calendar_screen
 import '../../features/owner_venues/presentation/screens/create_venue_screen.dart';
 import '../../features/owner_venues/presentation/screens/media_manager_screen.dart';
 import '../../features/owner_venues/presentation/screens/owner_availability_screen.dart';
-import '../../features/owner_venues/presentation/screens/owner_venues_screen.dart';
 import '../../features/payments/presentation/screens/booking_success_screen.dart'
     as payment_success;
 import '../../features/payments/presentation/screens/commerce_payment_screen.dart';
@@ -264,6 +264,7 @@ abstract class AppRoutes {
   static const ownerVenueDiscovery = '/owner/venue-discovery';
   static const adminRegistrationReviews = '/admin/registration-reviews';
   static const adminContent = '/admin/content';
+  static const adminAppStudio = '/admin/studio';
   static const unifiedRegistration = '/register';
   static const adminLocations = '/admin/locations';
   /// Full-screen AI assistant (release/v1.0). [assistantTab] is the shell tab.
@@ -427,6 +428,116 @@ final _shellMapNavKey       = GlobalKey<NavigatorState>(debugLabel: 'shell-map')
 final _shellSavedNavKey     = GlobalKey<NavigatorState>(debugLabel: 'shell-saved');
 final _shellChatNavKey      = GlobalKey<NavigatorState>(debugLabel: 'shell-chat');
 
+/// Stable, isolated navigator keys for the router.
+///
+/// Ensures each mounted Navigator has a unique, stable GlobalKey across rebuilds
+/// and prevents key collisions if multiple router instances exist simultaneously
+/// (e.g. during transitions, review mode, or widget tests).
+class AppNavKeys {
+  AppNavKeys({
+    GlobalKey<NavigatorState>? root,
+    GlobalKey<NavigatorState>? home,
+    GlobalKey<NavigatorState>? alerts,
+    GlobalKey<NavigatorState>? search,
+    GlobalKey<NavigatorState>? bookings,
+    GlobalKey<NavigatorState>? courses,
+    GlobalKey<NavigatorState>? profile,
+    GlobalKey<NavigatorState>? assistant,
+    GlobalKey<NavigatorState>? map,
+    GlobalKey<NavigatorState>? saved,
+    GlobalKey<NavigatorState>? chat,
+  })  : root = root ?? rootNavigatorKey,
+        home = home ?? _shellHomeNavKey,
+        alerts = alerts ?? _shellAlertsNavKey,
+        search = search ?? _shellSearchNavKey,
+        bookings = bookings ?? _shellBookingsNavKey,
+        courses = courses ?? _shellCoursesNavKey,
+        profile = profile ?? _shellProfileNavKey,
+        assistant = assistant ?? _shellAssistantNavKey,
+        map = map ?? _shellMapNavKey,
+        saved = saved ?? _shellSavedNavKey,
+        chat = chat ?? _shellChatNavKey;
+
+  /// Creates an isolated set of fresh shell branch keys. Use this when instantiating
+  /// secondary router instances or tests to guarantee zero key collisions on the
+  /// shell branches while preserving the top-level route parentNavigatorKey bindings.
+  factory AppNavKeys.fresh({GlobalKey<NavigatorState>? root}) {
+    return AppNavKeys(
+      root: root ?? rootNavigatorKey,
+      home: GlobalKey<NavigatorState>(debugLabel: 'shell-home-fresh'),
+      alerts: GlobalKey<NavigatorState>(debugLabel: 'shell-alerts-fresh'),
+      search: GlobalKey<NavigatorState>(debugLabel: 'shell-search-fresh'),
+      bookings: GlobalKey<NavigatorState>(debugLabel: 'shell-bookings-fresh'),
+      courses: GlobalKey<NavigatorState>(debugLabel: 'shell-courses-fresh'),
+      profile: GlobalKey<NavigatorState>(debugLabel: 'shell-profile-fresh'),
+      assistant: GlobalKey<NavigatorState>(debugLabel: 'shell-assistant-fresh'),
+      map: GlobalKey<NavigatorState>(debugLabel: 'shell-map-fresh'),
+      saved: GlobalKey<NavigatorState>(debugLabel: 'shell-saved-fresh'),
+      chat: GlobalKey<NavigatorState>(debugLabel: 'shell-chat-fresh'),
+    );
+  }
+
+  final GlobalKey<NavigatorState> root;
+  final GlobalKey<NavigatorState> home;
+  final GlobalKey<NavigatorState> alerts;
+  final GlobalKey<NavigatorState> search;
+  final GlobalKey<NavigatorState> bookings;
+  final GlobalKey<NavigatorState> courses;
+  final GlobalKey<NavigatorState> profile;
+  final GlobalKey<NavigatorState> assistant;
+  final GlobalKey<NavigatorState> map;
+  final GlobalKey<NavigatorState> saved;
+  final GlobalKey<NavigatorState> chat;
+}
+
+/// The set of routes hosted directly as branches of [StatefulShellRoute].
+/// Navigating to these destinations must use [GoRouter.go] rather than
+/// [GoRouter.push] to avoid mounting duplicate shell branch navigators in the
+/// widget tree, which triggers Flutter's duplicate GlobalKey assertion.
+const Set<String> shellBranchRoutes = {
+  AppRoutes.home,
+  AppRoutes.notifications,
+  AppRoutes.search,
+  AppRoutes.bookings,
+  AppRoutes.coursesList,
+  AppRoutes.profile,
+  AppRoutes.assistantTab,
+  AppRoutes.map,
+  AppRoutes.saved,
+  AppRoutes.chat,
+};
+
+/// Returns true if [path] resolves to one of the [StatefulShellRoute] branches.
+bool isShellBranchRoute(String path) {
+  final clean = path.split('?').first;
+  if (clean == '/alerts') return true;
+  if (clean == '/venues') return true;
+  final canonical = specRouteAliases[clean] ?? clean;
+  return shellBranchRoutes.contains(canonical);
+}
+
+/// Safe navigation extensions to prevent duplicate [GlobalKey<NavigatorState>]
+/// collisions under [HeroControllerScope].
+extension SafeAppNavigationExtension on BuildContext {
+  /// Safely navigates to [destination].
+  ///
+  /// Shell branch destinations are routed with [go] to switch tabs and prevent
+  /// mounting duplicate [StatefulShellRoute] navigators. Sub-routes and standalone
+  /// destinations are routed with [push] so the back stack is preserved.
+  void navigateSafely(String destination, {Object? extra}) {
+    if (isShellBranchRoute(destination)) {
+      go(destination, extra: extra);
+    } else {
+      try {
+        push(destination, extra: extra);
+      } catch (_) {
+        go(destination, extra: extra);
+      }
+    }
+  }
+}
+
+
 /// Returns an internal login URL that remembers the protected destination.
 ///
 /// Keeping the destination in the query string means a deep link such as
@@ -481,11 +592,16 @@ final appRouterProvider = Provider.family<GoRouter, String>((
     refresh.value++;
   });
 
+  ref.listen<bool>(previewAllScreensModeProvider, (_, __) {
+    refresh.value++;
+  });
+
   final router = createAppRouter(
     initialLocation: initialLocation,
     refreshListenable: refresh,
     authStateReader: () => ref.read(authNotifierProvider),
     allowUnauthenticatedPreview: AppConfig.isUiTestMode,
+    previewModeReader: () => ref.read(previewAllScreensModeProvider),
   );
   ref.onDispose(() {
     router.dispose();
@@ -510,9 +626,12 @@ GoRouter createAppRouter({
   AuthState Function()? authStateReader,
   bool allowUnauthenticatedTestAccess = false,
   FeatureRegistry? features,
+  bool Function()? previewModeReader,
+  AppNavKeys? navKeys,
 }) {
+  final keys = navKeys ?? AppNavKeys();
   return GoRouter(
-    navigatorKey: rootNavigatorKey,
+    navigatorKey: keys.root,
     initialLocation: initialLocation,
     refreshListenable: refreshListenable,
     redirect: (context, state) {
@@ -524,15 +643,27 @@ GoRouter createAppRouter({
         user = auth.user;
       }
       final path = state.uri.path.isEmpty ? AppRoutes.root : state.uri.path;
-      final allowWithoutUser =
-          allowUnauthenticatedPreview || allowUnauthenticatedTestAccess;
+      final previewAll = previewModeReader?.call() ?? false;
+      final allowWithoutUser = allowUnauthenticatedPreview ||
+          allowUnauthenticatedTestAccess ||
+          previewAll;
       // Never leave `/` unmatched. Auth still loading used to return null here,
       // which made go_router throw: no routes for location: /
       if (path == AppRoutes.root || state.matchedLocation == AppRoutes.root) {
         if (!ready || allowWithoutUser) return AppRoutes.shell;
         return user == null ? AppRoutes.login : AppRoutes.shell;
       }
+      // UI test mode keeps the historical short-circuit. The directory
+      // toggle is narrower: it only skips admin and owner role redirects.
       if (allowUnauthenticatedPreview) return null;
+      if (user == null && previewAll) {
+        user = const AuthUser(
+          id: 'preview_reviewer',
+          email: 'preview.admin@bookmyspace.app',
+          role: UserRole.admin,
+          fullName: 'Preview Reviewer',
+        );
+      }
       if (ready && user != null && path == AppRoutes.login) {
         return authenticatedLocationFromLogin(state.uri);
       }
@@ -546,6 +677,7 @@ GoRouter createAppRouter({
         currentUser: user,
         authReady: ready,
         allowUnauthenticatedTestAccess: allowUnauthenticatedTestAccess,
+        allowPreviewAllScreens: previewAll,
         features: features,
       );
       // Keep the protected destination so the user lands there after login.
@@ -824,6 +956,14 @@ GoRouter createAppRouter({
         path: AppRoutes.adminContent,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AdminContentScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminAppStudio,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RoleGate(
+          requiredRoles: {AppRole.administrator, AppRole.superAdministrator},
+          child: AdminAppStudioScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.adminVenueImport,
@@ -1658,7 +1798,7 @@ GoRouter createAppRouter({
         branches: [
           // 0
           StatefulShellBranch(
-            navigatorKey: _shellHomeNavKey,
+            navigatorKey: keys.home,
             routes: [
               GoRoute(
                 path: AppRoutes.home,
@@ -1668,7 +1808,7 @@ GoRouter createAppRouter({
           ),
           // 1
           StatefulShellBranch(
-            navigatorKey: _shellAlertsNavKey,
+            navigatorKey: keys.alerts,
             routes: [
               GoRoute(
                 path: AppRoutes.notifications,
@@ -1678,7 +1818,7 @@ GoRouter createAppRouter({
           ),
           // 2
           StatefulShellBranch(
-            navigatorKey: _shellSearchNavKey,
+            navigatorKey: keys.search,
             routes: [
               GoRoute(
                 path: AppRoutes.search,
@@ -1712,7 +1852,7 @@ GoRouter createAppRouter({
           ),
           // 3
           StatefulShellBranch(
-            navigatorKey: _shellBookingsNavKey,
+            navigatorKey: keys.bookings,
             routes: [
               GoRoute(
                 path: AppRoutes.bookings,
@@ -1722,7 +1862,7 @@ GoRouter createAppRouter({
           ),
           // 4
           StatefulShellBranch(
-            navigatorKey: _shellCoursesNavKey,
+            navigatorKey: keys.courses,
             routes: [
               GoRoute(
                 path: AppRoutes.coursesList,
@@ -1732,7 +1872,7 @@ GoRouter createAppRouter({
           ),
           // 5
           StatefulShellBranch(
-            navigatorKey: _shellProfileNavKey,
+            navigatorKey: keys.profile,
             routes: [
               GoRoute(
                 path: AppRoutes.profile,
@@ -1742,7 +1882,7 @@ GoRouter createAppRouter({
           ),
           // 6. The assistant is a destination an admin opts into.
           StatefulShellBranch(
-            navigatorKey: _shellAssistantNavKey,
+            navigatorKey: keys.assistant,
             routes: [
               GoRoute(
                 path: AppRoutes.assistantTab,
@@ -1752,7 +1892,7 @@ GoRouter createAppRouter({
           ),
           // 7. Map (release/v1.0 primary destination).
           StatefulShellBranch(
-            navigatorKey: _shellMapNavKey,
+            navigatorKey: keys.map,
             routes: [
               GoRoute(
                 path: AppRoutes.map,
@@ -1762,7 +1902,7 @@ GoRouter createAppRouter({
           ),
           // 8. Saved (release/v1.0 primary destination).
           StatefulShellBranch(
-            navigatorKey: _shellSavedNavKey,
+            navigatorKey: keys.saved,
             routes: [
               GoRoute(
                 path: AppRoutes.saved,
@@ -1772,7 +1912,7 @@ GoRouter createAppRouter({
           ),
           // 9. Chat tab (release/v1.0 modern bottom-nav style).
           StatefulShellBranch(
-            navigatorKey: _shellChatNavKey,
+            navigatorKey: keys.chat,
             routes: [
               GoRoute(
                 path: AppRoutes.chat,
@@ -1792,6 +1932,7 @@ String? resolveAppRedirect({
   required AuthUser? currentUser,
   required bool authReady,
   bool allowUnauthenticatedTestAccess = false,
+  bool allowPreviewAllScreens = false,
   FeatureRegistry? features,
 }) {
   if (location == '/venues' || location.startsWith('/venues?')) {
@@ -1825,8 +1966,12 @@ String? resolveAppRedirect({
             canonical.startsWith('/admin/'));
     final isOwnerRoute = !gatedByWidget &&
         (canonical.startsWith('/owner') || canonical == AppRoutes.analytics);
-    if (isAdminRoute && !currentUser.isAdmin) return AppRoutes.profile;
-    if (isOwnerRoute && !currentUser.isOwner) return AppRoutes.profile;
+    if (!allowPreviewAllScreens && isAdminRoute && !currentUser.isAdmin) {
+      return AppRoutes.profile;
+    }
+    if (!allowPreviewAllScreens && isOwnerRoute && !currentUser.isOwner) {
+      return AppRoutes.profile;
+    }
     if (canonical == AppRoutes.resetPassword) return null;
     if (canonical == AppRoutes.onboarding ||
         canonical == AppRoutes.login ||
@@ -1995,7 +2140,6 @@ class _AppShell extends ConsumerWidget {
 
   Widget _buildModernShell(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final simpleMode = ref.watch(simpleModeProvider);
     const navStyle = ShellNavStyle.modern;
     final visible = visibleShellDestinations(
       ref.watch(featureRegistryProvider),
@@ -2012,9 +2156,7 @@ class _AppShell extends ConsumerWidget {
       surfaceTintColor: Colors.transparent,
       indicatorColor: AppTheme.brand.withValues(alpha: 0.12),
       height: 72,
-      labelBehavior: simpleMode || modern
-          ? NavigationDestinationLabelBehavior.alwaysShow
-          : NavigationDestinationLabelBehavior.onlyShowSelected,
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       selectedIndex: selected,
       onDestinationSelected: (index) {
         final branch = visible[index].branchIndex;

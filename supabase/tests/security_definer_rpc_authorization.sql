@@ -13,6 +13,7 @@ begin
     select * from (values
       ('delete_owner_account', array['uuid']),
       ('mark_ticket_resolved', array['uuid']),
+      ('list_authorized_analytics_events', array['integer']),
       ('acquire_venue_hold', array['uuid','uuid','date','uuid','uuid','numeric','numeric','numeric','integer']),
       ('release_venue_hold', array['uuid','uuid']),
       ('my_enrolled_batches', array['uuid']),

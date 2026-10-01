@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/app_role.dart';
 import 'auth_providers.dart';
 
-/// Optional debug/testing preview mode that allows UI reviewers to browse and
-/// display all admin and owner screens in the app without backend role blocks.
+/// Directory toggle that lets a reviewer open every admin and owner screen.
+/// Off by default so a normal session keeps its real roles. Database RLS
+/// still decides what data a request can read or write.
 final previewAllScreensModeProvider = StateProvider<bool>((ref) => false);
 
 /// Available DEV roles that can be toggled on the Profile screen to test

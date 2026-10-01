@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'app_theme_config.dart';
 
-import 'theme_tokens.dart';
-
 /// Centralised Material 3 theme for BookMySpace.
 ///
 /// Supports light and dark mode using the native BookMySpace visual language.
@@ -128,6 +126,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      splashFactory: InkRipple.splashFactory,
       colorScheme: scheme,
       scaffoldBackgroundColor: variant.background,
       visualDensity: VisualDensity.standard,

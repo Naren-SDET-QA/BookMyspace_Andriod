@@ -267,7 +267,7 @@ class ProfileScreenV1 extends ConsumerWidget {
                         count:
                             '${ref.watch(favoritesProvider).valueOrNull?.length ?? 0} Saved',
                         color: Colors.pink,
-                        onTap: () => context.push(AppRoutes.saved),
+                        onTap: () => context.go(AppRoutes.saved),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -323,7 +323,7 @@ class ProfileScreenV1 extends ConsumerWidget {
                     icon: Icons.notifications_none_rounded,
                     title: l10n.notifications,
                     subtitle: 'Booking updates, reminders, and offers',
-                    onTap: () => context.push(AppRoutes.notifications),
+                    onTap: () => context.go(AppRoutes.notifications),
                   ),
                 _ProfileMenuTile(
                   icon: Icons.tune_rounded,

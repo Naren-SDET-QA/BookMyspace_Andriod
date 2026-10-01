@@ -9,6 +9,7 @@ class AdminSettings {
     this.modules = const {},
     this.push = const {},
     this.install = const {},
+    this.branding = const {},
   });
   final Map<String, dynamic> home;
   final Map<String, dynamic> theme;
@@ -25,9 +26,14 @@ class AdminSettings {
   /// [installSection]. Customers only see a channel an admin turned on.
   final Map<String, dynamic> install;
 
+  /// Global branding (logo, splash, app name, wordmark colors).
+  /// Stored as module_key [brandingSection]. Empty = bundled assets.
+  final Map<String, dynamic> branding;
+
   static const pushSection = 'push_notifications';
   static const pushEnabledKey = 'enabled';
   static const installSection = 'app_install';
+  static const brandingSection = 'branding';
 
   /// OFF by default: OneSignal is never initialised unless an admin
   /// explicitly turns push on.
@@ -73,15 +79,34 @@ class AdminSettings {
     Map<String, dynamic>? modules,
     Map<String, dynamic>? push,
     Map<String, dynamic>? install,
+    Map<String, dynamic>? branding,
   }) => AdminSettings(
     home: home ?? this.home,
     theme: theme ?? this.theme,
     modules: modules ?? this.modules,
     push: push ?? this.push,
     install: install ?? this.install,
+    branding: branding ?? this.branding,
   );
 
   AppInstallConfig get appInstall => AppInstallConfig.fromMap(install);
+
+  /// Branding helpers with safe fallbacks.
+  String get appName => text(branding['app_name'], 'BookMySpace');
+  String? get logoUrl {
+    final v = branding['logo_url'];
+    return v is String && v.trim().isNotEmpty ? v.trim() : null;
+  }
+
+  String? get logoDarkUrl {
+    final v = branding['logo_dark_url'];
+    return v is String && v.trim().isNotEmpty ? v.trim() : null;
+  }
+
+  String? get splashUrl {
+    final v = branding['splash_url'];
+    return v is String && v.trim().isNotEmpty ? v.trim() : null;
+  }
 
   static bool validHex(String value) =>
       RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(value.trim());

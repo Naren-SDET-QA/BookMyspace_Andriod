@@ -269,7 +269,8 @@ Deno.serve(async (req) => {
       .eq('status', 'pending');
     if (bookingStatusError) {
       await releaseEvent();
-      return new Response(JSON.stringify({ error: 'booking_status_conflict', detail: bookingStatusError.message }), {
+      console.error('booking_status_conflict', bookingStatusError);
+      return new Response(JSON.stringify({ error: 'booking_status_conflict' }), {
         status: 409,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

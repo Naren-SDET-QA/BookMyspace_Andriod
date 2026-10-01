@@ -80,7 +80,8 @@ Deno.serve(async (req) => {
     }
     return json({ error: 'invalid_action' }, 400);
   } catch (e) {
-    return json({ error: 'internal', detail: String(e) }, 500);
+    console.error('owner_booking_manage_failed', e);
+    return json({ error: 'internal' }, 500);
   }
 });
 
@@ -191,7 +192,8 @@ async function refundRejectedBooking(
     .select('id')
     .single();
   if (initiatedError || !initiatedRefund) {
-    return { refund_status: 'failed', detail: initiatedError?.message ?? 'refund_insert_failed' };
+    console.error('owner_reject_refund_insert_failed', initiatedError);
+    return { refund_status: 'failed' };
   }
 
   try {
@@ -213,7 +215,8 @@ async function refundRejectedBooking(
     // Refund row stays 'requested' so it's visible for manual follow-up
     // (matches create-refund's approach of never silently losing a
     // refund request).
-    return { refund_status: 'failed', refund_id: initiatedRefund.id, detail: String(e) };
+    console.error('owner_reject_refund_failed', initiatedRefund.id, e);
+    return { refund_status: 'failed', refund_id: initiatedRefund.id };
   }
 }
 
@@ -325,7 +328,8 @@ async function createOfflineBooking(
     if (String(bookingError.code) === '23P01') {
       return json({ error: 'slot_unavailable' }, 409);
     }
-    return json({ error: 'booking_create_failed', detail: bookingError.message }, 500);
+    console.error('offline_booking_create_failed', bookingError);
+    return json({ error: 'booking_create_failed' }, 500);
   }
 
   // Offline payments are captured at the door — recorded for accounting.
@@ -345,7 +349,8 @@ async function createOfflineBooking(
     });
   if (paymentError) {
     await supabase.from('bookings').delete().eq('id', booking.id);
-    return json({ error: 'payment_create_failed', detail: paymentError.message }, 500);
+    console.error('offline_payment_create_failed', paymentError);
+    return json({ error: 'payment_create_failed' }, 500);
   }
 
   try {
@@ -445,7 +450,8 @@ async function updateBookingStatus(
     .select('*, venues(id, name, city), time_slots(id, label)')
     .single();
   if (updateError) {
-    return json({ error: 'update_failed', detail: updateError.message }, 500);
+    console.error('owner_booking_update_failed', updateError);
+    return json({ error: 'update_failed' }, 500);
   }
 
   // Notify the customer about the status change (best-effort, never blocks).

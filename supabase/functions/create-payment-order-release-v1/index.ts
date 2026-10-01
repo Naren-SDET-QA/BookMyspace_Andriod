@@ -219,7 +219,8 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'internal', detail: String(e) }), {
+    console.error('create_payment_order_failed', e);
+    return new Response(JSON.stringify({ error: 'internal' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

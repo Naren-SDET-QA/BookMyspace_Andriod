@@ -171,7 +171,7 @@ class _OwnerDashboardBody extends ConsumerWidget {
         _QuickAction(
           icon: Icons.notifications_rounded,
           label: l10n.notifications,
-          onTap: () => context.push(AppRoutes.notifications),
+          onTap: () => context.go(AppRoutes.notifications),
         ),
         _QuickAction(
           icon: Icons.analytics_rounded,
@@ -197,6 +197,26 @@ class _OwnerDashboardBody extends ConsumerWidget {
           icon: Icons.apartment_rounded,
           label: l10n.institutePortal,
           onTap: () => context.push(AppRoutes.ownerInstitute),
+        ),
+        _QuickAction(
+          icon: Icons.event_busy_rounded,
+          label: 'Slot Availability & Blackout 🚫',
+          onTap: () => context.push(AppRoutes.ownerAvailability),
+        ),
+        _QuickAction(
+          icon: Icons.price_change_outlined,
+          label: 'Dynamic Pricing & Peak Hours 🏷️',
+          onTap: () => context.push(AppRoutes.adminBusinessPricing),
+        ),
+        _QuickAction(
+          icon: Icons.sync_problem_rounded,
+          label: 'Offline Bookings & Sync Queue 🔄',
+          onTap: () => context.push(AppRoutes.ownerOfflineBooking),
+        ),
+        _QuickAction(
+          icon: Icons.badge_outlined,
+          label: 'Owner Registration & KYC 📄',
+          onTap: () => context.push(AppRoutes.ownerRegistration),
         ),
       ],
     );

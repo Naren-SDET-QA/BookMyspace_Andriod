@@ -35,6 +35,7 @@ class AdminSettingsScreen extends ConsumerWidget {
           children: [
             const PlatformStatusSection(),
             const PlatformFinanceSection(),
+            _BrandingSection(settings: settings),
             _HomeSection(settings: settings),
             _ThemeSection(settings: settings),
             _ModuleSection(settings: settings),
@@ -52,6 +53,89 @@ class AdminSettingsScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BrandingSection extends ConsumerStatefulWidget {
+  const _BrandingSection({required this.settings});
+  final AdminSettings settings;
+  @override
+  ConsumerState<_BrandingSection> createState() => _BrandingSectionState();
+}
+
+class _BrandingSectionState extends ConsumerState<_BrandingSection> {
+  late Map<String, dynamic> values;
+
+  @override
+  void initState() {
+    super.initState();
+    values = {
+      'app_name': widget.settings.branding['app_name'] ?? 'BookMySpace',
+      'tagline': widget.settings.branding['tagline'] ?? '',
+      'logo_url': widget.settings.branding['logo_url'] ?? '',
+      'logo_dark_url': widget.settings.branding['logo_dark_url'] ?? '',
+      'splash_url': widget.settings.branding['splash_url'] ?? '',
+      'wordmark_first_color':
+          widget.settings.branding['wordmark_first_color'] ?? '#3F51B5',
+      'wordmark_rest_color':
+          widget.settings.branding['wordmark_rest_color'] ?? '',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String str(String key) => values[key]?.toString() ?? '';
+    return _SectionCard(
+      title: 'Branding & logo (entire app)',
+      children: [
+        const Text(
+          'Logo, splash and app name update everywhere the brand lockup is used. '
+          'Leave an image blank to keep the bundled asset.',
+        ),
+        const SizedBox(height: 8),
+        if (str('logo_url').trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                str('logo_url').trim(),
+                height: 72,
+                errorBuilder: (_, _, _) =>
+                    const Text('Logo URL could not be loaded.'),
+              ),
+            ),
+          ),
+        for (final item in const [
+          ('app_name', 'App name (e.g. BookMySpace)'),
+          ('tagline', 'Tagline'),
+          ('logo_url', 'Logo image URL (light)'),
+          ('logo_dark_url', 'Logo image URL (dark, optional)'),
+          ('splash_url', 'Splash image URL (optional)'),
+          ('wordmark_first_color', 'Wordmark color (#RRGGBB)'),
+          ('wordmark_rest_color', 'Wordmark middle color (optional)'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TextFormField(
+              initialValue: str(item.$1),
+              decoration: InputDecoration(
+                labelText: item.$2,
+                suffixIcon: item.$1 == 'logo_url' && str(item.$1).isNotEmpty
+                    ? IconButton(
+                        tooltip: 'Restore bundled logo',
+                        icon: const Icon(Icons.restore_rounded, size: 18),
+                        onPressed: () =>
+                            setState(() => values[item.$1] = ''),
+                      )
+                    : null,
+              ),
+              onChanged: (v) => values[item.$1] = v,
+            ),
+          ),
+        _SaveButton(section: AdminSettings.brandingSection, values: values),
+      ],
     );
   }
 }
@@ -338,6 +422,15 @@ class _SaveButton extends ConsumerWidget {
             final defaults = switch (section) {
               'home_ui' => AdminSettings.defaults.home,
               'theme' => AdminSettings.defaults.theme,
+              'branding' => const <String, dynamic>{
+                'app_name': 'BookMySpace',
+                'tagline': '',
+                'logo_url': '',
+                'logo_dark_url': '',
+                'splash_url': '',
+                'wordmark_first_color': '#3F51B5',
+                'wordmark_rest_color': '',
+              },
               _ => const <String, dynamic>{},
             };
             if (defaults.isEmpty) return;
@@ -410,6 +503,16 @@ class _ExistingSettingsLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     children: [
+      _LinkCard(
+        'App Studio — edit everything',
+        'Logo, any text/image/field, banners, sections and theme in one hub',
+        AppRoutes.adminAppStudio,
+      ),
+      _LinkCard(
+        'Live element editor',
+        'Any text, image, field, link, color or visibility on any screen',
+        AppRoutes.adminUiElementOverrides,
+      ),
       _LinkCard(
         'Authentication',
         'Auth providers and dependency rules',

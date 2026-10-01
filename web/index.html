@@ -1053,19 +1053,19 @@
         }
       }, 100);
 
-      // Warning after 8 seconds of slow load
+      // Warning after 12 seconds of slow load
       var slowTimeout = setTimeout(function() {
         if (!isLoaded && statusElem && isCurrentlyOnline) {
-          statusElem.textContent = 'Still working... optimizing bundle for your browser.';
+          statusElem.textContent = 'Still loading... preparing application bundle.';
           statusElem.style.color = '#fef08a';
         }
-      }, 8000);
+      }, 12000);
 
-      // Timeout fallback trigger after 16 seconds
+      // Timeout fallback trigger after 90 seconds (ensures DDC compiles don't trigger false timeout)
       var failTimeout = setTimeout(function() {
         if (isLoaded) return;
         triggerTimeoutState();
-      }, 16000);
+      }, 90000);
 
       function applyTimeoutRootCause(isNetworkDisconnected) {
         if (isNetworkDisconnected) {
@@ -1174,6 +1174,9 @@
         clearInterval(progressInterval);
         clearTimeout(slowTimeout);
         clearTimeout(failTimeout);
+        if (timeoutView) {
+          timeoutView.style.display = 'none';
+        }
         if (heartbeatInterval) {
           clearInterval(heartbeatInterval);
           heartbeatInterval = null;

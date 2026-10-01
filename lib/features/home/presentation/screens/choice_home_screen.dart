@@ -174,10 +174,10 @@ class _ChoiceHomeScreenState extends ConsumerState<ChoiceHomeScreen> {
                 location: location,
                 signedIn: signedIn,
                 onLocation: _pickLocation,
-                onNotifications: () => context.push(AppRoutes.notifications),
-                onProfile: () => context.push(
-                  signedIn ? AppRoutes.profile : AppRoutes.login,
-                ),
+                onNotifications: () => context.go(AppRoutes.notifications),
+                onProfile: () => signedIn
+                    ? context.go(AppRoutes.profile)
+                    : context.push(AppRoutes.login),
               ),
             ),
             SliverToBoxAdapter(child: _Hero(dark: _dark)),

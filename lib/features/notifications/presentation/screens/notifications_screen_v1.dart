@@ -98,7 +98,7 @@ class NotificationsScreenV1 extends ConsumerWidget {
         break;
       case notification_domain.NotificationType.bookingCancelled:
       case notification_domain.NotificationType.slotReminder:
-        context.push('/bookings');
+        context.go('/bookings');
         break;
       default:
         break;

@@ -25,6 +25,7 @@ import '../../../events/presentation/event_providers.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../cms/presentation/cms_providers.dart';
 import '../../../cms/presentation/widgets/live_ui_text.dart';
+import '../../../cms/presentation/widgets/live_ui_image.dart';
 import '../../../courses/presentation/screens/education_hub_screen.dart';
 import '../../../events/domain/event.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
@@ -1557,7 +1558,11 @@ class _HomeHeroBanner extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            AppNetworkImage(url: imageUrl, fit: BoxFit.cover),
+            LiveUiImage(
+              screenKey: 'home',
+              elementKey: 'hero_image',
+              fallback: AppNetworkImage(url: imageUrl, fit: BoxFit.cover),
+            ),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1581,8 +1586,10 @@ class _HomeHeroBanner extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Spaces for Every Moment',
+                      LiveUiText(
+                        screenKey: 'home',
+                        elementKey: 'hero_title',
+                        fallback: 'Spaces for Every Moment',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
@@ -1591,8 +1598,10 @@ class _HomeHeroBanner extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Function halls, education, stays and more.',
+                      LiveUiText(
+                        screenKey: 'home',
+                        elementKey: 'hero_subtitle',
+                        fallback: 'Function halls, education, stays and more.',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: compact ? 13 : 15,
@@ -1728,8 +1737,10 @@ class _TopHeaderBar extends ConsumerWidget {
                         textColor: theme.colorScheme.onSurface,
                       ),
                     ),
-                    Text(
-                      'Turfs • Halls • PGs • Studios',
+                    LiveUiText(
+                      screenKey: 'home',
+                      elementKey: 'tagline',
+                      fallback: 'Turfs • Halls • PGs • Studios',
                       style: TextStyle(
                         fontSize: 9.5,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -1765,8 +1776,10 @@ class _TopHeaderBar extends ConsumerWidget {
                     fontSize: 17,
                     textColor: theme.colorScheme.onSurface,
                   ),
-                  Text(
-                    'Turfs • Halls • PGs • Studios',
+                  LiveUiText(
+                    screenKey: 'home',
+                    elementKey: 'tagline',
+                    fallback: 'Turfs • Halls • PGs • Studios',
                     style: TextStyle(
                       fontSize: 9.5,
                       color: theme.colorScheme.onSurfaceVariant,

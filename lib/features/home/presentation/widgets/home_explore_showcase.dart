@@ -58,7 +58,7 @@ class HomeExploreShowcase extends ConsumerWidget {
         subtitle: 'Dance, Music & Skill Training',
         icon: Icons.co_present_rounded,
         accent: const Color(0xFF059669),
-        onTap: () => context.push(AppRoutes.coursesList),
+        onTap: () => context.go(AppRoutes.coursesList),
       ),
       _ShowcaseTile(
         key: 'pg',

@@ -175,10 +175,8 @@ Deno.serve(async (req) => {
   );
 
   if (rpcError) {
-    return jsonResponse(
-      { error: "rpc_failed", detail: rpcError.message },
-      500,
-    );
+    console.error("external_inventory_rpc_failed", rpcError);
+    return jsonResponse({ error: "rpc_failed" }, 500);
   }
   if (!result || typeof result !== "object") {
     return jsonResponse({ error: "empty_rpc_response" }, 502);

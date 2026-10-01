@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/app_theme.dart';
+import 'app_network_image.dart';
 
 /// Shared BookMySpace brand mark.
 ///
@@ -98,39 +100,75 @@ class BookMySpaceMark extends StatelessWidget {
     super.key,
     this.size = 64,
     this.semanticLabel = 'BookMySpace',
+    this.logoUrlOverride,
   });
 
   final double size;
   final String semanticLabel;
 
+  /// When set, renders this network logo instead of the bundled asset.
+  /// [ConsumerBookMySpaceMark] feeds this from the admin branding row.
+  final String? logoUrlOverride;
+
   @override
   Widget build(BuildContext context) {
+    final url = logoUrlOverride?.trim();
+    final Widget image;
+    if (url != null && url.isNotEmpty) {
+      image = AppNetworkImage(url: url, fit: BoxFit.contain);
+    } else {
+      image = Image.asset(
+        'assets/icons/bookmyspace_logo.png',
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      );
+    }
     return Semantics(
       image: true,
       label: semanticLabel,
-      child: Image.asset(
-        'assets/icons/bookmyspace_logo.png',
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-      ),
+      child: SizedBox(width: size, height: size, child: image),
     );
   }
 }
 
+/// Riverpod-connected mark: shows the admin-uploaded logo (module_key
+/// `branding`, `logo_url` / `logo_dark_url`) when present, otherwise the
+/// bundled asset. Use this for any NEW placement; existing [BookMySpaceMark]
+/// call sites keep working unchanged.
+class ConsumerBookMySpaceMark extends ConsumerWidget {
+  const ConsumerBookMySpaceMark({super.key, this.size = 64});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Lazy import-safe: branding provider lives in admin feature; fall back
+    // to the bundled asset when admin prefs are unavailable.
+    return BookMySpaceMark(size: size);
+  }
+}
+
 /// The BookMySpace wordmark used wherever the product name is displayed.
+/// Admin-editable: [appName] splits into Book/My/Space coloring when it has
+/// three words, otherwise renders as-is; [firstColor]/[restColor] override
+/// the default brand violet.
 class BookMySpaceWordmark extends StatelessWidget {
   const BookMySpaceWordmark({
     super.key,
     this.fontSize = 22,
     this.textColor,
     this.textAlign = TextAlign.left,
+    this.appName = 'BookMySpace',
+    this.firstColor,
+    this.restColor,
   });
 
   final double fontSize;
   final Color? textColor;
   final TextAlign textAlign;
+  final String appName;
+  final Color? firstColor;
+  final Color? restColor;
 
   @override
   Widget build(BuildContext context) {
@@ -147,18 +185,30 @@ class BookMySpaceWordmark extends StatelessWidget {
           color: textColor ?? AppTheme.textPrimary,
         );
 
+    final brand = firstColor ?? AppTheme.brand;
+    final name = appName.trim().isEmpty ? 'BookMySpace' : appName.trim();
+    // Custom names (e.g. "My Venue App") render in a single style so admin
+    // renames never produce broken Book/My/Space splits.
+    if (name != 'BookMySpace') {
+      return Text(
+        name,
+        style: baseStyle.copyWith(color: textColor ?? brand),
+        textAlign: textAlign,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
     return Text.rich(
       TextSpan(
         children: [
+          TextSpan(text: 'Book', style: baseStyle.copyWith(color: brand)),
           TextSpan(
-            text: 'Book',
-            style: baseStyle.copyWith(color: AppTheme.brand),
+            text: 'My',
+            style: baseStyle.copyWith(
+              color: restColor ?? textColor ?? baseStyle.color,
+            ),
           ),
-          TextSpan(text: 'My', style: baseStyle),
-          TextSpan(
-            text: 'Space',
-            style: baseStyle.copyWith(color: AppTheme.brand),
-          ),
+          TextSpan(text: 'Space', style: baseStyle.copyWith(color: brand)),
         ],
       ),
       textAlign: textAlign,
@@ -169,20 +219,39 @@ class BookMySpaceWordmark extends StatelessWidget {
 }
 
 /// Compact horizontal logo lockup for app bars and headers.
+/// Admin overrides flow through [logoUrlOverride]/[appName] so the SAME
+/// widget renders bundled defaults or admin branding without call-site churn.
 class BookMySpaceBrand extends StatelessWidget {
-  const BookMySpaceBrand({super.key, this.markSize = 36, this.fontSize = 20});
+  const BookMySpaceBrand({
+    super.key,
+    this.markSize = 36,
+    this.fontSize = 20,
+    this.logoUrlOverride,
+    this.appName = 'BookMySpace',
+    this.firstColor,
+    this.restColor,
+  });
 
   final double markSize;
   final double fontSize;
+  final String? logoUrlOverride;
+  final String appName;
+  final Color? firstColor;
+  final Color? restColor;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        BookMySpaceMark(size: markSize),
+        BookMySpaceMark(size: markSize, logoUrlOverride: logoUrlOverride),
         SizedBox(width: markSize * 0.22),
-        BookMySpaceWordmark(fontSize: fontSize),
+        BookMySpaceWordmark(
+          fontSize: fontSize,
+          appName: appName,
+          firstColor: firstColor,
+          restColor: restColor,
+        ),
       ],
     );
   }

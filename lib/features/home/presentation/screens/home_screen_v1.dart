@@ -277,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
     if (section != null) {
       selectCustomerSection(ref, section);
     } else {
-      context.push(AppRoutes.search);
+      context.go(AppRoutes.search);
     }
   }
 
@@ -326,7 +326,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
           subtitle: 'Dance, Music & Skill Training',
           emoji: '🧑‍🏫',
           accent: const Color(0xFF10B981),
-          onTap: () => context.push(AppRoutes.coursesList),
+          onTap: () => context.go(AppRoutes.coursesList),
         ),
       if (shown('tile_pg_visible') &&
           sections.contains(CustomerSection.pgHostels.id))
@@ -391,7 +391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
             padding: EdgeInsets.fromLTRB(pad, 0, pad, 16),
             child: ModernHeroBanner(
               settings: homeConfig,
-              onTap: () => context.push(AppRoutes.search),
+              onTap: () => context.go(AppRoutes.search),
             ),
           ),
         ),
@@ -402,7 +402,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
             child: ModernSpaceRadar(
               locationLabel: locationLabel,
               venues: venues,
-              onViewAll: () => context.push(AppRoutes.search),
+              onViewAll: () => context.go(AppRoutes.search),
               onVenueTap: (venue) => context.push(
                 AppRoutes.v1VenueDetails.replaceAll(':id', venue.id),
               ),
@@ -415,8 +415,8 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
           child: Padding(
             padding: EdgeInsets.fromLTRB(pad, 0, pad, 24),
             child: ModernActivitySection(
-              onBookingsTap: () => context.push(AppRoutes.bookings),
-              onSavedTap: () => context.push(AppRoutes.saved),
+              onBookingsTap: () => context.go(AppRoutes.bookings),
+              onSavedTap: () => context.go(AppRoutes.saved),
             ),
           ),
         ),
@@ -510,8 +510,8 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                             : 0,
                         onLocationTap: _showLocationPickerModal,
                         onNotificationsTap: () =>
-                            context.push(AppRoutes.notifications),
-                        onProfileTap: () => context.push(AppRoutes.profile),
+                            context.go(AppRoutes.notifications),
+                        onProfileTap: () => context.go(AppRoutes.profile),
                         onLoginTap: () => context.push(AppRoutes.v1Login),
                       ),
                     ),
@@ -535,9 +535,9 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                       ),
                       showCheckIn: features.isQrVisible(),
                       onLoginTap: () => context.push(AppRoutes.v1Login),
-                      onProfileTap: () => context.push(AppRoutes.profile),
+                      onProfileTap: () => context.go(AppRoutes.profile),
                       onNotificationsTap: () =>
-                          context.push(AppRoutes.notifications),
+                          context.go(AppRoutes.notifications),
                       onAssistantTap: () => context.push(AppRoutes.assistant),
                       onCheckInTap: () => context.push(AppRoutes.checkIn),
                       onLocationTap: _showLocationPickerModal,
@@ -555,7 +555,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                         child: HomeV2SearchBlock(
                           locationLabel: area.label,
                           onSubmit: _openHomeSearch,
-                          onBrowse: () => context.push(AppRoutes.search),
+                          onBrowse: () => context.go(AppRoutes.search),
                           onLocationTap: _showLocationPickerModal,
                           onVoiceTap: features.isExposed(FeatureId.voice)
                               ? () => _showVoiceBookingDialog(context)
@@ -576,7 +576,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                         ),
                         child: HomeV2PromotionBanner(
                           settings: homeConfig,
-                          onTap: () => context.push(AppRoutes.search),
+                          onTap: () => context.go(AppRoutes.search),
                         ),
                       ),
                     ),
@@ -603,12 +603,12 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                           onInstitutesTap: () =>
                               context.push(AppRoutes.institutesList),
                           onClassesTap: () =>
-                              context.push(AppRoutes.coursesList),
+                              context.go(AppRoutes.coursesList),
                           onEventsTap: features.isExposed(FeatureId.events)
                               ? () => context.push(AppRoutes.eventsList)
                               : null,
                           onMapTap: features.isExposed(FeatureId.maps)
-                              ? () => context.push(AppRoutes.map)
+                              ? () => context.go(AppRoutes.map)
                               : null,
                           heroSubtitle: homeConfig['hero_subtitle']?.toString(),
                         ),
@@ -650,7 +650,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                           child: HomeV2SpaceDiscovery(
                             locationLabel: area.label,
                             venues: popularVenuesAsync,
-                            onViewAll: () => context.push(AppRoutes.search),
+                            onViewAll: () => context.go(AppRoutes.search),
                             onVenueTap: (venue) => context.push(
                               AppRoutes.v1VenueDetails.replaceAll(
                                 ':id',
@@ -670,8 +670,8 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                           ),
                           child: HomeV2ActivitySection(
                             onBookingsTap: () =>
-                                context.push(AppRoutes.bookings),
-                            onSavedTap: () => context.push(AppRoutes.saved),
+                                context.go(AppRoutes.bookings),
+                            onSavedTap: () => context.go(AppRoutes.saved),
                           ),
                         ),
                       ]),
@@ -798,7 +798,7 @@ class _HomeScreenState extends ConsumerState<HomeScreenV1> {
                             CategorySpotlightCard(
                               title: selectedSection.title,
                               imageUrl: selectedSection.imageUrl,
-                              onTap: () => context.push(AppRoutes.search),
+                              onTap: () => context.go(AppRoutes.search),
                             ),
                             const SizedBox(height: 10),
                             TextButton(
