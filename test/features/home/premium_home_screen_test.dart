@@ -147,6 +147,20 @@ Future<_Nav> _pump(
       GoRoute(path: AppRoutes.education, builder: (_, __) => page('education')),
       GoRoute(path: AppRoutes.coursesList, builder: (_, __) => page('courses')),
       GoRoute(
+        path: AppRoutes.staysList,
+        builder: (_, s) {
+          nav.pushed.add(s.uri.toString());
+          return page('stays');
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.pgList,
+        builder: (_, s) {
+          nav.pushed.add(s.uri.toString());
+          return page('pg');
+        },
+      ),
+      GoRoute(
         path: AppRoutes.venueDetails,
         builder: (_, s) => page('venue:${s.pathParameters['id']}'),
       ),
@@ -219,6 +233,20 @@ Future<void> _tapKey(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapHorizontal(WidgetTester tester, String key) async {
+  final finder = find.byKey(Key(key));
+  await tester.scrollUntilVisible(
+    finder,
+    160,
+    scrollable: find
+        .byWidgetPredicate((w) => w is Scrollable && w.axis == Axis.horizontal)
+        .first,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   for (final size in const [Size(360, 780), Size(390, 844), Size(1440, 1000)]) {
     testWidgets('renders every section without overflow at ${size.width}', (
@@ -281,6 +309,37 @@ void main() {
     await tester.pumpAndSettle();
     await _tapKey(tester, 'premium-search');
     expect(find.text('page:courses'), findsOneWidget);
+  });
+
+  testWidgets('hotel and PG categories open stay results', (tester) async {
+    const wide = Size(1440, 1000);
+    var nav = await _pump(tester, size: wide);
+    await _tapKey(tester, 'premium-category-lodge_rooms');
+    expect(find.text('page:stays'), findsOneWidget);
+    expect(nav.pushed.last, '/stays');
+
+    nav = await _pump(tester, size: wide);
+    await _tapKey(tester, 'premium-category-pg_hostels');
+    expect(find.text('page:pg'), findsOneWidget);
+    expect(nav.pushed.last, '/pg');
+
+    nav = await _pump(tester, size: wide);
+    await _tapHorizontal(tester, 'premium-popular-Hostels');
+    expect(find.text('page:pg'), findsOneWidget);
+
+    nav = await _pump(tester, size: wide);
+    await _tapHorizontal(tester, 'premium-popular-Resorts');
+    expect(find.text('page:stays'), findsOneWidget);
+    expect(nav.pushed.last, '/stays');
+
+    nav = await _pump(tester, size: wide);
+    await tester.tap(find.byKey(const Key('premium-tab-stays')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('premium-where')), 'Hyderabad');
+    await tester.tap(find.byKey(const Key('premium-search')));
+    await tester.pumpAndSettle();
+    expect(find.text('page:stays'), findsOneWidget);
+    expect(nav.pushed.last, contains('Hyderabad'));
   });
 
   testWidgets('category tiles, popular chips and venue cards navigate', (

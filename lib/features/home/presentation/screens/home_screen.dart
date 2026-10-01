@@ -124,15 +124,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Hotels and PG reserve through accommodation properties, not a
     // one-date venue slot. Dates and party size stay in discovery prefs.
     if (intent == BookingIntent.hotels || intent == BookingIntent.pg) {
-      final location = ref.read(discoveryLocationProvider);
-      final area = location.hasCity
-          ? location.city!.trim()
-          : (location.pincode?.trim() ?? '');
-      final path = intent == BookingIntent.pg
-          ? AppRoutes.pgList
-          : AppRoutes.staysList;
-      context.push(
-        area.isEmpty ? path : '$path?q=${Uri.encodeQueryComponent(area)}',
+      _openStayList(
+        intent == BookingIntent.pg
+            ? MainHomeSection.pgHostels
+            : MainHomeSection.lodgeRooms,
       );
       return;
     }
@@ -172,10 +167,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _openStayList(MainHomeSection section) {
+    final location = ref.read(discoveryLocationProvider);
+    final area = location.hasCity
+        ? location.city!.trim()
+        : (location.pincode?.trim() ?? '');
+    final path = section == MainHomeSection.pgHostels
+        ? AppRoutes.pgList
+        : AppRoutes.staysList;
+    context.push(
+      area.isEmpty ? path : '$path?q=${Uri.encodeQueryComponent(area)}',
+    );
+  }
+
   void _openMaster(MainHomeSection section, List<VenueCategory> cats) {
     // Education lands on the institutes/courses hub rather than a venue search.
     if (section == MainHomeSection.institutesClasses) {
       context.push(AppRoutes.education);
+      return;
+    }
+    // Hotels and PG open the stay-results page, not a one-date venue search.
+    if (section == MainHomeSection.lodgeRooms ||
+        section == MainHomeSection.pgHostels) {
+      _openStayList(section);
       return;
     }
     final matched = section.matchMaster(cats);
@@ -187,6 +201,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     HomeSubSection sub,
     List<VenueCategory> cats,
   ) {
+    if (section == MainHomeSection.lodgeRooms ||
+        section == MainHomeSection.pgHostels) {
+      final label = sub.label.trim();
+      if (label.isEmpty) {
+        _openStayList(section);
+        return;
+      }
+      final path = section == MainHomeSection.pgHostels
+          ? AppRoutes.pgList
+          : AppRoutes.staysList;
+      context.push('$path?q=${Uri.encodeQueryComponent(label)}');
+      return;
+    }
     final matched = sub.match(cats);
     if (matched != null) {
       _openSearch(categorySlug: matched.slug);

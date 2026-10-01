@@ -360,7 +360,50 @@ abstract class AppRoutes {
   static const v1OwnerRegistration = '/v1/owner/register';
   static const v1OwnerVenues = '/v1/owner/venues';
   static const v1OwnerVenueCreate = '/v1/owner/venues/create';
+
+  // Master specification route paths & aliases
+  static const placeDiscovery = '/place_discovery';
+  static const placeDiscoveryAlt = '/place-discovery';
+  static const venueDiscovery = '/venue-discovery';
+  static const adminConsole = '/admin/console';
+  static const adminElementEditor = '/admin/element_editor';
+  static const adminAppSectionsUnderscore = '/admin/app_sections';
+  static const adminPlugAndPlayFeatures = '/admin/plug_and_play_features';
+  static const listingFieldsConfig = '/listing_fields_config';
+  static const adminRegistrationFieldsConfig = '/admin/registration_fields_config';
+  static const adminFirebaseMigration = '/admin/firebase_migration';
+  static const dailyWeeklyReports = '/reports/daily_weekly';
+  static const paymentTransactions = '/payment_transactions';
+  static const paymentConfig = '/payment_config';
+  static const externalAppsMcp = '/external_apps_mcp';
+  static const themeCustomizerUnderscore = '/theme_customizer';
+  static const referralSingular = '/referral';
+  static const ownerCreate = '/owner/create';
+  static const instituteOwner = '/institute_owner';
+  static const qrScannerUnderscore = '/qr_scanner';
 }
+
+/// Canonical mapping between master specification route names and their GoRouter paths.
+const Map<String, String> specRouteAliases = {
+  AppRoutes.placeDiscovery: AppRoutes.venueDiscovery,
+  AppRoutes.placeDiscoveryAlt: AppRoutes.venueDiscovery,
+  AppRoutes.adminConsole: AppRoutes.adminDashboard,
+  AppRoutes.adminElementEditor: AppRoutes.adminUiElementOverrides,
+  AppRoutes.adminAppSectionsUnderscore: AppRoutes.adminAppSections,
+  AppRoutes.adminPlugAndPlayFeatures: AppRoutes.adminIntegrations,
+  AppRoutes.listingFieldsConfig: AppRoutes.adminListingFields,
+  AppRoutes.adminRegistrationFieldsConfig: AppRoutes.adminRegistrationFields,
+  AppRoutes.adminFirebaseMigration: AppRoutes.adminDeveloperPlatform,
+  AppRoutes.dailyWeeklyReports: AppRoutes.analytics,
+  AppRoutes.paymentTransactions: AppRoutes.adminPaymentsLedger,
+  AppRoutes.paymentConfig: AppRoutes.adminPaymentHealth,
+  AppRoutes.externalAppsMcp: AppRoutes.connectedApps,
+  AppRoutes.themeCustomizerUnderscore: AppRoutes.themeCustomizer,
+  AppRoutes.referralSingular: AppRoutes.referrals,
+  AppRoutes.ownerCreate: AppRoutes.ownerVenueCreate,
+  AppRoutes.instituteOwner: AppRoutes.ownerInstituteDashboard,
+  AppRoutes.qrScannerUnderscore: AppRoutes.qrScanner,
+};
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -488,8 +531,9 @@ GoRouter createAppRouter({
       if (ready && user != null && path == AppRoutes.login) {
         return authenticatedLocationFromLogin(state.uri);
       }
+      final canonicalPath = specRouteAliases[path] ?? path;
       final resolved = resolveAppRedirect(
-        location: path,
+        location: canonicalPath,
         currentUser: user,
         authReady: ready,
         allowUnauthenticatedTestAccess: allowUnauthenticatedTestAccess,
@@ -505,6 +549,11 @@ GoRouter createAppRouter({
       return _UnknownRouteScreen(location: state.uri.path);
     },
     routes: [
+      for (final entry in specRouteAliases.entries)
+        GoRoute(
+          path: entry.key,
+          redirect: (context, state) => entry.value,
+        ),
       GoRoute(
         path: AppRoutes.root,
         builder: (context, state) => const HomeScreen(),
@@ -532,7 +581,7 @@ GoRouter createAppRouter({
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
-        path: '/venue-discovery',
+        path: AppRoutes.venueDiscovery,
         builder: (context, state) => VenueDiscoveryScreen(
           repository: SupabaseDiscoveryRepository(Supabase.instance.client),
         ),
@@ -1723,19 +1772,20 @@ String? resolveAppRedirect({
   bool allowUnauthenticatedTestAccess = false,
   FeatureRegistry? features,
 }) {
+  final canonical = specRouteAliases[location] ?? location;
   // Backend-unavailable Phase-1 paths fail closed even while auth is still
   // resolving, so their repositories cannot issue unsupported requests.
-  if (_isPhaseOneBackendUnavailable(location)) return AppRoutes.home;
+  if (_isPhaseOneBackendUnavailable(canonical)) return AppRoutes.home;
   if (!authReady) return null;
   final isPublic =
-      location == AppRoutes.splash ||
-      location == AppRoutes.onboarding ||
-      location == AppRoutes.login ||
-      location == AppRoutes.forgotPassword ||
-      location == AppRoutes.resetPassword ||
-      location == AppRoutes.unifiedRegistration ||
-      location == AppRoutes.ownerRegistration ||
-      location.startsWith('/register/');
+      canonical == AppRoutes.splash ||
+      canonical == AppRoutes.onboarding ||
+      canonical == AppRoutes.login ||
+      canonical == AppRoutes.forgotPassword ||
+      canonical == AppRoutes.resetPassword ||
+      canonical == AppRoutes.unifiedRegistration ||
+      canonical == AppRoutes.ownerRegistration ||
+      canonical.startsWith('/register/');
   if (currentUser == null && !allowUnauthenticatedTestAccess) {
     if (!isPublic) return AppRoutes.login;
   }
@@ -1743,22 +1793,22 @@ String? resolveAppRedirect({
     // Main-lineage routes are guarded by RoleGate with the fine-grained
     // database roles (administrator, support agent, institute owner, ...);
     // the coarse role check below applies to the release/v1.0 routes only.
-    final gatedByWidget = _roleGateRoutes.contains(location);
+    final gatedByWidget = _roleGateRoutes.contains(canonical);
     final isAdminRoute = !gatedByWidget &&
-        (location == AppRoutes.adminDashboard ||
-            location.startsWith('/admin/'));
+        (canonical == AppRoutes.adminDashboard ||
+            canonical.startsWith('/admin/'));
     final isOwnerRoute = !gatedByWidget &&
-        (location.startsWith('/owner') || location == AppRoutes.analytics);
+        (canonical.startsWith('/owner') || canonical == AppRoutes.analytics);
     if (isAdminRoute && !currentUser.isAdmin) return AppRoutes.profile;
     if (isOwnerRoute && !currentUser.isOwner) return AppRoutes.profile;
-    if (location == AppRoutes.resetPassword) return null;
-    if (location == AppRoutes.onboarding ||
-        location == AppRoutes.login ||
-        location == AppRoutes.forgotPassword) {
+    if (canonical == AppRoutes.resetPassword) return null;
+    if (canonical == AppRoutes.onboarding ||
+        canonical == AppRoutes.login ||
+        canonical == AppRoutes.forgotPassword) {
       return AppRoutes.shell;
     }
   }
-  return _featureRedirect(location, features);
+  return _featureRedirect(canonical, features);
 }
 
 /// Routes whose screens are wrapped in [RoleGate] (main lineage).
