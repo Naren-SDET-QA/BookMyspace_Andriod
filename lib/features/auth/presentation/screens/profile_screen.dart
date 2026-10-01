@@ -221,7 +221,10 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                const _RoleSwitcherSection(),
+                const SizedBox(height: 16),
 
                 Row(
                   children: [
@@ -981,3 +984,93 @@ String _rupees(double value) {
   if (value == value.roundToDouble()) return '₹${value.toStringAsFixed(0)}';
   return '₹${value.toStringAsFixed(2)}';
 }
+
+class _RoleSwitcherSection extends ConsumerWidget {
+  const _RoleSwitcherSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final activeRole = ref.watch(activeDevRoleProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Switch Role (DEV Testing Mode)',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select role to test Customer, Owner, or Admin permissions:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                key: const Key('role_switch_customer'),
+                avatar: const Icon(Icons.person_outline_rounded, size: 16),
+                label: const Text('Customer'),
+                selected: activeRole == DevRole.customer || activeRole == null,
+                onSelected: (_) {
+                  ref.read(activeDevRoleProvider.notifier).state =
+                      DevRole.customer;
+                },
+              ),
+              FilterChip(
+                key: const Key('role_switch_owner'),
+                avatar: const Icon(Icons.storefront_outlined, size: 16),
+                label: const Text('Venue Owner'),
+                selected: activeRole == DevRole.venueOwner,
+                onSelected: (_) {
+                  ref.read(activeDevRoleProvider.notifier).state =
+                      DevRole.venueOwner;
+                },
+              ),
+              FilterChip(
+                key: const Key('role_switch_admin'),
+                avatar: const Icon(Icons.admin_panel_settings_outlined, size: 16),
+                label: const Text('Admin'),
+                selected: activeRole == DevRole.admin,
+                onSelected: (_) {
+                  ref.read(activeDevRoleProvider.notifier).state =
+                      DevRole.admin;
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
