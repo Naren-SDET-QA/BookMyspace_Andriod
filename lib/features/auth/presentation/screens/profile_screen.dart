@@ -274,6 +274,14 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 _ProfileMenuTile(
+                  key: const Key('profile-screen-directory'),
+                  icon: Icons.grid_view_rounded,
+                  title: 'All Screens Directory (39 Master Screens)',
+                  subtitle:
+                      'Browse, preview, and test every screen across all 6 domains',
+                  onTap: () => context.push(AppRoutes.screenDirectory),
+                ),
+                _ProfileMenuTile(
                   key: const Key('profile-location-discovery'),
                   icon: Icons.travel_explore_outlined,
                   title: 'India Location & Automatic Place Discovery',

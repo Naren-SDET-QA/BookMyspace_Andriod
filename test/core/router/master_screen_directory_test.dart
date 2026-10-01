@@ -191,6 +191,10 @@ void main() {
         AppRoutes.customerAnalytics,
         AppRoutes.connectedApps,
         AppRoutes.externalAppsMcp,
+        AppRoutes.screenDirectory,
+        '/catalog',
+        '/screen_directory',
+        '/screen-directory',
       ];
       for (final route in supplementary) {
         final redirect = resolveAppRedirect(

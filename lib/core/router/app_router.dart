@@ -58,6 +58,7 @@ import '../../features/booking/presentation/screens/booking_screen.dart';
 import '../../features/booking/presentation/screens/booking_success_screen.dart';
 import '../../features/booking/presentation/screens/invoice_screen.dart';
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
+import '../../features/common/presentation/screens/master_screen_directory_screen.dart';
 import '../../features/business/presentation/screens/business_plan_configuration_screen.dart';
 import '../../features/business/presentation/screens/business_pricing_configuration_screen.dart';
 import '../../features/checkin/presentation/screens/qr_check_in_screen.dart';
@@ -381,6 +382,7 @@ abstract class AppRoutes {
   static const ownerCreate = '/owner/create';
   static const instituteOwner = '/institute_owner';
   static const qrScannerUnderscore = '/qr_scanner';
+  static const screenDirectory = '/screens';
 }
 
 /// Canonical mapping between master specification route names and their GoRouter paths.
@@ -403,6 +405,9 @@ const Map<String, String> specRouteAliases = {
   AppRoutes.ownerCreate: AppRoutes.ownerVenueCreate,
   AppRoutes.instituteOwner: AppRoutes.ownerInstituteDashboard,
   AppRoutes.qrScannerUnderscore: AppRoutes.qrScanner,
+  '/catalog': AppRoutes.screenDirectory,
+  '/screen_directory': AppRoutes.screenDirectory,
+  '/screen-directory': AppRoutes.screenDirectory,
 };
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -995,6 +1000,11 @@ GoRouter createAppRouter({
         path: AppRoutes.support,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SupportTicketsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.screenDirectory,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MasterScreenDirectoryScreen(),
       ),
       GoRoute(
         path: AppRoutes.adminDashboard,

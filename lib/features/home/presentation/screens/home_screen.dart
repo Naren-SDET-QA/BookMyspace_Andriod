@@ -1592,6 +1592,11 @@ class _TopHeaderBar extends ConsumerWidget {
     final actions = <Widget>[
       _LanguagePill(compact: narrow),
       IconButton(
+        tooltip: 'All Screens Directory',
+        onPressed: () => context.push(AppRoutes.screenDirectory),
+        icon: const Icon(Icons.grid_view_rounded),
+      ),
+      IconButton(
         tooltip: 'Notifications',
         onPressed: onNotificationsTap,
         icon: const Icon(Icons.notifications_none_rounded),
