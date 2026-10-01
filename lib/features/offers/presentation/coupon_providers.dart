@@ -11,3 +11,11 @@ final couponRepositoryProvider = Provider<CouponRepository>((ref) {
 final activeCouponsProvider = FutureProvider<List<Coupon>>((ref) {
   return ref.watch(couponRepositoryProvider).activeCoupons();
 });
+
+final customerRedeemedCouponsProvider =
+    FutureProvider<List<RedeemedCoupon>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
+  return ref.watch(couponRepositoryProvider).customerRedeemedCoupons();
+});
+

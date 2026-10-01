@@ -291,6 +291,14 @@ class ProfileScreen extends ConsumerWidget {
                   subtitle: 'Venues and courts saved on your account',
                   onTap: () => context.push(AppRoutes.saved),
                 ),
+                _ProfileMenuTile(
+                  key: const Key('profile-past-coupons'),
+                  icon: Icons.local_offer_outlined,
+                  title: 'Past Coupons & Savings',
+                  subtitle:
+                      'Redeemed coupon codes, discounts, and savings history',
+                  onTap: () => context.push(AppRoutes.pastCoupons),
+                ),
                 if (coursesEnabled)
                   _ProfileMenuTile(
                     key: const Key('profile-institutes-directory'),

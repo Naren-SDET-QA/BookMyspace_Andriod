@@ -59,4 +59,54 @@ class Coupon {
 
 abstract interface class CouponRepository {
   Future<List<Coupon>> activeCoupons({int limit = 10});
+  Future<List<RedeemedCoupon>> customerRedeemedCoupons();
 }
+
+/// A coupon redeemed by a customer on a booking.
+class RedeemedCoupon {
+  const RedeemedCoupon({
+    required this.bookingId,
+    required this.couponCode,
+    required this.couponDescription,
+    required this.discountAmount,
+    required this.totalAmount,
+    required this.venueName,
+    required this.bookingStatus,
+    required this.redeemedAt,
+  });
+
+  final String bookingId;
+  final String couponCode;
+  final String couponDescription;
+  final double discountAmount;
+  final double totalAmount;
+  final String venueName;
+  final String bookingStatus;
+  final DateTime redeemedAt;
+
+  factory RedeemedCoupon.fromJson(Map<String, dynamic> json) => RedeemedCoupon(
+        bookingId: json['booking_id'] as String? ?? json['id'] as String? ?? '',
+        couponCode: json['coupon_code'] as String? ??
+            json['code'] as String? ??
+            'PROMO',
+        couponDescription: json['coupon_description'] as String? ??
+            json['description'] as String? ??
+            '',
+        discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0.0,
+        totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+        venueName: json['venue_name'] as String? ??
+            (json['venues'] is Map
+                ? (json['venues'] as Map)['name'] as String? ?? ''
+                : ''),
+        bookingStatus: json['booking_status'] as String? ??
+            json['status'] as String? ??
+            'confirmed',
+        redeemedAt: DateTime.tryParse(
+              json['redeemed_at'] as String? ??
+                  json['created_at'] as String? ??
+                  '',
+            ) ??
+            DateTime.now(),
+      );
+}
+

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState, AuthUser;
 
 import '../../features/accommodations/domain/accommodation.dart';
-import '../../features/accommodations/presentation/screens/accommodation_detail_screen.dart';
 import '../../features/accommodations/presentation/screens/accommodation_list_screen.dart';
 import '../../features/accommodations/presentation/screens/stay_management_screens.dart';
 import '../../features/admin/presentation/screens/admin_app_sections_screen.dart';
@@ -94,6 +93,7 @@ import '../../features/meeting_rooms/presentation/screens/meeting_room_detail_sc
 import '../../features/meeting_rooms/presentation/screens/meeting_room_owner_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_rooms_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/offers/presentation/screens/past_coupons_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/owner/presentation/screens/owner_dashboard_screen.dart';
 import '../../features/owner/presentation/screens/owner_operations_screen.dart';
@@ -134,6 +134,7 @@ import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/search/domain/ai_search_intent.dart';
 import '../../features/search/presentation/screens/map_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/settings/presentation/screens/connected_apps_screen.dart';
 import '../../features/settings/presentation/screens/features_hub_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/map/presentation/screens/venue_map_screen.dart';
@@ -189,6 +190,7 @@ abstract class AppRoutes {
   static const bookings = '/bookings';
   static const saved = '/saved';
   static const profile = '/profile';
+  static const pastCoupons = '/profile/coupons';
   static const settings = '/settings';
   static const categoryPreferences = '/settings/categories';
   static const login = '/login';
@@ -328,6 +330,7 @@ abstract class AppRoutes {
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
   static const featuresHub = '/features';
+  static const connectedApps = '/connected-apps';
   static const assistantTab = '/assistant';
   static const adminNavTabs = '/admin/nav-tabs';
   static const adminCatalog = '/admin/catalog';
@@ -803,9 +806,8 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.pgDetails,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => AccommodationDetailScreen(
-          propertyId: state.pathParameters['id'] ?? '',
-          module: AccommodationModule.pg,
+        builder: (context, state) => VenueDetailsScreen(
+          venueId: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
@@ -817,9 +819,8 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.stayDetails,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => AccommodationDetailScreen(
-          propertyId: state.pathParameters['id'] ?? '',
-          module: AccommodationModule.stay,
+        builder: (context, state) => VenueDetailsScreen(
+          venueId: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
@@ -1420,6 +1421,16 @@ GoRouter createAppRouter({
         builder: (context, state) => const FeaturesHubScreen(),
       ),
       GoRoute(
+        path: AppRoutes.connectedApps,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ConnectedAppsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.pastCoupons,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const PastCouponsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.paymentHistory,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const PaymentHistoryScreen(),
@@ -1762,15 +1773,14 @@ const _roleGateRoutes = {
   '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
 };
 
-/// These Phase-1 flows require schemas/RPCs that are present only on the
-/// Phase branch. Keep them out of PROD until their backend contracts have
-/// been reviewed and deployed; existing booking and module-registration
-/// routes intentionally remain available.
+/// These Phase-1 flows still require schemas/RPCs that are not part of the
+/// canonical customer contract. Hotel/PG discovery and detail pages use the
+/// existing venue and hotel-room read contracts; the legacy stay-management
+/// page remains gated until its accommodation booking contract is deployed.
 bool _isPhaseOneBackendUnavailable(String location) {
   const unavailableRoots = [
-    '/pg',
-    '/stays',
     '/owner/stays',
+    '/stays/bookings/mine',
     '/meeting-rooms',
     '/owner/meeting-rooms',
     '/sports',

@@ -1,5 +1,6 @@
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
+import 'package:bookmyspace/features/cms/domain/configurable_form.dart';
 import 'package:bookmyspace/features/courses/domain/course.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/widgets/class_enrollment_sheet.dart';
@@ -116,6 +117,99 @@ void main() {
     expect(
       repo.lastFormAnswers.containsKey('delivery_mode_preference'),
       isFalse,
+    );
+  });
+
+  testWidgets('published custom fields show on enroll', (tester) async {
+    final repo = MockCourseRepository();
+    final course = _course(CourseMode.offline);
+    repo.instituteList = [
+      MockCourseRepository.sampleInstitute().copyWith(
+        registrationForm: const ConfigurableFormSchema(
+          status: 'published',
+          publishedFields: [
+            ConfigurableFieldDefinition(
+              key: 'full_name',
+              label: 'Full Name',
+              type: ConfigurableFieldType.text,
+              required: true,
+            ),
+            ConfigurableFieldDefinition(
+              key: 'custom_school',
+              label: 'School name',
+              type: ConfigurableFieldType.text,
+              required: true,
+              custom: true,
+              displayOrder: 1,
+            ),
+          ],
+        ),
+      ),
+    ];
+    await tester.pumpWidget(_app(repo, course));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('enroll-field-custom_school')), findsOneWidget);
+    expect(find.text('School name *'), findsOneWidget);
+    expect(find.text('Aadhaar Number'), findsNothing);
+  });
+
+  testWidgets('registration fields stay readable on the dark class feed', (
+    tester,
+  ) async {
+    final repo = MockCourseRepository();
+    final course = _course(CourseMode.offline);
+    final brokenDark = ThemeData.light().copyWith(
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF7C3AED),
+        brightness: Brightness.dark,
+        surface: const Color(0xFF070B14),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          courseRepositoryProvider.overrideWithValue(repo),
+          authRepositoryProvider.overrideWithValue(
+            MockAuthRepository(
+              initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: brokenDark,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => showClassEnrollmentSheet(
+                    context,
+                    course: course,
+                    batch: course.batches.first,
+                    isTrial: false,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Full Name *'), findsOneWidget);
+    final theme = Theme.of(
+      tester.element(find.byKey(const Key('enroll-registration-form'))),
+    );
+    expect(theme.brightness, Brightness.light);
+    expect(theme.colorScheme.surface, Colors.white);
+    expect(
+      theme.textTheme.bodyLarge!.color!.computeLuminance(),
+      lessThan(0.5),
     );
   });
 }

@@ -6,9 +6,12 @@ import '../../booking/presentation/booking_providers.dart';
 import '../../owner_venues/presentation/providers/owner_venue_providers.dart';
 import '../../venues/domain/venue.dart';
 import '../domain/owner.dart';
+import '../domain/owner_payout.dart';
 import '../infrastructure/supabase_owner_repository.dart';
+import '../infrastructure/supabase_owner_payout_repository.dart';
 import '../domain/registration_field_config.dart';
 import '../infrastructure/supabase_registration_config_repository.dart';
+
 
 /// Owner repository instance.
 final ownerRepositoryProvider = Provider<OwnerRepository>((ref) {
@@ -158,3 +161,25 @@ final ownerDashboardSnapshotProvider =
     confirmedRevenue: revenue,
   );
 });
+
+final ownerPayoutRepositoryProvider = Provider<OwnerPayoutRepository>((ref) {
+  final client = ref.watch(supabaseProvider);
+  return SupabaseOwnerPayoutRepository(client);
+});
+
+final ownerPayoutSummaryProvider =
+    FutureProvider<OwnerPayoutSummary>((ref) async {
+  return ref.watch(ownerPayoutRepositoryProvider).getPayoutSummary();
+});
+
+final ownerPayoutsListProvider =
+    FutureProvider<List<OwnerPayout>>((ref) async {
+  return ref.watch(ownerPayoutRepositoryProvider).getPayouts();
+});
+
+final ownerBankAccountProvider =
+    FutureProvider<OwnerBankAccount?>((ref) async {
+  return ref.watch(ownerPayoutRepositoryProvider).getBankAccount();
+});
+
+

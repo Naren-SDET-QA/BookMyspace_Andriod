@@ -168,10 +168,29 @@ void main() {
     await tester.pumpAndSettle();
 
     await _scrollTo(tester, find.text('Weekday Batch A'));
-    await tester.tap(find.text('Enroll Now').first);
+    await tester.tap(find.byKey(const Key('batch-enroll-b0')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('enroll-registration-form')), findsOneWidget);
+    expect(find.text('Full Name *'), findsOneWidget);
+    expect(find.text('Mobile Number *'), findsOneWidget);
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Asha Rao');
+    await tester.enterText(fields.at(1), '9876543210');
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('enroll-terms-checkbox')));
+    await tester.tap(find.byKey(const Key('enroll-terms-checkbox')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('enroll-submit')));
+    await tester.tap(find.byKey(const Key('enroll-submit')));
     await tester.pumpAndSettle();
 
     expect(repo.lastEnrollBatchId, 'b0');
+    expect(repo.lastFormAnswers['full_name'], 'Asha Rao');
+    expect(find.text('Admission Confirmed!'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
     expect(find.text('Enrolled'), findsOneWidget);
     expect(find.text('Drop'), findsOneWidget);
   });

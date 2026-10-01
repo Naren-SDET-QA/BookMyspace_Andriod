@@ -6,12 +6,28 @@ void main() {
   const customer = AuthUser(id: 'customer');
   const owner = AuthUser(id: 'owner', role: UserRole.venueOwner);
 
-  test('Phase-1 routes without PROD backend contracts redirect home', () {
-    const customerRoutes = [
+  test('hotel/PG discovery routes use the supported venue contract', () {
+    const accommodationRoutes = [
       '/pg',
       '/pg/property-1',
       '/stays',
       '/stays/property-1',
+    ];
+    for (final route in accommodationRoutes) {
+      expect(
+        resolveAppRedirect(
+          location: route,
+          currentUser: customer,
+          authReady: true,
+        ),
+        isNull,
+        reason: route,
+      );
+    }
+  });
+
+  test('Phase-1 routes without PROD backend contracts redirect home', () {
+    const customerRoutes = [
       '/stays/bookings/mine',
       '/meeting-rooms',
       '/meeting-rooms/room-1',

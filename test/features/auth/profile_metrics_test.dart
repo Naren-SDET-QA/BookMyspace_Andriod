@@ -7,9 +7,13 @@ import 'package:bookmyspace/features/auth/presentation/role_providers.dart';
 import 'package:bookmyspace/features/auth/presentation/screens/profile_screen.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
+import 'package:bookmyspace/features/rewards/domain/rewards.dart';
+import 'package:bookmyspace/features/rewards/presentation/rewards_providers.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/test/test_flutter_secure_storage_platform.dart';
+import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage_platform_interface.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +22,12 @@ import 'package:go_router/go_router.dart';
 import 'mock_auth_repository.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStoragePlatform.instance = TestFlutterSecureStoragePlatform(
+      <String, String>{},
+    );
+  });
+
   testWidgets('profile metrics use live booking and saved counts',
       (tester) async {
     await tester.pumpWidget(
@@ -53,6 +63,12 @@ void main() {
               Venue(id: 'v1', name: 'Hall', latitude: 0, longitude: 0),
               Venue(id: 'v2', name: 'Studio', latitude: 0, longitude: 0),
             ],
+          ),
+          walletEntriesProvider.overrideWith(
+            (ref) async => const <WalletEntry>[],
+          ),
+          referralSummaryProvider.overrideWith(
+            (ref) async => const ReferralSummary(code: 'TESTCODE', items: []),
           ),
         ],
         child: MaterialApp.router(

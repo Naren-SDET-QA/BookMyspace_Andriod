@@ -8,6 +8,8 @@ import '../../../owner_bookings/presentation/screens/create_offline_booking_scre
 import '../../../owner_bookings/presentation/screens/owner_bookings_screen.dart';
 import '../../../owner_venues/presentation/providers/owner_venue_providers.dart';
 
+import 'owner_payouts_screen.dart';
+
 enum OwnerOperation { availability, bookings, offlineBooking, payments }
 
 /// Phase-1 owner operations entry point backed by PROD repositories/screens.
@@ -27,9 +29,10 @@ class OwnerOperationsScreen extends ConsumerWidget {
     if (operation == OwnerOperation.availability) {
       return _AvailabilityHub(ref: ref);
     }
-    return const _OwnerPaymentsScreen();
+    return const OwnerPayoutsScreen();
   }
 }
+
 
 class _AvailabilityHub extends StatelessWidget {
   const _AvailabilityHub({required this.ref});
@@ -68,49 +71,3 @@ class _AvailabilityHub extends StatelessWidget {
   }
 }
 
-class _OwnerPaymentsScreen extends ConsumerWidget {
-  const _OwnerPaymentsScreen();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bookings = ref.watch(ownerBookingsProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Payments & receipts')),
-      body: bookings.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(error.toString())),
-        data: (items) => items.isEmpty
-            ? const Center(child: Text('No owner payments yet.'))
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final booking = items[index];
-                  return Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.receipt_long_outlined),
-                      title: Text('₹${booking.totalAmount.toStringAsFixed(2)}'),
-                      subtitle: Text(
-                        '${booking.bookingRef} • ${booking.status.dbValue}',
-                      ),
-                      trailing: booking.canViewInvoice
-                          ? IconButton(
-                              tooltip: 'View receipt',
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () => context.push(
-                                AppRoutes.bookingReceipt.replaceFirst(
-                                  ':id',
-                                  booking.id,
-                                ),
-                              ),
-                            )
-                          : null,
-                    ),
-                  );
-                },
-              ),
-      ),
-    );
-  }
-}

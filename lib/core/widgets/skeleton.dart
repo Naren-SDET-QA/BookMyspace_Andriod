@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'shimmer_loading.dart';
+
 /// A pulsing placeholder used while content loads.
 class SkeletonBox extends StatefulWidget {
   const SkeletonBox({super.key, this.width, this.height = 14, this.radius = 8});
@@ -59,38 +61,7 @@ class ListSkeleton extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: itemCount,
-      itemBuilder: (context, index) => const _CardSkeleton(),
-    );
-  }
-}
-
-class _CardSkeleton extends StatelessWidget {
-  const _CardSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Card(
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: Row(
-          children: [
-            SkeletonBox(width: 96, height: 84, radius: 12),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SkeletonBox(width: double.infinity),
-                  SizedBox(height: 8),
-                  SkeletonBox(width: 140),
-                  SizedBox(height: 8),
-                  SkeletonBox(width: 90),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      itemBuilder: (context, index) => const VenueCardSkeleton(),
     );
   }
 }

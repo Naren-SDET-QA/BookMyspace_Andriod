@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Future<void> _pumpScreen(WidgetTester tester) async {
+import '../booking/mock_booking_repository.dart';
+
+Future<void> _pumpScreen(
+  WidgetTester tester, {
+  List<Override> extraOverrides = const [],
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         myBookingsProvider.overrideWith((ref) async => const []),
+        ...extraOverrides,
       ],
       child: const MaterialApp(
         home: QrCheckInScannerScreen(),
@@ -59,7 +65,12 @@ void main() {
 
   testWidgets('manual entry still submits when the camera is unavailable',
       (tester) async {
-    await _pumpScreen(tester);
+    await _pumpScreen(
+      tester,
+      extraOverrides: [
+        bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+      ],
+    );
 
     await tester.enterText(
       find.byKey(const Key('manual_qr_input_field')),
@@ -71,10 +82,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    // The repository cannot reach a server here, so the outcome is a failure
-    // dialog. What matters is that the path runs and reports, rather than
-    // throwing or silently doing nothing.
+    // An empty booking list cannot be checked in. The dialog must report the
+    // server-style failure instead of doing nothing.
     expect(tester.takeException(), isNull);
-    expect(find.text('Check-In Issue'), findsOneWidget);
+    expect(find.text('Unavailable'), findsOneWidget);
+    expect(find.textContaining('try again'), findsOneWidget);
   });
 }

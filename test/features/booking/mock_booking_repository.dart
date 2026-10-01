@@ -5,8 +5,7 @@ class MockBookingRepository implements BookingRepository {
   // Interface members added by the merged branches that this double does
   // not exercise fall through here.
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   MockBookingRepository({
     this.bookings = const [],
@@ -22,8 +21,7 @@ class MockBookingRepository implements BookingRepository {
   Future<List<SlotAvailability>> availableTimeSlots({
     required String venueId,
     required DateTime date,
-  }) async =>
-      slots;
+  }) async => slots;
 
   @override
   Future<BookingHold> acquireHold({
@@ -32,10 +30,10 @@ class MockBookingRepository implements BookingRepository {
     required DateTime bookDate,
     required double amount,
     int holdMinutes = 10,
-  }) async =>
-      BookingHold(
-          id: 'hold-1',
-          expiresAt: DateTime.now().add(Duration(minutes: holdMinutes)));
+  }) async => BookingHold(
+    id: 'hold-1',
+    expiresAt: DateTime.now().add(Duration(minutes: holdMinutes)),
+  );
 
   @override
   Future<Booking> requestBooking({
@@ -45,6 +43,7 @@ class MockBookingRepository implements BookingRepository {
     required double amount,
     int approvalMinutes = 120,
     String? couponCode,
+    Map<String, dynamic> metadata = const {},
   }) async {
     return Booking(
       id: 'b-request-1',

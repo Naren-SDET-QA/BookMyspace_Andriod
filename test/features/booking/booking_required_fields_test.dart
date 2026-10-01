@@ -55,8 +55,9 @@ void main() {
     ),
   );
 
-  testWidgets('booking requires event type before the confirm dialog',
-      (tester) async {
+  testWidgets('booking requires event type before the confirm dialog', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -100,6 +101,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const Key('booking_customer_name')),
+      'Jane Doe',
+    );
+    await tester.enterText(
+      find.byKey(const Key('booking_customer_phone')),
+      '9876543210',
+    );
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Book & Pay').last);
@@ -109,8 +118,9 @@ void main() {
     expect(find.text('Confirm Booking'), findsNothing);
   });
 
-  testWidgets('booking confirm dialog shows slot, guests and event type',
-      (tester) async {
+  testWidgets('booking confirm dialog shows slot, guests and event type', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -154,6 +164,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const Key('booking_customer_name')),
+      'Jane Doe',
+    );
+    await tester.enterText(
+      find.byKey(const Key('booking_customer_phone')),
+      '9876543210',
+    );
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Event type'));

@@ -41,6 +41,7 @@ class _RacingBookingRepository extends MockBookingRepository {
     required double amount,
     int approvalMinutes = 120,
     String? couponCode,
+    Map<String, dynamic> metadata = const {},
   }) async {
     requests++;
     if (requests == 1) {
@@ -201,6 +202,14 @@ void main() {
     );
     await _pump(tester, repo);
 
+    await tester.enterText(
+      find.byKey(const Key('booking_customer_name')),
+      'Jane Doe',
+    );
+    await tester.enterText(
+      find.byKey(const Key('booking_customer_phone')),
+      '9876543210',
+    );
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.lock_rounded));

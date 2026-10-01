@@ -534,33 +534,39 @@ class _Details extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 6,
-          runSpacing: 4,
-          children: [
-            Text(
-              venue.name,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.action,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (!isPg && stars != null && stars >= 1 && stars <= 5)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var index = 0; index < stars; index++)
-                    const Icon(
-                      Icons.star_rounded,
-                      size: 16,
-                      color: Color(0xFFFFB700),
-                    ),
-                ],
-              ),
-            if (venue.isVerified) const VerifiedBadge(),
-          ],
+        Text(
+          venue.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: AppTheme.action,
+            fontWeight: FontWeight.w800,
+          ),
         ),
+        if ((!isPg && stars != null && stars >= 1 && stars <= 5) ||
+            venue.isVerified) ...[
+          const SizedBox(height: 4),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              if (!isPg && stars != null && stars >= 1 && stars <= 5)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < stars; index++)
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: Color(0xFFFFB700),
+                      ),
+                  ],
+                ),
+              if (venue.isVerified) const VerifiedBadge(),
+            ],
+          ),
+        ],
         if (place.trim().isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
