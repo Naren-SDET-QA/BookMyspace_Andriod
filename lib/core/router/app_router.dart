@@ -574,6 +574,14 @@ GoRouter createAppRouter({
         redirect: (context, state) => '/venues/${state.pathParameters['id']}',
       ),
       GoRoute(
+        path: '/venues',
+        redirect: (context, state) {
+          final uri = state.uri;
+          final query = uri.hasQuery ? '?${uri.query}' : '';
+          return '${AppRoutes.search}$query';
+        },
+      ),
+      GoRoute(
         path: '/course/:id',
         redirect: (context, state) => '/courses/${state.pathParameters['id']}',
       ),
