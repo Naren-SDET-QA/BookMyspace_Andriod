@@ -1,14 +1,16 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/core/modular/feature_registry.dart';
 import 'package:bookmyspace/features/owner_venues/presentation/providers/owner_venue_providers.dart';
-import 'package:bookmyspace/features/owner_venues/presentation/screens/create_venue_screen.dart';
+import 'package:bookmyspace/features/owner_venues/presentation/screens/create_venue_screen.dart'
+    hide CreateVenueScreen;
+import 'package:bookmyspace/features/owner_venues/presentation/screens/create_venue_screen_v1.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../venues/mock_venue_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
 import 'mock_owner_venue_repository.dart';
 
 void main() {
@@ -38,7 +40,7 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: CreateVenueScreen(),
+          home: CreateVenueScreenV1(),
         ),
       ),
     );

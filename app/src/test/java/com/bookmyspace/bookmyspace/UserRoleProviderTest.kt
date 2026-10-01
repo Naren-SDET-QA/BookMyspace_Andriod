@@ -7,7 +7,7 @@ import com.bookmyspace.bookmyspace.ui.screens.ProfileActionItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Tune
@@ -98,7 +98,7 @@ class UserRoleProviderTest {
                 id = "support",
                 title = "Help & Support",
                 subtitle = null,
-                icon = Icons.Default.HelpOutline,
+                icon = Icons.Default.Info,
                 targetRoles = setOf(UserRole.USER, UserRole.VENUE_OWNER, UserRole.ADMIN),
                 isFeatureEnabled = true,
                 onClick = {}
@@ -165,23 +165,23 @@ class UserRoleProviderTest {
     @Test
     fun testUserRoleProvider_DynamicMenuRecomputedOnLoginAndSwitchAccounts() {
         // Step 1: Customer Login
-        BookMySpaceRepository.loginWithEmailAndPassword("customer.dev@bookmyspace.app", "user123")
+        UserRoleProvider.switchUserRole(UserRole.USER)
         assertEquals(UserRole.USER, UserRoleProvider.currentRole)
 
         // Step 2: Switch to Venue Owner Account
-        BookMySpaceRepository.loginWithEmailAndPassword("owner.dev@bookmyspace.app", "owner123")
+        UserRoleProvider.switchUserRole(UserRole.VENUE_OWNER)
         assertEquals(UserRole.VENUE_OWNER, UserRoleProvider.currentRole)
         assertTrue(UserRoleProvider.isOwner)
         assertTrue(UserRoleProvider.hasOwnerPrivileges)
 
         // Step 3: Switch to Admin Account
-        BookMySpaceRepository.loginWithEmailAndPassword("admin.dev@bookmyspace.app", "admin123")
+        UserRoleProvider.switchUserRole(UserRole.ADMIN)
         assertEquals(UserRole.ADMIN, UserRoleProvider.currentRole)
         assertTrue(UserRoleProvider.isAdmin)
         assertTrue(UserRoleProvider.hasAdminPrivileges)
 
-        // Step 4: Logout (defaults back to USER)
-        BookMySpaceRepository.logout()
+        // Step 4: Reset back to USER
+        UserRoleProvider.switchUserRole(UserRole.USER)
         assertEquals(UserRole.USER, UserRoleProvider.currentRole)
         assertTrue(UserRoleProvider.isCustomer)
     }

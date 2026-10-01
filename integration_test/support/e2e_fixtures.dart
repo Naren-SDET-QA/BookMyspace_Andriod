@@ -1,7 +1,7 @@
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 
-import '../../test/features/booking/mock_booking_repository.dart';
+import '../../test/features/booking/mock_booking_repository_release.dart';
 
 /// Deterministic mock-mode data. These ids come from the shared test mocks
 /// in `test/features/**/mock_*_repository.dart` and are mirrored for
@@ -23,14 +23,14 @@ abstract final class E2eFixtures {
     email: 'e2e.owner@bookmyspace.test',
     fullName: 'Test Owner',
     phone: '9876500000',
-    role: AppRole.venueOwner,
+    role: UserRole.venueOwner,
   );
 
   static const admin = AuthUser(
     id: 'e2e-admin',
     email: 'e2e.admin@bookmyspace.test',
     fullName: 'Test Admin',
-    role: AppRole.admin,
+    role: UserRole.admin,
   );
 
   /// Mock mode accepts any credentials; this is not a real secret.

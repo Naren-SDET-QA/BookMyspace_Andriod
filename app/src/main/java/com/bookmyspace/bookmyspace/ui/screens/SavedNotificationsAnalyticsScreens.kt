@@ -3,6 +3,7 @@ package com.bookmyspace.bookmyspace.ui.screens
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -27,22 +29,65 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bookmyspace.bookmyspace.service.FCMNotificationManager
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.bookmyspace.bookmyspace.data.model.NotificationItem
+import com.bookmyspace.bookmyspace.data.notification.BookingReminderNotificationManager
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.VenueCard
 import com.bookmyspace.bookmyspace.ui.components.VenueOptimizerDashboard
+
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun SavedScreen(
     onNavigateToVenue: (String) -> Unit,
+    onNavigateToExplore: (() -> Unit)? = null,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val venues by BookMySpaceRepository.venues.collectAsState()
-    val savedVenues = venues.filter { it.isSaved }
+    val favoriteIds by BookMySpaceRepository.favoriteVenueIds.collectAsState()
+    val authUser by BookMySpaceRepository.authUser.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategoryFilter by remember { mutableStateOf("All") }
+
+    val allSavedVenues = remember(venues, favoriteIds) {
+        venues.filter { it.isSaved || favoriteIds.contains(it.id) }
+    }
+
+    val availableCategories = remember(allSavedVenues) {
+        listOf("All") + allSavedVenues.mapNotNull { it.category?.name }.distinct()
+    }
+
+    val filteredSavedVenues = remember(allSavedVenues, searchQuery, selectedCategoryFilter) {
+        allSavedVenues.filter { venue ->
+            val matchesQuery = searchQuery.isBlank() ||
+                    venue.name.contains(searchQuery, ignoreCase = true) ||
+                    venue.city.contains(searchQuery, ignoreCase = true) ||
+                    venue.fullAddress.contains(searchQuery, ignoreCase = true) ||
+                    (venue.category?.name?.contains(searchQuery, ignoreCase = true) == true)
+
+            val matchesCategory = selectedCategoryFilter == "All" || venue.category?.name == selectedCategoryFilter
+
+            matchesQuery && matchesCategory
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("favorites_screen")
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -51,16 +96,169 @@ fun SavedScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             com.bookmyspace.bookmyspace.ui.components.BookMySpaceLogo()
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                modifier = Modifier.testTag("favorites_cloud_badge")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CloudDone,
+                        contentDescription = "Cloud Synced",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "Firestore Synced",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
 
-        Text(
-            text = "Saved Venues (${savedVenues.size})",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Favorites",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Text("${allSavedVenues.size}")
+                    }
+                }
+                Text(
+                    text = if (authUser != null) "Personal favorites for ${authUser?.fullName ?: "User"}" else "Saved venues saved to your profile",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
-        if (savedVenues.isEmpty()) {
+        // Search within favorites
+        if (allSavedVenues.isNotEmpty()) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 6.dp)
+                    .testTag("favorites_search_input"),
+                placeholder = { Text("Search your favorites...", fontSize = 14.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.size(18.dp))
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            // Category filter chips
+            if (availableCategories.size > 2) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(availableCategories) { cat ->
+                        FilterChip(
+                            selected = selectedCategoryFilter == cat,
+                            onClick = { selectedCategoryFilter = cat },
+                            label = { Text(cat, fontSize = 12.sp) },
+                            modifier = Modifier.testTag("favorite_category_chip_${cat.lowercase().replace(" ", "_")}")
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        if (venues.isEmpty()) {
+            com.bookmyspace.bookmyspace.ui.components.EyeCatchingSavedItemsSkeleton()
+        } else if (allSavedVenues.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(64.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "No Favorites Saved Yet",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Tap the bookmark / heart icon on any venue to save it to your personal Firestore-backed favorites list for instant access.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        if (onNavigateToExplore != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = onNavigateToExplore,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.testTag("empty_favorites_explore_btn")
+                            ) {
+                                Icon(Icons.Default.Explore, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Explore Venues")
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (filteredSavedVenues.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -68,22 +266,26 @@ fun SavedScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🔖", fontSize = 48.sp)
+                    Text("🔍", fontSize = 40.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("No matching favorites found", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Try clearing your search query or filter", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("No saved venues yet", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Bookmark your favorite courts and turfs for quick access!", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { searchQuery = ""; selectedCategoryFilter = "All" }) {
+                        Text("Reset Filters")
+                    }
                 }
             }
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(savedVenues, key = { it.id }) { venue ->
+                items(filteredSavedVenues, key = { it.id }) { venue ->
                     VenueCard(
                         venue = venue,
                         onClick = { onNavigateToVenue(venue.id) },
-                        onFavoriteToggle = { BookMySpaceRepository.toggleSaved(venue.id) },
+                        onFavoriteToggle = { BookMySpaceRepository.toggleSaveVenue(venue.id) },
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = animatedVisibilityScope
                     )
@@ -100,8 +302,10 @@ fun NotificationsScreen(
     onNavigateToBookings: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val notifications by BookMySpaceRepository.notifications.collectAsState()
     val fcmToken by BookMySpaceRepository.fcmToken.collectAsState()
+    var isFcmReminderEnabled by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -120,23 +324,29 @@ fun NotificationsScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        if (notifications.isEmpty()) {
+            Box(modifier = Modifier.padding(innerPadding)) {
+                com.bookmyspace.bookmyspace.ui.components.EyeCatchingNotificationsSkeleton()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             // FCM Push Trigger Status Banner
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("fcm_reminder_status_card"),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                    )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -145,47 +355,111 @@ fun NotificationsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("⏰", fontSize = 22.sp)
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("⏰", fontSize = 18.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Text("FCM 1-Hour Pre-Slot Push Alerts", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Automated triggers active for all bookings", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                                    Text("FCM 1-Hour Push Reminders", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text("Automated pre-slot triggers active", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                                 }
                             }
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("ACTIVE ⚡", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                            }
+                            Switch(
+                                checked = isFcmReminderEnabled,
+                                onCheckedChange = {
+                                    isFcmReminderEnabled = it
+                                    Toast.makeText(context, if (it) "1-Hour Pre-Booking Reminders Enabled ⏰" else "1-Hour Reminders Paused", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.testTag("fcm_reminder_toggle")
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "FCM push reminders are scheduled 1 hour before every booked slot start time. Present your QR code pass at venue check-in.",
+                            text = "Automated high-priority push notifications trigger exactly 1 hour before booked slots start, delivering turn-by-turn venue access and instant QR entry passes.",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                            lineHeight = 16.sp
                         )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "FCM Token: ${fcmToken.take(16)}...",
+                                    fontSize = 10.5.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                TextButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(fcmToken))
+                                        Toast.makeText(context, "FCM Device Token Copied! 📋", Toast.LENGTH_SHORT).show()
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Text("Copy Token", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "Token: ${fcmToken.take(18)}...",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            )
                             Button(
                                 onClick = {
-                                    FCMNotificationManager.triggerTest1HourFCMAlert(context)
+                                    // Trigger Heads-Up Push Notification
+                                    BookingReminderNotificationManager.show1HourReminderNotification(
+                                        context = context,
+                                        bookingId = "BK_DEMO_LIVE",
+                                        venueName = "Smash Arena International",
+                                        slotTime = "06:00 PM - 07:00 PM",
+                                        bookingDate = "Today",
+                                        qrCodeToken = "BMS-PASS-DEMO-88"
+                                    )
+                                    Toast.makeText(context, "Heads-Up Push Notification Sent! 🔔", Toast.LENGTH_SHORT).show()
                                 },
                                 shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("trigger_test_fcm_reminder_btn")
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("trigger_test_fcm_reminder_btn")
                             ) {
-                                Text("Test 1-Hr FCM Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("⚡ Test 1-Hr Push", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    // Simulate Cloud FCM Payload
+                                    BookingReminderNotificationManager.simulateFcmPushPayload(
+                                        context = context
+                                    )
+                                    Toast.makeText(context, "FCM Cloud Payload Received & Broadcasted! ☁️", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("simulate_fcm_cloud_btn")
+                            ) {
+                                Text("☁️ Simulate FCM", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -248,10 +522,14 @@ fun NotificationsScreen(
         }
     }
 }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(onBack: () -> Unit) {
+fun AnalyticsScreen(
+    onBack: () -> Unit,
+    onNavigateToReports: () -> Unit = {}
+) {
     val bookings by BookMySpaceRepository.bookings.collectAsState()
     val firebaseEvents by BookMySpaceRepository.firebaseEvents.collectAsState()
 
@@ -270,6 +548,15 @@ fun AnalyticsScreen(onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToReports) {
+                        Icon(
+                            Icons.Default.Assessment,
+                            contentDescription = "Daily & Weekly Revenue Reports",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )

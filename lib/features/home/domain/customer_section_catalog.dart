@@ -365,6 +365,15 @@ class CustomerSectionCatalog {
     if (query.minCapacity != null && venue.capacity < query.minCapacity!) {
       return false;
     }
+    if (query.maxCapacity != null &&
+        venue.capacity > 0 &&
+        venue.capacity > query.maxCapacity!) {
+      return false;
+    }
+    if (query.minStarRating != null &&
+        (venue.starRating ?? 0) < query.minStarRating!) {
+      return false;
+    }
     if (query.minRating != null && venue.avgRating < query.minRating!) {
       return false;
     }
@@ -381,7 +390,11 @@ class CustomerSectionCatalog {
         return false;
       }
     }
-    if (query.gender != null) {
+    if (query.gender != null && query.gender!.toLowerCase() == 'coliving') {
+      final hay = _haystack(venue);
+      const coliving = ['coliving', 'co-living', 'co living', 'unisex'];
+      if (!coliving.any(hay.contains)) return false;
+    } else if (query.gender != null) {
       final hay = _haystack(venue);
       final wantsGents = query.gender!.toLowerCase() == 'gents';
       final hasGents =

@@ -56,11 +56,11 @@ object BookingTimeParser {
      */
     fun parseBookingStartMillis(booking: Booking): Long {
         return try {
-            val dateStr = booking.bookingDate.trim()
+            val dateStr = booking.date.trim()
             val timeStr = if (booking.startTime.isNotBlank()) {
                 booking.startTime.trim()
             } else {
-                booking.slotLabel.split("-").firstOrNull()?.trim() ?: "09:00 AM"
+                "09:00 AM"
             }
 
             val calendar = Calendar.getInstance()
@@ -429,7 +429,7 @@ fun ImminentBookingCountdownHero(
                     }
 
                     Text(
-                        text = "Ref: ${booking.bookingRef}",
+                        text = "Ref: ${booking.id.take(8).uppercase()}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White.copy(alpha = 0.85f)
@@ -438,16 +438,16 @@ fun ImminentBookingCountdownHero(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Venue Name
+                // Venue Ref
                 Text(
-                    text = booking.venueName,
+                    text = "Booking #${booking.id.take(8).uppercase()}",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White
                 )
 
                 Text(
-                    text = "📅 ${booking.bookingDate}  •  ⏰ ${booking.slotLabel}",
+                    text = "📅 ${booking.date}  •  ⏰ ${booking.startTime} - ${booking.endTime}",
                     fontSize = 12.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     modifier = Modifier.padding(top = 2.dp)

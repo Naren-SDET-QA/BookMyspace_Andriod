@@ -25,7 +25,7 @@ class PaymentHistoryQuery {
         payment.providerPaymentId,
         payment.status.dbValue,
         payment.method,
-      ].any((value) => value.toLowerCase().contains(needle));
+      ].any((value) => (value ?? '').toLowerCase().contains(needle));
     }).toList();
   }
 

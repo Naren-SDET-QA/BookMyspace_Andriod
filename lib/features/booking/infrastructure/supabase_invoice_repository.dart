@@ -19,4 +19,13 @@ class SupabaseInvoiceRepository implements InvoiceRepository {
       Map<String, dynamic>.from(result.data as Map),
     );
   }
+
+  @override
+  Future<bool> resend(String invoiceId, {String? recipientEmail}) async {
+    final result = await _client.rpc<Map<String, dynamic>>(
+      'resend_invoice_email',
+      params: {'p_invoice_id': invoiceId, 'p_recipient_email': recipientEmail},
+    );
+    return result['queued'] == true || result['already_queued'] == true;
+  }
 }

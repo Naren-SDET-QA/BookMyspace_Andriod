@@ -1,0 +1,310 @@
+
+[STEP 1] Owner Login — owner.dev@bookmyspace.app
+
+  [owner] Login...
+[browser] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading
+[browser] Injecting <script> tag. Using callback.
+[browser] DDC is about to load 1/2 scripts with pool size = 1000
+[browser] DDC is about to load 1417/1417 scripts with pool size = 1000
+[browser] [WebPush] Service worker registered with scope: http://127.0.0.1:8099/
+[browser] Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+[browser] Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+[browser] BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+[browser] supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+[browser] Failed to load resource: the server responded with a status of 403 ()
+[browser] Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+[browser] Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts
+  ✅ URL: http://127.0.0.1:8099/#/home
+  📸 [Owner home] 2580064 bytes
+
+[STEP 2] Owner Bookings...
+  📸 [Owner bookings] 200607 bytes
+  ❌ BMS-526B2E9E NOT FOUND in text
+  Relevant texts:
+    "(function() {
+      var progress = 0;
+      var fillElem = document.getElementById('loading-progress-fill');
+      var pctElem = document.getElementBy"
+    "BookMySpace E2E Test Venue
+cancelled
+BMS-DF2B4673 • Sep 27, 2026 • E2E Morning Session
+₹24,780"
+    "Party Hall DEV 10
+approval_expired
+BMS-6A4A9F60 • Sep 19, 2026 • Morning
+₹86,140"
+    "Party Hall DEV 10
+cancelled
+BMS-0098EB94 • Sep 18, 2026 • Afternoon
+₹86,140"
+    "BookMySpace E2E Test Venue
+owner_rejected
+BMS-9107BC6E • Sep 15, 2026 • E2E Morning Session
+₹24,780"
+    "BookMySpace E2E Test Venue
+cancelled
+BMS-F892F131 • Sep 14, 2026 • E2E Morning Session
+₹24,780"
+    "Party Hall DEV 10
+approval_expired
+BMS-1013B2AF • Sep 14, 2026 • Morning
+₹86,140"
+
+[STEP 3] Accept & request payment...
+  All 22 semantics:
+    [0] role="" label="" @(640,450) 1280x900
+    [1] role="" label="" @(640,450) 1280x900
+    [2] role="" label="" @(640,450) 1280x900
+    [3] role="" label="" @(640,28) 1280x56
+    [4] role="" label="" @(640,478) 1280x844
+    [5] role="group" label="" @(640,478) 1280x844
+    [6] role="" label="" @(640,125) 1248x106
+    [7] role="" label="" @(640,125) 1248x106
+    [8] role="" label="" @(640,263) 1248x170
+    [9] role="group" label="Party Hall DEV 10
+awaiting_owner_approval
+BMS-526B2E9E • Sep 22, 2026 • Afternoon
+₹86,140" @(640,263) 1248x170
+    [10] role="button" label="" @(333,298) 605x52
+    [11] role="button" label="" @(948,298) 605x52
+    [12] role="" label="" @(640,401) 1248x106
+    [13] role="" label="" @(640,401) 1248x106
+    [14] role="" label="" @(640,507) 1248x106
+    [15] role="" label="" @(640,507) 1248x106
+    [16] role="" label="" @(640,613) 1248x106
+    [17] role="" label="" @(640,613) 1248x106
+    [18] role="" label="" @(640,719) 1248x106
+    [19] role="" label="" @(640,719) 1248x106
+    [20] role="" label="" @(640,825) 1248x106
+    [21] role="" label="" @(640,825) 1248x106
+  Unlabeled buttons: 2
+  Booking tile at y=178, h=170
+  Buttons near tile: 2
+  Clicking accept at (333, 298) role=button label=""
+  📸 [Accept clicked] 211088 bytes
+  Post-click semantics: 10
+  Dialog buttons: 2
+  Clicking dialog button at (640, 546)
+  📸 [After approval] 185710 bytes
+
+[STEP 4] Verify status...
+  📸 [Status check] 185710 bytes
+  Booking: Party Hall DEV 10
+owner_rejected
+BMS-526B2E9E • Sep 22, 2026 • Afternoon
+₹86,140
+  Status pending: ❌
+  Accept button gone: ✅
+
+[STEP 5] Customer Login...
+
+  [customer] Login...
+[browser] Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading
+[browser] Updating service worker.
+[browser] [WebPush] Service worker registered with scope: http://127.0.0.1:8099/
+[browser] Failed to load resource: the server responded with a status of 403 ()
+[browser] Exception while loading service worker: Error: prepareServiceWorker took more than 4000ms to resolve. Moving on.
+    at http://127.0.0.1:8099/flutter_bootstrap.js:1:3775
+[browser] Injecting <script> tag. Using callback.
+[browser] DDC is about to load 1/2 scripts with pool size = 1000
+[browser] DDC is about to load 1417/1417 scripts with pool size = 1000
+[browser] Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+[browser] Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+[browser] Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+[browser] BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+[browser] supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+[browser] Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts
+  ✅ URL: http://127.0.0.1:8099/#/home
+  📸 [Customer home] 2580394 bytes
+
+[STEP 6] Customer bookings — Pay...
+[browser] ══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+[browser] The following assertion was thrown building KeyedSubtree-[<'function-halls-matrix'>]:
+[browser] BoxConstraints has a negative minimum width.
+[browser] The offending constraints were:
+[browser]   BoxConstraints(w=-5.3, h=104.0; NOT NORMALIZED)
+[browser] 
+[browser] The relevant error-causing widget was:
+[browser]   KeyedSubtree-[<'function-halls-matrix'>]
+[browser]   KeyedSubtree:file:///Users/aa/BookMyspace_Andriod/lib/features/home/presentation/widgets/category_glass_matrix.dart:285:16
+[browser] 
+[browser] When the exception was thrown, this was the stack:
+[browser] dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+[browser] package:flutter/src/rendering/box.dart 549:9                                      throwError
+[browser] package:flutter/src/rendering/box.dart 590:9                                      <fn>
+[browser] package:flutter/src/rendering/box.dart 618:14                                     debugAssertIsValid
+[browser] package:flutter/src/rendering/proxy_box.dart 227:17                               set additionalConstraints
+[browser] package:flutter/src/widgets/basic.dart 2773:17                                    updateRenderObject
+[browser] package:flutter/src/widgets/framework.dart 6837:6                                 [_performRebuild]
+[browser] package:flutter/src/widgets/framework.dart 6813:5                                 update
+[browser] package:flutter/src/widgets/framework.dart 7120:11                                update
+[browser] package:flutter/src/widgets/framework.dart 4037:14                                updateChild
+[browser] package:flutter/src/widgets/framework.dart 4191:32                                updateChildren
+[browser] package:flutter/src/widgets/framework.dart 7295:17                                update
+[browser] package:flutter/src/widgets/framework.dart 4037:14                                updateChild
+[browser] package:flutter/src/widgets/framework.dart 7122:14                                update
+[browser] package:flutter/src/widgets/framework.dart 4037:14                                updateChild
+[browser] package:flutter/src/widgets/framework.dart 4191:32                                updateChildren
+[browser] package:flutter/src/widgets/framework.dart 7295:17                                update
+[browser] package:flutter/src/widgets/framework.dart 4037:14                                updateChild
+[browser] package:flutter/src/widgets/framework.dart 5841:16                                performRebuild
+[browser] package:flutter/src/widgets/framework.dart 5529:7                                 rebuild
+[browser] package:flutter/src/widgets/framework.dart 5895:5                                 update
+[browser] package:flutter/src/widgets/framework.dart 4037:14                                updateChild
+[browser] package:flutter/src/widgets/layout_builder.dart 247:18                            updateChildCallback
+[browser] package:flutter/src/widgets/framework.dart 3101:11                                buildScope
+[browser] package:flutter/src/widgets/layout_builder.dart 270:5                             [_rebuildWithConstraints]
+[browser] dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+[browser] package:flutter/src/widgets/layout_builder.dart 333:28                            layoutCallback
+[browser] package:flutter/src/rendering/object.dart 4162:33                                 <fn>
+[browser] package:flutter/src/rendering/object.dart 2887:9                                  <fn>
+[browser] package:flutter/src/rendering/object.dart 1223:7                                  [_enableMutationsToDirtySubtrees]
+[browser] package:flutter/src/rendering/object.dart 2886:7                                  invokeLayoutCallback
+[browser] package:flutter/src/rendering/object.dart 4162:5                                  runLayoutCallback
+[browser] package:flutter/src/widgets/layout_builder.dart 447:5                             performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/layout_helper.dart 62:10                            layoutChild
+[browser] dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+[browser] package:flutter/src/rendering/flex.dart 1237:28                                   [_computeSizes]
+[browser] package:flutter/src/rendering/flex.dart 1329:32                                   performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/shifted_box.dart 262:5                              performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/sliver.dart 2045:5                                  performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/viewport.dart 673:12                                layoutChildSequence
+[browser] package:flutter/src/rendering/viewport.dart 1684:12                               [_attemptLayout]
+[browser] package:flutter/src/rendering/viewport.dart 1575:20                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/custom_paint.dart 574:11                            performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/layout_helper.dart 62:10                            layoutChild
+[browser] dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+[browser] package:flutter/src/rendering/stack.dart 645:43                                   [_computeSize]
+[browser] package:flutter/src/rendering/stack.dart 680:12                                   performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 296:7                                performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/shifted_box.dart 484:7                              performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/widgets/layout_builder.dart 449:7                             performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/shifted_box.dart 262:5                              performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/custom_layout.dart 180:10                           layoutChild
+[browser] package:flutter/src/material/scaffold.dart 1113:7                                 performLayout
+[browser] package:flutter/src/rendering/custom_layout.dart 246:7                            [_callPerformLayout]
+[browser] package:flutter/src/rendering/custom_layout.dart 417:5                            performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/proxy_box.dart 1549:11                              performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/layout_helper.dart 62:10                            layoutChild
+[browser] dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+[browser] package:flutter/src/rendering/stack.dart 645:43                                   [_computeSize]
+[browser] package:flutter/src/rendering/stack.dart 680:12                                   performLayout
+[browser] package:flutter/src/rendering/object.dart 2768:7                                  layout
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               <fn>
+[browser] package:flutter/src/rendering/proxy_box.dart 118:10                               performLayout
+  📸 [Customer bookings] 623116 bytes
+  ✅ Booking visible: Party Hall DEV 10
+Afternoon
+Declined
+Sep 22, 2026
+14:00 – 18:00
+BMS-526B2E9E
+₹86,140
+  Pay action: ❌
+
+  Relevant customer texts:
+    "(function() {
+      var progress = 0;
+      var fillElem = document.getElementById('loading-progress-fill');
+      var pctElem = document.getElementBy"
+    "@keyframes rzp-rot{to{transform: rotate(360deg);}}@-webkit-keyframes rzp-rot{to{-webkit-transform: rotate(360deg);}} .razorpay-container > iframe {min"
+    "Auditorium DEV 1
+Morning
+Cancelled
+Oct 27, 2026
+09:00 – 13:00
+BMS-9BCC89E4
+₹893"
+    "BookMySpace E2E Test Venue
+E2E Morning Session
+Cancelled
+Sep 27, 2026
+09:00 – 12:00
+BMS-DF2B4673
+₹24,780"
+    "Party Hall DEV 10
+Afternoon
+Declined
+Sep 22, 2026
+14:00 – 18:00
+BMS-526B2E9E
+₹86,140"
+    "Party Hall DEV 10
+Morning
+Request expired
+Sep 19, 2026
+09:00 – 13:00
+BMS-6A4A9F60
+₹86,140"
+    "Party Hall DEV 10
+Afternoon
+Cancelled
+Sep 18, 2026
+14:00 – 18:00
+BMS-0098EB94
+₹86,140"

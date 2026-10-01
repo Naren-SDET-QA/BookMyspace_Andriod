@@ -1,81 +1,60 @@
-/// Centralized input validation helpers for all forms.
-class AppValidators {
-  const AppValidators._();
-
-  static final _emailRegex = RegExp(
-    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-  );
-
-  static final _phoneRegex = RegExp(r'^[+]?[0-9]{10,15}$');
-
-  static final _nameRegex = RegExp(r"^[a-zA-Z\s'-]{2,50}$");
-
-  static final _otpRegex = RegExp(r'^[0-9]{4,6}$');
-
-  /// Validates an email address.
-  static String? email(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Email is required';
-    }
-    if (!_emailRegex.hasMatch(value.trim())) {
-      return 'Enter a valid email address';
-    }
-    return null;
-  }
-
-  /// Validates a phone number (10-15 digits, optional + prefix).
-  static String? phone(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required';
-    }
-    if (!_phoneRegex.hasMatch(value.trim())) {
-      return 'Enter a valid phone number';
-    }
-    return null;
-  }
-
-  /// Validates a full name (2-50 chars, letters/spaces/hyphens/apostrophes).
-  static String? name(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Name is required';
-    }
-    if (!_nameRegex.hasMatch(value.trim())) {
-      return 'Enter a valid name (2-50 characters)';
-    }
-    return null;
-  }
-
-  /// Validates an OTP code (4-6 digits).
-  static String? otp(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'OTP is required';
-    }
-    if (!_otpRegex.hasMatch(value.trim())) {
-      return 'Enter a valid OTP code';
-    }
-    return null;
-  }
-
-  /// Validates a required text field with optional min/max length.
+/// Common form-field validators. A null return value means the input is valid.
+abstract final class AppValidators {
   static String? required(
     String? value, {
-    String fieldName = 'This field',
+    String? fieldName,
     int minLength = 1,
     int? maxLength,
   }) {
-    if (value == null || value.trim().isEmpty) {
-      return '$fieldName is required';
+    final text = value?.trim() ?? '';
+    if (fieldName == null) {
+      if (text.isEmpty) return 'This field is required';
+      if (text.length < minLength) {
+        return 'Must be at least $minLength characters';
+      }
+      if (maxLength != null && text.length > maxLength) {
+        return 'Must be at most $maxLength characters';
+      }
+      return null;
     }
-    if (value.trim().length < minLength) {
+    if (text.isEmpty) return '$fieldName is required';
+    if (text.length < minLength) {
       return '$fieldName must be at least $minLength characters';
     }
-    if (maxLength != null && value.trim().length > maxLength) {
+    if (maxLength != null && text.length > maxLength) {
       return '$fieldName must be at most $maxLength characters';
     }
     return null;
   }
 
-  /// Validates a password (min 8 chars, at least one letter and one number).
+  static String? email(String? value) {
+    final requiredError = required(value);
+    if (requiredError != null) return requiredError;
+    final valid = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value!.trim());
+    return valid ? null : 'Enter a valid email address';
+  }
+
+  static String? phone(String? value) {
+    final requiredError = required(value);
+    if (requiredError != null) return requiredError;
+    final valid = RegExp(r'^\+?[0-9]{10,13}$').hasMatch(value!.trim());
+    return valid ? null : 'Enter a valid phone number';
+  }
+
+  static String? name(String? value) {
+    final requiredError = required(value, minLength: 2);
+    if (requiredError != null) return requiredError;
+    final valid =
+        RegExp(r"^[A-Za-z][A-Za-z' -]*[A-Za-z]$").hasMatch(value!.trim());
+    return valid ? null : 'Enter a valid name';
+  }
+
+  static String? otp(String? value) {
+    final text = value?.trim() ?? '';
+    final valid = RegExp(r'^\d{4,6}$').hasMatch(text);
+    return valid ? null : 'Enter a valid OTP';
+  }
+
   static String? password(String? value) {
     if (value == null || value.isEmpty) {
       return 'Password is required';

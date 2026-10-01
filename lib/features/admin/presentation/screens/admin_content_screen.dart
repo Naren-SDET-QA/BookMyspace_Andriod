@@ -46,6 +46,12 @@ class AdminContentScreen extends StatelessWidget {
           subtitle: 'Configure venue fields by category.',
           route: AppRoutes.adminListingFields,
         ),
+        const _ContentLink(
+          icon: Icons.receipt_long_outlined,
+          title: 'GST invoice defaults',
+          subtitle: 'Configure the SAC, invoice prefix and seller defaults.',
+          route: AppRoutes.adminInvoiceTaxSettings,
+        ),
       ],
     ),
   );

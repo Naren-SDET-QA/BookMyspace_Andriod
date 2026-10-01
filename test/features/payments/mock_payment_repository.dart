@@ -1,3 +1,4 @@
+import 'package:bookmyspace/core/errors/app_exceptions.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/payments/domain/checkout_service.dart';
 import 'package:bookmyspace/features/payments/domain/payment.dart';
@@ -5,30 +6,23 @@ import 'package:bookmyspace/features/payments/domain/payment_repository.dart';
 
 /// In-memory payment repository for tests and widget tests.
 class MockPaymentRepository implements PaymentRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   MockPaymentRepository();
 
   bool failCreateOrder = false;
+  bool duplicateOrder = false;
   bool failRefund = false;
   bool failStatus = false;
-
-  /// Set to make [selectPayAtVenue] throw. Defaults to a generic
-  /// [Exception]; set [payAtVenueError] for a specific typed exception
-  /// (e.g. to simulate a server-side rejection like
-  /// `payment_in_progress`).
-  bool failSelectPayAtVenue = false;
-  Object? payAtVenueError;
 
   BookingStatus statusResult = BookingStatus.confirmed;
   int statusCalls = 0;
 
-  /// Result returned by a successful [selectPayAtVenue] call. Pay-at-venue
-  /// never auto-confirms — it always lands in the owner-approval queue,
-  /// same as a captured online payment.
-  BookingStatus payAtVenueResult = BookingStatus.pendingOwnerApproval;
-
   Refund? createdRefund;
   String? lastOrderBookingId;
-  String? lastPayAtVenueBookingId;
   String? lastRefundBookingId;
   double? lastRefundAmount;
 
@@ -45,7 +39,7 @@ class MockPaymentRepository implements PaymentRepository {
   ];
 
   static PaymentOrder sampleOrder({String orderId = 'order_1'}) =>
-      PaymentOrder(orderId: orderId, amount: 41300, currency: 'INR');
+      PaymentOrder(orderId: orderId, amount: 4720, currency: 'INR');
 
   static Refund sampleRefund() => const Refund(
     id: 'r1',
@@ -58,20 +52,40 @@ class MockPaymentRepository implements PaymentRepository {
   );
 
   @override
-  Future<PaymentOrder> createOrder({required String bookingId}) async {
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  }) async {
+    if (duplicateOrder) {
+      throw const BusinessException(
+        'A payment for this booking already exists.',
+        code: 'payment_duplicate',
+      );
+    }
     if (failCreateOrder) throw Exception('order creation failed');
     lastOrderBookingId = bookingId;
     return sampleOrder();
   }
 
   @override
-  Future<BookingStatus> selectPayAtVenue({required String bookingId}) async {
-    if (failSelectPayAtVenue) {
-      throw payAtVenueError ?? Exception('pay at venue failed');
-    }
-    lastPayAtVenueBookingId = bookingId;
-    return payAtVenueResult;
-  }
+  Future<CheckoutQuote> checkoutQuote({
+    required String bookingId,
+    String paymentPlan = 'full',
+  }) async => CheckoutQuote(
+    bookingId: bookingId,
+    currency: 'INR',
+    paymentPlan: paymentPlan,
+    fullAmount: 4720,
+    advanceAmount: 4720,
+    balanceDue: 0,
+    advanceEnabled: false,
+    minimumAdvanceAmount: 200,
+  );
+
+  @override
+  Future<VenuePaymentRules> paymentRules({required String venueId}) async =>
+      const VenuePaymentRules(allowPayAtVenue: true);
 
   @override
   Future<BookingStatus> bookingStatus(String bookingId) async {
@@ -102,16 +116,26 @@ class MockPaymentRepository implements PaymentRepository {
 /// A checkout service that records the opened order and returns a fixed
 /// outcome, so payment widget tests never touch the native SDK.
 class FakeCheckoutService implements CheckoutService {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   FakeCheckoutService([this.result = CheckoutResult.paid]);
 
   CheckoutResult result;
+  CheckoutResponse? get lastResponse => result == CheckoutResult.paid
+      ? CheckoutResponse(
+          result: result,
+          paymentId: 'pay_test',
+          orderId: lastOrderId,
+        )
+      : CheckoutResponse(result: result, orderId: lastOrderId);
   String? lastOrderId;
   double? lastAmount;
   String? lastCurrency;
   String? lastKeyId;
-
-  @override
-  CheckoutSuccessDetails? get lastSuccessDetails => null;
+  int checkoutCalls = 0;
 
   @override
   Future<CheckoutResult> openCheckout({
@@ -119,7 +143,14 @@ class FakeCheckoutService implements CheckoutService {
     required double amount,
     required String currency,
     required String keyId,
+    String? venueName,
+    String? bookingRef,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    Map<String, dynamic>? notes,
   }) async {
+    checkoutCalls++;
     lastOrderId = orderId;
     lastAmount = amount;
     lastCurrency = currency;

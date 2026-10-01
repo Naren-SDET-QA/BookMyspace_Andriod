@@ -1,828 +1,806 @@
 package com.bookmyspace.bookmyspace.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ConfirmationNumber
-import androidx.compose.material.icons.filled.HourglassTop
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+import com.bookmyspace.bookmyspace.util.CoilImageLoaderConfig
+import com.bookmyspace.bookmyspace.data.local.PaymentTransactionEntity
 import com.bookmyspace.bookmyspace.data.model.Booking
 import com.bookmyspace.bookmyspace.data.model.BookingStatus
-import com.bookmyspace.bookmyspace.data.model.TimeSlot
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
+import com.bookmyspace.bookmyspace.ui.components.BookingSummaryInvoiceModal
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyBookingsScreen(
-    onPayBooking: (String) -> Unit
+    onPayBooking: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    val coroutineScope = rememberCoroutineScope()
-    val bookings by BookMySpaceRepository.bookings.collectAsState()
-    val venues by BookMySpaceRepository.venues.collectAsState()
-    val user by BookMySpaceRepository.authUser.collectAsState()
+    val allBookings by BookMySpaceRepository.bookings.collectAsState()
+    val authUser by BookMySpaceRepository.authUser.collectAsState()
+    val currentRole by com.bookmyspace.bookmyspace.data.auth.UserRoleProvider.role.collectAsState()
+    val bookings = remember(allBookings, authUser, currentRole) {
+        BookMySpaceRepository.getBookingsForRole(currentRole, authUser?.id)
+    }
+    val paymentTransactions by BookMySpaceRepository.paymentTransactions.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Upcoming, 1: Completed, 2: Cancelled & Rejected, 3: Transactions
+    val context = LocalContext.current
 
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Active, 1 = History
+    val filteredBookings = remember(bookings, selectedTab) {
+        when (selectedTab) {
+            0 -> bookings.filter { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.PENDING_OWNER_APPROVAL || it.status == BookingStatus.HELD }
+            1 -> bookings.filter { it.status == BookingStatus.COMPLETED }
+            2 -> bookings.filter { it.status == BookingStatus.CANCELLED || it.status == BookingStatus.REJECTED }
+            else -> emptyList()
+        }
+    }
 
-    // Re-book state for returning customers
-    var rebookTargetBooking by remember { mutableStateOf<Booking?>(null) }
-    var cancelTargetBooking by remember { mutableStateOf<Booking?>(null) }
-    var isProcessingRefund by remember { mutableStateOf(false) }
-    var refundSuccessResult by remember { mutableStateOf<com.bookmyspace.bookmyspace.util.RazorpayHelper.RazorpayRefundResult?>(null) }
-    var refundCancelledBookingName by remember { mutableStateOf("") }
-    var selectedBookingForDetails by remember { mutableStateOf<Booking?>(null) }
-    var rebookDateIndex by remember { mutableStateOf(0) }
-    var rebookSelectedSlot by remember { mutableStateOf<TimeSlot?>(null) }
+    var showCancelDialogForBooking by remember { mutableStateOf<Booking?>(null) }
+    var showQrDialogForBooking by remember { mutableStateOf<Booking?>(null) }
+    var showInvoiceForTransaction by remember { mutableStateOf<PaymentTransactionEntity?>(null) }
 
-    val rebookDates = listOf("Today, Aug 06", "Tomorrow, Aug 07", "Sat, Aug 08", "Sun, Aug 09")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "My Bookings & Payments 🎟️",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
+        modifier = modifier.testTag("my_bookings_screen")
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                edgePadding = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Active (${bookings.count { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.PENDING_OWNER_APPROVAL || it.status == BookingStatus.HELD }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Completed (${bookings.count { it.status == BookingStatus.COMPLETED }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Declined/Cancelled (${bookings.count { it.status == BookingStatus.CANCELLED || it.status == BookingStatus.REJECTED }})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("💳 Payments (${paymentTransactions.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                )
+            }
 
-    // Booking Details & PDF Invoice Dialog
-    if (selectedBookingForDetails != null) {
-        val target = selectedBookingForDetails!!
-        var currentRating by remember(target.id) { mutableStateOf(target.rating?.toInt() ?: 5) }
-        var feedbackText by remember(target.id) { mutableStateOf(target.feedback ?: "") }
-        var feedbackSubmitted by remember(target.id) { mutableStateOf(target.rating != null) }
-
-        AlertDialog(
-            onDismissRequest = { selectedBookingForDetails = null },
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Booking Pass & Details", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    IconButton(onClick = { selectedBookingForDetails = null }) {
-                        Icon(Icons.Default.ConfirmationNumber, contentDescription = "Close", tint = MaterialTheme.colorScheme.primary)
+            if (selectedTab == 3) {
+                // Room database payment transaction records
+                if (paymentTransactions.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "💳", fontSize = 54.sp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No payment transaction records yet",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Completed and processed payment transactions will automatically appear here.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        items(paymentTransactions, key = { it.transactionId }) { tx ->
+                            PaymentTransactionCardItem(
+                                transaction = tx,
+                                onSelectBooking = { bookingId ->
+                                    val matchIndex = bookings.indexOfFirst { it.id == bookingId }
+                                    if (matchIndex != -1) {
+                                        selectedTab = 0
+                                    }
+                                },
+                                onViewInvoice = { showInvoiceForTransaction = tx }
+                            )
+                        }
                     }
                 }
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text(target.venueName, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("📅 Date: ${target.bookingDate}", fontSize = 12.sp)
-                            Text("⏰ Slot: ${target.slotLabel}", fontSize = 12.sp)
-                            Text("🎫 Pass Ref: #${target.id}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text("💳 Paid: ₹${target.totalAmount.toInt()} (${target.status.name})", fontSize = 12.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedButton(
-                        onClick = {
-                            com.bookmyspace.bookmyspace.util.PdfInvoiceGenerator.generateAndDownloadInvoicePdf(context, target)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("dialog_download_pdf_${target.id}"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text("📄 Download Confirmation PDF Invoice", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-
-                    if (target.status == BookingStatus.COMPLETED) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text("⭐ Session Rating & Feedback", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+            } else if (bookings.isEmpty()) {
+                com.bookmyspace.bookmyspace.ui.components.EyeCatchingBookingsSkeleton()
+            } else if (filteredBookings.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = if (selectedTab == 0) "🎟️" else if (selectedTab == 1) "✅" else "❌",
+                            fontSize = 54.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (selectedTab == 0) "No upcoming bookings found" else if (selectedTab == 1) "No completed bookings yet" else "No cancelled bookings",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
-
-                        if (feedbackSubmitted) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("Your Rating: ", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            for (s in 1..5) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Star,
-                                                    contentDescription = null,
-                                                    tint = if (s <= currentRating) Color(0xFFFFB300) else Color.LightGray,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("($currentRating/5)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    if (feedbackText.isNotBlank()) {
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text("\"$feedbackText\"", fontSize = 12.sp, style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic))
-                                    }
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text("✓ Review submitted & published to venue", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        } else {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text("How was your experience at ${target.venueName}?", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    for (star in 1..5) {
-                                        IconButton(
-                                            onClick = { currentRating = star },
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .testTag("star_rating_${target.id}_$star")
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Star,
-                                                contentDescription = "$star Stars",
-                                                tint = if (star <= currentRating) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                                                modifier = Modifier.size(28.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                OutlinedTextField(
-                                    value = feedbackText,
-                                    onValueChange = { feedbackText = it },
-                                    label = { Text("Feedback & Comments") },
-                                    placeholder = { Text("Share details about court quality, amenities, or staff...") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("feedback_input_${target.id}"),
-                                    maxLines = 3,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Button(
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        BookMySpaceRepository.submitBookingFeedback(
-                                            bookingId = target.id,
-                                            rating = currentRating.toDouble(),
-                                            feedback = feedbackText
-                                        )
-                                        feedbackSubmitted = true
-                                        selectedBookingForDetails = target.copy(
-                                            rating = currentRating.toDouble(),
-                                            feedback = feedbackText
-                                        )
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("submit_feedback_button_${target.id}"),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text("Submit Rating & Feedback ⭐", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
+                        Text(
+                            text = "Explore venues, select your preferred time slot, and book instantly.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(filteredBookings, key = { it.id }) { booking ->
+                        val matchingTx = paymentTransactions.firstOrNull { it.bookingId == booking.id }
+                            ?: PaymentTransactionEntity(
+                                transactionId = "pay_bms_${booking.id.takeLast(8)}",
+                                bookingId = booking.id,
+                                venueId = booking.venueId,
+                                venueName = booking.venueName,
+                                amount = booking.totalAmount.ifZero(booking.totalPrice),
+                                currency = "INR",
+                                paymentStatus = if (booking.status == BookingStatus.CONFIRMED || booking.status == BookingStatus.COMPLETED) "SUCCESS" else booking.status.name,
+                                paymentMethod = "Razorpay (UPI / NetBanking)",
+                                razorpayOrderId = "order_bms_${booking.id.takeLast(8)}",
+                                razorpaySignature = "sig_bms_${booking.id.takeLast(8)}_verified",
+                                customerName = booking.userName.ifBlank { "Narendra Reddy" },
+                                customerEmail = booking.userEmail.ifBlank { "narenqe2@gmail.com" },
+                                customerPhone = booking.userPhone.ifBlank { "+91 98765 43210" },
+                                timestamp = booking.createdAt,
+                                notes = "Booking for ${booking.venueName} - ${booking.slotLabel}"
+                            )
+
+                        BookingCardItem(
+                            booking = booking,
+                            onPayNow = { onPayBooking(booking.id) },
+                            onCancelBooking = { showCancelDialogForBooking = booking },
+                            onShowQrPass = { showQrDialogForBooking = booking },
+                            onGetDirections = {
+                                val gmmIntentUri = Uri.parse("geo:0,0?q=${Uri.encode(booking.venueName)}")
+                                val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                mapIntent.setPackage("com.google.android.apps.maps")
+                                try {
+                                    context.startActivity(mapIntent)
+                                } catch (_: Exception) {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
+                                }
+                            },
+                            onViewInvoice = if (booking.status == BookingStatus.CONFIRMED || booking.status == BookingStatus.COMPLETED) {
+                                { showInvoiceForTransaction = matchingTx }
+                            } else null
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Cancel Booking Dialog
+    if (showCancelDialogForBooking != null) {
+        val targetBooking = showCancelDialogForBooking!!
+        AlertDialog(
+            onDismissRequest = { showCancelDialogForBooking = null },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Cancel Booking #${targetBooking.id}?") },
+            text = {
+                Column {
+                    Text("Are you sure you want to cancel your slot at ${targetBooking.venueName}?")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Refund of ₹${(targetBooking.totalAmount * 0.90).toInt()} (90% after standard cancellation fee) will be credited to your original payment method within 2-3 business days.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
             confirmButton = {
-                Button(onClick = { selectedBookingForDetails = null }) {
-                    Text("Close")
+                Button(
+                    onClick = {
+                        BookMySpaceRepository.cancelBooking(targetBooking.id)
+                        showCancelDialogForBooking = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Confirm Cancellation")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelDialogForBooking = null }) {
+                    Text("Keep Booking")
                 }
             }
         )
     }
 
-    // Refund Receipt Modal
-    refundSuccessResult?.let { result ->
+    // QR Code Pass Dialog
+    if (showQrDialogForBooking != null) {
+        val targetBooking = showQrDialogForBooking!!
         AlertDialog(
-            onDismissRequest = { refundSuccessResult = null },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Booking Cancelled & Refunded", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-            },
+            onDismissRequest = { showQrDialogForBooking = null },
+            icon = { Icon(Icons.Default.QrCode2, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp)) },
+            title = { Text("Check-In Digital Pass 🎫", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Your booking for '$refundCancelledBookingName' has been cancelled and recorded in the database.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Surface(
-                        color = Color(0xFF0C2340),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        color = Color.White,
+                        shape = RoundedCornerShape(16.dp),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.size(200.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Shield, contentDescription = null, tint = Color(0xFF00C853), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Razorpay Refund", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                }
-                                Surface(
-                                    color = Color(0xFF00C853).copy(alpha = 0.2f),
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        text = result.status,
-                                        color = Color(0xFF00E676),
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text("💰 Refund Amount: ₹${result.amount.toInt()}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("⚡ Refund ID: ${result.refundId}", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
-                            Text("🏦 Bank ARN: ${result.arn}", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
-                            Text("💳 Credited to: Original Payment Method / Wallet", color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.QrCode2,
+                                contentDescription = "QR Code",
+                                modifier = Modifier.size(160.dp),
+                                tint = Color.Black
+                            )
                         }
                     }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(targetBooking.venueName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("📅 ${targetBooking.bookingDate.ifBlank { targetBooking.date }} | ⏰ ${targetBooking.slotLabel}", fontSize = 12.sp)
+                    Text("Ref: #${targetBooking.bookingRef.ifBlank { targetBooking.id }}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Show this QR pass at the venue entrance counter for instant verification.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = {
-                Button(onClick = { refundSuccessResult = null }) {
+                Button(onClick = { showQrDialogForBooking = null }) {
                     Text("Done")
                 }
             }
         )
     }
 
-    // Cancel Booking Dialog
-    if (cancelTargetBooking != null) {
-        val target = cancelTargetBooking!!
-        AlertDialog(
-            onDismissRequest = {
-                if (!isProcessingRefund) cancelTargetBooking = null
-            },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Cancel, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cancel Booking & Refund", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Venue: ${target.venueName}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("Date: ${target.bookingDate} | Slot: ${target.slotLabel}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
-                        color = Color(0xFF0C2340),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Shield, contentDescription = null, tint = Color(0xFF00C853), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Razorpay Refund Gateway", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                }
-                                Text("Instant", color = Color(0xFF00E676), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = if (target.isPaid) "Refund Amount: ₹${target.totalAmount.toInt()} (100% Instant Refund)" else "No payment charged (Unpaid)",
-                                color = if (target.isPaid) Color(0xFF00E676) else Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Instant refund processed to your original payment method or wallet via Razorpay.",
-                                color = Color.White.copy(alpha = 0.75f),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        isProcessingRefund = true
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        coroutineScope.launch {
-                            kotlinx.coroutines.delay(350)
-                            val result = BookMySpaceRepository.cancelBookingWithRazorpayRefund(target.id)
-                            isProcessingRefund = false
-                            refundCancelledBookingName = target.venueName
-                            cancelTargetBooking = null
-                            refundSuccessResult = result
-                        }
-                    },
-                    enabled = !isProcessingRefund,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    if (isProcessingRefund) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Processing Refund...", fontSize = 12.sp)
-                    } else {
-                        Text("Cancel Booking & Refund", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            },
-            dismissButton = {
-                if (!isProcessingRefund) {
-                    TextButton(onClick = { cancelTargetBooking = null }) {
-                        Text("Keep Booking")
-                    }
-                }
-            }
-        )
-    }
-
-    // Re-booking Dialog
-    if (rebookTargetBooking != null) {
-        val target = rebookTargetBooking!!
-        val liveVenue = venues.firstOrNull { it.id == target.venueId } ?: venues.first()
-        val activeSlot = rebookSelectedSlot ?: liveVenue.timeSlots.firstOrNull()
-        
-        // Live server-side price calculation (never reuse old cached price from past booking)
-        val basePrice = activeSlot?.priceAmount ?: liveVenue.pricingBaseAmount
-        val taxAmount = basePrice * (liveVenue.taxRate / 100.0)
-        val grandTotal = basePrice + taxAmount
-
-        AlertDialog(
-            onDismissRequest = { rebookTargetBooking = null },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⚡ Re-Book ${liveVenue.name}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-                }
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("🟢 Live Server Rates & Availability Active", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text("1. Select New Date (Mandatory)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        rebookDates.take(3).forEachIndexed { idx, d ->
-                            FilterChip(
-                                selected = rebookDateIndex == idx,
-                                onClick = { rebookDateIndex = idx },
-                                label = { Text(d.split(",")[0], fontSize = 11.sp) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("2. Select Available Slot", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    liveVenue.timeSlots.take(3).forEach { slot ->
-                        val isSelected = activeSlot?.id == slot.id
-                        Surface(
-                            onClick = {
-                                rebookSelectedSlot = slot
-                                com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository.notifySlotInteraction()
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("${slot.label} (${slot.startTime}-${slot.endTime})", fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                                Text("₹${slot.priceAmount.toInt()}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Current Live Total", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Base ₹${basePrice.toInt()} + GST ${liveVenue.taxRate.toInt()}%", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Text("₹${grandTotal.toInt()}", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val slot = activeSlot
-                        val newBooking = Booking(
-                            id = "bk_again_${System.currentTimeMillis()}",
-                            userId = user?.id ?: "guest",
-                            venueId = liveVenue.id,
-                            venueName = liveVenue.name,
-                            venueImageUrl = liveVenue.coverImageUrl,
-                            slotLabel = slot?.label ?: "Standard Slot",
-                            bookingDate = "2026-08-${6 + rebookDateIndex}",
-                            startTime = slot?.startTime ?: "09:00",
-                            endTime = slot?.endTime ?: "11:00",
-                            baseAmount = basePrice,
-                            taxAmount = taxAmount,
-                            discountAmount = 0.0,
-                            totalAmount = grandTotal,
-                            couponCode = "REBOOK_LIVE",
-                            status = BookingStatus.PENDING,
-                            isPaid = false
-                        )
-                        BookMySpaceRepository.addBooking(newBooking)
-                        rebookTargetBooking = null
-                        onPayBooking(newBooking.id)
-                    },
-                    modifier = Modifier.testTag("rebook_confirm_pay_button")
-                ) {
-                    Text("⚡ Pay & Confirm ₹${grandTotal.toInt()}", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { rebookTargetBooking = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    val filteredBookings by remember(bookings, selectedTab) {
-        derivedStateOf {
-            if (selectedTab == 0) {
-                bookings.filter { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.HELD }
-            } else {
-                bookings.filter { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }
-            }
+    // Summary Invoice View Modal (Tax Invoice & Booking Summary)
+    showInvoiceForTransaction?.let { tx ->
+        val matchingBooking = remember(tx.bookingId, tx.transactionId, bookings) {
+            bookings.find { it.id == tx.bookingId || it.paymentId == tx.transactionId }
         }
+        BookingSummaryInvoiceModal(
+            transaction = tx,
+            booking = matchingBooking,
+            onDismiss = { showInvoiceForTransaction = null },
+            onNavigateToBooking = { bookingId ->
+                showInvoiceForTransaction = null
+                val matchIndex = bookings.indexOfFirst { it.id == bookingId }
+                if (matchIndex != -1) {
+                    selectedTab = 0
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun BookingCardItem(
+    booking: Booking,
+    onPayNow: () -> Unit,
+    onCancelBooking: () -> Unit,
+    onShowQrPass: () -> Unit,
+    onGetDirections: () -> Unit,
+    onViewInvoice: (() -> Unit)? = null
+) {
+    val statusColors = when (booking.status) {
+        BookingStatus.CONFIRMED, BookingStatus.COMPLETED -> listOf(Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399))
+        BookingStatus.PENDING, BookingStatus.PENDING_OWNER_APPROVAL, BookingStatus.HELD -> listOf(Color(0xFFF59E0B), Color(0xFFFF7043), Color(0xFFFB923C))
+        BookingStatus.CANCELLED, BookingStatus.REJECTED -> listOf(Color(0xFF64748B), Color(0xFFEF4444))
     }
 
-    var reminderMessage by remember { mutableStateOf<String?>(null) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("my_bookings_screen")
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(
+            1.2.dp,
+            Brush.linearGradient(
+                colors = listOf(
+                    statusColors.first().copy(alpha = 0.45f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.2f)
+                )
+            )
+        ),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // App Header Logo with Room Local Database persistence indicator
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            com.bookmyspace.bookmyspace.ui.components.BookMySpaceLogo()
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        com.bookmyspace.bookmyspace.util.PdfInvoiceGenerator.exportBookingHistoryPdf(context, bookings)
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    modifier = Modifier.testTag("export_booking_history_pdf_btn")
-                ) {
-                    Text("📄 Export PDF", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        // Booking Reminder Background Service Status Card
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("⏰", fontSize = 18.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text("1-Hour Booking Reminder Service", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Text("WorkManager background worker active • Auto local alerts", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Button(
-                        onClick = {
-                            val count = com.bookmyspace.bookmyspace.service.BookingReminderManager.checkAndTriggerUpcomingReminders(context)
-                            reminderMessage = if (count > 0) "Triggered $count session reminder notification(s)!" else "Checked upcoming bookings: No sessions within 1 hr."
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text("Check Now 🔄", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = reminderMessage ?: "System notifications will trigger 1 hour before booked session starts.",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            com.bookmyspace.bookmyspace.service.BookingReminderManager.triggerImmediateTestNotification(context)
-                            reminderMessage = "Posted 1-hour test notification to system bar! 🔔"
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text("Test Alert 🔔", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // Tab Row
-        TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                Text(
-                    "Upcoming & Active (${bookings.count { it.status == BookingStatus.CONFIRMED || it.status == BookingStatus.PENDING || it.status == BookingStatus.HELD }})",
-                    modifier = Modifier.padding(vertical = 14.dp),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                Text(
-                    "Past History (${bookings.count { it.status == BookingStatus.COMPLETED || it.status == BookingStatus.CANCELLED }})",
-                    modifier = Modifier.padding(vertical = 14.dp),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        if (filteredBookings.isEmpty()) {
+        Column {
+            // Dynamic Brand Gradient Stripe
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(3.5.dp)
+                    .background(Brush.horizontalGradient(statusColors))
+            )
+            Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🎟️", fontSize = 48.sp)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("No bookings in this tab", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Book a court or turf to see your tickets here!", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val context = LocalContext.current
+                val bookingImg = booking.venueCoverUrl.ifBlank { booking.venueImageUrl }.ifBlank { "https://images.unsplash.com/photo-1546519638-68e109498ffc" }
+                AsyncImage(
+                    model = CoilImageLoaderConfig.buildThumbnailRequest(
+                        context = context,
+                        data = bookingImg,
+                        sizePx = 200
+                    ),
+                    contentDescription = booking.venueName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(booking.venueName, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("📅 ${booking.bookingDate.ifBlank { booking.date }}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("⏰ ${booking.slotLabel.ifBlank { "${booking.startTime} - ${booking.endTime}" }}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Surface(
+                    color = when (booking.status) {
+                        BookingStatus.CONFIRMED -> Color(0xFFE8F5E9)
+                        BookingStatus.COMPLETED -> Color(0xFFE3F2FD)
+                        BookingStatus.PENDING_OWNER_APPROVAL -> Color(0xFFFFF8E1)
+                        BookingStatus.PENDING, BookingStatus.HELD -> Color(0xFFFFF3E0)
+                        BookingStatus.CANCELLED, BookingStatus.REJECTED -> Color(0xFFFFEBEE)
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = when (booking.status) {
+                            BookingStatus.CONFIRMED -> "CONFIRMED"
+                            BookingStatus.COMPLETED -> "COMPLETED"
+                            BookingStatus.PENDING_OWNER_APPROVAL -> "AWAITING APPROVAL"
+                            BookingStatus.PENDING -> "PENDING"
+                            BookingStatus.HELD -> "HOLD"
+                            BookingStatus.CANCELLED -> "CANCELLED"
+                            BookingStatus.REJECTED -> "DECLINED"
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when (booking.status) {
+                            BookingStatus.CONFIRMED -> Color(0xFF2E7D32)
+                            BookingStatus.COMPLETED -> Color(0xFF1565C0)
+                            BookingStatus.PENDING_OWNER_APPROVAL -> Color(0xFFF57F17)
+                            BookingStatus.PENDING, BookingStatus.HELD -> Color(0xFFE65100)
+                            BookingStatus.CANCELLED, BookingStatus.REJECTED -> Color(0xFFC62828)
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(filteredBookings) { booking ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("booking_card_${booking.id}"),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+
+            if (booking.status == BookingStatus.PENDING_OWNER_APPROVAL) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFFFF8E1),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Color(0xFFF57F17), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "Token paid • Awaiting owner review & slot confirmation",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF5D4037)
+                        )
+                    }
+                }
+            } else if (booking.status == BookingStatus.REJECTED) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Cancel, contentDescription = null, tint = Color(0xFFC62828), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Owner Declined Request",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB71C1C)
+                            )
+                        }
+                        if (!booking.rejectionReason.isNullOrBlank()) {
+                            Text(
+                                "Reason: ${booking.rejectionReason}",
+                                fontSize = 11.sp,
+                                color = Color(0xFFB71C1C),
+                                modifier = Modifier.padding(start = 22.dp)
+                            )
+                        }
+                        if (!booking.refundId.isNullOrBlank()) {
+                            Text(
+                                "Token Refund: ₹${booking.advanceAmountPaid.toInt().coerceAtLeast(booking.totalAmount.toInt())} processed (${booking.refundId})",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier.padding(start = 22.dp, top = 2.dp)
+                            )
+                        }
+                    }
+                }
+            } else if (booking.status == BookingStatus.CONFIRMED && !booking.finalOrderId.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Order #${booking.finalOrderId}",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    if (booking.isAdvancePayment || booking.advanceAmountPaid > 0) {
+                        Text("Advance Paid (Bal: ₹${booking.remainingBalanceDue.toInt()} due)", fontSize = 10.sp, color = Color(0xFFE65100), fontWeight = FontWeight.Bold)
+                        Text("₹${booking.advanceAmountPaid.toInt()} / ₹${booking.totalAmount.ifZero(booking.totalPrice).toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        Text("Total Paid / Due", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("₹${booking.totalAmount.ifZero(booking.totalPrice).toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.HELD) {
+                        Button(
+                            onClick = onPayNow,
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Pay Now 💳", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else if (booking.status == BookingStatus.CONFIRMED || booking.status == BookingStatus.COMPLETED) {
+                        if (onViewInvoice != null) {
+                            FilledTonalButton(
+                                onClick = onViewInvoice,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                modifier = Modifier.testTag("booking_invoice_btn_${booking.id}")
                             ) {
-                                val (statusBg, statusFg, statusIcon) = when (booking.status) {
-                                    BookingStatus.CONFIRMED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), Icons.Default.CheckCircle)
-                                    BookingStatus.PENDING -> Triple(Color(0xFFFFF8E1), Color(0xFFF57F17), Icons.Default.HourglassTop)
-                                    BookingStatus.CANCELLED -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), Icons.Default.Cancel)
-                                    BookingStatus.COMPLETED -> Triple(Color(0xFFE0F2F1), Color(0xFF00695C), Icons.Default.TaskAlt)
-                                    BookingStatus.HELD -> Triple(Color(0xFFE1F5FE), Color(0xFF0277BD), Icons.Default.Timer)
-                                    BookingStatus.AVAILABLE -> Triple(Color(0xFFF3E5F5), Color(0xFF6A1B9A), Icons.Default.CheckCircle)
-                                }
-
-                                Surface(
-                                    color = statusBg,
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = statusIcon,
-                                            contentDescription = booking.status.name,
-                                            tint = statusFg,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Text(
-                                            text = booking.status.name,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = statusFg
-                                        )
-                                    }
-                                }
-                                Text("Pass #${booking.id}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("PDF Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
+                        }
 
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(booking.venueName, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("📅 Date: ${booking.bookingDate}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("⏰ Slot: ${booking.slotLabel}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            
-                            if (booking.status == BookingStatus.COMPLETED) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Surface(
-                                    color = if (booking.rating != null) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        if (booking.rating != null) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                Text("Your Rating:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                                repeat(booking.rating.toInt()) {
-                                                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
-                                                }
-                                                Text("(${booking.rating.toInt()}/5)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                            }
-                                            if (!booking.feedback.isNullOrEmpty()) {
-                                                Text(
-                                                    text = "\"${booking.feedback}\"",
-                                                    fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    modifier = Modifier.padding(start = 8.dp)
-                                                )
-                                            }
-                                        } else {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
-                                                Text("Rate & Leave Feedback for this completed booking", fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                        OutlinedButton(
+                            onClick = onShowQrPass,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("QR", fontSize = 11.sp)
+                        }
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        OutlinedButton(
+                            onClick = onGetDirections,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(14.dp))
+                        }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        if (booking.status == BookingStatus.CONFIRMED) {
+                            IconButton(
+                                onClick = onCancelBooking,
+                                modifier = Modifier.size(32.dp)
                             ) {
-                                Column {
-                                    Text("Total Paid", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("₹${booking.totalAmount.toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-                                }
-
-                                if (!booking.isPaid && booking.status == BookingStatus.PENDING) {
-                                    Button(
-                                        onClick = { onPayBooking(booking.id) },
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Text("Pay Pending ₹${booking.totalAmount.toInt()}")
-                                    }
-                                } else {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        if (booking.status == BookingStatus.CONFIRMED || booking.status == BookingStatus.COMPLETED) {
-                                            OutlinedButton(
-                                                onClick = {
-                                                    com.bookmyspace.bookmyspace.util.PdfInvoiceGenerator.generateAndDownloadInvoicePdf(context, booking)
-                                                },
-                                                shape = RoundedCornerShape(8.dp),
-                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                                modifier = Modifier.testTag("download_pdf_card_${booking.id}")
-                                            ) {
-                                                Text("📄 Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                            }
-
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.primaryContainer,
-                                                shape = RoundedCornerShape(8.dp),
-                                                onClick = { selectedBookingForDetails = booking }
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Icon(Icons.Default.QrCode2, contentDescription = "QR Code", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("QR Pass", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                                }
-                                            }
-                                        }
-
-                                         if (booking.status == BookingStatus.CONFIRMED || booking.status == BookingStatus.HELD) {
-                                            TextButton(
-                                                onClick = { cancelTargetBooking = booking },
-                                                contentPadding = PaddingValues(horizontal = 6.dp)
-                                            ) {
-                                                Text("Cancel", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
-                                            }
-                                        }
-
-                                        FilledTonalButton(
-                                            onClick = {
-                                                rebookTargetBooking = booking
-                                            },
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                            modifier = Modifier.testTag("book_again_button_${booking.id}")
-                                        ) {
-                                            Text("⚡ Re-book", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-                                        }
-                                    }
-                                }
+                                Icon(Icons.Default.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                             }
+                        }
+                    }
+                }
+            }
+        }
+        }
+    }
+}
+
+@Composable
+fun PaymentTransactionCardItem(
+    transaction: PaymentTransactionEntity,
+    onSelectBooking: (String) -> Unit,
+    onViewInvoice: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
+    val formattedDate = remember(transaction.timestamp) {
+        dateFormat.format(Date(transaction.timestamp))
+    }
+
+    val (statusBg, statusText, statusIcon) = when (transaction.paymentStatus.uppercase()) {
+        "SUCCESS", "PAID", "COMPLETED" -> Triple(
+            Color(0xFFE8F5E9),
+            Color(0xFF2E7D32),
+            Icons.Default.CheckCircle
+        )
+        "PENDING", "PROCESSING", "HELD" -> Triple(
+            Color(0xFFFFF3E0),
+            Color(0xFFE65100),
+            Icons.Default.HourglassTop
+        )
+        "FAILED", "ERROR" -> Triple(
+            Color(0xFFFFEBEE),
+            Color(0xFFC62828),
+            Icons.Default.Error
+        )
+        else -> Triple(
+            Color(0xFFF5F5F5),
+            Color(0xFF616161),
+            Icons.Default.Cancel
+        )
+    }
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(
+            1.2.dp,
+            Brush.linearGradient(
+                colors = listOf(
+                    statusText.copy(alpha = 0.35f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.15f)
+                )
+            )
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("tx_card_${transaction.transactionId}")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = transaction.paymentStatus,
+                        tint = statusText,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = transaction.transactionId,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Surface(
+                    color = statusBg,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = transaction.paymentStatus.uppercase(),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = statusText,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (transaction.venueName.isNotBlank()) {
+                Text(
+                    text = transaction.venueName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Booking ID", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "#${transaction.bookingId}",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Date & Time", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = formattedDate,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Payment Method", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = transaction.paymentMethod,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                }
+                if (transaction.razorpayOrderId != null) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Order ID", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = transaction.razorpayOrderId,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            if (transaction.failureReason != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Reason: ${transaction.failureReason}",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Total Paid", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "₹${transaction.amount.toInt()}",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (onViewInvoice != null && (
+                            transaction.paymentStatus.equals("SUCCESS", true) ||
+                            transaction.paymentStatus.equals("PAID", true) ||
+                            transaction.paymentStatus.equals("COMPLETED", true)
+                        )
+                    ) {
+                        FilledTonalButton(
+                            onClick = onViewInvoice,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("my_bookings_invoice_btn_${transaction.transactionId}")
+                        ) {
+                            Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    if (transaction.bookingId.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = { onSelectBooking(transaction.bookingId) },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.ConfirmationNumber, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("View Booking", fontSize = 11.sp)
                         }
                     }
                 }
@@ -830,3 +808,5 @@ fun MyBookingsScreen(
         }
     }
 }
+
+private fun Double.ifZero(alt: Double): Double = if (this == 0.0) alt else this

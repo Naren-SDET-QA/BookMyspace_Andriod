@@ -11,9 +11,9 @@ import 'package:bookmyspace/features/owner_venues/domain/owner_availability_repo
 import 'package:bookmyspace/features/payments/domain/checkout_service.dart';
 import 'package:bookmyspace/features/payments/domain/payment.dart';
 
-import '../../test/features/booking/mock_booking_repository.dart';
-import '../../test/features/payments/mock_payment_repository.dart';
-import '../../test/features/venues/mock_venue_repository.dart';
+import '../../test/features/booking/mock_booking_repository_release.dart';
+import '../../test/features/payments/mock_payment_repository_release.dart';
+import '../../test/features/venues/mock_venue_repository_release.dart';
 
 /// Copies [booking] with a new status (and optionally payment method),
 /// keeping every other field. Mirrors what a server status change returns.
@@ -64,6 +64,11 @@ Booking? _updateInStore(
 /// the part of the backend `profiles.role` column: the client never decides
 /// it. Unknown emails sign in as a plain customer, like the shared mock.
 class E2eAuthRepository implements AuthRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   E2eAuthRepository({AuthUser? initialUser, required this.directory})
     : _user = initialUser;
 
@@ -289,6 +294,11 @@ class E2eBookingRepository extends MockBookingRepository {
 /// instance would not notify dependents, so history would stay stale. This
 /// wrapper is created per user and delegates to the one shared store.
 class E2eUserBookingRepository implements BookingRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   E2eUserBookingRepository(this._shared);
 
   final E2eBookingRepository _shared;
@@ -378,13 +388,21 @@ class E2ePaymentRepository extends MockPaymentRepository {
   int? approveAfterStatusReads;
 
   @override
-  Future<PaymentOrder> createOrder({required String bookingId}) async {
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  }) async {
     createOrderCalls++;
     if (failCreateOrderTimes > 0) {
       failCreateOrderTimes--;
       throw Exception('order creation failed');
     }
-    return super.createOrder(bookingId: bookingId);
+    return super.createOrder(
+      bookingId: bookingId,
+      paymentPlan: paymentPlan,
+      walletCreditAmount: walletCreditAmount,
+    );
   }
 
   @override
@@ -461,6 +479,12 @@ class E2eCheckoutService extends FakeCheckoutService {
     required double amount,
     required String currency,
     required String keyId,
+    String? venueName,
+    String? bookingRef,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    Map<String, dynamic>? notes,
   }) async {
     openCalls++;
     if (script.isNotEmpty) result = script.removeFirst();
@@ -478,6 +502,11 @@ class E2eCheckoutService extends FakeCheckoutService {
 /// Owner profile lookup: an owner profile exists only for accounts whose
 /// backend role is owner/admin. Registration flows are out of E2E scope.
 class E2eOwnerRepository implements OwnerRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   E2eOwnerRepository(this.auth);
 
   final AuthRepository auth;
@@ -513,6 +542,11 @@ class E2eOwnerRepository implements OwnerRepository {
     required String email,
     required String name,
     required String password,
+    String? legalName,
+    String? gstin,
+    String? pan,
+    String? city,
+    String? state,
   }) async => _unsupported();
 
   @override
@@ -528,6 +562,11 @@ class E2eOwnerRepository implements OwnerRepository {
 
 /// In-memory operating hours and time slots per venue.
 class E2eOwnerAvailabilityRepository implements OwnerAvailabilityRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   final Map<String, List<OwnerOperatingHours>> hoursByVenue = {};
   final Map<String, List<OwnerTimeSlot>> slotsByVenue = {};
   int saveSlotCalls = 0;

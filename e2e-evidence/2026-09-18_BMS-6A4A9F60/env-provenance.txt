@@ -1,0 +1,2 @@
+DEV_E2E_OWNER_EMAIL=owner.dev@bookmyspace.app
+DEV_E2E_OWNER_PASSWORD=***stored***

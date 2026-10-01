@@ -14,10 +14,14 @@ import 'package:bookmyspace/features/courses/presentation/course_providers.dart'
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
 import 'package:bookmyspace/features/home/domain/customer_section_catalog.dart';
 import 'package:bookmyspace/features/home/presentation/customer_section_providers.dart';
-import 'package:bookmyspace/features/home/presentation/screens/home_screen.dart';
+import 'package:bookmyspace/features/home/presentation/screens/home_screen.dart'
+    hide HomeScreen;
+import 'package:bookmyspace/features/home/presentation/screens/home_screen_v1.dart';
 import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 import 'package:bookmyspace/features/search/presentation/screens/map_screen.dart';
-import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart';
+import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart'
+    hide SearchScreen;
+import 'package:bookmyspace/features/search/presentation/screens/search_screen_v1.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -25,11 +29,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../features/auth/mock_auth_repository.dart';
-import '../../features/courses/mock_course_repository.dart';
-import '../../features/events/mock_event_repository.dart';
+import '../../features/auth/mock_auth_repository_release.dart';
+import '../../features/courses/mock_course_repository_release.dart';
+import '../../features/events/mock_event_repository_release.dart';
 import '../../features/notifications/mock_notification_repository.dart';
-import '../../features/venues/mock_venue_repository.dart';
+import '../../features/venues/mock_venue_repository_release.dart';
 
 const _user = AuthUser(id: 'u1', email: 'a@b.com');
 
@@ -263,7 +267,7 @@ void main() {
     registerDefaultPlugins(plugins);
 
     await tester.pumpWidget(
-      _app(_overrides(plugins: plugins), home: const HomeScreen()),
+      _app(_overrides(plugins: plugins), home: const HomeScreenV1()),
     );
     await tester.pumpAndSettle();
     expect(find.text('View on map'), findsNothing);
@@ -271,7 +275,7 @@ void main() {
     await tester.pumpWidget(
       _app(
         _overrides(plugins: plugins),
-        home: const SearchScreen(initialSection: 'function_halls'),
+        home: const SearchScreenV1(initialSection: 'function_halls'),
       ),
     );
     await tester.pumpAndSettle();

@@ -63,7 +63,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Oops'), findsOneWidget);
-      await tester.tap(find.text('Try again'));
+      await tester.tap(find.text('Try Again'));
       expect(retried, isTrue);
     });
   });

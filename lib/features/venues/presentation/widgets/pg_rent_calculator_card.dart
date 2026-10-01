@@ -11,9 +11,14 @@ import 'venue_badges.dart';
 ///
 /// Display-only: does not change booking holds or payment amounts.
 class PgRentCalculatorCard extends StatefulWidget {
-  const PgRentCalculatorCard({super.key, required this.venue});
+  const PgRentCalculatorCard({
+    super.key,
+    required this.venue,
+    this.initialTenureMonths = 1,
+  });
 
   final Venue venue;
+  final int initialTenureMonths;
 
   static bool appliesTo(Venue venue) =>
       CustomerSectionCatalog.sectionForVenue(venue) ==
@@ -25,7 +30,14 @@ class PgRentCalculatorCard extends StatefulWidget {
 
 class _PgRentCalculatorCardState extends State<PgRentCalculatorCard> {
   int _sharingIndex = 0;
-  int _tenureMonths = 1;
+  late int _tenureMonths;
+
+  @override
+  void initState() {
+    super.initState();
+    final months = widget.initialTenureMonths;
+    _tenureMonths = months < 1 ? 1 : (months > 12 ? 12 : months);
+  }
 
   @override
   Widget build(BuildContext context) {

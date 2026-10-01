@@ -126,35 +126,72 @@ jobs:
   sql-tests:
     name: SQL Migration Tests
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: bms_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - name: Apply migrations
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+      - name: Start disposable Supabase stack
+        run: supabase start
+      - name: Verify Supabase system objects
         run: |
-          for migration in supabase/migrations/*.sql; do
-            echo "Applying $migration..."
-            PGPASSWORD=postgres psql -h localhost -U postgres -d bms_test -f "$migration" || exit 1
-          done
-        env:
-          PGPASSWORD: postgres
+          set -euo pipefail
+          PGPASSWORD=postgres psql \
+            -X \
+            --set ON_ERROR_STOP=1 \
+            -h 127.0.0.1 \
+            -p 54322 \
+            -U postgres \
+            -d postgres \
+            <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regnamespace('auth') IS NULL THEN
+              RAISE EXCEPTION 'Supabase auth schema is missing';
+            END IF;
+            IF to_regclass('auth.users') IS NULL THEN
+              RAISE EXCEPTION 'Supabase auth.users is missing';
+            END IF;
+            IF to_regclass('storage.buckets') IS NULL
+               OR to_regclass('storage.objects') IS NULL THEN
+              RAISE EXCEPTION 'Supabase Storage objects are missing';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+              RAISE EXCEPTION 'Supabase anon role is missing';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+              RAISE EXCEPTION 'Supabase authenticated role is missing';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+              RAISE EXCEPTION 'Supabase service_role is missing';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+              RAISE EXCEPTION 'PostGIS extension is missing';
+            END IF;
+            IF to_regtype('geography') IS NULL THEN
+              RAISE EXCEPTION 'PostGIS geography type is missing';
+            END IF;
+          END $$;
+          SQL
+      - name: Apply migrations in dependency order
+        run: |
+          set -euo pipefail
+          supabase db reset --local --no-seed
       - name: Run SQL tests
         run: |
+          set -euo pipefail
           for test in supabase/tests/*.sql; do
             echo "Running $test..."
-            PGPASSWORD=postgres psql -h localhost -U postgres -d bms_test -f "$test" || exit 1
+            PGPASSWORD=postgres psql \
+              -X \
+              --set ON_ERROR_STOP=1 \
+              -h 127.0.0.1 \
+              -p 54322 \
+              -U postgres \
+              -d postgres \
+              -f "$test"
           done
-        env:
-          PGPASSWORD: postgres
+      - name: Stop disposable Supabase stack
+        if: always()
+        run: supabase stop --no-backup

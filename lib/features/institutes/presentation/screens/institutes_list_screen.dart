@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/filter_checkbox_tile.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../domain/institute_discovery_query.dart';
 import '../../domain/institute_profile.dart';
@@ -65,11 +66,10 @@ class _InstitutesListScreenState extends ConsumerState<InstitutesListScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: FilterChip(
-                    label: Text(l10n.verifiedOnly),
-                    selected: _verifiedOnly,
-                    onSelected: (value) =>
-                        setState(() => _verifiedOnly = value),
+                  child: FilterCheckboxTile(
+                    label: l10n.verifiedOnly,
+                    value: _verifiedOnly,
+                    onChanged: (value) => setState(() => _verifiedOnly = value),
                   ),
                 ),
               ),

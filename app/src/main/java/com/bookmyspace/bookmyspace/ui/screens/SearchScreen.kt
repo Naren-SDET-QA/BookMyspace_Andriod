@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardActions
@@ -40,18 +41,22 @@ import com.bookmyspace.bookmyspace.data.model.LocationSearchRadius
 import com.bookmyspace.bookmyspace.data.location.IndiaLocationMasterData
 import com.bookmyspace.bookmyspace.ui.components.LocationHierarchySelectorDialog
 import com.bookmyspace.bookmyspace.ui.components.LocationHierarchyHeaderBar
-import com.bookmyspace.bookmyspace.data.model.CustomerSection
-import com.bookmyspace.bookmyspace.data.model.CustomerSectionCatalog
 import com.bookmyspace.bookmyspace.data.model.Venue
 import com.bookmyspace.bookmyspace.data.model.VenueSortBy
 import com.bookmyspace.bookmyspace.data.repository.BookMySpaceRepository
 import com.bookmyspace.bookmyspace.ui.components.BookMySpaceLogo
 import com.bookmyspace.bookmyspace.ui.components.VenueFilterBottomSheet
 import com.bookmyspace.bookmyspace.ui.components.EasyVoiceBookingDialog
+import com.bookmyspace.bookmyspace.ui.components.VoiceSearchFilterBottomSheet
+import com.bookmyspace.bookmyspace.util.VoiceFilterResult
 import com.bookmyspace.bookmyspace.ui.components.RealMapViewComponent
 import com.bookmyspace.bookmyspace.ui.components.VenueCard
 import com.bookmyspace.bookmyspace.ui.components.VenueListSkeleton
 import com.bookmyspace.bookmyspace.ui.components.VenueMapSkeleton
+import com.bookmyspace.bookmyspace.data.network.NetworkRetryManager
+import com.bookmyspace.bookmyspace.data.network.NetworkSyncState
+import com.bookmyspace.bookmyspace.ui.components.NetworkErrorRetryCard
+import com.bookmyspace.bookmyspace.ui.components.NetworkSyncStatusBanner
 import kotlinx.coroutines.launch
 
 data class AmenityFilterOption(
@@ -82,14 +87,15 @@ val defaultAmenityOptions = listOf(
 fun SearchScreen(
     initialCategorySlug: String? = null,
     onNavigateToVenue: (String) -> Unit,
+    onNavigateToPlaceDiscovery: () -> Unit = {},
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val venues by BookMySpaceRepository.venues.collectAsState()
+    val allCategories by BookMySpaceRepository.categories.collectAsState()
     val isSimpleMode by BookMySpaceRepository.isSimpleMode.collectAsState()
     val appSections by BookMySpaceRepository.appSections.collectAsState()
-    val selectedSection by BookMySpaceRepository.selectedCustomerSection.collectAsState()
-    val selectedSectionCategory by BookMySpaceRepository.selectedCustomerCategorySlug.collectAsState()
+    val syncState by NetworkRetryManager.syncState.collectAsState()
     val recentSearches by BookMySpaceRepository.recentSearches.collectAsState()
     val recentlyViewedVenueIds by BookMySpaceRepository.recentlyViewedVenueIds.collectAsState()
     val recentlyViewedVenues = remember(recentlyViewedVenueIds, venues) {
@@ -98,27 +104,22 @@ fun SearchScreen(
     var searchQuery by remember { mutableStateOf("") }
     
     // Determine initial property type and category slug from incoming section parameter
-    val resolvedIncomingSection = remember(initialCategorySlug) {
-        CustomerSection.fromAny(initialCategorySlug)
-    }
-    LaunchedEffect(resolvedIncomingSection, initialCategorySlug) {
-        if (selectedSection == null && resolvedIncomingSection != null) {
-            val incoming = initialCategorySlug?.lowercase()
-            val category = if (incoming != null && resolvedIncomingSection.categories.any { it.id == incoming }) {
-                incoming
-            } else {
-                "all"
-            }
-            BookMySpaceRepository.setSelectedCustomerSection(resolvedIncomingSection, category)
+    val computedInitialType = remember(initialCategorySlug) {
+        when (initialCategorySlug?.lowercase()) {
+            "hotel_stay", "hotels_rooms", "hotel" -> "HOTEL"
+            "pg_hostel", "pg_hostels", "pg" -> "PG"
+            "function_hall", "banquet_hall", "marriage_hall", "party_lawn", "convention_center", "venues_function_halls", "meeting_room", "coworking_other" -> "VENUE"
+            else -> "ALL"
         }
     }
-    val computedInitialType = remember(resolvedIncomingSection, selectedSection) {
-        val section = selectedSection ?: resolvedIncomingSection
-        if (section == null) "ALL" else CustomerSectionCatalog.voiceTypeForSection(section)
-    }
-    val computedInitialCategory = remember(initialCategorySlug, selectedSection, selectedSectionCategory) {
-        selectedSectionCategory.takeIf { it != "all" }
-            ?: initialCategorySlug?.takeIf { it != "all" && CustomerSection.fromId(it) == null }
+    val computedInitialCategory = remember(initialCategorySlug) {
+        when (initialCategorySlug?.lowercase()) {
+            "hotels_rooms" -> "hotel_stay"
+            "pg_hostels" -> "pg_hostel"
+            "venues_function_halls" -> "function_hall"
+            "coworking_other" -> "meeting_room"
+            else -> initialCategorySlug
+        }
     }
 
     // Filter Drawer States
@@ -156,6 +157,8 @@ fun SearchScreen(
 
     var showFilterSheet by remember { mutableStateOf(false) }
     var showEasyVoiceBookingDialog by remember { mutableStateOf(false) }
+    var showVoiceSearchBottomSheet by remember { mutableStateOf(false) }
+    var activeVoiceFilterResult by remember { mutableStateOf<VoiceFilterResult?>(null) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -180,12 +183,11 @@ fun SearchScreen(
         }
     }
 
-    val isVenuesSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled(CustomerSection.FUNCTION_HALLS.adminSectionKey) }
-    val isHotelsSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled(CustomerSection.LODGE_ROOMS.adminSectionKey) }
-    val isPgSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled(CustomerSection.PG_HOSTELS.adminSectionKey) }
-    val isInstitutesSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled(CustomerSection.INSTITUTES_CLASSES.adminSectionKey) }
+    val isVenuesSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled("venues_halls") }
+    val isHotelsSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled("hotels_rooms") }
+    val isPgSectionEnabled = remember(appSections) { BookMySpaceRepository.isSectionEnabled("pg_hostels") }
 
-    val filteredVenues = remember(venues, searchQuery, selectedPropertyType, selectedCategorySlug, minPrice, maxPrice, minRatingThreshold, maxDistanceRadius, useLocationServices, minCapacity, maxCapacity, selectedAmenities, selectedPgType, selectedSharingType, selectedStarRating, selectedHotelRoomType, selectedSort, userLocationHierarchy, userLocationRadius, appSections, selectedSection, selectedSectionCategory) {
+    val filteredVenues = remember(venues, searchQuery, selectedPropertyType, selectedCategorySlug, minPrice, maxPrice, minRatingThreshold, maxDistanceRadius, useLocationServices, minCapacity, maxCapacity, selectedAmenities, selectedPgType, selectedSharingType, selectedStarRating, selectedHotelRoomType, selectedSort, userLocationHierarchy, userLocationRadius, appSections) {
         val list = venues.map { v ->
             val vLat = v.locationHierarchy?.latitude ?: v.latitude
             val vLng = v.locationHierarchy?.longitude ?: v.longitude
@@ -211,21 +213,20 @@ fun SearchScreen(
                     (v.category?.name?.contains(searchQuery, ignoreCase = true) == true) ||
                     (v.pgDetails?.pgType?.contains(searchQuery, ignoreCase = true) == true)
 
-                val activeSection = selectedSection
-                    ?: CustomerSectionCatalog.sectionForVoiceType(selectedPropertyType)
-
-                val matchesPropType = if (activeSection != null) {
-                    CustomerSectionCatalog.matchesVenue(
-                        v,
-                        activeSection,
-                        selectedCategorySlug ?: selectedSectionCategory
-                    )
-                } else {
-                    false
+                // Property Type Matching
+                val matchesPropType = when (selectedPropertyType) {
+                    "VENUE" -> v.pgDetails == null && v.hotelDetails == null
+                    "PG" -> v.pgDetails != null || v.category?.slug == "pg_hostel"
+                    "HOTEL" -> v.hotelDetails != null || v.category?.slug == "hotel_stay"
+                    "OTHER" -> v.category?.slug?.contains("other") == true || v.category?.slug?.contains("meeting") == true || v.category?.slug?.contains("turf") == true || (v.pgDetails == null && v.hotelDetails == null)
+                    else -> true
                 }
 
-                // Category Matching (catalog already applies selected subcategory)
-                val matchesCategory = true
+                // Category Matching
+                val matchesCategory = selectedCategorySlug == null || 
+                    v.category?.slug == selectedCategorySlug ||
+                    v.category?.id == selectedCategorySlug ||
+                    (selectedCategorySlug == "other" && (v.category?.slug?.contains("other") == true || v.category?.slug?.contains("meeting") == true || v.category?.slug?.contains("room") == true))
 
                 // Price Range Filter
                 val matchesPrice = v.pricingBaseAmount >= minPrice && v.pricingBaseAmount <= maxPrice
@@ -294,14 +295,8 @@ fun SearchScreen(
         }
 
     fun resetAllFilters() {
-        if (selectedSection == null) {
-            selectedPropertyType = "ALL"
-            selectedCategorySlug = null
-        } else {
-            selectedPropertyType = CustomerSectionCatalog.voiceTypeForSection(selectedSection!!)
-            selectedCategorySlug = null
-            BookMySpaceRepository.setSelectedCustomerCategory("all")
-        }
+        selectedPropertyType = "ALL"
+        selectedCategorySlug = null
         selectedPgType = null
         selectedSharingType = null
         selectedStarRating = null
@@ -404,39 +399,26 @@ fun SearchScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-                // 1. PROPERTY TYPE — 4 customer sections only
-                Text(text = "🏢 Space Type", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                // 1. PROPERTY TYPE
+                Text(text = "🏢 Property Type", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    CustomerSection.entries
-                        .filter { BookMySpaceRepository.isSectionEnabled(it.adminSectionKey) }
-                        .chunked(2)
-                        .forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                row.forEach { section ->
-                                    FilterChip(
-                                        selected = selectedSection == section,
-                                        onClick = {
-                                            BookMySpaceRepository.setSelectedCustomerSection(section)
-                                            selectedPropertyType = CustomerSectionCatalog.voiceTypeForSection(section)
-                                            selectedCategorySlug = null
-                                        },
-                                        label = {
-                                            Text(
-                                                "${section.emoji} ${section.title}",
-                                                fontSize = 11.sp,
-                                                fontWeight = if (selectedSection == section) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        "ALL" to "All",
+                        "VENUE" to "Venues",
+                        "PG" to "PG / Co-living",
+                        "HOTEL" to "Hotels"
+                    ).forEach { (typeKey, typeLabel) ->
+                        FilterChip(
+                            selected = selectedPropertyType == typeKey,
+                            onClick = { selectedPropertyType = typeKey },
+                            label = { Text(typeLabel, fontSize = 11.sp, fontWeight = if (selectedPropertyType == typeKey) FontWeight.Bold else FontWeight.Normal) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -937,6 +919,17 @@ fun SearchScreen(
                 BookMySpaceLogo()
             }
 
+            // Network Sync Status Banner
+            NetworkSyncStatusBanner(
+                syncState = syncState,
+                onRetry = {
+                    scope.launch {
+                        NetworkRetryManager.triggerRetry()
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
+            )
+
             // Search Input Bar & Filter Drawer Trigger Button
             Row(
                 modifier = Modifier
@@ -971,14 +964,14 @@ fun SearchScreen(
                 )
 
                 IconButton(
-                    onClick = { showEasyVoiceBookingDialog = true },
+                    onClick = { showVoiceSearchBottomSheet = true },
                     modifier = Modifier
                         .testTag("easy_voice_search_button")
                         .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mic,
-                        contentDescription = "Voice Booking",
+                        contentDescription = "Voice Search & Filter",
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
@@ -1155,10 +1148,155 @@ fun SearchScreen(
                 )
             }
 
+            if (showVoiceSearchBottomSheet) {
+                VoiceSearchFilterBottomSheet(
+                    onDismiss = { showVoiceSearchBottomSheet = false },
+                    onApplyVoiceFilter = { result ->
+                        if (result.isClearCommand) {
+                            searchQuery = ""
+                            selectedPropertyType = "ALL"
+                            selectedCategorySlug = null
+                            minPrice = 0f
+                            maxPrice = 500000f
+                            minRatingThreshold = 0f
+                            minCapacity = 0
+                            maxCapacity = 3000
+                            selectedAmenities = emptySet()
+                            selectedSort = VenueSortBy.RELEVANCE
+                            selectedPgType = null
+                            selectedSharingType = null
+                            selectedStarRating = null
+                            activeVoiceFilterResult = null
+                        } else {
+                            activeVoiceFilterResult = result
+                            searchQuery = result.cleanedSearchQuery
+                            if (result.propertyType != null) {
+                                selectedPropertyType = result.propertyType
+                            }
+                            if (result.categorySlug != null) {
+                                selectedCategorySlug = result.categorySlug
+                            }
+                            if (result.pgType != null) {
+                                selectedPgType = result.pgType
+                            }
+                            if (result.sharingType != null) {
+                                selectedSharingType = result.sharingType
+                            }
+                            if (result.minPrice != null) {
+                                minPrice = result.minPrice
+                            }
+                            if (result.maxPrice != null) {
+                                maxPrice = result.maxPrice
+                            }
+                            if (result.minRating != null) {
+                                minRatingThreshold = result.minRating
+                            }
+                            if (result.minCapacity != null) {
+                                minCapacity = result.minCapacity
+                            }
+                            if (result.maxCapacity != null) {
+                                maxCapacity = result.maxCapacity
+                            }
+                            if (result.amenities.isNotEmpty()) {
+                                selectedAmenities = result.amenities
+                            }
+                            if (result.sortBy != null) {
+                                selectedSort = result.sortBy
+                            }
+                            if (result.cleanedSearchQuery.isNotBlank()) {
+                                BookMySpaceRepository.saveSearchQuery(
+                                    result.cleanedSearchQuery,
+                                    result.categorySlug ?: "Voice Search"
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+
+            // Active Voice Filter Result Banner
+            if (activeVoiceFilterResult != null) {
+                val voiceRes = activeVoiceFilterResult!!
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 3.dp)
+                        .testTag("active_voice_filter_banner"),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "🎙️ Spoken: \"${voiceRes.rawSpokenText}\"",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "Applied filters dynamically from your voice command",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                activeVoiceFilterResult = null
+                                searchQuery = ""
+                                selectedPropertyType = "ALL"
+                                selectedCategorySlug = null
+                                minPrice = 0f
+                                maxPrice = 500000f
+                                minRatingThreshold = 0f
+                                minCapacity = 0
+                                maxCapacity = 3000
+                                selectedAmenities = emptySet()
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear Voice Filter",
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             if (!isSimpleMode) {
                 // Section Context Indicator Banner if a specific section/type is selected
-                if (selectedSection != null) {
-                    val sectionLabel = "${selectedSection!!.emoji} ${selectedSection!!.title}"
+                if (selectedPropertyType != "ALL" || selectedCategorySlug != null) {
+                    val sectionLabel = when {
+                        selectedPropertyType == "HOTEL" || selectedCategorySlug == "hotel_stay" -> "🏨 Hotels & Rooms"
+                        selectedPropertyType == "PG" || selectedCategorySlug == "pg_hostel" -> "🏡 PG & Hostels"
+                        selectedCategorySlug == "meeting_room" -> "💼 Coworking & Workspaces"
+                        selectedPropertyType == "VENUE" || selectedCategorySlug == "function_hall" -> "🏛️ Function Halls & Banquets"
+                        else -> "🔍 Filtered Spaces"
+                    }
 
                     Surface(
                         modifier = Modifier
@@ -1192,13 +1330,12 @@ fun SearchScreen(
                             }
                             TextButton(
                                 onClick = {
-                                    BookMySpaceRepository.clearSelectedCustomerSection()
                                     selectedPropertyType = "ALL"
                                     selectedCategorySlug = null
                                 },
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                             ) {
-                                Text("All Spaces", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                Text("View All", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1211,48 +1348,105 @@ fun SearchScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.testTag("horizontal_quick_filter_chips_row")
                 ) {
-                    if (selectedSection == null) {
-                        CustomerSection.entries
-                            .filter {
-                                when (it) {
-                                    CustomerSection.FUNCTION_HALLS -> isVenuesSectionEnabled
-                                    CustomerSection.LODGE_ROOMS -> isHotelsSectionEnabled
-                                    CustomerSection.PG_HOSTELS -> isPgSectionEnabled
-                                    CustomerSection.INSTITUTES_CLASSES -> isInstitutesSectionEnabled
-                                }
-                            }
-                            .forEach { section ->
-                                item(key = section.id) {
-                                    FilterChip(
-                                        selected = false,
-                                        onClick = {
-                                            BookMySpaceRepository.setSelectedCustomerSection(section)
-                                            selectedPropertyType = CustomerSectionCatalog.voiceTypeForSection(section)
-                                            selectedCategorySlug = null
-                                        },
-                                        label = { Text("${section.emoji} ${section.title}") }
-                                    )
-                                }
-                            }
-                    } else {
-                        selectedSection!!.categories.forEach { cat ->
-                            item(key = cat.id) {
-                                val isSelected = (cat.id == "all" && (selectedCategorySlug == null || selectedSectionCategory == "all")) ||
-                                    selectedCategorySlug == cat.id || selectedSectionCategory == cat.id
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        BookMySpaceRepository.setSelectedCustomerCategory(cat.id)
-                                        selectedCategorySlug = if (cat.id == "all") null else cat.id
-                                    },
-                                    label = { Text("${cat.emoji} ${cat.label}") }
-                                )
-                            }
+                    item {
+                        FilterChip(
+                            selected = selectedPropertyType == "ALL" && selectedCategorySlug == null,
+                            onClick = {
+                                selectedPropertyType = "ALL"
+                                selectedCategorySlug = null
+                            },
+                            label = { Text("All Types") }
+                        )
+                    }
+                    if (isVenuesSectionEnabled) {
+                        item {
+                            FilterChip(
+                                selected = selectedPropertyType == "VENUE" || selectedCategorySlug == "function_hall",
+                                onClick = {
+                                    if (selectedPropertyType == "VENUE") {
+                                        selectedPropertyType = "ALL"
+                                        selectedCategorySlug = null
+                                    } else {
+                                        selectedPropertyType = "VENUE"
+                                        selectedCategorySlug = "function_hall"
+                                    }
+                                },
+                                label = { Text("🏛️ Venues") }
+                            )
                         }
+                    }
+                    if (isPgSectionEnabled) {
+                        item {
+                            FilterChip(
+                                selected = selectedPropertyType == "PG" || selectedCategorySlug == "pg_hostel",
+                                onClick = {
+                                    if (selectedPropertyType == "PG") {
+                                        selectedPropertyType = "ALL"
+                                        selectedCategorySlug = null
+                                    } else {
+                                        selectedPropertyType = "PG"
+                                        selectedCategorySlug = "pg_hostel"
+                                    }
+                                },
+                                label = { Text("🏡 PG / Hostels") }
+                            )
+                        }
+                    }
+                    if (isHotelsSectionEnabled) {
+                        item {
+                            FilterChip(
+                                selected = selectedPropertyType == "HOTEL" || selectedCategorySlug == "hotel_stay",
+                                onClick = {
+                                    if (selectedPropertyType == "HOTEL") {
+                                        selectedPropertyType = "ALL"
+                                        selectedCategorySlug = null
+                                    } else {
+                                        selectedPropertyType = "HOTEL"
+                                        selectedCategorySlug = "hotel_stay"
+                                    }
+                                },
+                                label = { Text("🏨 Hotels") }
+                            )
+                        }
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedPropertyType == "OTHER" || selectedCategorySlug == "other",
+                            onClick = {
+                                if (selectedPropertyType == "OTHER") {
+                                    selectedPropertyType = "ALL"
+                                    selectedCategorySlug = null
+                                } else {
+                                    selectedPropertyType = "OTHER"
+                                    selectedCategorySlug = "other"
+                                }
+                            },
+                            label = { Text("🎪 Other Spaces") }
+                        )
+                    }
+
+                    // Dynamic Active Categories (e.g., Photography Studio, Sports Turf, etc.)
+                    val dynamicChips = allCategories.filter {
+                        it.isActive && it.slug !in listOf("all", "function_hall", "pg_hostel", "hotel_stay", "other")
+                    }
+                    items(dynamicChips, key = { it.id }) { cat ->
+                        FilterChip(
+                            selected = selectedCategorySlug == cat.slug || selectedCategorySlug == cat.id,
+                            onClick = {
+                                if (selectedCategorySlug == cat.slug || selectedCategorySlug == cat.id) {
+                                    selectedCategorySlug = null
+                                    selectedPropertyType = "ALL"
+                                } else {
+                                    selectedCategorySlug = cat.slug
+                                    selectedPropertyType = "ALL"
+                                }
+                            },
+                            label = { Text("${cat.icon} ${cat.name}") }
+                        )
                     }
 
                     // Section-Specific Contextual Filter Chips
-                    if (selectedSection == CustomerSection.PG_HOSTELS || selectedPropertyType == "PG" || selectedCategorySlug == "pg_hostel") {
+                    if (selectedPropertyType == "PG" || selectedCategorySlug == "pg_hostel") {
                         // PG specific filters
                         listOf("Men's", "Women's", "Co-Ed").forEach { pgType ->
                             item {
@@ -1285,7 +1479,7 @@ fun SearchScreen(
                                 label = { Text("🍛 Mess Food") }
                             )
                         }
-                    } else if (selectedSection == CustomerSection.LODGE_ROOMS || selectedPropertyType == "HOTEL" || selectedCategorySlug == "hotel_stay") {
+                    } else if (selectedPropertyType == "HOTEL" || selectedCategorySlug == "hotel_stay") {
                         // Hotel specific filters
                         listOf(3, 4, 5).forEach { star ->
                             item {
@@ -1318,8 +1512,30 @@ fun SearchScreen(
                                 label = { Text("🍳 Free Breakfast") }
                             )
                         }
-                    } else if (selectedSection == CustomerSection.FUNCTION_HALLS || selectedPropertyType == "VENUE" || selectedCategorySlug == "function_hall") {
-                        // Function hall specific filters
+                    } else if (selectedPropertyType == "VENUE" || selectedCategorySlug in listOf("function_hall", "marriage_hall", "banquet_hall", "convention_center", "party_lawn", "engagement_hall", "reception_hall", "luxury_hall", "outdoor_garden")) {
+                        // Function hall specific sub-sections & filters with Teal branding
+                        val venueSubSections = listOf(
+                            "marriage_hall" to "💍 Marriage Halls",
+                            "banquet_hall" to "🎉 Banquet Halls",
+                            "convention_center" to "🏢 Convention Halls",
+                            "party_lawn" to "🎈 Party Halls & Lawns",
+                            "engagement_hall" to "🌸 Engagement Halls",
+                            "reception_hall" to "🥂 Reception Halls",
+                            "luxury_hall" to "👑 Luxury Halls",
+                            "outdoor_garden" to "🌿 Outdoor Venues"
+                        )
+                        venueSubSections.forEach { (subSlug, subLabel) ->
+                            item {
+                                FilterChip(
+                                    selected = selectedCategorySlug == subSlug,
+                                    onClick = {
+                                        selectedCategorySlug = if (selectedCategorySlug == subSlug) "function_hall" else subSlug
+                                        selectedPropertyType = "VENUE"
+                                    },
+                                    label = { Text(subLabel) }
+                                )
+                            }
+                        }
                         item {
                             FilterChip(
                                 selected = minCapacity >= 200,
@@ -1491,7 +1707,27 @@ fun SearchScreen(
 
             // Map or List View Mode Display with Skeleton Animations
             if (venues.isEmpty()) {
-                if (isMapView) {
+                if (syncState is NetworkSyncState.Error) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        NetworkErrorRetryCard(
+                            syncState = syncState as NetworkSyncState.Error,
+                            onRetry = {
+                                scope.launch {
+                                    NetworkRetryManager.triggerRetry()
+                                }
+                            },
+                            onUseOfflineMode = {
+                                resetAllFilters()
+                                NetworkRetryManager.setSyncState(NetworkSyncState.Idle)
+                            }
+                        )
+                    }
+                } else if (isMapView) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1536,10 +1772,21 @@ fun SearchScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("No spaces match your filter criteria", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Try adjusting price range, capacity, or selected amenities", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Try adjusting price range, capacity, or selected category filters", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { resetAllFilters() }) {
-                            Text("Reset All Filters")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { resetAllFilters() }) {
+                                Text("Reset All Filters")
+                            }
+                            if (selectedCategorySlug != null) {
+                                OutlinedButton(onClick = {
+                                    com.bookmyspace.bookmyspace.data.health.CategoryHealthEngine.selfHealCategory(selectedCategorySlug!!)
+                                }) {
+                                    Icon(Icons.Default.Healing, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Self-Heal Category")
+                                }
+                            }
                         }
                     }
                 }
@@ -1602,7 +1849,8 @@ fun SearchScreen(
                     BookMySpaceRepository.setUserLocationHierarchy(loc, rad)
                     showLocationDialog = false
                 },
-                onDismiss = { showLocationDialog = false }
+                onDismiss = { showLocationDialog = false },
+                onOpenPlaceDiscovery = onNavigateToPlaceDiscovery
             )
         }
     }

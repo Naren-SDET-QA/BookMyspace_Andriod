@@ -17,11 +17,19 @@ class SupabasePaymentRepository implements PaymentRepository {
   final SupabaseClient _client;
 
   @override
-  Future<PaymentOrder> createOrder({required String bookingId}) async {
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  }) async {
     try {
       final response = await _client.functions.invoke(
         'create-payment-order',
-        body: {'booking_id': bookingId},
+        body: {
+          'booking_id': bookingId,
+          'payment_plan': paymentPlan,
+          'wallet_credit_amount': walletCreditAmount,
+        },
       );
       final data = response.data;
       if (data is! Map<String, dynamic>) {
@@ -33,6 +41,57 @@ class SupabasePaymentRepository implements PaymentRepository {
       return PaymentOrder.fromResponse(data);
     } on FunctionException catch (e) {
       throw _mapFunctionException(e);
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<CheckoutQuote> checkoutQuote({
+    required String bookingId,
+    String paymentPlan = 'full',
+  }) async {
+    try {
+      final response = await _client.rpc<Object?>(
+        'calculate_booking_payment_quote',
+        params: {'p_booking_id': bookingId, 'p_payment_plan': paymentPlan},
+      );
+      if (response is! Map<String, dynamic>) {
+        throw const app_errors.ServerException(
+          'Payment quote service returned an empty response.',
+          code: 'empty_payment_quote',
+        );
+      }
+      return CheckoutQuote.fromResponse(response);
+    } on PostgrestException catch (e) {
+      throw app_errors.ServerException(
+        'Could not load the payment quote.',
+        code: e.message,
+      );
+    } catch (e) {
+      throw app_errors.mapError(e);
+    }
+  }
+
+  @override
+  Future<VenuePaymentRules> paymentRules({required String venueId}) async {
+    try {
+      final response = await _client.rpc<Object?>(
+        'get_venue_payment_rules',
+        params: {'p_venue_id': venueId},
+      );
+      if (response is! Map<String, dynamic>) {
+        throw const app_errors.ServerException(
+          'Payment rules service returned an empty response.',
+          code: 'empty_payment_rules',
+        );
+      }
+      return VenuePaymentRules.fromResponse(response);
+    } on PostgrestException catch (e) {
+      throw app_errors.ServerException(
+        'Could not load venue payment rules.',
+        code: e.message,
+      );
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -81,6 +140,10 @@ class SupabasePaymentRepository implements PaymentRepository {
         'A payment for this booking is already in progress.',
         code: 'payment_in_progress',
       ),
+      'pay_at_venue_disabled' => const app_errors.BusinessException(
+        'This venue does not accept pay-at-venue bookings.',
+        code: 'pay_at_venue_disabled',
+      ),
       _ => app_errors.ServerException(
         'Could not select pay at venue.',
         code: e.message,
@@ -103,7 +166,7 @@ class SupabasePaymentRepository implements PaymentRepository {
           .eq('id', bookingId)
           .eq('user_id', user.id)
           .maybeSingle();
-      return BookingStatus.fromDb(row?['status'] as String? ?? 'pending');
+      return BookingStatus.fromDb(row?['status'] as String? ?? 'unknown');
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -183,6 +246,28 @@ class SupabasePaymentRepository implements PaymentRepository {
         'A payment for this booking already exists.',
         code: error,
         statusCode: e.status,
+      ),
+      'booking_not_payable' => app_errors.BusinessException(
+        'This booking is not awaiting payment.',
+        code: error,
+        statusCode: e.status,
+      ),
+      'owner_approval_required' => app_errors.BusinessException(
+        'The venue owner must approve this request before payment.',
+        code: error,
+        statusCode: e.status,
+      ),
+      'payment_window_expired' => app_errors.HoldExpiredException(
+        'The payment window expired. Please start a new booking request.',
+        code: error,
+      ),
+      'booking_hold_expired' => app_errors.HoldExpiredException(
+        'The booking hold expired before payment could begin. Please start a new booking request.',
+        code: error,
+      ),
+      'booking_expired' => app_errors.HoldExpiredException(
+        'This booking hold has expired. Please start a new booking.',
+        code: error,
       ),
       'not_refundable' => app_errors.BusinessException(
         'This booking is not refundable.',

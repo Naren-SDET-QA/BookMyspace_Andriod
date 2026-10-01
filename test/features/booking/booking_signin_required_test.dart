@@ -3,7 +3,9 @@ import 'package:bookmyspace/core/router/app_router.dart';
 import 'package:bookmyspace/features/auth/domain/auth_configuration.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
-import 'package:bookmyspace/features/auth/presentation/screens/login_screen.dart';
+import 'package:bookmyspace/features/auth/presentation/screens/login_screen.dart'
+    hide LoginScreen;
+import 'package:bookmyspace/features/auth/presentation/screens/login_screen_v1.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
@@ -14,16 +16,16 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../auth/mock_auth_repository.dart';
-import '../courses/mock_course_repository.dart';
-import '../events/mock_event_repository.dart';
+import '../auth/mock_auth_repository_release.dart';
+import '../courses/mock_course_repository_release.dart';
+import '../events/mock_event_repository_release.dart';
 import '../notifications/mock_notification_repository.dart';
-import '../venues/mock_venue_repository.dart';
-import 'mock_booking_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
+import 'mock_booking_repository_release.dart';
 
-/// Only email/password sign-in is enabled here so the LoginScreen renders a
+/// Only email/password sign-in is enabled here so the LoginScreenV1 renders a
 /// small, deterministic set of fields (no OTP timers, no social buttons) --
-/// this exercises the *real* LoginScreen, not a stand-in.
+/// this exercises the *real* LoginScreenV1, not a stand-in.
 const _passwordOnlyAuthConfig = AuthConfiguration(
   authenticationEnabled: true,
   emailLoginEnabled: true,
@@ -41,7 +43,7 @@ Widget _app({
   required MockBookingRepository bookingRepo,
   AuthUser? currentUser,
   bool allowUnauthenticatedTestAccess = false,
-  String initialLocation = '/venues/v1',
+  String initialLocation = '/v1/venues/v1',
 }) {
   return ProviderScope(
     overrides: [
@@ -133,7 +135,7 @@ void main() {
       // there is no "[null] ..." snackbar anywhere -- the null-prefixed
       // AuthException.toString() form must never reach the user.
       expect(find.text('Sign in to continue'), findsOneWidget);
-      expect(find.text('Confirm booking'), findsNothing);
+      expect(find.text('Confirm Booking'), findsNothing);
       expect(find.textContaining('[null]'), findsNothing);
 
       // There is no way to trigger a hold acquisition without authenticating
@@ -162,11 +164,11 @@ void main() {
     await tester.tap(find.text('Morning'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.byType(LoginScreenV1), findsNothing);
     await tester.tap(find.text('Sign in to continue'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(LoginScreenV1), findsOneWidget);
 
     authRepo.dispose();
   });
@@ -192,7 +194,7 @@ void main() {
 
       // Navigate to auth and sign in -- this is the exact scripted
       // MockAuthRepository.signInWithPassword success path, driven through
-      // the real LoginScreen widget.
+      // the real LoginScreenV1 widget.
       await tester.tap(find.text('Sign in to continue'));
       await tester.pumpAndSettle();
       await _signInWithPassword(tester);
@@ -202,13 +204,13 @@ void main() {
       // proven by the normal Confirm bar reappearing (it only renders while
       // a slot remains selected) with no navigation required to get back to
       // this exact venue/date/slot state.
-      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.byType(LoginScreenV1), findsNothing);
       expect(find.text('Sunrise Function Hall'), findsOneWidget);
       expect(find.text('Sign in to continue'), findsNothing);
-      expect(find.text('Confirm booking'), findsWidgets);
+      expect(find.text('Confirm Booking'), findsWidgets);
 
       // The user can now continue and actually confirm the booking.
-      await tester.tap(find.text('Confirm booking').last);
+      await tester.tap(find.text('Confirm Booking').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm'));
       await tester.pumpAndSettle();
@@ -240,12 +242,12 @@ void main() {
       await tester.tap(find.text('Morning'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Confirm booking'), findsWidgets);
+      expect(find.text('Confirm Booking'), findsWidgets);
       expect(find.text('Sign in to continue'), findsNothing);
 
       // Existing authorization behaviour is unchanged: confirming still
       // acquires a hold and creates the booking exactly as before.
-      await tester.tap(find.text('Confirm booking').last);
+      await tester.tap(find.text('Confirm Booking').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm'));
       await tester.pumpAndSettle();

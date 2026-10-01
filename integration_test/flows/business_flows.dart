@@ -103,7 +103,7 @@ void _authBoundaryFlows() {
         // The profile offers no role entry points to a customer.
         auth.expectNotShown(E2eIds.profileOwnerDashboard);
         auth.expectNotShown(E2eIds.profileAdminDashboard);
-        expect(backend.auth.currentUser?.role, AppRole.customer);
+        expect(backend.auth.currentUser?.role, UserRole.customer);
       }
     },
   );
@@ -123,7 +123,7 @@ void _authBoundaryFlows() {
       nav.expectNotShown(E2eIds.profileAdminDashboard);
       await nav.tap(E2eIds.profileOwnerDashboard);
       await OwnerRobot(tester).expectDashboard();
-      expect(backend.auth.currentUser?.role, AppRole.venueOwner);
+      expect(backend.auth.currentUser?.role, UserRole.venueOwner);
     },
   );
 
@@ -596,7 +596,7 @@ void _resilienceFlows() {
       final backend = await pumpMockApp(
         tester,
         MockScenario.flakyAvailability,
-        initialLocation: '/venues/${E2eFixtures.venueId}',
+        initialLocation: '/v1/venues/${E2eFixtures.venueId}',
       );
       await VenueRobot(tester).startBooking();
       final booking = BookingRobot(tester);
@@ -614,7 +614,7 @@ void _resilienceFlows() {
       final backend = await pumpMockApp(
         tester,
         MockScenario.networkFailure,
-        initialLocation: '/venues/${E2eFixtures.venueId}',
+        initialLocation: '/v1/venues/${E2eFixtures.venueId}',
       );
       await VenueRobot(tester).startBooking();
       final booking = BookingRobot(tester);
@@ -634,7 +634,7 @@ void _resilienceFlows() {
       final backend = await pumpMockApp(
         tester,
         MockScenario.slotTaken,
-        initialLocation: '/venues/${E2eFixtures.venueId}',
+        initialLocation: '/v1/venues/${E2eFixtures.venueId}',
       );
       await VenueRobot(tester).startBooking();
       final booking = BookingRobot(tester);
@@ -656,7 +656,7 @@ void _resilienceFlows() {
       final backend = await pumpMockApp(
         tester,
         MockScenario.signedIn,
-        initialLocation: '/venues/${E2eFixtures.venueId}',
+        initialLocation: '/v1/venues/${E2eFixtures.venueId}',
       );
       await VenueRobot(tester).startBooking();
       final booking = BookingRobot(tester);
@@ -674,7 +674,7 @@ void _resilienceFlows() {
       final backend = await pumpMockApp(
         tester,
         MockScenario.slowHold,
-        initialLocation: '/venues/${E2eFixtures.venueId}',
+        initialLocation: '/v1/venues/${E2eFixtures.venueId}',
       );
       await VenueRobot(tester).startBooking();
       final booking = BookingRobot(tester);

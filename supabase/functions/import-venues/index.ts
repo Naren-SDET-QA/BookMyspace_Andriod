@@ -15,7 +15,7 @@ async function handler(req: Request) {
   const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
   const { data: { user } } = await userClient.auth.getUser(); if (!user) return json({ error: 'unauthorized' }, 401);
   const { data: roles } = await admin.from('user_roles').select('role').eq('user_id', user.id).is('revoked_at', null);
-  if (!(roles ?? []).some((r) => ['administrator', 'super_administrator', 'venue_manager'].includes(r.role))) return json({ error: 'forbidden' }, 403);
+  if (!(roles ?? []).some((r) => ['administrator', 'super_administrator', 'venue_manager', 'venue_owner'].includes(r.role))) return json({ error: 'forbidden' }, 403);
   const input = validate(await req.json().catch(() => null)); if (!input) return json({ error: 'invalid_request' }, 400);
   const { data: job, error: jobError } = await admin.from('venue_discovery_jobs').insert({ requested_state: input.state, requested_city: input.city, requested_category: input.category, source: 'osm', status: 'RUNNING' }).select('id').single();
   if (jobError) return json({ error: 'job_create_failed' }, 500);
@@ -30,7 +30,13 @@ async function handler(req: Request) {
       if (!name || !id || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       discovered.push({ source:'osm', sourcePlaceId:id, name, address:tags['addr:full'] ?? null, city:tags['addr:city'] ?? null, state:tags['addr:state'] ?? null, phone:tags.phone ?? null, website:tags.website ?? null, openingHours:tags.opening_hours ?? null, category:input.category, latitude:lat, longitude:lon, sourceUrl:`https://www.openstreetmap.org/${element.type}/${element.id}`, rawMetadata:tags });
       const { data: existing } = await admin.from('venue_discovery_staging').select('id').eq('source','osm').eq('source_place_id',id).maybeSingle(); if (existing) duplicates++;
-      const { error } = await admin.rpc('stage_discovered_venue', { p_source:'osm', p_source_place_id:id, p_name:name, p_address:tags['addr:full'] ?? null, p_city:tags['addr:city'] ?? null, p_district:tags['addr:district'] ?? null, p_state:tags['addr:state'] ?? null, p_latitude:lat, p_longitude:lon, p_phone:tags.phone ?? null, p_website:tags.website ?? null, p_category:input.category, p_source_url:`https://www.openstreetmap.org/${element.type}/${element.id}`, p_raw_metadata:tags, p_job_id:job.id }); if (!error && !existing) staged++;
+      const { data: stagedRow, error } = await admin.rpc('stage_discovered_venue', { p_source:'osm', p_source_place_id:id, p_name:name, p_address:tags['addr:full'] ?? null, p_city:tags['addr:city'] ?? null, p_district:tags['addr:district'] ?? null, p_state:tags['addr:state'] ?? null, p_latitude:lat, p_longitude:lon, p_phone:tags.phone ?? null, p_website:tags.website ?? null, p_category:input.category, p_source_url:`https://www.openstreetmap.org/${element.type}/${element.id}`, p_raw_metadata:tags, p_job_id:job.id }); if (!error && !existing) staged++;
+      const stagingId = Array.isArray(stagedRow)
+        ? (stagedRow[0] as { id?: string } | undefined)?.id
+        : (stagedRow as { id?: string } | null)?.id;
+      if (stagingId) {
+        (discovered[discovered.length - 1] as Record<string, unknown>).stagingId = stagingId;
+      }
     }
     await admin.from('venue_discovery_jobs').update({ status:'COMPLETED', completed_at:new Date().toISOString(), discovered_count:payload.elements.length, staged_count:staged, duplicate_count:duplicates }).eq('id',job.id);
     return json({ job_id: job.id, discovered_count: payload.elements.length, staged_count: staged, duplicate_count: duplicates, venues: discovered });

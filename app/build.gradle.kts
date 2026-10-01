@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.secrets)
 }
 
 android {
@@ -10,29 +11,23 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.aistudio.bookmyspace.app"
+        applicationId = "com.bookmyspace.bookmyspace"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField("String", "SUPABASE_URL", "\"https://zykxneztahxbjduagutv.supabase.co\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_D3kAHDoTejg6FGSjEPXTWQ_wjoH3Hl5\"")
-        buildConfigField("String", "RAZORPAY_KEY_ID", "\"rzp_test_TIVzop8X6CjVX9\"")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -46,11 +41,15 @@ android {
         compose = true
         buildConfig = true
     }
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-        }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
+}
+
+secrets {
+    propertiesFileName = ".env"
+    defaultPropertiesFileName = ".env.example"
 }
 
 dependencies {
@@ -58,7 +57,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
-    
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
@@ -66,36 +64,31 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
-    implementation("androidx.compose.animation:animation")
+    implementation(libs.coil.compose)
 
-    // Room Persistence & Local Offline Database
+    // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Performance Monitoring & Tracing
-    implementation(libs.androidx.tracing)
-
-    // WorkManager Background Task Scheduler
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
-
-    // Real OpenStreetMap / MapLibre tile engine
-    implementation("org.osmdroid:osmdroid-android:6.1.18")
-
-    // Coil Image Caching and Async Loading
-    implementation("io.coil-kt:coil-compose:2.7.0")
-
-    // Razorpay SDK Integration
-    implementation("com.razorpay:checkout:1.6.38")
-
-    // Firebase Cloud Messaging (FCM)
-    implementation("com.google.firebase:firebase-messaging-ktx:24.1.0")
+    // Firebase BoM and Firestore & Auth & Cloud Messaging
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.perf)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
+    implementation(libs.play.services.auth)
+    implementation(libs.razorpay)
+    implementation(libs.lottie.compose)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

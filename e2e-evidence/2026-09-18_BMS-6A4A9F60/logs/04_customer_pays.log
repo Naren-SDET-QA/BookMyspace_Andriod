@@ -1,0 +1,755 @@
+Resolving dependencies...
+Downloading packages...
+  app_links 7.0.0 (7.2.1 available)
+  app_links_platform_interface 2.0.2 (2.0.4 available)
+  cached_network_image 3.4.1 (4.0.0 available)
+  cached_network_image_platform_interface 4.1.1 (5.0.0 available)
+  cached_network_image_web 1.3.1 (2.0.0 available)
+  clock 1.1.2 (1.1.3 available)
+  code_assets 1.2.1 (2.0.0 available)
+  file_picker 10.3.10 (13.1.0 available)
+  flutter_cache_manager 3.4.2 (3.4.3 available)
+  flutter_lints 3.0.2 (6.0.0 available)
+  flutter_map 7.0.2 (8.3.2 available)
+  flutter_riverpod 2.6.1 (3.4.3 available)
+  flutter_secure_storage 9.2.4 (11.1.1 available)
+  flutter_secure_storage_linux 1.2.3 (3.0.3 available)
+  flutter_secure_storage_macos 3.1.3 (4.0.0 available)
+  flutter_secure_storage_platform_interface 1.1.2 (2.1.1 available)
+  flutter_secure_storage_web 1.2.1 (2.1.1 available)
+  flutter_secure_storage_windows 3.1.2 (4.2.2 available)
+  geocoding_android 5.0.2 (5.1.0 available)
+  geolocator 14.0.2 (14.0.3 available)
+  geolocator_linux 0.2.4 (0.2.6 available)
+  go_router 14.8.1 (18.0.1 available)
+  google_maps_flutter_android 2.19.10 (2.19.13 available)
+  google_maps_flutter_platform_interface 2.16.1 (2.17.0 available)
+  hooks 2.0.2 (2.2.0 available)
+  image_picker_android 0.8.13+17 (0.8.13+23 available)
+  intl 0.20.2 (0.20.3 available)
+  js 0.6.7 (0.7.2 available)
+  latlong2 0.9.1 (0.10.1 available)
+  lints 3.0.0 (6.1.0 available)
+  matcher 0.12.19 (0.12.20 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.17.0 (1.19.0 available)
+  mgrs_dart 2.0.0 (3.0.0 available)
+  objective_c 9.5.0 (9.6.0 available)
+  package_info_plus 9.0.1 (10.2.1 available)
+  package_info_plus_platform_interface 3.2.1 (4.1.0 available)
+  passkeys_platform_interface 2.9.0 (2.10.0 available)
+  platform 3.1.6 (3.2.0 available)
+  proj4dart 2.1.0 (3.0.0 available)
+  record_use 0.6.0 (1.1.1 available)
+  riverpod 2.6.1 (3.4.3 available)
+  shared_preferences_android 2.4.23 (2.4.28 available)
+  sqflite 2.4.2+1 (2.4.4 available)
+  sqflite_android 2.4.2+3 (2.4.4 available)
+  sqflite_common 2.5.8 (2.5.13 available)
+  sqflite_darwin 2.4.2 (2.4.4 available)
+  sqflite_platform_interface 2.4.0 (2.4.2 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  synchronized 3.4.0+1 (3.4.2 available)
+  test_api 0.7.10 (0.7.14 available)
+  unicode 0.3.1 (1.1.9 available)
+  url_launcher_android 6.3.30 (6.3.33 available)
+  vector_math 2.2.0 (2.4.2 available)
+  win32 5.15.0 (6.4.0 available)
+Got dependencies!
+55 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching integration_test/e2e/customer_pays_test.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...             18.2s
+Debug service listening on ws://127.0.0.1:53526/SvKh_SD0o6Y=/ws
+A Dart VM Service on Chrome is available at: http://127.0.0.1:53526/SvKh_SD0o6Y=
+The Flutter DevTools debugger and profiler on Chrome is available at: http://127.0.0.1:53526/SvKh_SD0o6Y=/devtools/?uri=ws://127.0.0.1:53526/SvKh_SD0o6Y=/ws
+Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+00:00 +0: customer completes Razorpay payment, booking -> confirmed
+BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: at least one matching candidate
+  Actual: _AncestorWidgetFinder:<Found 0 widgets with type "FilledButton" that are ancestors of
+widgets with text "Pay securely": []>
+   Which: means none were found but some were expected
+pay affordance must be present on the approved row
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:matcher/src/expect/expect.dart 187:31                                     fail
+package:matcher/src/expect/expect.dart 182:3                                      _expect
+package:matcher/src/expect/expect.dart 65:3                                       expect$
+package:flutter_test/src/widget_tester.dart 473:18                                expect$
+customer_pays_test.dart 54:5                                                      <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone_root.dart 48:47                                           _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 733:19                                               runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 504:7                complete
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 571:12               _asyncReturn
+customer_pays_test.dart 27:5                                                      <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone_root.dart 48:47                                           _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 733:19                                               runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+
+The test description was:
+  customer completes Razorpay payment, booking -> confirmed
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:32 +0: customer completes Razorpay payment, booking -> confirmed [E]
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+00:32 +0 -1: (tearDownAll)
+00:32 +1 -1: Some tests failed.
+Some possible finders for the widgets at Offset(804.9, 415.3):
+  find.byType(SliverList)
+  find.byType(SliverPadding)
+  find.byType(Viewport)
+  find.byType(Scrollbar)
+  find.byType(Scrollable)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(1075.0, 283.7):
+  find.byType(PageView)
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(860.6, 319.3):
+  find.byKey(const Key('master-function_halls'))
+  find.byElementType(SliverMultiBoxAdaptorElement)
+  find.byType(SliverFillViewport)
+  find.byType(PageView)
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(1134.6, 275.9):
+  find.byKey(const Key('master-sports_turfs'))
+  find.byElementType(SliverMultiBoxAdaptorElement)
+  find.byType(SliverFillViewport)
+  find.byType(PageView)
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(449.8, 314.4):
+  find.byKey(const Key('master-function_halls'))
+  find.byElementType(SliverMultiBoxAdaptorElement)
+  find.byType(SliverFillViewport)
+  find.byType(PageView)
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(482.7, 536.5):
+  find.byKey(const Key('sub-marriage_hall'))
+  find.byKey(const Key('function-halls-matrix'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(623.7, 528.8):
+  find.byKey(const Key('sub-marriage_hall'))
+  find.byKey(const Key('function-halls-matrix'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(787.2, 308.3):
+  find.byKey(const Key('master-function_halls'))
+  find.byElementType(SliverMultiBoxAdaptorElement)
+  find.byType(SliverFillViewport)
+  find.byType(PageView)
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(561.1, 560.3):
+  find.byKey(const Key('function-halls-matrix'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(615.7, 595.5):
+  find.byKey(const Key('function-halls-matrix'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+02:21 +1 -1: customer completes Razorpay payment, booking -> confirmed
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test (but after the test had completed):
+A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone_root.dart 27:47                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+════════════════════════════════════════════════════════════════════════════════════════════════════
+02:21 +1 -1: customer completes Razorpay payment, booking -> confirmed [E]
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+Some possible finders for the widgets at Offset(583.1, 485.6):
+  find.byType(Scrollbar)
+  find.byType(ListSkeleton)
+  find.byType(SearchScreen)
+  find.byType(ExcludeFocus)
+  find.byType(Visibility)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading
+[WebPush] Service worker registered with scope:
+DDC is about to load 1/2 scripts with pool size = 1000
+DDC is about to load 1551/1551 scripts with pool size = 1000
+Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+00:00 +0: customer completes Razorpay payment, booking -> confirmed
+BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts
+Some possible finders for the widgets at Offset(732.6, 300.4):
+  find.byType(HomeSpotlightCarousel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(474.1, 557.9):
+  find.byKey(const Key('master-function_halls'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(469.5, 577.8):
+  find.byKey(const Key('master-function_halls'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(1080.4, 586.5):
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(582.1, 564.5):
+  find.byKey(const Key('master-function_halls'))
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _AncestorWidgetFinder:<Found 0 widgets with type "TextFormField" that are ancestors of
+widgets with text "Email": []>
+   Which: means none were found but one was expected
+router gate should land on /login
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:matcher/src/expect/expect.dart 187:31                                     fail
+package:matcher/src/expect/expect.dart 182:3                                      _expect
+package:matcher/src/expect/expect.dart 65:3                                       expect$
+package:flutter_test/src/widget_tester.dart 473:18                                expect$
+customer_pays_test.dart 37:5                                                      <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone_root.dart 48:47                                           _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 733:19                                               runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 504:7                complete
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 571:12               _asyncReturn
+customer_pays_test.dart 27:5                                                      <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone_root.dart 48:47                                           _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 733:19                                               runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+
+The test description was:
+  customer completes Razorpay payment, booking -> confirmed
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:13 +0: customer completes Razorpay payment, booking -> confirmed [E]
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+00:13 +0 -1: (tearDownAll)
+00:13 +0 -1: customer completes Razorpay payment, booking -> confirmed
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test (but after the test had completed):
+A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone_root.dart 27:47                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:13 +0 -1: customer completes Razorpay payment, booking -> confirmed [E]
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+00:13 +1 -1: Some tests failed.
+Some possible finders for the widgets at Offset(868.0, 385.1):
+  find.byType(VenueDetailsScreen)
+  find.byType(InheritedGoRouter)
+  find.byType(Router<Object>)
+  find.byType(OfflineBanner)
+  find.byType(AnnotatedRegion<SystemUiOverlayStyle>)
+  find.byElementType(InheritedModelElement<Object>)
+00:14 +1 -1: customer completes Razorpay payment, booking -> confirmed
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ 💡 [1m[3mflutter_map[0m[0m
+[38;5;12m│ 💡 Consider installing the official 'flutter_map_cancellable_tile_provider' plugin for improved[0m
+[38;5;12m│ 💡 performance on the web.[0m
+[38;5;12m│ 💡 See https://pub.dev/packages/flutter_map_cancellable_tile_provider for more info.[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+[38;5;12m│ 💡 [1m[3mflutter_map[0m[0m
+[38;5;12m│ 💡 Consider installing the official 'flutter_map_cancellable_tile_provider' plugin for improved[0m
+[38;5;12m│ 💡 performance on the web.[0m
+[38;5;12m│ 💡 See https://pub.dev/packages/flutter_map_cancellable_tile_provider for more info.[0m
+[38;5;12m└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[0m
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test (but after the test had completed):
+A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone_root.dart 27:47                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:15 +1 -1: customer completes Razorpay payment, booking -> confirmed [E]
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+Some possible finders for the widgets at Offset(467.7, 648.3):
+  find.byType(CategoryDiscoveryPanel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test (but after the test had completed):
+A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone_root.dart 27:47                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+Some possible finders for the widgets at Offset(468.3, 458.7):
+  find.byType(Scrollbar)
+  find.byType(SearchScreen)
+  find.byType(ExcludeFocus)
+  find.byType(Visibility)
+  find.byType(IndexedStack)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(92.9, 100.6):
+  find.byType(SizeChangedLayoutNotifier)
+  find.byType(CompositedTransformTarget)
+  find.byType(UndoHistory<TextEditingValue>)
+  find.byType(EditableText)
+  find.byElementType(SlottedRenderObjectElement<_DecorationSlot, RenderBox>)
+  find.byType(InputDecorator)
+  find.byElementType(InheritedModelElement<Object>)
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test (but after the test had completed):
+A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone_root.dart 27:47                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+Some possible finders for the widgets at Offset(673.1, 490.5):
+  find.byType(SliverList)
+  find.byType(SliverPadding)
+  find.byType(Viewport)
+  find.byType(Scrollbar)
+  find.byType(Scrollable)
+  find.byElementType(InheritedModelElement<Object>)
+Some possible finders for the widgets at Offset(552.6, 472.5):
+  find.text('Update your display name and photo in Supabase')
+  find.widgetWithText(IconButtonTheme, 'Update your display name and photo in Supabase')
+  find.widgetWithText(Ink, 'Update your display name and photo in Supabase')
+  find.widgetWithText(GestureDetector, 'Update your display name and photo in Supabase')
+  find.widgetWithText(InkWell, 'Update your display name and photo in Supabase')
+  find.widgetWithText(ListTile, 'Update your display name and photo in Supabase')
+  find.byType(SliverList)
+  find.byType(SliverPadding)
+  find.byType(Viewport)
+  find.byType(Scrollbar)
+  find.byType(Scrollable)
+  find.byElementType(InheritedModelElement<Object>)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test (but after the test had completed):
+A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone_root.dart 27:47                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  Test failed. See exception logs above.
+  The test description was: customer completes Razorpay payment, booking -> confirmed
+
+DartError: A FocusManager was used after being disposed.
+Once you have called dispose() on a FocusManager, it can no longer be used.
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/foundation/change_notifier.dart 182:9                         <fn>
+package:flutter/src/foundation/change_notifier.dart 188:14                        debugAssertNotDisposed
+package:flutter/src/foundation/change_notifier.dart 411:27                        notifyListeners
+package:flutter/src/widgets/focus_manager.dart 2000:7                             applyFocusChangesIfNeeded
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>

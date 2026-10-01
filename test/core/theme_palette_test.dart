@@ -23,10 +23,13 @@ class _MemoryPreferences extends Preferences {
 }
 
 void main() {
-  test('default theme is indigo and matches the current brand', () {
+  // Merged branches: the brand colour comes from the main lineage (teal) and
+  // the default palette means "use the admin theme", so indigo is just the
+  // default palette's swatch rather than AppTheme.brand.
+  test('default palette is indigo and the default theme uses the brand', () {
     expect(ThemePalette.values, hasLength(12));
     expect(ThemePalette.defaultPalette, ThemePalette.indigo);
-    expect(ThemePalette.indigo.color, AppTheme.brand);
+    expect(ThemePalette.indigo.color, const Color(0xFF4F46E5));
     expect(themePaletteColor('unknown'), ThemePalette.indigo.color);
     expect(
       AppTheme.light.colorScheme.primary,

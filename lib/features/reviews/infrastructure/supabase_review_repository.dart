@@ -1,10 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/errors/app_exceptions.dart' show mapError;
+import '../../../core/errors/app_exceptions.dart' as errors;
 import '../domain/review.dart';
 import '../domain/review_validation.dart';
 
-/// Supabase-backed [ReviewRepository].
+/// Supabase-backed [ReviewRepository] against the live `public.reviews` table.
 class SupabaseReviewRepository implements ReviewRepository {
   SupabaseReviewRepository(this._client);
 
@@ -20,9 +20,10 @@ class SupabaseReviewRepository implements ReviewRepository {
           .select('*')
           .eq('venue_id', venueId)
           .order('created_at', ascending: false);
-      return rows.map(Review.fromJson).toList();
+      final reviews = rows.map(Review.fromJson).toList();
+      return _withReviewerNames(reviews);
     } catch (e) {
-      throw mapError(e);
+      throw errors.mapError(e);
     }
   }
 
@@ -37,9 +38,10 @@ class SupabaseReviewRepository implements ReviewRepository {
           .eq('user_id', _userId!)
           .limit(1);
       if (rows.isEmpty) return null;
-      return Review.fromJson(rows.first);
+      final named = await _withReviewerNames([Review.fromJson(rows.first)]);
+      return named.first;
     } catch (e) {
-      throw mapError(e);
+      throw errors.mapError(e);
     }
   }
 
@@ -52,25 +54,28 @@ class SupabaseReviewRepository implements ReviewRepository {
     String? bookingId,
     List<String> tags = const [],
   }) async {
-    ReviewValidation.ensureSignedIn(_userId);
+    final userId = _userId;
+    if (userId == null) {
+      throw const errors.AuthException('Sign in to write a review.');
+    }
     ReviewValidation.validate(rating: rating, title: title, body: body);
     try {
-      final rows = await _client
-          .from('reviews')
-          .insert({
-            'venue_id': venueId,
-            'user_id': _userId!,
-            'rating': rating,
-            'title': title,
-            'body': body,
-            'booking_id': bookingId,
-            'tags': tags.join(','),
-          })
-          .select()
-          .limit(1);
+      final payload = <String, dynamic>{
+        'venue_id': venueId,
+        'user_id': userId,
+        'rating': rating,
+        'title': title,
+        'body': body,
+        if (tags.isNotEmpty) 'tags': tags.join(','),
+      };
+      if (bookingId != null && bookingId.isNotEmpty) {
+        payload['booking_id'] = bookingId;
+      }
+      final rows =
+          await _client.from('reviews').insert(payload).select().limit(1);
       return Review.fromJson(rows.first);
     } catch (e) {
-      throw mapError(e);
+      throw errors.mapError(e);
     }
   }
 
@@ -97,7 +102,7 @@ class SupabaseReviewRepository implements ReviewRepository {
           .limit(1);
       return Review.fromJson(rows.first);
     } catch (e) {
-      throw mapError(e);
+      throw errors.mapError(e);
     }
   }
 
@@ -107,7 +112,7 @@ class SupabaseReviewRepository implements ReviewRepository {
     try {
       await _client.from('reviews').delete().eq('id', reviewId);
     } catch (e) {
-      throw mapError(e);
+      throw errors.mapError(e);
     }
   }
 
@@ -119,10 +124,42 @@ class SupabaseReviewRepository implements ReviewRepository {
           .select('rating')
           .eq('venue_id', venueId);
       if (rows.isEmpty) return 0;
-      final total = rows.fold<int>(0, (sum, r) => sum + (r['rating'] as int));
+      final total = rows.fold<int>(
+        0,
+        (sum, r) => sum + ((r['rating'] as num?)?.toInt() ?? 0),
+      );
       return total / rows.length;
     } catch (e) {
-      throw mapError(e);
+      throw errors.mapError(e);
+    }
+  }
+
+  Future<List<Review>> _withReviewerNames(List<Review> reviews) async {
+    final ids = reviews
+        .map((r) => r.userId)
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    if (ids.isEmpty) return reviews;
+    try {
+      final profiles = await _client
+          .from('profiles')
+          .select('id, full_name')
+          .inFilter('id', ids);
+      final names = <String, String>{};
+      for (final row in profiles) {
+        final id = row['id'] as String?;
+        final name = row['full_name'] as String?;
+        if (id != null && name != null && name.trim().isNotEmpty) {
+          names[id] = name.trim();
+        }
+      }
+      if (names.isEmpty) return reviews;
+      return reviews
+          .map((review) => review.copyWith(userName: names[review.userId]))
+          .toList();
+    } catch (_) {
+      return reviews;
     }
   }
 }

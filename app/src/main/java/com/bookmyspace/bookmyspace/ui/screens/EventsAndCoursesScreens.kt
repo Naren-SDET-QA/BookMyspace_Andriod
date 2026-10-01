@@ -29,11 +29,14 @@ fun EventsScreen() {
             }
         }
 
-        LazyColumn(
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(events) { event ->
+        if (events.isEmpty()) {
+            com.bookmyspace.bookmyspace.ui.components.EyeCatchingEventsAndCoursesSkeleton()
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(events) { event ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
@@ -61,6 +64,7 @@ fun EventsScreen() {
             }
         }
     }
+}
 }
 
 @Composable
@@ -121,43 +125,47 @@ fun CoursesScreen() {
             }
         }
 
-        LazyColumn(
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(courses) { course ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(course.title, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                        Text("👨‍🏫 ${course.coachName}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(course.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                        ) {
-                            Text("₹${course.price.toInt()} / ${course.durationWeeks} Wks", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                            
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                if (!course.isEnrolled) {
-                                    FilledTonalButton(
-                                        onClick = { selectedCourseForQuickEnroll = course },
+        if (courses.isEmpty()) {
+            com.bookmyspace.bookmyspace.ui.components.EyeCatchingEventsAndCoursesSkeleton()
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(courses) { course ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(course.title, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                            Text("👨‍🏫 ${course.coachName}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(course.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            ) {
+                                Text("₹${course.price.toInt()} / ${course.durationWeeks} Wks", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    if (!course.isEnrolled) {
+                                        FilledTonalButton(
+                                            onClick = { selectedCourseForQuickEnroll = course },
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Text("⚡ Quick Enroll", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    Button(
+                                        onClick = { BookMySpaceRepository.toggleCourseEnrollment(course.id) },
                                         shape = RoundedCornerShape(10.dp)
                                     ) {
-                                        Text("⚡ Quick Enroll", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(if (course.isEnrolled) "Enrolled ✓" else "Enroll")
                                     }
-                                }
-
-                                Button(
-                                    onClick = { BookMySpaceRepository.toggleCourseEnrollment(course.id) },
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text(if (course.isEnrolled) "Enrolled ✓" else "Enroll")
                                 }
                             }
                         }

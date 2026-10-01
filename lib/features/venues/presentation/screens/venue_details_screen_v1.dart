@@ -1,0 +1,666 @@
+// release/v1.0 version of venue_details_screen.dart, kept alongside the
+// main-lineage screen so none of its behaviour is lost. Public classes that
+// clash with the main version carry a V1 suffix.
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_router.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/modular/feature_providers.dart';
+import '../../../../core/modular/plugins/map_provider.dart';
+import '../../../../core/offline/map_tile_cache.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/test_id.dart';
+import '../../../home/domain/customer_section_catalog.dart';
+import '../../domain/venue.dart';
+import '../venue_providers.dart';
+import '../../../reviews/presentation/screens/venue_reviews_section.dart';
+import '../widgets/pg_rent_calculator_card.dart';
+import '../widgets/venue_badges.dart';
+
+/// Opens the venue location in the device's Google Maps app (or web fallback).
+Future<void> _openInGoogleMaps(BuildContext context, Venue venue) async {
+  final uri = Uri.parse(
+    'https://www.google.com/maps/search/?api=1&query='
+    '${venue.latitude},${venue.longitude}',
+  );
+  final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open Google Maps.')),
+    );
+  }
+}
+
+Future<void> _openWhatsApp(BuildContext context, Venue venue) async {
+  final phone = venue.contactWhatsapp;
+  if (phone.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('WhatsApp contact is unavailable.')),
+    );
+    return;
+  }
+  final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+  final uri = Uri.parse(
+    'https://api.whatsapp.com/send?phone=$cleanPhone&text='
+    '${Uri.encodeComponent('Hi! I am interested in ${venue.name} on BookMySpace.')}',
+  );
+  final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp.')));
+  }
+}
+
+void _showGallery(BuildContext context, Venue venue) {
+  final images = venue.galleryImageUrls;
+  if (images.isEmpty) return;
+  showDialog<void>(
+    context: context,
+    builder: (context) => Dialog.fullscreen(
+      child: Scaffold(
+        appBar: AppBar(title: Text('${images.length} Photos')),
+        body: PageView.builder(
+          itemCount: images.length,
+          itemBuilder: (context, index) => InteractiveViewer(
+            child: AppNetworkImage(url: images[index], fit: BoxFit.contain),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Full venue details: gallery, about, amenities, hours, pricing and map.
+class VenueDetailsScreenV1 extends ConsumerWidget {
+  const VenueDetailsScreenV1({super.key, required this.venueId});
+
+  final String venueId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final venueAsync = ref.watch(venueDetailsProvider(venueId));
+
+    return Scaffold(
+      body: venueAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => ErrorView(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(venueDetailsProvider(venueId)),
+        ),
+        data: (venue) => _VenueDetailsBody(venue: venue),
+      ),
+      bottomNavigationBar: venueAsync.maybeWhen(
+        data: (venue) => venue.isActive ? _BookingBar(venue: venue) : null,
+        orElse: () => null,
+      ),
+    );
+  }
+}
+
+class _VenueDetailsBody extends ConsumerWidget {
+  const _VenueDetailsBody({required this.venue});
+
+  final Venue venue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final favorite = ref.watch(isFavoriteProvider(venue.id));
+
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          expandedHeight: 240,
+          flexibleSpace: FlexibleSpaceBar(
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (venue.galleryImageUrls.isNotEmpty)
+                  PageView.builder(
+                    itemCount: venue.galleryImageUrls.length,
+                    itemBuilder: (context, i) => AppNetworkImage(
+                      url: venue.galleryImageUrls[i],
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  const ColoredBox(
+                    color: AppTheme.brandLight,
+                    child: Center(
+                      child: Icon(
+                        Icons.apartment_rounded,
+                        size: 64,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: Material(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => _showGallery(context, venue),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.photo_camera_outlined,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${venue.galleryImageUrls.length} Photos',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            favorite.when(
+              data: (isFav) => TestId(
+                E2eIds.venueFavorite,
+                child: IconButton(
+                  onPressed: () =>
+                      ref.read(toggleFavoriteProvider(venue.id).future),
+                  icon: Icon(
+                    isFav ?? false
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    color: isFav ?? false ? AppTheme.accent : null,
+                  ),
+                ),
+              ),
+              loading: () => const IconButton(
+                onPressed: null,
+                icon: Icon(Icons.bookmark_border_rounded),
+              ),
+              error: (_, _) => const IconButton(
+                onPressed: null,
+                icon: Icon(Icons.bookmark_border_rounded),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        venue.name,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (venue.isVerified) const VerifiedBadge(),
+                  ],
+                ),
+                if (venue.ratingCount > 0) ...[
+                  const SizedBox(height: 6),
+                  RatingBadge(
+                    rating: venue.avgRating,
+                    count: venue.ratingCount,
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: AppTheme.brand,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        venue.address,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (venue.description.isNotEmpty) ...[
+                  Text(l10n.aboutThisVenue, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text(
+                    venue.description,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                _PricingCard(venue: venue),
+                const SizedBox(height: 20),
+                if (PgRentCalculatorCard.appliesTo(venue)) ...[
+                  PgRentCalculatorCard(venue: venue),
+                  const SizedBox(height: 20),
+                ],
+                if (venue.category?.slug == 'hotel' ||
+                    venue.category?.slug == 'hotel_stay' ||
+                    venue.category?.slug == 'lodge_rooms') ...[
+                  _HotelRoomsSection(venueId: venue.id),
+                  const SizedBox(height: 20),
+                ],
+                if (venue.facilities.isNotEmpty) ...[
+                  Text(l10n.amenities, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: venue.facilities
+                        .map(
+                          (f) => Chip(
+                            avatar: const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 18,
+                              color: AppTheme.brand,
+                            ),
+                            label: Text(f.facility),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                if (venue.operatingHours.isNotEmpty) ...[
+                  Text(l10n.operatingHours, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 10),
+                  _HoursList(hours: venue.operatingHours),
+                  const SizedBox(height: 20),
+                ],
+                if (venue.foodOptions.isNotEmpty ||
+                    venue.parkingCapacity > 0) ...[
+                  Text(l10n.details, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 10),
+                  _DetailRow(
+                    icon: Icons.restaurant_rounded,
+                    label: l10n.foodOptions,
+                    value: venue.foodOptions.isEmpty ? '—' : venue.foodOptions,
+                  ),
+                  _DetailRow(
+                    icon: Icons.local_parking_rounded,
+                    label: l10n.parking,
+                    value: venue.parkingCapacity > 0
+                        ? '${venue.parkingCapacity} vehicles'
+                        : '—',
+                  ),
+                  _DetailRow(
+                    icon: Icons.receipt_long_rounded,
+                    label: l10n.taxRate,
+                    value: '${venue.taxRate.toStringAsFixed(0)}%',
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                Text(l10n.address, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 10),
+                _VenueMap(
+                  latitude: venue.latitude,
+                  longitude: venue.longitude,
+                  name: venue.name,
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openInGoogleMaps(context, venue),
+                    icon: const Icon(Icons.map_rounded, size: 18),
+                    label: Text(l10n.openInGoogleMaps),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                VenueReviewsSection(venueId: venue.id),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HotelRoomsSection extends ConsumerWidget {
+  const _HotelRoomsSection({required this.venueId});
+
+  final String venueId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rooms = ref.watch(hotelRoomTypesProvider(venueId));
+    return rooms.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Available rooms',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            ...items.map(
+              (room) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: room.images.isEmpty
+                      ? const Icon(Icons.bed_outlined)
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            room.images.first,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                const Icon(Icons.bed_outlined),
+                          ),
+                        ),
+                  title: Text(room.name),
+                  subtitle: Text(
+                    '${room.bedType} · Sleeps ${room.capacity}'
+                    '${room.amenities.isEmpty ? '' : ' · ${room.amenities.join(', ')}'}',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PricingCard extends StatelessWidget {
+  const _PricingCard({required this.venue});
+
+  final Venue venue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      color: AppTheme.brand.withValues(alpha: 0.06),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.basePrice,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatInr(venue.price),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: AppTheme.brand,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (venue.capacity > 0)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    l10n.capacity,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${venue.capacity}',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HoursList extends StatelessWidget {
+  const _HoursList({required this.hours});
+
+  final List<VenueOperatingHours> hours;
+
+  static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: hours.map((h) {
+        final label = _dayNames[h.dayOfWeek.clamp(0, 6)];
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 48,
+                child: Text(label, style: theme.textTheme.bodyMedium),
+              ),
+              Expanded(
+                child: Text(
+                  h.isClosed ? 'Closed' : '${h.opensAt} – ${h.closesAt}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VenueMap extends ConsumerWidget {
+  const _VenueMap({
+    required this.latitude,
+    required this.longitude,
+    required this.name,
+  });
+
+  final double latitude;
+  final double longitude;
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final map = resolvedMapProvider(ref.watch(providerRegistryProvider));
+    if (map == null) {
+      return const SizedBox.shrink();
+    }
+    final point = LatLng(latitude, longitude);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 180,
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: point,
+            initialZoom: 14,
+            interactionOptions: const InteractionOptions(
+              flags:
+                  InteractiveFlag.drag |
+                  InteractiveFlag.pinchZoom |
+                  InteractiveFlag.doubleTapZoom,
+            ),
+          ),
+          children: [
+            TileLayer(
+              tileProvider: createCachingTileProvider(),
+              urlTemplate: map.tileUrlTemplate,
+              userAgentPackageName: map.userAgentPackageName,
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: point,
+                  width: 40,
+                  height: 40,
+                  child: const Icon(
+                    Icons.location_pin,
+                    color: AppTheme.brand,
+                    size: 40,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BookingBar extends StatelessWidget {
+  const _BookingBar({required this.venue});
+
+  final Venue venue;
+
+  @override
+  Widget build(BuildContext context) {
+    final section = CustomerSectionCatalog.sectionForVenue(venue);
+    final cta = CustomerSectionCatalog.bookingCtaLabel(section);
+    final l10n = AppLocalizations.of(context);
+
+    if (section == CustomerSection.institutesClasses) {
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          l10n.callingVenue.replaceFirst('{name}', venue.name),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.call_rounded),
+                  label: Text(l10n.call),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _openWhatsApp(context, venue),
+                  icon: const Icon(Icons.chat_rounded),
+                  label: Text(l10n.whatsapp),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: TestId(
+          E2eIds.bookNow,
+          child: FilledButton.icon(
+            onPressed: () =>
+                context.push(AppRoutes.v1BookingFlow.replaceAll(':id', venue.id), extra: venue),
+            icon: const Icon(Icons.event_available_rounded),
+            label: Text('$cta · ${formatInr(venue.price)}'),
+          ),
+        ),
+      ),
+    );
+  }
+}

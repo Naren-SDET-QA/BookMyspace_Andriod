@@ -47,7 +47,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final pages = [
       _OnboardingPage(
         icon: Icons.location_on_rounded,
-        color: AppTheme.brand,
+        color: AppTheme.violet,
         title: l10n.onboardingTitle1,
         subtitle: l10n.onboardingSubtitle1,
       ),
@@ -94,7 +94,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   width: _page == i ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _page == i ? AppTheme.brand : Colors.grey.shade300,
+                    color: _page == i ? AppTheme.violet : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),

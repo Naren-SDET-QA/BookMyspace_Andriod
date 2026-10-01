@@ -44,13 +44,13 @@ class AuthBoundaryIdentity {
     AuthBoundaryRole.owner => const AuthUser(
       id: 'TEST_BOUNDARY_OWNER',
       email: 'boundary.owner@test.invalid',
-      role: AppRole.venueOwner,
+      role: UserRole.venueOwner,
       verificationStatus: VerificationStatus.approved,
     ),
     AuthBoundaryRole.administrator => const AuthUser(
       id: 'TEST_BOUNDARY_ADMIN',
       email: 'boundary.admin@test.invalid',
-      role: AppRole.admin,
+      role: UserRole.admin,
       verificationStatus: VerificationStatus.approved,
     ),
   };

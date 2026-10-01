@@ -27,12 +27,14 @@ class SupabaseAnalyticsRepository implements AnalyticsEventRepository {
   @override
   Future<List<AnalyticsEvent>> recentEvents({int limit = 50}) async {
     try {
-      final rows = await _client
-          .from('analytics_events')
-          .select('*')
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return rows.map((r) => AnalyticsEvent.fromJson(r)).toList();
+      final rows = await _client.rpc<List<dynamic>>(
+        'list_authorized_analytics_events',
+        params: {'p_limit': limit},
+      );
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(AnalyticsEvent.fromJson)
+          .toList();
     } catch (e) {
       throw app_errors.mapError(e);
     }

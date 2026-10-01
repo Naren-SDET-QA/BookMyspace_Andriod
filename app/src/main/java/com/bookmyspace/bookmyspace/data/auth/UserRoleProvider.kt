@@ -108,7 +108,7 @@ object UserRoleProvider {
      * Switches the active user role (used during demo/switch account flows).
      */
     fun switchUserRole(newRole: UserRole) {
-        BookMySpaceRepository.switchRole(newRole)
+        BookMySpaceRepository.loginAsRole(newRole)
     }
 
     /**

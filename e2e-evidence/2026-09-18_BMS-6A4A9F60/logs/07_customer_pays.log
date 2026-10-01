@@ -1,0 +1,161 @@
+Resolving dependencies...
+Downloading packages...
+  app_links 7.0.0 (7.2.1 available)
+  app_links_platform_interface 2.0.2 (2.0.4 available)
+  cached_network_image 3.4.1 (4.0.0 available)
+  cached_network_image_platform_interface 4.1.1 (5.0.0 available)
+  cached_network_image_web 1.3.1 (2.0.0 available)
+  clock 1.1.2 (1.1.3 available)
+  code_assets 1.2.1 (2.0.0 available)
+  file_picker 10.3.10 (13.1.0 available)
+  flutter_cache_manager 3.4.2 (3.4.3 available)
+  flutter_lints 3.0.2 (6.0.0 available)
+  flutter_map 7.0.2 (8.3.2 available)
+  flutter_riverpod 2.6.1 (3.4.3 available)
+  flutter_secure_storage 9.2.4 (11.1.1 available)
+  flutter_secure_storage_linux 1.2.3 (3.0.3 available)
+  flutter_secure_storage_macos 3.1.3 (4.0.0 available)
+  flutter_secure_storage_platform_interface 1.1.2 (2.1.1 available)
+  flutter_secure_storage_web 1.2.1 (2.1.1 available)
+  flutter_secure_storage_windows 3.1.2 (4.2.2 available)
+  geocoding_android 5.0.2 (5.1.0 available)
+  geolocator 14.0.2 (14.0.3 available)
+  geolocator_linux 0.2.4 (0.2.6 available)
+  go_router 14.8.1 (18.0.1 available)
+  google_maps_flutter_android 2.19.10 (2.19.13 available)
+  google_maps_flutter_platform_interface 2.16.1 (2.17.0 available)
+  hooks 2.0.2 (2.2.0 available)
+  image_picker_android 0.8.13+17 (0.8.13+23 available)
+  intl 0.20.2 (0.20.3 available)
+  js 0.6.7 (0.7.2 available)
+  latlong2 0.9.1 (0.10.1 available)
+  lints 3.0.0 (6.1.0 available)
+  matcher 0.12.19 (0.12.20 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.17.0 (1.19.0 available)
+  mgrs_dart 2.0.0 (3.0.0 available)
+  objective_c 9.5.0 (9.6.0 available)
+  package_info_plus 9.0.1 (10.2.1 available)
+  package_info_plus_platform_interface 3.2.1 (4.1.0 available)
+  passkeys_platform_interface 2.9.0 (2.10.0 available)
+  platform 3.1.6 (3.2.0 available)
+  proj4dart 2.1.0 (3.0.0 available)
+  record_use 0.6.0 (1.1.1 available)
+  riverpod 2.6.1 (3.4.3 available)
+  shared_preferences_android 2.4.23 (2.4.28 available)
+  sqflite 2.4.2+1 (2.4.4 available)
+  sqflite_android 2.4.2+3 (2.4.4 available)
+  sqflite_common 2.5.8 (2.5.13 available)
+  sqflite_darwin 2.4.2 (2.4.4 available)
+  sqflite_platform_interface 2.4.0 (2.4.2 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  synchronized 3.4.0+1 (3.4.2 available)
+  test_api 0.7.10 (0.7.14 available)
+  unicode 0.3.1 (1.1.9 available)
+  url_launcher_android 6.3.30 (6.3.33 available)
+  vector_math 2.2.0 (2.4.2 available)
+  win32 5.15.0 (6.4.0 available)
+Got dependencies!
+55 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching integration_test/e2e/customer_pays_test.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...             24.6s
+Debug service listening on ws://127.0.0.1:57262/6m6MQENiv8s=/ws
+A Dart VM Service on Chrome is available at: http://127.0.0.1:57262/6m6MQENiv8s=
+The Flutter DevTools debugger and profiler on Chrome is available at: http://127.0.0.1:57262/6m6MQENiv8s=/devtools/?uri=ws://127.0.0.1:57262/6m6MQENiv8s=/ws
+Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+Google Maps JavaScript API warning: InvalidKey https://developers.google.com/maps/documentation/javascript/error-messages#invalid-key
+Found an existing <meta name="viewport"> tag. Flutter Web uses its own viewport configuration for better compatibility with Flutter. This tag will be replaced.
+══╡ EXCEPTION CAUGHT BY GESTURES LIBRARY ╞══════════════════════════════════════════════════════════
+The following StateError was thrown while handling a pointer data packet:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+dart-sdk/lib/core/iterable.dart 722:5                                             firstWhere
+package:flutter_test/src/binding.dart 2661:53                                     handlePointerEvent
+package:flutter/src/gestures/binding.dart 341:7                                   [_flushPointerEventQueue]
+package:flutter/src/gestures/binding.dart 308:9                                   [_handlePointerDataPacket]
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+lib/_engine/engine/platform_dispatcher.dart 1704:5                                invoke1
+lib/_engine/engine/platform_dispatcher.dart 292:5                                 invokeOnPointerDataPacket
+lib/_engine/engine/pointer_binding.dart 451:30                                    [_sendToFramework]
+lib/_engine/engine/pointer_binding.dart 233:7                                     onPointerData
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+lib/_engine/engine/pointer_binding.dart 1043:16                                   <fn>
+lib/_engine/engine/pointer_binding.dart 953:7                                     <fn>
+lib/_engine/engine/pointer_binding.dart 576:9                                     loggedHandler
+dart-sdk/lib/async/zone.dart 962:54                                               runUnary
+dart-sdk/lib/async/zone.dart 917:26                                               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/js_allow_interop_patch.dart 224:27    _callDartFunctionFast1
+dart-sdk/lib/_internal/js_dev_runtime/patch/js_allow_interop_patch.dart 84:15     ret
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Bad state: No element
+00:00 +0: customer pays via Razorpay checkout, booking -> confirmed
+BookMySpace config: {name: development, supabaseHost: zykxneztahxbjduagutv.supabase.co, supabaseUrlConfigured: true, supabaseAnonKeyConfigured: true, razorpayKeyConfigured: true, apiBaseUrlHost: zykxneztahxbjduagutv.supabase.co, placeholderHost: false, supabaseConfigured: true}
+supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts
+Some possible finders for the widgets at Offset(1104.9, 278.4):
+  find.byType(HomeSpotlightCarousel)
+  find.byType(Scrollbar)
+  find.byType(CustomScrollView)
+  find.byType(NotificationListener<OverscrollIndicatorNotification>)
+  find.byType(RefreshIndicator)
+  find.byElementType(InheritedModelElement<Object>)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: at least one matching candidate
+  Actual: _TextContainingWidgetFinder:<Found 0 widgets with text containing BMS-600C3F01: []>
+   Which: means none were found but some were expected
+approved booking BMS-600C3F01 must be listed for customer.dev
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:matcher/src/expect/expect.dart 187:31                                     fail
+package:matcher/src/expect/expect.dart 182:3                                      _expect
+package:matcher/src/expect/expect.dart 65:3                                       expect$
+package:flutter_test/src/widget_tester.dart 473:18                                expect$
+customer_pays_test.dart 62:5                                                      <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone_root.dart 48:47                                           _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 733:19                                               runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 504:7                complete
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 571:12               _asyncReturn
+customer_pays_test.dart 35:5                                                      <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone_root.dart 48:47                                           _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 733:19                                               runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone_root.dart 35:13                                           _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 726:19                                               run
+dart-sdk/lib/async/zone.dart 625:7                                                runGuarded
+dart-sdk/lib/async/zone.dart 666:23                                               <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+
+The test description was:
+  customer pays via Razorpay checkout, booking -> confirmed
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:30 +0: customer pays via Razorpay checkout, booking -> confirmed [E]
+  Test failed. See exception logs above.
+  The test description was: customer pays via Razorpay checkout, booking -> confirmed
+
+00:30 +0 -1: (tearDownAll)
+00:30 +1 -1: Some tests failed.

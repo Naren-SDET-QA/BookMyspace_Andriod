@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../errors/app_exceptions.dart';
+
 /// Retry configuration for API calls.
 class RetryConfig {
   const RetryConfig({
@@ -7,15 +9,31 @@ class RetryConfig {
     this.initialDelay = const Duration(milliseconds: 500),
     this.maxDelay = const Duration(seconds: 5),
     this.backoffMultiplier = 2.0,
+    this.timeout = const Duration(seconds: 15),
   });
 
   final int maxRetries;
   final Duration initialDelay;
   final Duration maxDelay;
   final double backoffMultiplier;
+  final Duration timeout;
 
   /// Default config with exponential backoff.
   static const defaultConfig = RetryConfig();
+}
+
+/// Bounded retry for **safe reads**. Writes must pass [retryWhen] that proves
+/// the operation is idempotent. Payment checkout must never use this helper
+/// to restart a charge.
+Future<T> withReadRetry<T>(
+  Future<T> Function() operation, {
+  RetryConfig config = RetryConfig.defaultConfig,
+}) {
+  return withRetry(
+    operation,
+    config: config,
+    retryWhen: isRetryableReadError,
+  );
 }
 
 /// Executes an async operation with exponential-backoff retry logic.
@@ -32,7 +50,7 @@ Future<T> withRetry<T>(
 
   while (true) {
     try {
-      return await operation();
+      return await operation().timeout(config.timeout);
     } catch (e) {
       attempt++;
       if (attempt >= config.maxRetries) rethrow;
@@ -50,7 +68,8 @@ Future<T> withRetry<T>(
 /// Rate-limit aware wrapper. Tracks request timestamps and throws
 /// [RateLimitException] if too many requests are made in a window.
 class RateLimiter {
-  RateLimiter({this.maxRequests = 30, this.window = const Duration(minutes: 1)});
+  RateLimiter(
+      {this.maxRequests = 30, this.window = const Duration(minutes: 1)});
 
   final int maxRequests;
   final Duration window;
@@ -80,5 +99,6 @@ class RateLimitException implements Exception {
   final Duration retryAfter;
 
   @override
-  String toString() => 'RateLimitException: $message (retry after ${retryAfter.inSeconds}s)';
+  String toString() =>
+      'RateLimitException: $message (retry after ${retryAfter.inSeconds}s)';
 }

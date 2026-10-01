@@ -14,7 +14,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../auth/mock_auth_repository.dart';
+import '../auth/mock_auth_repository_release.dart';
+import '../owner_bookings/mock_owner_booking_repository.dart';
 
 class _FakeAnalyticsRepository implements AnalyticsRepository {
   const _FakeAnalyticsRepository(this.data);
@@ -53,8 +54,9 @@ class _EmptyOwnerBookingRepository implements OwnerBookingRepository {
   @override
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
-    OwnerBookingDecision decision,
-  ) => throw UnimplementedError();
+    OwnerBookingDecision decision, {
+    String? reason,
+  }) => throw UnimplementedError();
 }
 
 const _data = RevenueAnalytics(
@@ -74,7 +76,7 @@ const _data = RevenueAnalytics(
 
 const _owner = AuthUser(id: 'owner1', email: 'owner@bms.test');
 
-Widget _app() {
+Widget _app({OwnerBookingRepository? ownerBookings}) {
   return ProviderScope(
     overrides: [
       authRepositoryProvider.overrideWithValue(
@@ -96,7 +98,7 @@ Widget _app() {
         const _FakeAnalyticsRepository(_data),
       ),
       ownerBookingRepositoryProvider.overrideWithValue(
-        const _EmptyOwnerBookingRepository(),
+        ownerBookings ?? const _EmptyOwnerBookingRepository(),
       ),
     ],
     child: MaterialApp(
@@ -164,6 +166,81 @@ void main() {
       expect(copiedText, contains('Total revenue: ₹50000.00'));
       expect(copiedText, contains('Successful bookings: 12'));
       expect(find.text('Copied to clipboard'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'business report shows method split, filters by venue and is shared',
+    (tester) async {
+      String? copiedText;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedText = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      tester.view.physicalSize = const Size(320, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final now = DateTime.now();
+      Booking booking(String id, String venueId, String venue, String method) =>
+          Booking(
+            id: id,
+            bookingRef: 'BMS-$id',
+            venueId: venueId,
+            slotId: 's1',
+            bookDate: DateTime(now.year, now.month, now.day),
+            startTime: '10:00:00',
+            endTime: '12:00:00',
+            status: BookingStatus.confirmed,
+            amount: 1000,
+            taxAmount: 0,
+            totalAmount: 1000,
+            venueName: venue,
+            paymentMethod: method,
+            metadata: const {'guests': 50},
+          );
+      await tester.pumpWidget(
+        _app(
+          ownerBookings: MockOwnerBookingRepository(
+            bookings: [
+              booking('1', 'v1', 'Sunrise Hall', 'upi'),
+              booking('2', 'v2', 'Lotus Banquet', 'pay_at_venue'),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Business report'), findsOneWidget);
+      expect(find.text('UPI'), findsOneWidget);
+      expect(find.text('Cash / pay at venue'), findsOneWidget);
+      expect(find.text('100'), findsOneWidget); // total guests
+
+      await tester.tap(find.byKey(AnalyticsScreen.venueFilterKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lotus Banquet').last);
+      await tester.pumpAndSettle();
+      expect(find.text('UPI'), findsNothing);
+      expect(find.text('50'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.share_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Copy summary'));
+      await tester.pumpAndSettle();
+      expect(copiedText, contains('Booking breakdown (Lotus Banquet)'));
+      expect(copiedText, contains('Pay at venue: 1 (100%)'));
+      expect(copiedText, contains('Total guests: 50'));
+      expect(tester.takeException(), isNull);
     },
   );
 }

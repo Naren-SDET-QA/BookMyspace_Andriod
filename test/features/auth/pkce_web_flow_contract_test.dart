@@ -34,16 +34,19 @@ void main() {
     final source = File(
       'lib/features/auth/infrastructure/supabase_auth_repository.dart',
     ).readAsStringSync();
-    expect(source, contains('signInWithOtp(email: email)'));
+    // Merged: the main-lineage repository passes a redirect alongside the
+    // email so a magic link in the same template also returns to the app.
+    expect(source, contains('signInWithOtp('));
     expect(source, contains('verifyOTP('));
-    expect(source, contains('type: OtpType.email'));
+    expect(source, contains('OtpType.email'));
   });
 
   test('confirmation template renders the Supabase token', () {
     final template = File(
       'supabase/templates/confirmation.html',
     ).readAsStringSync();
+    // Merged template: the 6-digit code (release/v1.0 OTP flow) plus the
+    // confirmation link used by the main-lineage signup flow.
     expect(template, contains('{{ .Token }}'));
-    expect(template, isNot(contains('{{ .ConfirmationURL }}')));
   });
 }

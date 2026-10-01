@@ -115,12 +115,19 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final appTheme = theme.extension<AppThemeExtension>();
 
     // Glass base tints tailored for light and dark palettes
     final baseColor =
         widget.surfaceColor ??
-        (isDark ? theme.colorScheme.surfaceContainerHighest : Colors.white);
-    final glassColor = baseColor.withValues(alpha: widget.surfaceAlpha);
+        (isDark
+            ? theme.colorScheme.surfaceContainer
+            : theme.colorScheme.surface);
+    final surfaceAlpha =
+        widget.surfaceColor == null && widget.surfaceAlpha == 0.85
+        ? appTheme?.glassOpacity ?? widget.surfaceAlpha
+        : widget.surfaceAlpha;
+    final glassColor = baseColor.withValues(alpha: surfaceAlpha);
 
     // Accent used for the hover rim/glow: derived from accentGradient when
     // the caller supplies one (e.g. a per-category color), falling back to
@@ -130,14 +137,16 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
         widget.accentGradient is LinearGradient &&
             (widget.accentGradient as LinearGradient).colors.isNotEmpty
         ? (widget.accentGradient as LinearGradient).colors.first
-        : AppTheme.brand;
+        : theme.colorScheme.primary;
 
     // Specular border highlights
     final borderColor = _isHovered
         ? hoverAccent.withValues(alpha: isDark ? 0.6 : 0.45)
         : (isDark
-              ? Colors.white.withValues(alpha: 0.12)
-              : const Color(0xFFE2E8F0));
+              ? Colors.white.withValues(
+                  alpha: appTheme?.glassBorderOpacity ?? 0.12,
+                )
+              : theme.colorScheme.outlineVariant);
 
     // Dynamic rim glow, tinted with the accent color
     final glowColor = _isHovered

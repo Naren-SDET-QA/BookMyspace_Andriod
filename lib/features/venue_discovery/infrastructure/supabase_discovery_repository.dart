@@ -102,4 +102,37 @@ class SupabaseDiscoveryRepository {
       params: {'p_staging_id': stagingId},
     );
   }
+
+  /// Submits an owner claim. The database derives the caller's organization
+  /// from the authenticated owner; the client never supplies ownership data.
+  Future<void> submitClaim(String stagingId, {String? proofNote}) async {
+    await _client.rpc(
+      'submit_venue_claim',
+      params: {'p_staging_id': stagingId, 'p_proof_note': proofNote},
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> pendingClaims() async {
+    final rows = await _client
+        .from('venue_claims')
+        .select('*, venue_discovery_staging(*)')
+        .eq('status', 'PENDING')
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> reviewClaim(
+    String claimId, {
+    required bool approve,
+    String? reviewNote,
+  }) async {
+    await _client.rpc(
+      'review_venue_claim',
+      params: {
+        'p_claim_id': claimId,
+        'p_action': approve ? 'APPROVE' : 'REJECT',
+        'p_review_note': reviewNote,
+      },
+    );
+  }
 }

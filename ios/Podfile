@@ -25,12 +25,17 @@ end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
-flutter_ios_podfile_setup
-
 target 'Runner' do
   use_frameworks!
+  use_modular_headers!
 
+  # Official Razorpay Standard Checkout for iOS (public key only).
+  pod 'razorpay-pod', '1.5.8'
+
+  # Flutter Pods helper hook if available
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Target unit testing bundle
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -39,5 +44,19 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    target.build_configurations.each do |config|
+      # Modern iOS minimum deployment target
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      
+      # Disable deprecated bitcode for modern Xcode 14+ / 15+ / 16+
+      config.build_settings['ENABLE_BITCODE'] = 'NO'
+
+      # Support Apple Silicon / ARM64 architectures
+      config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO' if config.name == 'Release'
+
+      # Strict C++ standard and warning hygiene
+      config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+    end
   end
 end

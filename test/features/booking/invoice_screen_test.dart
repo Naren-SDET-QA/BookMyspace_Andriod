@@ -7,7 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'mock_booking_repository.dart';
+import 'mock_booking_repository_release.dart';
 
 Booking _offlineBooking() {
   return Booking(

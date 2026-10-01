@@ -6,7 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'mock_event_repository.dart';
+import 'mock_event_repository_release.dart';
 
 void main() {
   testWidgets('events discovery filters by search text', (tester) async {

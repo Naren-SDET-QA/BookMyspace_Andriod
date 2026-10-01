@@ -1,0 +1,14 @@
+// Google Maps API key for the iOS Maps SDK (GMSServices).
+//
+// THIS FILE IS GIT-IGNORED. Never commit a real key.
+//
+// Create this file locally with your key:
+//   echo 'GOOGLE_MAPS_API_KEY = AIza...' > ios/Flutter/GoogleMapsKey.xcconfig
+// or set it in CI by writing the file before `flutter build ios`.
+//
+// It is included by Debug.xcconfig / Release.xcconfig, flows into
+// Info.plist's GMSApiKey via the $(GOOGLE_MAPS_API_KEY) build setting, and
+// AppDelegate.swift reads it with a bundle lookup at launch. When the file
+// is absent the build setting is empty and the app runs with Google's own
+// "missing key" map state instead of a fake key.
+GOOGLE_MAPS_API_KEY =

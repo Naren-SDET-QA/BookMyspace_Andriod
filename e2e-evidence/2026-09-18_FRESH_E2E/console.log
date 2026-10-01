@@ -1,0 +1,16 @@
+
+═══ PHASE 1: Create fresh booking ═══
+Signing in as customer...
+  Customer userId: 0df41e87-0b75-4f21-8cfe-0f7cc56d731d
+Signing in as owner...
+  Owner userId: 8d726091-4e71-4475-9f77-5f333612a142
+
+Finding owner venues...
+  Owner venues: [{"id":"8f3e8c12-7df3-4b59-9c47-2a0b9f1d6e31","name":"DEV Data Driven Hall 11","org":"cf64e375-bbdb-4111-8345-16f681ef11a0"},{"id":"a18984d2-f4dd-13d1-6fa2-e810adb0388c","name":"Auditorium DEV 1","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"58d8ecdb-ef33-428a-af36-8810a5fad555","name":"The Work Nest","org":"cf64e375-bbdb-4111-8345-16f681ef11a0"},{"id":"9160dd3c-37e4-81f9-2ea6-f395bf604171","name":"Auditorium DEV 2","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"bf739541-a257-9b80-fb4e-857b86962681","name":"Auditorium DEV 3","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"6f0c86ec-249e-5895-e8a9-d1b19ffb678a","name":"Auditorium DEV 4","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"1d586f1d-e2d2-d8c6-dfc1-060fd37a4932","name":"Auditorium DEV 5","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"b06a28e4-adf2-335a-6394-545871999221","name":"Auditorium DEV 6","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"cb80027d-f162-80a0-c18a-90846f8d4902","name":"Auditorium DEV 7","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"},{"id":"a28eb71b-1e7f-727b-ba7b-75f07aabf44f","name":"Auditorium DEV 8","org":"7e7b0ae8-4888-9060-f45e-ca54a8e92fe4"}]
+
+Finding available slots...
+
+❌ FATAL: slots.data?.slice is not a function
+TypeError: slots.data?.slice is not a function
+    at /Users/aa/BookMyspace_Andriod/e2e-playwright/create_booking.js:106:48
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

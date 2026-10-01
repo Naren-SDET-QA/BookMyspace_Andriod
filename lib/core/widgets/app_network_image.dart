@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'bookmyspace_brand.dart';
 
 /// Image widget backed by [CachedNetworkImage].
 ///
@@ -53,11 +54,7 @@ class _Placeholder extends StatelessWidget {
     return Container(
       color: AppTheme.brand.withValues(alpha: 0.1),
       alignment: Alignment.center,
-      child: const Icon(
-        Icons.apartment_rounded,
-        size: 40,
-        color: AppTheme.brandLight,
-      ),
+      child: const BookMySpaceMark(size: 48),
     );
   }
 }

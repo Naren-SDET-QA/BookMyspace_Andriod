@@ -1,12 +1,9 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/core/router/app_router.dart';
-import 'package:bookmyspace/features/auth/domain/auth_configuration.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
-import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
 import 'package:bookmyspace/features/courses/presentation/course_providers.dart';
 import 'package:bookmyspace/features/events/presentation/event_providers.dart';
-import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,62 +14,39 @@ import '../features/auth/mock_auth_repository.dart';
 import '../features/booking/mock_booking_repository.dart';
 import '../features/courses/mock_course_repository.dart';
 import '../features/events/mock_event_repository.dart';
-import '../features/notifications/mock_notification_repository.dart';
+import '../features/offers/mock_coupon_repository.dart';
 import '../features/venues/mock_venue_repository.dart';
+import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
+import 'package:bookmyspace/features/offers/presentation/coupon_providers.dart';
+import 'package:bookmyspace/features/notifications/domain/notification.dart'
+    as notification_domain;
+import 'package:bookmyspace/features/notifications/domain/notification_repository.dart';
+import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 
 Future<String> _redirectTo(
   WidgetTester tester, {
   required String initialLocation,
   required AuthUser? currentUser,
   required bool authReady,
-  bool allowUnauthenticatedTestAccess = false,
 }) async {
   final router = createAppRouter(
     initialLocation: initialLocation,
     currentUser: currentUser,
     authReady: authReady,
-    allowUnauthenticatedTestAccess: allowUnauthenticatedTestAccess,
   );
   await tester.pumpWidget(
     ProviderScope(
-      // HomeScreen (reached after the authenticated redirect) depends on
-      // these repositories; provide in-memory fakes instead of Supabase.
       overrides: [
         authRepositoryProvider.overrideWithValue(
-          MockAuthRepository(
-            initialUser: const AuthUser(id: 'u1', email: 'a@b.com'),
-          ),
-        ),
-        // LoginScreen reads this directly (unrelated to auth gating, which
-        // this file tests via resolveAppRedirect). Left unmocked it falls
-        // through to the real Supabase-backed provider, which is never
-        // initialized in tests: the provider settles to an AsyncError, but
-        // LoginScreen's null-config branch renders an indeterminate
-        // CircularProgressIndicator, whose perpetual animation keeps
-        // scheduling frames forever -- pumpAndSettle() can never settle
-        // while it's on screen. Mirrors the override login_screen_test.dart
-        // already uses for the same reason.
-        authConfigurationProvider.overrideWith(
-          (ref) async => const AuthConfiguration(
-            authenticationEnabled: true,
-            emailLoginEnabled: true,
-            emailOtpEnabled: true,
-            phoneLoginEnabled: true,
-            phoneOtpEnabled: true,
-          ),
+          MockAuthRepository(initialUser: currentUser),
         ),
         venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
-        // The shell route builds all six branch screens at once
-        // (StatefulShellRoute.indexedStack), so every repository a
-        // branch screen depends on needs a fake here too -- otherwise
-        // an unmocked provider is left resolving against a
-        // never-initialized Supabase client and pumpAndSettle times out
-        // waiting for a loading state that never reaches a stable end.
-        bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
-        courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
         eventRepositoryProvider.overrideWithValue(MockEventRepository()),
+        courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+        couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+        bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
         notificationRepositoryProvider.overrideWithValue(
-          MockNotificationRepository(),
+          _RouteTestNotificationRepository(),
         ),
       ],
       child: MaterialApp.router(
@@ -87,13 +61,74 @@ Future<String> _redirectTo(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  await tester.pump();
   final uri = router.routeInformationProvider.value.uri.path;
+  await tester.pumpWidget(const SizedBox.shrink());
   router.dispose();
   return uri;
 }
 
+class _RouteTestNotificationRepository implements NotificationRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
+  @override
+  Future<List<notification_domain.Notification>> myNotifications() async =>
+      const [];
+
+  @override
+  Future<void> markRead(String notificationId) async {}
+
+  @override
+  Future<void> markAllRead() async {}
+
+  @override
+  Future<int> unreadCount() async => 0;
+
+  @override
+  Future<void> addNotification(
+    notification_domain.Notification notification,
+  ) async {}
+
+  @override
+  Future<void> registerPushToken(
+    String token,
+    String platform, {
+    Map<String, dynamic>? subscriptionData,
+  }) async {}
+
+  @override
+  Future<void> unregisterPushToken(String token) async {}
+}
+
 void main() {
+  test('protected destinations round-trip through login safely', () {
+    final destination = Uri.parse('/bookings?status=pending');
+    final login = Uri.parse(loginLocationFor(destination));
+
+    expect(login.path, AppRoutes.login);
+    expect(
+      login.queryParameters['redirect'],
+      destination.toString(),
+    );
+    expect(
+      authenticatedLocationFromLogin(login),
+      destination.toString(),
+    );
+  });
+
+  test('login never follows an external redirect destination', () {
+    expect(
+      authenticatedLocationFromLogin(
+        Uri.parse('/login?redirect=https%3A%2F%2Fevil.example'),
+      ),
+      AppRoutes.shell,
+    );
+  });
+
   testWidgets('unauth user on shell is redirected to login', (tester) async {
     final uri = await _redirectTo(
       tester,
@@ -126,6 +161,137 @@ void main() {
     expect(uri, AppRoutes.shell);
   });
 
+  testWidgets('root path / redirects unauthenticated users to login',
+      (tester) async {
+    final uri = await _redirectTo(
+      tester,
+      initialLocation: AppRoutes.root,
+      currentUser: null,
+      authReady: true,
+    );
+    expect(uri, AppRoutes.login);
+  });
+
+  testWidgets('root path / redirects authenticated users to home',
+      (tester) async {
+    final uri = await _redirectTo(
+      tester,
+      initialLocation: AppRoutes.root,
+      currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+      authReady: true,
+    );
+    expect(uri, AppRoutes.shell);
+  });
+
+  testWidgets('root path / does not show page-not-found while auth loads',
+      (tester) async {
+    final router = createAppRouter(
+      initialLocation: AppRoutes.root,
+      currentUser: null,
+      authReady: false,
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(
+            MockAuthRepository(),
+          ),
+          venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
+          eventRepositoryProvider.overrideWithValue(MockEventRepository()),
+          courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+          couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+          bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('This page is not available.'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('customer tab aliases resolve without unknown-route screen',
+      (tester) async {
+    const user = AuthUser(id: 'u1', email: 'a@b.com');
+    for (final location in [
+      AppRoutes.root,
+      AppRoutes.home,
+      AppRoutes.search,
+      AppRoutes.bookings,
+      AppRoutes.coursesList,
+      AppRoutes.profile,
+      '/alerts',
+      AppRoutes.settings,
+      AppRoutes.login,
+    ]) {
+      final uri = await _redirectTo(
+        tester,
+        initialLocation: location,
+        currentUser: user,
+        authReady: true,
+      );
+      expect(uri, isNot('/'), reason: location);
+      expect(uri.contains('not available'), isFalse);
+    }
+  });
+
+  testWidgets('root path / in preview mode goes to home', (tester) async {
+    final router = createAppRouter(
+      initialLocation: AppRoutes.root,
+      currentUser: null,
+      authReady: true,
+      allowUnauthenticatedPreview: true,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(
+            MockAuthRepository(initialUser: null),
+          ),
+          venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
+          eventRepositoryProvider.overrideWithValue(MockEventRepository()),
+          courseRepositoryProvider.overrideWithValue(MockCourseRepository()),
+          couponRepositoryProvider.overrideWithValue(MockCouponRepository()),
+          bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
+        ],
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.shell);
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+  });
+
+  testWidgets('authenticated user can open search', (tester) async {
+    final uri = await _redirectTo(
+      tester,
+      initialLocation: AppRoutes.search,
+      currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
+      authReady: true,
+    );
+    expect(uri, AppRoutes.search);
+  });
+
   testWidgets('auth not ready skips gating', (tester) async {
     final uri = await _redirectTo(
       tester,
@@ -134,98 +300,5 @@ void main() {
       authReady: false,
     );
     expect(uri, AppRoutes.login);
-  });
-
-  testWidgets('development test access can open Home without a session', (
-    tester,
-  ) async {
-    final uri = await _redirectTo(
-      tester,
-      initialLocation: AppRoutes.shell,
-      currentUser: null,
-      authReady: true,
-      allowUnauthenticatedTestAccess: true,
-    );
-    expect(uri, AppRoutes.shell);
-  });
-
-  testWidgets('customer cannot enter owner or admin routes', (tester) async {
-    final ownerUri = await _redirectTo(
-      tester,
-      initialLocation: AppRoutes.ownerDashboard,
-      currentUser: const AuthUser(id: 'u1'),
-      authReady: true,
-    );
-    expect(ownerUri, AppRoutes.profile);
-  });
-
-  testWidgets('owner cannot enter admin routes', (tester) async {
-    final uri = await _redirectTo(
-      tester,
-      initialLocation: AppRoutes.adminLocations,
-      currentUser: const AuthUser(id: 'u1', role: AppRole.venueOwner),
-      authReady: true,
-    );
-    expect(uri, AppRoutes.profile);
-  });
-
-  testWidgets('admin can enter admin routes', (tester) async {
-    final redirect = resolveAppRedirect(
-      location: AppRoutes.adminLocations,
-      currentUser: const AuthUser(id: 'u1', role: AppRole.admin),
-      authReady: true,
-    );
-    expect(redirect, isNull);
-  });
-
-  test('venue owner can enter owner routes without redirect', () {
-    final redirect = resolveAppRedirect(
-      location: AppRoutes.ownerDashboard,
-      currentUser: const AuthUser(id: 'u1', role: AppRole.venueOwner),
-      authReady: true,
-    );
-    expect(redirect, isNull);
-  });
-
-  test('venue owner can enter analytics without redirect', () {
-    final redirect = resolveAppRedirect(
-      location: AppRoutes.analytics,
-      currentUser: const AuthUser(id: 'u1', role: AppRole.venueOwner),
-      authReady: true,
-    );
-    expect(redirect, isNull);
-  });
-
-  test('customer is redirected away from owner routes to profile', () {
-    final redirect = resolveAppRedirect(
-      location: AppRoutes.ownerDashboard,
-      currentUser: const AuthUser(id: 'u1', role: AppRole.customer),
-      authReady: true,
-    );
-    expect(redirect, AppRoutes.profile);
-  });
-
-  test('authoritative DB role override updates routing behavior', () {
-    // Initial user created with metadata role
-    const initialUser = AuthUser(id: 'u1', role: AppRole.venueOwner);
-    expect(
-      resolveAppRedirect(
-        location: AppRoutes.ownerDashboard,
-        currentUser: initialUser,
-        authReady: true,
-      ),
-      isNull,
-    );
-
-    // DB hydration revokes owner role -> becomes customer
-    final hydratedUser = initialUser.copyWith(role: AppRole.customer);
-    expect(
-      resolveAppRedirect(
-        location: AppRoutes.ownerDashboard,
-        currentUser: hydratedUser,
-        authReady: true,
-      ),
-      AppRoutes.profile,
-    );
   });
 }

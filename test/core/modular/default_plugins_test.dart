@@ -8,7 +8,7 @@ import 'package:bookmyspace/core/modular/register_default_plugins.dart';
 import 'package:bookmyspace/features/payments/domain/checkout_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../features/payments/mock_payment_repository.dart';
+import '../../features/payments/mock_payment_repository_release.dart';
 
 void main() {
   test('default plugins are not constructed until resolve', () {

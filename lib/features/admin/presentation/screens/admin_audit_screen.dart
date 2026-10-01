@@ -13,27 +13,27 @@ class AdminAuditScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     final logs = ref.watch(recentAuditLogsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.auditLog)),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).auditLog)),
       body: logs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
+        error: (error, _) => ErrorView(
+          message: error.toString(),
           onRetry: () => ref.invalidate(recentAuditLogsProvider),
         ),
         data: (items) => items.isEmpty
             ? const EmptyState(
                 icon: Icons.history_rounded,
                 title: 'No audit logs',
-                message: 'Admin actions will appear here.',
+                message: 'Administrative actions will appear here.',
               )
             : ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: items.length,
-                itemBuilder: (context, i) => _AuditTile(entry: items[i]),
+                itemBuilder: (context, index) =>
+                    _AuditTile(entry: items[index]),
               ),
       ),
     );
@@ -65,32 +65,33 @@ class _AuditTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.brand.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    entry.entityType,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppTheme.brand,
-                      fontWeight: FontWeight.w700,
+                if (entry.entityType?.isNotEmpty == true)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.violet.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      entry.entityType!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppTheme.violet,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Actor: ${entry.actorId}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            if (entry.actorId?.isNotEmpty == true) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Actor: ${entry.actorId}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
+            ],
             if (entry.entityId != null) ...[
               const SizedBox(height: 2),
               Text(
@@ -112,7 +113,7 @@ class _AuditTile extends StatelessWidget {
             if (entry.createdAt != null) ...[
               const SizedBox(height: 4),
               Text(
-                entry.createdAt!.toIso8601String(),
+                entry.createdAt!.toLocal().toString(),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

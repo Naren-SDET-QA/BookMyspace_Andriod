@@ -10,7 +10,19 @@ import '../domain/payment.dart';
 abstract interface class PaymentRepository {
   /// Creates a Razorpay order for a `pending` booking (server validates the
   /// amount against the DB and returns the order id for checkout).
-  Future<PaymentOrder> createOrder({required String bookingId});
+  Future<PaymentOrder> createOrder({
+    required String bookingId,
+    String paymentPlan = 'full',
+    double walletCreditAmount = 0,
+  });
+
+  /// Reads the current server quote without reserving wallet credit.
+  Future<CheckoutQuote> checkoutQuote({
+    required String bookingId,
+    String paymentPlan = 'full',
+  });
+
+  Future<VenuePaymentRules> paymentRules({required String venueId});
 
   /// Commits a `pending` booking owned by the caller to "pay at venue"
   /// instead of an online Razorpay charge. No Razorpay order is ever

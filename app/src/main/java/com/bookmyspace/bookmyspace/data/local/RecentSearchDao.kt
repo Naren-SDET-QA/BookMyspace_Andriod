@@ -8,15 +8,15 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecentSearchDao {
-    @Query("SELECT * FROM recent_searches ORDER BY timestamp DESC LIMIT 10")
-    fun getRecentSearches(): Flow<List<RecentSearchEntity>>
+    @Query("SELECT * FROM recent_searches ORDER BY timestamp DESC LIMIT :limit")
+    fun getRecentSearches(limit: Int = 10): Flow<List<RecentSearchEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdateSearch(search: RecentSearchEntity)
+    suspend fun insertSearch(search: RecentSearchEntity)
 
     @Query("DELETE FROM recent_searches WHERE query = :query")
-    suspend fun deleteSearchQuery(query: String)
+    suspend fun deleteSearch(query: String)
 
     @Query("DELETE FROM recent_searches")
-    suspend fun clearAllSearches()
+    suspend fun clearAll()
 }

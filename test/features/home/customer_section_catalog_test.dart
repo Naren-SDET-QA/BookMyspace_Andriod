@@ -2,7 +2,7 @@ import 'package:bookmyspace/features/home/domain/customer_section_catalog.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../venues/mock_venue_repository.dart';
+import '../venues/mock_venue_repository_release.dart';
 
 void main() {
   test('catalog has exactly four customer sections', () {

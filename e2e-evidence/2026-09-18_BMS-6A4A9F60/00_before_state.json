@@ -1,0 +1,1 @@
+[{"booking_ref":"BMS-6A4A9F60","status":"awaiting_owner_approval","book_date":"2026-09-19","start_time":"09:00:00","end_time":"13:00:00","amount":73000.00,"tax_amount":13140.00,"total_amount":86140.00,"approval_requested_at":"2026-09-18T02:42:49.162723+00:00","approval_expires_at":"2026-09-18T04:42:49.162723+00:00","venue_id":"51c4ea2c-7c9a-40c2-98a8-b9a50843ddf5"}]

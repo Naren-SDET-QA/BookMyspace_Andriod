@@ -34,7 +34,7 @@ void main() {
       2,
       3,
       chatShellBranchIndex,
-      4,
+      5,
     ]);
   });
 

@@ -99,7 +99,7 @@ void registerMockSmokeFlows() {
       final backend = await pumpMockApp(
         tester,
         MockScenario.signedIn,
-        initialLocation: '/venues/${E2eFixtures.venueId}',
+        initialLocation: '/v1/venues/${E2eFixtures.venueId}',
       );
       await VenueRobot(tester).startBooking();
       final booking = BookingRobot(tester);

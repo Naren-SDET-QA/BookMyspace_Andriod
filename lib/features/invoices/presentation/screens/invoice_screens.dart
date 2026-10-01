@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/shimmer_loading.dart';
 import '../../domain/invoice.dart';
+import '../../domain/invoice_design.dart';
 import '../invoice_pdf.dart';
 import '../invoice_providers.dart';
 
@@ -18,6 +20,7 @@ class _InvoiceConfigState extends ConsumerState<InvoiceConfigScreen> {
   final controllers = <String, TextEditingController>{};
   final visible = <String, bool>{};
   bool loaded = false, busy = false;
+  String design = InvoiceDesign.modernTeal.storageValue;
   static const fields = <String, String>{
     'business_name': 'Business name',
     'logo_url': 'Logo URL',
@@ -61,6 +64,7 @@ class _InvoiceConfigState extends ConsumerState<InvoiceConfigScreen> {
     for (final key in switches) {
       visible[key] = existing[key] as bool? ?? true;
     }
+    design = InvoiceDesign.parse(config['design_template']).storageValue;
   }
 
   Future<void> save() async {
@@ -71,6 +75,7 @@ class _InvoiceConfigState extends ConsumerState<InvoiceConfigScreen> {
         for (final entry in controllers.entries)
           entry.key: entry.value.text.trim(),
         'visible_fields': visible,
+        'design_template': design,
       });
       ref.invalidate(invoiceConfigProvider);
       if (mounted) {
@@ -89,7 +94,7 @@ class _InvoiceConfigState extends ConsumerState<InvoiceConfigScreen> {
     body: ref
         .watch(invoiceConfigProvider)
         .when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const InvoicePreviewSkeleton(),
           error: (error, _) => ErrorView(
             message: error.toString(),
             onRetry: () => ref.invalidate(invoiceConfigProvider),
@@ -101,6 +106,25 @@ class _InvoiceConfigState extends ConsumerState<InvoiceConfigScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  DropdownButtonFormField<String>(
+                    key: const Key('invoice-design-template'),
+                    initialValue: design,
+                    decoration: const InputDecoration(
+                      labelText: 'Invoice design',
+                    ),
+                    items: [
+                      for (final item in InvoiceDesign.values)
+                        DropdownMenuItem(
+                          value: item.storageValue,
+                          child: Text(item.label),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => design = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   for (final entry in fields.entries)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -156,7 +180,7 @@ class InvoiceScreen extends ConsumerWidget {
     body: ref
         .watch(invoiceProvider(invoiceId))
         .when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const InvoicePreviewSkeleton(),
           error: (error, _) => ErrorView(
             message: error.toString(),
             onRetry: () => ref.invalidate(invoiceProvider(invoiceId)),

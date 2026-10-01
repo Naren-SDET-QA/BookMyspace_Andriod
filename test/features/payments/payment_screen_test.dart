@@ -6,15 +6,17 @@ import 'package:bookmyspace/features/notifications/domain/notification.dart';
 import 'package:bookmyspace/features/notifications/presentation/notification_providers.dart';
 import 'package:bookmyspace/features/payments/domain/checkout_service.dart';
 import 'package:bookmyspace/features/payments/presentation/payment_providers.dart';
-import 'package:bookmyspace/features/payments/presentation/screens/payment_screen.dart';
+import 'package:bookmyspace/features/payments/presentation/screens/payment_screen.dart'
+    hide PaymentScreen;
+import 'package:bookmyspace/features/payments/presentation/screens/payment_screen_v1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../booking/mock_booking_repository.dart';
+import '../booking/mock_booking_repository_release.dart';
 import '../notifications/mock_notification_repository.dart';
-import 'mock_payment_repository.dart';
+import 'mock_payment_repository_release.dart';
 
 final _booking = Booking(
   id: 'b1',
@@ -50,7 +52,7 @@ Widget _app(
         bookingRepositoryProvider.overrideWithValue(bookingRepo),
     ],
     child: MaterialApp(
-      home: PaymentScreen(booking: booking ?? _booking),
+      home: PaymentScreenV1(booking: booking ?? _booking),
       localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -127,7 +129,7 @@ void main() {
     await tester.pump();
     expect(notificationRepo.created, hasLength(1));
     expect(
-      notificationRepo.created.single.type,
+      notificationRepo.created.single.kind,
       NotificationType.bookingConfirmed,
     );
   });
@@ -309,7 +311,7 @@ void main() {
       expect(find.text('Online (Razorpay)'), findsOneWidget);
       expect(find.text('Pay at venue'), findsOneWidget);
       expect(find.text('Pay now'), findsOneWidget);
-      expect(find.text('Confirm booking'), findsNothing);
+      expect(find.text('Confirm Booking'), findsNothing);
     });
 
     testWidgets(
@@ -324,7 +326,7 @@ void main() {
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Confirm booking'), findsOneWidget);
+        expect(find.text('Confirm Booking'), findsOneWidget);
         expect(find.text('Pay now'), findsNothing);
         expect(paymentRepo.lastPayAtVenueBookingId, isNull);
         expect(paymentRepo.lastOrderBookingId, isNull);
@@ -343,7 +345,7 @@ void main() {
         await tester.ensureVisible(find.text('Pay at venue'));
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm booking'));
+        await tester.tap(find.text('Confirm Booking'));
         await _pumpThroughPayment(tester);
 
         expect(paymentRepo.lastPayAtVenueBookingId, 'b1');
@@ -376,7 +378,7 @@ void main() {
         await tester.ensureVisible(find.text('Pay at venue'));
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm booking'));
+        await tester.tap(find.text('Confirm Booking'));
         await _pumpThroughPayment(tester);
 
         expect(find.textContaining('payment_in_progress'), findsOneWidget);
@@ -405,7 +407,7 @@ void main() {
         await tester.ensureVisible(find.text('Pay at venue'));
         await tester.tap(find.text('Pay at venue'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm booking'));
+        await tester.tap(find.text('Confirm Booking'));
         await _pumpThroughPayment(tester);
 
         // Only the booking id crosses the wire; select_pay_at_venue reads

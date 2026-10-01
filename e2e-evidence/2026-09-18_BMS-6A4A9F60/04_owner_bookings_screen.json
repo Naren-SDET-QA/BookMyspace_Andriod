@@ -1,0 +1,58 @@
+{
+  "captured_at": "2026-09-18T13:50:00Z",
+  "method": "Playwright real UI automation via Chrome",
+  "booking_ref": "BMS-6A4A9F60",
+  "visible_bookings": [
+    {
+      "venue": "BookMySpace E2E Test Venue",
+      "status": "cancelled",
+      "ref": "BMS-DF2B4673",
+      "date": "Sep 27, 2026",
+      "time": "E2E Morning Session",
+      "amount": "₹24,780"
+    },
+    {
+      "venue": "Party Hall DEV 10",
+      "status": "approval_expired",
+      "ref": "BMS-6A4A9F60",
+      "date": "Sep 19, 2026",
+      "time": "Morning",
+      "amount": "₹86,140"
+    },
+    {
+      "venue": "Party Hall DEV 10",
+      "status": "cancelled",
+      "ref": "BMS-0098EB94",
+      "date": "Sep 18, 2026",
+      "time": "Afternoon",
+      "amount": "₹86,140"
+    },
+    {
+      "venue": "BookMySpace E2E Test Venue",
+      "status": "owner_rejected",
+      "ref": "BMS-9107BC6E",
+      "date": "Sep 15, 2026",
+      "time": "E2E Morning Session",
+      "amount": "₹24,780"
+    },
+    {
+      "venue": "BookMySpace E2E Test Venue",
+      "status": "cancelled",
+      "ref": "BMS-F892F131",
+      "date": "Sep 14, 2026",
+      "time": "E2E Morning Session",
+      "amount": "₹24,780"
+    },
+    {
+      "venue": "Party Hall DEV 10",
+      "status": "approval_expired",
+      "ref": "BMS-1013B2AF",
+      "date": "Sep 14, 2026",
+      "time": "Morning",
+      "amount": "₹86,140"
+    }
+  ],
+  "target_booking_status": "approval_expired",
+  "accept_button_visible": false,
+  "accept_button_reason": "Approval window expired (approval_requested_at: 2026-09-18T02:42:49Z, approval_expires_at: 2026-09-18T04:42:49Z)"
+}

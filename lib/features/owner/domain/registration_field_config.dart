@@ -17,6 +17,7 @@ class RegistrationFieldConfig {
     required this.key,
     required this.label,
     required this.type,
+    this.id,
     this.enabled = true,
     this.required = false,
     this.ownerVisible = true,
@@ -26,7 +27,10 @@ class RegistrationFieldConfig {
     this.placeholder,
     this.helpText,
     this.options = const [],
+    this.regexPattern,
+    this.presetKey,
   });
+  final String? id;
   final String key;
   final String label;
   final RegistrationFieldType type;
@@ -41,11 +45,14 @@ class RegistrationFieldConfig {
 
   /// Optional choices supplied by the admin in validation_rules.options.
   final List<String> options;
+  final String? regexPattern;
+  final String? presetKey;
 
   factory RegistrationFieldConfig.fromJson(Map<String, dynamic> json) =>
       RegistrationFieldConfig(
         key: json['field_key'] as String? ?? '',
         label: json['display_label'] as String? ?? '',
+        id: json['id'] as String?,
         type: RegistrationFieldType.values.firstWhere(
           (value) =>
               value.name == _typeName(json['field_type'] as String? ?? 'text'),
@@ -60,6 +67,8 @@ class RegistrationFieldConfig {
         placeholder: json['placeholder'] as String?,
         helpText: json['help_text'] as String?,
         options: _options(json['validation_rules']),
+        regexPattern: json['regex_pattern'] as String?,
+        presetKey: json['preset_key'] as String?,
       );
 
   static List<String> _options(dynamic value) {

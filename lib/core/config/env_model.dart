@@ -1,7 +1,4 @@
-import 'package:flutter/foundation.dart';
-
-/// Defines the configuration data model for environment settings.
-@immutable
+/// Immutable, non-secret runtime configuration for the active environment.
 class EnvModel {
   const EnvModel({
     required this.name,
@@ -17,20 +14,12 @@ class EnvModel {
   final String razorpayKeyId;
   final String apiBaseUrl;
 
-  bool get isDevelopment => name == 'development' || name == 'local';
-  bool get isStaging => name == 'staging' || name == 'testing';
-  bool get isProduction => name == 'production';
-  bool get isRazorpayTestMode => razorpayKeyId.startsWith('rzp_test_');
-
   Map<String, dynamic> toSummaryMap() => {
         'name': name,
-        'supabaseUrl': supabaseUrl,
-        'isRazorpayTestMode': isRazorpayTestMode,
-        'isDevelopment': isDevelopment,
-        'isStaging': isStaging,
-        'isProduction': isProduction,
+        'supabaseHost': Uri.tryParse(supabaseUrl)?.host ?? '',
+        'supabaseUrlConfigured': supabaseUrl.isNotEmpty,
+        'supabaseAnonKeyConfigured': supabaseAnonKey.isNotEmpty,
+        'razorpayKeyConfigured': razorpayKeyId.isNotEmpty,
+        'apiBaseUrlHost': Uri.tryParse(apiBaseUrl)?.host ?? '',
       };
-
-  @override
-  String toString() => 'EnvModel(name: $name, supabaseUrl: $supabaseUrl, isRazorpayTestMode: $isRazorpayTestMode)';
 }

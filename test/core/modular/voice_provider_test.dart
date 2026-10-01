@@ -9,14 +9,16 @@ import 'package:bookmyspace/core/modular/register_default_plugins.dart';
 import 'package:bookmyspace/features/ai/domain/booking_intent.dart';
 import 'package:bookmyspace/features/ai/domain/voice_locale.dart';
 import 'package:bookmyspace/features/ai/presentation/voice_booking_sheet.dart';
-import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart';
+import 'package:bookmyspace/features/search/presentation/screens/search_screen.dart'
+    hide SearchScreen;
+import 'package:bookmyspace/features/search/presentation/screens/search_screen_v1.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../features/venues/mock_venue_repository.dart';
+import '../../features/venues/mock_venue_repository_release.dart';
 
 class _RecordingVoiceProvider implements VoiceProvider {
   bool _ready = false;
@@ -175,7 +177,7 @@ void main() {
           venueRepositoryProvider.overrideWithValue(MockVenueRepository()),
         ],
         child: const MaterialApp(
-          home: SearchScreen(initialSection: 'function_halls'),
+          home: SearchScreenV1(initialSection: 'function_halls'),
           localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,

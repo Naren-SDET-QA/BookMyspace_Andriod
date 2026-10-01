@@ -27,18 +27,18 @@ final eventDetailProvider = FutureProvider.autoDispose.family<Event, String>((
 /// Registers the current user and refreshes the event caches.
 final registerForEventProvider = FutureProvider.autoDispose
     .family<EventRegistration, String>((ref, eventId) async {
-      final repo = ref.watch(eventRepositoryProvider);
-      final registration = await repo.register(eventId: eventId);
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(upcomingEventsProvider);
-      return registration;
-    });
+  final repo = ref.watch(eventRepositoryProvider);
+  final registration = await repo.register(eventId: eventId);
+  ref.invalidate(eventDetailProvider(eventId));
+  ref.invalidate(upcomingEventsProvider);
+  return registration;
+});
 
 /// Cancels my registration and refreshes the event caches.
-final cancelEventRegistrationProvider = FutureProvider.autoDispose
-    .family<void, String>((ref, eventId) async {
-      final repo = ref.watch(eventRepositoryProvider);
-      await repo.cancelRegistration(eventId: eventId);
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(upcomingEventsProvider);
-    });
+final cancelEventRegistrationProvider =
+    FutureProvider.autoDispose.family<void, String>((ref, eventId) async {
+  final repo = ref.watch(eventRepositoryProvider);
+  await repo.cancelRegistration(eventId: eventId);
+  ref.invalidate(eventDetailProvider(eventId));
+  ref.invalidate(upcomingEventsProvider);
+});

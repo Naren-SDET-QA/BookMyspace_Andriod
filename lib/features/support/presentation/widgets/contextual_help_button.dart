@@ -32,6 +32,7 @@ Future<void> showContextualHelp(
   if (!context.mounted) return;
   await showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     showDragHandle: true,
     builder: (sheetContext) {
       return Padding(

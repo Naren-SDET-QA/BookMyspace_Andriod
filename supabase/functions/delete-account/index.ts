@@ -32,12 +32,14 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Audit before deletion.
+  // Best-effort audit. Deletion must still proceed if logging is unavailable.
   await supabase.from('audit_logs').insert({
     user_id: user.id,
+    actor_id: user.id,
     action: 'account_deleted',
     entity_type: 'user',
     entity_id: user.id,
+    details: { source: 'delete-account' },
   });
 
   // Delete the auth user; FK cascades remove profiles, roles, favorites, etc.

@@ -14,6 +14,10 @@ class ShellDestination {
   final FeatureId? feature;
 }
 
+// Branch indices match the merged router's StatefulShellRoute:
+// 0 home, 1 alerts, 2 search, 3 bookings, 4 courses, 5 profile,
+// 6 assistant tab, 7 map, 8 saved, 9 chat.
+//
 // Primary bottom-nav destinations, aligned with the Android reference
 // app's bottom bar: Home / Map / Search / Bookings / Profile / Saved.
 // Notifications and Courses are reachable as standalone pushed routes from
@@ -21,11 +25,11 @@ class ShellDestination {
 // Android app treats them as secondary, not primary, destinations.
 const shellDestinationCatalog = [
   ShellDestination(branchIndex: 0, id: 'home'),
-  ShellDestination(branchIndex: 1, id: 'map', feature: FeatureId.maps),
+  ShellDestination(branchIndex: 7, id: 'map', feature: FeatureId.maps),
   ShellDestination(branchIndex: 2, id: 'search', feature: FeatureId.search),
   ShellDestination(branchIndex: 3, id: 'bookings', feature: FeatureId.booking),
-  ShellDestination(branchIndex: 4, id: 'profile'),
-  ShellDestination(branchIndex: 5, id: 'saved'),
+  ShellDestination(branchIndex: 5, id: 'profile'),
+  ShellDestination(branchIndex: 8, id: 'saved'),
 ];
 
 /// Admin-selectable bottom-nav style (Admin settings -> Home UI ->
@@ -42,7 +46,7 @@ enum ShellNavStyle {
 }
 
 /// Branch index of the Chat (AI assistant) shell branch.
-const chatShellBranchIndex = 6;
+const chatShellBranchIndex = 9;
 
 const modernShellDestinationCatalog = [
   ShellDestination(branchIndex: 0, id: 'home'),
@@ -53,7 +57,7 @@ const modernShellDestinationCatalog = [
     id: 'chat',
     feature: FeatureId.ai,
   ),
-  ShellDestination(branchIndex: 4, id: 'profile'),
+  ShellDestination(branchIndex: 5, id: 'profile'),
 ];
 
 List<ShellDestination> visibleShellDestinations(

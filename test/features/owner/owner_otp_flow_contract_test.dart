@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('owner registration uses the shared email OTP flow', () {
     final source = File(
-      'lib/features/owner/presentation/screens/owner_registration_screen.dart',
+      'lib/features/owner/presentation/screens/owner_registration_screen_v1.dart',
     ).readAsStringSync();
     final repository = File(
       'lib/features/owner/infrastructure/supabase_owner_repository.dart',

@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/presentation/auth_providers.dart';
+import '../domain/help_faq.dart';
 import '../domain/support_ticket.dart';
 import '../domain/support_ticket_repository.dart';
 import '../infrastructure/supabase_support_repository.dart';
 
-final supportTicketRepositoryProvider = Provider<SupportTicketRepository>((ref) {
+final supportTicketRepositoryProvider = Provider<SupportTicketRepository>((
+  ref,
+) {
   final client = ref.watch(supabaseProvider);
   return SupabaseSupportRepository(client);
 });
@@ -15,10 +18,15 @@ final myTicketsProvider = FutureProvider<List<SupportTicket>>((ref) {
 });
 
 final createTicketProvider = FutureProvider.autoDispose
-    .family<SupportTicket, ({String subject, String description, String category, TicketPriority priority})>((
-      ref,
-      params,
-    ) async {
+    .family<
+      SupportTicket,
+      ({
+        String subject,
+        String description,
+        String category,
+        TicketPriority priority,
+      })
+    >((ref, params) async {
       final repo = ref.watch(supportTicketRepositoryProvider);
       return repo.createTicket(
         subject: params.subject,
@@ -29,10 +37,16 @@ final createTicketProvider = FutureProvider.autoDispose
     });
 
 final updateTicketProvider = FutureProvider.autoDispose
-    .family<void, ({String ticketId, String? subject, String? description, String? category, TicketPriority? priority})>((
-      ref,
-      params,
-    ) async {
+    .family<
+      void,
+      ({
+        String ticketId,
+        String? subject,
+        String? description,
+        String? category,
+        TicketPriority? priority,
+      })
+    >((ref, params) async {
       final repo = ref.watch(supportTicketRepositoryProvider);
       await repo.updateTicket(
         ticketId: params.ticketId,
@@ -43,3 +57,9 @@ final updateTicketProvider = FutureProvider.autoDispose
       );
       ref.invalidate(myTicketsProvider);
     });
+
+/// Support contact channels. Empty until a real configuration source exists;
+/// override in a ProviderScope to show the call / email buttons.
+final supportContactProvider = Provider<SupportContact>(
+  (ref) => const SupportContact(),
+);

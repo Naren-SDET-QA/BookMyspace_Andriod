@@ -57,10 +57,29 @@ class AccommodationProperty {
   final bool foodIncluded;
   final List<AccommodationUnit> units;
 
-  bool get hasAvailability => units.any((unit) => unit.inventory > 0);
-  double get startingPrice => units.isEmpty
-      ? 0
-      : units.map((unit) => unit.price).reduce((a, b) => a < b ? a : b);
+  bool get hasListedStock => units.any((unit) => unit.inventory > 0);
+
+  /// Lowest stored unit price. Zero means no price was stored.
+  double get startingPrice {
+    final priced = units.where((unit) => unit.hasPrice).map((unit) => unit.price);
+    if (priced.isEmpty) return 0;
+    return priced.reduce((a, b) => a < b ? a : b);
+  }
+
+  /// Cancellation text already stored on `stay_rules`. Empty when absent.
+  String get cancellationText {
+    for (final key in const [
+      'cancellation',
+      'cancellation_policy',
+      'summary',
+      'policy',
+      'text',
+    ]) {
+      final value = rules[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return '';
+  }
 
   factory AccommodationProperty.fromJson(Map<String, dynamic> json) {
     final rawUnits = json['accommodation_units'] as List<dynamic>? ?? const [];
@@ -127,6 +146,11 @@ class AccommodationUnit {
 
   double get price => rentMonthly ?? priceNightly ?? 0;
 
+  /// True only when a nightly or monthly amount was actually stored.
+  bool get hasPrice =>
+      (rentMonthly != null && rentMonthly! > 0) ||
+      (priceNightly != null && priceNightly! > 0);
+
   factory AccommodationUnit.fromJson(Map<String, dynamic> json) =>
       AccommodationUnit(
         id: json['id'] as String? ?? '',
@@ -180,6 +204,44 @@ class StayRoomSelection {
   final String unitId;
   final int quantity;
   Map<String, dynamic> toJson() => {'unit_id': unitId, 'quantity': quantity};
+}
+
+/// True when [policy] does not contradict [wanted].
+///
+/// An empty policy is unknown, not a mismatch. [wanted] uses the Home
+/// tokens `gents`, `ladies`, and `coliving`.
+bool genderPolicyAllows(String? policy, String? wanted) {
+  if (wanted == null || wanted.trim().isEmpty) return true;
+  if (policy == null || policy.trim().isEmpty) return true;
+  final hay = policy.toLowerCase();
+  switch (wanted.trim().toLowerCase()) {
+    case 'gents':
+      return hay.contains('gent') ||
+          hay.contains('male') ||
+          hay.contains('men');
+    case 'ladies':
+      return hay.contains('lad') ||
+          hay.contains('female') ||
+          hay.contains('women');
+    case 'coliving':
+      return hay.contains('coli') ||
+          hay.contains('unisex') ||
+          hay.contains('any');
+    default:
+      return true;
+  }
+}
+
+/// True when a unit occupancy label matches a Home sharing token.
+bool occupancyMatchesSharing(String occupancy, String? sharing) {
+  if (sharing == null || sharing.trim().isEmpty) return false;
+  final hay = occupancy.toLowerCase();
+  return switch (sharing.trim().toLowerCase()) {
+    'single' => hay.contains('single'),
+    'double' => hay.contains('double') || hay.contains('twin'),
+    'triple' => hay.contains('triple'),
+    _ => hay.contains(sharing.trim().toLowerCase()),
+  };
 }
 
 class StayUnitAvailability {

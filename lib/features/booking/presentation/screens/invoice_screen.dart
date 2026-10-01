@@ -38,7 +38,9 @@ class InvoiceScreen extends ConsumerWidget {
                   ? () => _InvoiceBody(booking: initial!)
                   : () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => ErrorView(message: e.toString()),
-              data: (b) => _InvoiceBody(booking: b),
+              data: (b) => b == null
+                  ? const ErrorView(message: 'Booking not found')
+                  : _InvoiceBody(booking: b),
             ),
     );
   }
@@ -235,6 +237,17 @@ class _InvoiceBody extends StatelessWidget {
                           icon: const Icon(Icons.share_outlined),
                           label: const Text('Share / print'),
                         ),
+                      if (invoice.invoiceId != null &&
+                          invoice.invoiceId!.isNotEmpty)
+                        OutlinedButton.icon(
+                          onPressed: () => _resendInvoiceEmail(
+                            context,
+                            ref,
+                            invoice.invoiceId!,
+                          ),
+                          icon: const Icon(Icons.email_outlined),
+                          label: const Text('Resend invoice'),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -282,7 +295,11 @@ class _InvoiceBody extends StatelessWidget {
     return switch (status) {
       BookingStatus.held => l10n.statusHeld,
       BookingStatus.pending => l10n.statusPending,
-      BookingStatus.pendingOwnerApproval => l10n.statusPending,
+      BookingStatus.pendingOwnerApproval ||
+      BookingStatus.awaitingOwnerApproval => l10n.statusPending,
+      BookingStatus.ownerRejected ||
+      BookingStatus.approvalExpired => l10n.statusCancelled,
+      BookingStatus.unknown => l10n.statusPending,
       BookingStatus.confirmed => l10n.statusConfirmed,
       BookingStatus.completed => l10n.statusCompleted,
       BookingStatus.cancelled => l10n.statusCancelled,
@@ -290,6 +307,54 @@ class _InvoiceBody extends StatelessWidget {
       BookingStatus.rejected => l10n.statusCancelled,
       BookingStatus.noShow => l10n.statusNoShow,
     };
+  }
+}
+
+Future<void> _resendInvoiceEmail(
+  BuildContext context,
+  WidgetRef ref,
+  String invoiceId,
+) async {
+  final controller = TextEditingController();
+  final email = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Resend invoice'),
+      content: TextField(
+        controller: controller,
+        keyboardType: TextInputType.emailAddress,
+        decoration: const InputDecoration(
+          labelText: 'Email address (optional)',
+          hintText: 'Leave blank for the booking email',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+          child: const Text('Queue email'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  if (!context.mounted || email == null) return;
+  try {
+    await ref
+        .read(invoiceRepositoryProvider)
+        .resend(invoiceId, recipientEmail: email.isEmpty ? null : email);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Invoice email queued')));
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Could not resend invoice: $error')));
   }
 }
 

@@ -3,6 +3,12 @@ import 'package:bookmyspace/features/notifications/domain/notification_repositor
 
 /// In-memory notification repository for tests.
 class MockNotificationRepository implements NotificationRepository {
+  // Interface members added by the merged branches that this double does
+  // not exercise fall through here.
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+
   MockNotificationRepository({List<Notification>? notifications})
     : _notifications = notifications ?? [];
 
@@ -47,6 +53,14 @@ class MockNotificationRepository implements NotificationRepository {
       );
     }
   }
+
+  @override
+  Future<void> delete(String notificationId) async {
+    _notifications.removeWhere((n) => n.id == notificationId);
+  }
+
+  @override
+  Future<void> clearAll() async => _notifications.clear();
 
   @override
   Future<int> unreadCount() async =>
