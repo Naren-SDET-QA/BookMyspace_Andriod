@@ -733,6 +733,14 @@ class _WalletHighlight extends ConsumerWidget {
           FilledButton(
             key: const Key('profile-wallet-redeem'),
             onPressed: onOpen,
+            style: FilledButton.styleFrom(
+              // Theme minimumSize is Size.fromHeight, which is infinite width.
+              // That stretches a button in a column and crashes inside a Row.
+              minimumSize: const Size(0, 40),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              visualDensity: VisualDensity.compact,
+            ),
             child: const Text('Redeem'),
           ),
         ],
