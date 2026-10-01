@@ -18,6 +18,7 @@ import '../../../venues/presentation/widgets/venue_badges.dart'
 import '../widgets/external_link.dart';
 import '../../domain/course.dart';
 import '../course_providers.dart';
+import '../widgets/class_enrollment_sheet.dart';
 import '../widgets/course_demo_actions.dart';
 import '../widgets/course_spec_card.dart';
 import '../widgets/feedback_dialog.dart';
@@ -86,6 +87,36 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
       alignment: 0.05,
+    );
+  }
+
+  void _enrollFromBar() {
+    final course = widget.course;
+    CourseBatch? batch;
+    for (final option in course.batches) {
+      if (!option.isFull && !option.userEnrolled) {
+        batch = option;
+        break;
+      }
+    }
+    batch ??= course.batches.isEmpty ? null : course.batches.first;
+    if (batch == null || batch.isFull || batch.userEnrolled) {
+      _jumpToBatches();
+      return;
+    }
+    if (ref.read(currentUserProvider) == null) {
+      context.push(
+        loginLocationFor(
+          Uri.parse(AppRoutes.courseDetails.replaceAll(':id', course.id)),
+        ),
+      );
+      return;
+    }
+    showClassEnrollmentSheet(
+      context,
+      course: course,
+      batch: batch,
+      isTrial: false,
     );
   }
 
@@ -334,7 +365,7 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
                     )
                   else
                     ...course.batches.map(
-                      (b) => _BatchTile(courseId: course.id, batch: b),
+                      (b) => _BatchTile(course: course, batch: b),
                     ),
                   const SizedBox(height: 20),
                   if (course.faqs.isNotEmpty) ...[
@@ -353,7 +384,7 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
       ),
       bottomNavigationBar: _StickyEnrollBar(
         course: course,
-        onEnroll: _jumpToBatches,
+        onEnroll: _enrollFromBar,
       ),
     );
   }
@@ -705,9 +736,9 @@ class _FeedbackTile extends StatelessWidget {
 }
 
 class _BatchTile extends ConsumerStatefulWidget {
-  const _BatchTile({required this.courseId, required this.batch});
+  const _BatchTile({required this.course, required this.batch});
 
-  final String courseId;
+  final Course course;
   final CourseBatch batch;
 
   @override
@@ -724,24 +755,19 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
     if (ref.read(currentUserProvider) == null) {
       context.push(
         loginLocationFor(
-          Uri.parse(AppRoutes.courseDetails.replaceAll(':id', widget.courseId)),
+          Uri.parse(
+            AppRoutes.courseDetails.replaceAll(':id', widget.course.id),
+          ),
         ),
       );
       return;
     }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await ref
-          .read(courseEnrollmentControllerProvider)
-          .enroll(courseId: widget.courseId, batchId: batch.id);
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    await showClassEnrollmentSheet(
+      context,
+      course: widget.course,
+      batch: batch,
+      isTrial: false,
+    );
   }
 
   Future<void> _confirmDrop() async {
@@ -772,7 +798,7 @@ class _BatchTileState extends ConsumerState<_BatchTile> {
     try {
       await ref
           .read(courseEnrollmentControllerProvider)
-          .drop(courseId: widget.courseId, batchId: batch.id);
+          .drop(courseId: widget.course.id, batchId: batch.id);
       if (mounted) {
         ScaffoldMessenger.of(
           context,

@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../booking/domain/booking.dart';
+import '../../domain/check_in_verdict.dart';
 import '../../domain/qr_check_in.dart';
+import '../check_in_feedback.dart';
 import '../qr_checkin_providers.dart';
 import '../widgets/qr_camera_scanner.dart';
 import '../widgets/qr_code_pass_widget.dart';
@@ -93,8 +95,10 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('📷 ', style: TextStyle(fontSize: 14)),
-                      Text('Scan QR Code',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Scan QR Code',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 ),
@@ -103,8 +107,10 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('🎫 ', style: TextStyle(fontSize: 14)),
-                      Text('My Entry Pass QR',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'My Entry Pass QR',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 ),
@@ -269,8 +275,9 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
             ),
           )
         else
-          ...confirmedBookings
-              .map((booking) => _buildQrPassCard(theme, booking)),
+          ...confirmedBookings.map(
+            (booking) => _buildQrPassCard(theme, booking),
+          ),
       ],
     );
   }
@@ -318,8 +325,10 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: isCheckedIn
                         ? const Color(0xFFE8F5E9)
@@ -351,10 +360,7 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
 
             Text(
               'PASS REF: #${booking.bookingRef}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 2),
             Text(
@@ -376,16 +382,21 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                       // an artifact that was never generated.
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content:
-                              Text('Pass reference: #${booking.bookingRef}'),
+                          content: Text(
+                            'Pass reference: #${booking.bookingRef}',
+                          ),
                           duration: const Duration(seconds: 3),
                         ),
                       );
                     },
-                    icon: const Icon(Icons.confirmation_number_outlined,
-                        size: 16),
-                    label:
-                        const Text('Pass Ref', style: TextStyle(fontSize: 12)),
+                    icon: const Icon(
+                      Icons.confirmation_number_outlined,
+                      size: 16,
+                    ),
+                    label: const Text(
+                      'Pass Ref',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     style: OutlinedButton.styleFrom(
                       shape: RoundedCornerShape(10),
                     ),
@@ -394,13 +405,16 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed:
-                        isCheckedIn ? null : () => _performCheckIn(booking.id),
+                    onPressed: isCheckedIn
+                        ? null
+                        : () => _performCheckIn(booking.id),
                     icon: const Icon(Icons.how_to_reg, size: 16),
                     label: Text(
                       isCheckedIn ? 'Verified' : 'Check In Now',
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.bold),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     style: FilledButton.styleFrom(
                       shape: RoundedCornerShape(10),
@@ -422,20 +436,35 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
   }
 
   void _showResultDialog(CheckInResult res) {
+    final verdict = classifyCheckIn(res);
+    acknowledgeCheckIn(verdict);
+    final color = switch (verdict) {
+      CheckInVerdict.valid => const Color(0xFF2E7D32),
+      CheckInVerdict.alreadyCheckedIn => const Color(0xFFB45309),
+      CheckInVerdict.expired || CheckInVerdict.invalid => Colors.red,
+      CheckInVerdict.unavailable => Colors.blueGrey,
+    };
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
             Icon(
-              res.success ? Icons.check_circle : Icons.error,
-              color: res.success ? const Color(0xFF2E7D32) : Colors.red,
+              verdict == CheckInVerdict.valid
+                  ? Icons.check_circle
+                  : Icons.error,
+              color: color,
               size: 28,
             ),
             const SizedBox(width: 10),
-            Text(
-              res.success ? 'Check-In Verified!' : 'Check-In Issue',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+            Expanded(
+              child: Text(
+                verdict.label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
             ),
           ],
         ),
@@ -443,10 +472,7 @@ class _QrCheckInScannerScreenState extends ConsumerState<QrCheckInScannerScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              res.message,
-              style: const TextStyle(fontSize: 14),
-            ),
+            Text(res.message, style: const TextStyle(fontSize: 14)),
             if (res.booking != null) ...[
               const SizedBox(height: 12),
               Container(

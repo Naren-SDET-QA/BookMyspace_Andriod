@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../auth/presentation/auth_providers.dart';
 import '../../domain/course.dart';
 import '../course_waitlist_providers.dart';
 import 'class_enrollment_sheet.dart';
+import 'waitlist_alert_sheet.dart';
 
 /// Primary action for a batch: Enroll, Join waitlist, waitlist position
 /// (tap to leave), or "Seat offered" once the learner is promoted.
@@ -29,9 +26,23 @@ class _BatchEnrollButtonState extends ConsumerState<BatchEnrollButton> {
   bool _busy = false;
 
   static final _style = FilledButton.styleFrom(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     minimumSize: const Size(0, 36),
-    backgroundColor: AppTheme.violet,
+    backgroundColor: const Color(0xFF6D28D9),
+    foregroundColor: Colors.white,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    visualDensity: VisualDensity.compact,
+  );
+
+  static final _waitStyle = FilledButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    minimumSize: const Size(0, 36),
+    backgroundColor: const Color(0xFFE11D48),
+    foregroundColor: Colors.white,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    visualDensity: VisualDensity.compact,
   );
 
   void _enroll() => showClassEnrollmentSheet(
@@ -41,32 +52,12 @@ class _BatchEnrollButtonState extends ConsumerState<BatchEnrollButton> {
         isTrial: false,
       );
 
-  Future<void> _join() async {
-    if (ref.read(currentUserProvider) == null) {
-      context.push(AppRoutes.login);
-      return;
-    }
-    setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final position = await ref.read(courseWaitlistControllerProvider).join(
-            courseId: widget.course.id,
-            batchId: widget.batch.id,
-          );
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            position == 0
-                ? 'A seat is being held for you. Enroll now to secure it.'
-                : "You're #$position on the waitlist. We'll notify you when a seat opens.",
-          ),
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  void _join() {
+    showWaitlistAlertSheet(
+      context,
+      course: widget.course,
+      batch: widget.batch,
+    );
   }
 
   Future<void> _leave() async {
@@ -130,34 +121,43 @@ class _BatchEnrollButtonState extends ConsumerState<BatchEnrollButton> {
         onPressed: _enroll,
         style: _style,
         icon: const Icon(Icons.event_seat_rounded, size: 16),
-        label: const Text('Seat offered · Enroll', style: label),
+        label: const Text('Seat offered', style: label),
       );
     }
     if (entry != null) {
       return OutlinedButton.icon(
         onPressed: _leave,
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          foregroundColor: const Color(0xFFFB7185),
+          side: const BorderSide(color: Color(0xFFFB7185)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           minimumSize: const Size(0, 36),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
         ),
-        icon: const Icon(Icons.hourglass_top_rounded, size: 16),
+        icon: const Icon(Icons.notifications_active_rounded, size: 16),
         label: Text('Waitlist #${entry.position}', style: label),
       );
     }
     if (batch.isFull) {
-      return FilledButton(
+      return FilledButton.icon(
         onPressed: batch.waitlistEnabled ? _join : null,
-        style: _style,
-        child: Text(
-          batch.waitlistEnabled ? 'Join Waitlist' : 'Batch Full',
+        style: _waitStyle,
+        icon: const Icon(Icons.notifications_rounded, size: 16),
+        label: Text(
+          batch.waitlistEnabled ? 'Notify Me' : 'Batch full',
           style: label,
         ),
       );
     }
-    return FilledButton(
+    return FilledButton.icon(
       onPressed: _enroll,
       style: _style,
-      child: const Text('Enroll Now', style: label),
+      icon: const Icon(Icons.event_available_rounded, size: 16),
+      label: const Text('1-Tap Book', style: label),
     );
   }
 }

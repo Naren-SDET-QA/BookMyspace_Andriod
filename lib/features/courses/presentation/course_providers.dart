@@ -324,6 +324,9 @@ class OwnerCourseController {
     _ref.invalidate(ownerInstitutesProvider);
     _ref.invalidate(institutesProvider);
     _ref.invalidate(instituteDetailProvider(instituteId));
+    if (registrationForm != null) {
+      _ref.invalidate(publishedCoursesProvider);
+    }
   }
 
   Future<void> saveBranch(InstituteBranch branch) async {

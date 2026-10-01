@@ -121,6 +121,7 @@ class SupabaseBookingRepository implements BookingRepository {
     required double amount,
     int approvalMinutes = 120,
     String? couponCode,
+    Map<String, dynamic> metadata = const {},
   }) async {
     final hold = await acquireHold(
       venueId: venueId,
@@ -135,6 +136,18 @@ class SupabaseBookingRepository implements BookingRepository {
         'Booking request did not return a server booking.',
         code: 'missing_booking_id',
       );
+    }
+    if (metadata.isNotEmpty) {
+      final response = await _client.rpc(
+        'update_booking_request_metadata',
+        params: {'p_booking_id': bookingId, 'p_metadata': metadata},
+      );
+      if (response is Map<String, dynamic> && response['success'] != true) {
+        throw app_errors.ServerException(
+          'Booking registration could not be saved.',
+          code: response['error_code'] as String?,
+        );
+      }
     }
     return _loadBooking(bookingId);
   }
@@ -178,10 +191,7 @@ class SupabaseBookingRepository implements BookingRepository {
     try {
       final response = await _client.rpc(
         'approve_venue_booking',
-        params: {
-          'p_booking_id': bookingId,
-          'p_idempotency_key': _newUuid(),
-        },
+        params: {'p_booking_id': bookingId, 'p_idempotency_key': _newUuid()},
       );
       _ensureRpcSuccess(response, fallbackCode: 'approval_failed');
       return _loadBooking(bookingId);
@@ -355,11 +365,11 @@ class SupabaseBookingRepository implements BookingRepository {
       );
     }
     final expiresAt = session.expiresAt;
-    final isExpired = expiresAt != null &&
+    final isExpired =
+        expiresAt != null &&
         DateTime.now().toUtc().isAfter(
-              DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000,
-                  isUtc: true),
-            );
+          DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000, isUtc: true),
+        );
     if (isExpired) {
       try {
         final refreshed = await _client.auth.refreshSession();
@@ -441,7 +451,8 @@ class SupabaseBookingRepository implements BookingRepository {
         throw app_errors.ServerException(
           data?['message']?.toString() ??
               'The booking pass could not be validated.',
-          code: data?['error_code']?.toString().toLowerCase() ??
+          code:
+              data?['error_code']?.toString().toLowerCase() ??
               'check_in_failed',
         );
       }

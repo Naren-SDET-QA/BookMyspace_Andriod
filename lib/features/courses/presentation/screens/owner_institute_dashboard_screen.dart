@@ -7,6 +7,8 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/responsive_layout.dart';
+import '../widgets/external_link.dart';
 import '../../../cms/domain/configurable_form.dart';
 import '../../../cms/domain/target_modules.dart';
 import '../../../cms/presentation/widgets/configurable_form_builder.dart';
@@ -39,32 +41,18 @@ class OwnerInstituteDashboardScreen extends ConsumerWidget {
     final institutesAsync = ref.watch(ownerInstitutesProvider);
     final admissionsAsync = ref.watch(ownerAdmissionsProvider);
 
-    return DefaultTabController(
-      length: 7,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Institute Dashboard'),
-          bottom: const TabBar(
-            isScrollable: true,
-            tabs: [
-              Tab(text: 'Batches'),
-              Tab(text: 'Admissions'),
-              Tab(text: 'Faculty'),
-              Tab(text: 'Registration Form'),
-              Tab(text: 'Branches'),
-              Tab(text: 'Settings'),
-              Tab(text: 'Profile'),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Institute'),
+        actions: [
+          IconButton(
+            tooltip: 'New course',
+            onPressed: () => context.push(AppRoutes.ownerCourseCreate),
+            icon: const Icon(Icons.add_rounded),
           ),
-          actions: [
-            IconButton(
-              tooltip: 'New course',
-              onPressed: () => context.push(AppRoutes.ownerCourseCreate),
-              icon: const Icon(Icons.add_rounded),
-            ),
-          ],
-        ),
-        body: coursesAsync.when(
+        ],
+      ),
+      body: coursesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ErrorView(
             message: e.toString(),
@@ -75,98 +63,335 @@ class OwnerInstituteDashboardScreen extends ConsumerWidget {
             },
           ),
           data: (courses) {
-            final institutes = institutesAsync.valueOrNull ?? const [];
-            final admissions = admissionsAsync.valueOrNull ?? const [];
-            final batches = [
-              for (final course in courses) ...course.batches,
-            ];
-            final activeBatches =
-                batches.where((batch) => batch.isActive).length;
-            final enrolled =
-                batches.fold<int>(0, (sum, batch) => sum + batch.enrolledCount);
-            final pending =
-                admissions.where((item) => item.status == 'pending').length;
-            final revenue = batches.fold<double>(
-              0,
-              (sum, batch) =>
-                  sum +
-                  (batch.feeAmount > 0 ? batch.feeAmount : 0) *
-                      batch.enrolledCount,
-            );
-
-            return Column(
-              children: [
-                // ── Overview Metrics ──
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _MetricCard(
-                          label: 'Active Batches',
-                          value: '$activeBatches',
-                          icon: Icons.event_note_rounded,
-                          color: AppTheme.violet,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _MetricCard(
-                          label: 'Enrolled Students',
-                          value: '$enrolled',
-                          icon: Icons.groups_rounded,
-                          color: const Color(0xFF10B981),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _MetricCard(
-                          label: 'Pending Trials',
-                          value: '$pending',
-                          icon: Icons.pending_actions_rounded,
-                          color: const Color(0xFFF59E0B),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _MetricCard(
-                          label: 'Monthly Revenue',
-                          value: formatInr(revenue),
-                          icon: Icons.payments_rounded,
-                          color: const Color(0xFF0284C7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // ── Tab Content ──
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _BatchesTab(courses: courses),
-                      _AdmissionsTab(admissions: admissions),
-                      _FacultyTab(
-                        courses: courses,
-                        institutes: institutes,
-                      ),
-                      _RegistrationFormTab(institutes: institutes),
-                      _BranchesTab(institutes: institutes),
-                      _ModulesTab(institutes: institutes),
-                      _ProfileTab(institutes: institutes),
-                    ],
-                  ),
-                ),
-              ],
+            return _OwnerShell(
+              courses: courses,
+              institutes: institutesAsync.valueOrNull ?? const [],
+              admissions: admissionsAsync.valueOrNull ?? const [],
             );
           },
         ),
+    );
+  }
+}
+
+class _OwnerShell extends StatefulWidget {
+  const _OwnerShell({
+    required this.courses,
+    required this.institutes,
+    required this.admissions,
+  });
+
+  final List<Course> courses;
+  final List<Institute> institutes;
+  final List<CourseDemoRegistration> admissions;
+
+  @override
+  State<_OwnerShell> createState() => _OwnerShellState();
+}
+
+class _OwnerShellState extends State<_OwnerShell> {
+  String? _instituteId;
+
+  Institute? get _selected {
+    final institutes = widget.institutes;
+    if (institutes.isEmpty) return null;
+    for (final institute in institutes) {
+      if (institute.id == _instituteId) return institute;
+    }
+    return institutes.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = _selected;
+    final courses = selected == null
+        ? widget.courses
+        : widget.courses
+            .where((course) => course.instituteId == selected.id)
+            .toList();
+    final courseIds = courses.map((course) => course.id).toSet();
+    final admissions = selected == null
+        ? widget.admissions
+        : widget.admissions
+            .where((item) => courseIds.contains(item.courseId))
+            .toList();
+    final institutes =
+        selected == null ? widget.institutes : <Institute>[selected];
+    final batches = [for (final course in courses) ...course.batches];
+    final activeBatches = batches.where((batch) => batch.isActive).length;
+    final enrolled =
+        batches.fold<int>(0, (sum, batch) => sum + batch.enrolledCount);
+    final capacity =
+        batches.fold<int>(0, (sum, batch) => sum + batch.capacity);
+    final pending =
+        admissions.where((item) => item.status == 'pending').length;
+    final revenue = batches.fold<double>(
+      0,
+      (sum, batch) =>
+          sum +
+          (batch.feeAmount > 0 ? batch.feeAmount : 0) * batch.enrolledCount,
+    );
+    final name = selected?.name.isNotEmpty == true
+        ? selected!.name
+        : 'Institute Dashboard';
+
+    return ResponsiveLayoutBuilder(
+      builder: (context, responsive) => DefaultTabController(
+        length: 7,
+        child: Column(
+          children: [
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  responsive.horizontalPadding,
+                  8,
+                  responsive.horizontalPadding,
+                  0,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      key: const Key('owner-badge'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.violet.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'OWNER',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.violet,
+                        ),
+                      ),
+                    ),
+                    if (widget.institutes.length > 1)
+                      PopupMenuButton<String>(
+                        key: const Key('owner-branch-switcher'),
+                        tooltip: 'Switch academy',
+                        onSelected: (id) => setState(() => _instituteId = id),
+                        itemBuilder: (context) => [
+                          for (final institute in widget.institutes)
+                            PopupMenuItem(
+                              value: institute.id,
+                              child: Text(institute.name),
+                            ),
+                        ],
+                        icon: const Icon(Icons.account_tree_outlined),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  _OwnerOverview(
+                    horizontalPadding: responsive.horizontalPadding,
+                    short: responsive.availableHeight < 480,
+                    activeBatches: activeBatches,
+                    enrolled: enrolled,
+                    pending: pending,
+                    revenue: revenue,
+                    capacity: capacity,
+                  ),
+                  TabBar(
+                    key: const Key('owner-dashboard-tabs'),
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    tabs: const [
+                      Tab(text: 'Batches'),
+                      Tab(text: 'Admissions'),
+                      Tab(text: 'Faculty'),
+                      Tab(text: 'Registration'),
+                      Tab(text: 'Branches'),
+                      Tab(text: 'Settings'),
+                      Tab(text: 'Profile'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _BatchesTab(courses: courses),
+                        _AdmissionsTab(admissions: admissions),
+                        _FacultyTab(courses: courses, institutes: institutes),
+                        _RegistrationFormTab(institutes: institutes),
+                        _BranchesTab(institutes: institutes),
+                        _ModulesTab(institutes: institutes),
+                        _ProfileTab(institutes: institutes),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// Keeps an empty tab centered when it fits, and scrollable when the
+/// window is shorter than the message (landscape phones).
+class _FittingEmpty extends StatelessWidget {
+  const _FittingEmpty({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+              minHeight: constraints.maxHeight,
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _OwnerOverview extends StatelessWidget {
+  const _OwnerOverview({
+    required this.horizontalPadding,
+    required this.short,
+    required this.activeBatches,
+    required this.enrolled,
+    required this.pending,
+    required this.revenue,
+    required this.capacity,
+  });
+
+  final double horizontalPadding;
+  final bool short;
+  final int activeBatches;
+  final int enrolled;
+  final int pending;
+  final double revenue;
+  final int capacity;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 520;
+              final metrics = [
+                _MetricCard(
+                  label: 'Active batches',
+                  value: '$activeBatches',
+                  icon: Icons.event_note_rounded,
+                  color: AppTheme.violet,
+                ),
+                _MetricCard(
+                  label: 'Enrolled',
+                  value: '$enrolled',
+                  icon: Icons.groups_rounded,
+                  color: const Color(0xFF10B981),
+                ),
+                _MetricCard(
+                  label: 'Inquiries',
+                  value: '$pending',
+                  icon: Icons.pending_actions_rounded,
+                  color: const Color(0xFFF59E0B),
+                ),
+                _MetricCard(
+                  label: 'Revenue',
+                  value: formatInr(revenue),
+                  icon: Icons.payments_rounded,
+                  color: const Color(0xFF0284C7),
+                ),
+              ];
+              if (stacked) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: metrics[0]),
+                        const SizedBox(width: 8),
+                        Expanded(child: metrics[1]),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: metrics[2]),
+                        const SizedBox(width: 8),
+                        Expanded(child: metrics[3]),
+                      ],
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  for (var i = 0; i < metrics.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(child: metrics[i]),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+        Padding(
+          key: const Key('owner-capacity-gauge'),
+          padding: EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                capacity == 0 ? 'Capacity' : 'Capacity $enrolled of $capacity',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: capacity == 0 ? 0 : (enrolled / capacity).clamp(0.0, 1.0),
+                  minHeight: 8,
+                  color: const Color(0xFF0D9488),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    // Landscape phones keep the seven tabs on screen. The overview folds
+    // away until the owner opens it.
+    if (!short) return body;
+    return ExpansionTile(
+      tilePadding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      title: const Text('Overview'),
+      children: [body],
     );
   }
 }
@@ -220,6 +445,8 @@ class _MetricCard extends StatelessWidget {
                 ),
                 Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -313,12 +540,16 @@ class _BatchesTab extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          '$title ($count)',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-            color: color,
+        Expanded(
+          child: Text(
+            '$title ($count)',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -371,6 +602,8 @@ class _BatchesTab extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     batch.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -408,20 +641,21 @@ class _BatchesTab extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _miniStat(
                     Icons.people_rounded,
                     '${batch.enrolledCount}/${batch.capacity}',
                     AppTheme.violet),
-                const SizedBox(width: 12),
                 _miniStat(
                     Icons.payments_rounded,
                     formatInr(batch.feeAmount > 0
                         ? batch.feeAmount
                         : row.course.feeAmount),
                     const Color(0xFF10B981)),
-                const Spacer(),
                 if (batch.isActive)
                   IconButton(
                     tooltip: 'Edit batch',
@@ -462,10 +696,12 @@ class _AdmissionsTab extends ConsumerWidget {
     final processed = admissions.where((a) => a.status != 'pending').toList();
 
     if (admissions.isEmpty) {
-      return const EmptyState(
-        icon: Icons.how_to_reg_outlined,
-        title: 'No admission requests',
-        message: 'Trial bookings and enrollments will appear here.',
+      return const _FittingEmpty(
+        child: EmptyState(
+          icon: Icons.how_to_reg_outlined,
+          title: 'No admission requests',
+          message: 'Trial bookings and enrollments will appear here.',
+        ),
       );
     }
 
@@ -497,6 +733,19 @@ class _AdmissionsTab extends ConsumerWidget {
         ],
       ],
     );
+  }
+
+  Future<void> _reach(
+    BuildContext context,
+    Future<bool> Function() open,
+    String failure,
+  ) async {
+    final ok = await open();
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failure)),
+      );
+    }
   }
 
   Widget _admissionCard(
@@ -568,42 +817,66 @@ class _AdmissionsTab extends ConsumerWidget {
                 ),
               ],
             ),
+            if (item.mobile.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _reach(
+                      context,
+                      () => openContactLink(item.mobile),
+                      'Calls are not available here. Number: ${item.mobile}',
+                    ),
+                    icon: const Icon(Icons.call_rounded, size: 16),
+                    label: const Text('Call'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _reach(
+                      context,
+                      () => openWhatsApp(item.mobile),
+                      'WhatsApp is not available on this device.',
+                    ),
+                    icon: const Icon(Icons.chat_rounded, size: 16),
+                    label: const Text('WhatsApp'),
+                  ),
+                ],
+              ),
+            ],
             if (isPending) ...[
               const SizedBox(height: 10),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => ref
-                          .read(courseRepositoryProvider)
-                          .setAdmissionStatus(
-                            registrationId: item.id,
-                            status: 'cancelled',
-                          )
-                          .then((_) => ref.invalidate(ownerAdmissionsProvider)),
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('Reject'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFEF4444),
-                        side: const BorderSide(color: Color(0xFFEF4444)),
-                      ),
+                  OutlinedButton.icon(
+                    onPressed: () => ref
+                        .read(courseRepositoryProvider)
+                        .setAdmissionStatus(
+                          registrationId: item.id,
+                          status: 'cancelled',
+                        )
+                        .then((_) => ref.invalidate(ownerAdmissionsProvider)),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: const Text('Reject'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFEF4444),
+                      side: const BorderSide(color: Color(0xFFEF4444)),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => ref
-                          .read(courseRepositoryProvider)
-                          .setAdmissionStatus(
-                            registrationId: item.id,
-                            status: 'contacted',
-                          )
-                          .then((_) => ref.invalidate(ownerAdmissionsProvider)),
-                      icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text('Approve'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                      ),
+                  FilledButton.icon(
+                    onPressed: () => ref
+                        .read(courseRepositoryProvider)
+                        .setAdmissionStatus(
+                          registrationId: item.id,
+                          status: 'contacted',
+                        )
+                        .then((_) => ref.invalidate(ownerAdmissionsProvider)),
+                    icon: const Icon(Icons.check_rounded, size: 16),
+                    label: const Text('Approve'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
                     ),
                   ),
                 ],
@@ -708,10 +981,12 @@ class _ProfileTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     if (institutes.isEmpty) {
-      return const EmptyState(
-        icon: Icons.account_balance_outlined,
-        title: 'No institute profile',
-        message: 'Create an institute under your organization first.',
+      return const _FittingEmpty(
+        child: EmptyState(
+          icon: Icons.account_balance_outlined,
+          title: 'No institute profile',
+          message: 'Create an institute under your organization first.',
+        ),
       );
     }
     final institute = institutes.first;
@@ -965,13 +1240,24 @@ class _RegistrationFormTabState extends ConsumerState<_RegistrationFormTab> {
       widget.institutes.isEmpty ? null : widget.institutes.first;
 
   @override
+  void didUpdateWidget(covariant _RegistrationFormTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previous =
+        oldWidget.institutes.isEmpty ? '' : oldWidget.institutes.first.id;
+    final next = widget.institutes.isEmpty ? '' : widget.institutes.first.id;
+    if (previous != next) _schema = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final institute = _institute;
     if (institute == null) {
-      return const EmptyState(
-        icon: Icons.rule_rounded,
-        title: 'No institute',
-        message: 'Create an institute before configuring registration.',
+      return const _FittingEmpty(
+        child: EmptyState(
+          icon: Icons.rule_rounded,
+          title: 'No institute',
+          message: 'Create an institute before configuring registration.',
+        ),
       );
     }
     final aadhaarAllowed = institute.modules.enabled('aadhaar');
@@ -983,7 +1269,7 @@ class _RegistrationFormTabState extends ConsumerState<_RegistrationFormTab> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Students only see fields you enable. Aadhaar stays off unless you turn it on in Settings.',
+          'Students see these fields when they tap Enroll or 1-Tap Book. Enable, rename, or add a field, then tap Publish form. Aadhaar stays off unless you turn it on in Settings.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
@@ -1030,7 +1316,20 @@ class _RegistrationFormTabState extends ConsumerState<_RegistrationFormTab> {
             instituteId: institute.id,
             registrationForm: published,
           );
-      if (mounted) setState(() => _schema = published);
+      if (!mounted) return;
+      setState(() => _schema = published);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Registration form published. Students see these fields when they enroll.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not publish the form: $error')),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1045,18 +1344,22 @@ class _BranchesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (institutes.isEmpty) {
-      return const EmptyState(
-        icon: Icons.location_on_outlined,
-        title: 'No institute',
-        message: 'Create an institute before adding branches.',
+      return const _FittingEmpty(
+        child: EmptyState(
+          icon: Icons.location_on_outlined,
+          title: 'No institute',
+          message: 'Create an institute before adding branches.',
+        ),
       );
     }
     final institute = institutes.first;
     if (!institute.modules.enabled('location')) {
-      return const EmptyState(
-        icon: Icons.location_off_outlined,
-        title: 'Location is turned off',
-        message: 'Enable Address in Settings to manage branches.',
+      return const _FittingEmpty(
+        child: EmptyState(
+          icon: Icons.location_off_outlined,
+          title: 'Location is turned off',
+          message: 'Enable Address in Settings to manage branches.',
+        ),
       );
     }
     final branchesAsync = ref.watch(instituteBranchesProvider(institute.id));
@@ -1191,10 +1494,12 @@ class _ModulesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (institutes.isEmpty) {
-      return const EmptyState(
-        icon: Icons.tune_rounded,
-        title: 'No institute',
-        message: 'Create an institute first.',
+      return const _FittingEmpty(
+        child: EmptyState(
+          icon: Icons.tune_rounded,
+          title: 'No institute',
+          message: 'Create an institute first.',
+        ),
       );
     }
     final institute = institutes.first;

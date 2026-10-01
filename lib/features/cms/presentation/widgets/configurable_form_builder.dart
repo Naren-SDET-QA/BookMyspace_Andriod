@@ -265,6 +265,25 @@ class _FieldTile extends StatelessWidget {
                 onChanged: (value) =>
                     onChanged(field.copyWith(helpText: value)),
               ),
+              if (field.type == ConfigurableFieldType.dropdown ||
+                  field.type == ConfigurableFieldType.radio ||
+                  field.type == ConfigurableFieldType.multiSelect)
+                TextFormField(
+                  initialValue: field.options.join(', '),
+                  decoration: const InputDecoration(
+                    labelText: 'Options (comma separated)',
+                    helperText: 'Students see these choices on the enroll form.',
+                  ),
+                  onChanged: (value) => onChanged(
+                    field.copyWith(
+                      options: value
+                          .split(',')
+                          .map((item) => item.trim())
+                          .where((item) => item.isNotEmpty)
+                          .toList(),
+                    ),
+                  ),
+                ),
               if (onDelete != null)
                 Align(
                   alignment: Alignment.centerRight,

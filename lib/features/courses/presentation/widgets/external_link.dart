@@ -1,5 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Web opens in the current browser. iOS and Android open the external app.
+LaunchMode get academicLaunchMode => kIsWeb
+    ? LaunchMode.platformDefault
+    : LaunchMode.externalApplication;
+
+/// Opens [uri] without throwing when the platform has no handler
+/// (desktop web `tel:` links, for example).
+Future<bool> launchExternal(Uri uri) async {
+  try {
+    return await launchUrl(uri, mode: academicLaunchMode);
+  } catch (_) {
+    return false;
+  }
+}
 
 /// Result of an attempt to open an external registration/demo link.
 enum ExternalLinkOutcome { opened, cancelled, invalid, failed }
@@ -67,7 +83,7 @@ Future<ExternalLinkOutcome> confirmAndOpenExternalUrl(
   );
   if (proceed != true) return ExternalLinkOutcome.cancelled;
 
-  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  final ok = await launchExternal(uri);
   return ok ? ExternalLinkOutcome.opened : ExternalLinkOutcome.failed;
 }
 
@@ -86,7 +102,7 @@ Future<bool> openContactLink(String raw) async {
     if (digits.isEmpty) return false;
     uri = Uri(scheme: 'tel', path: digits);
   }
-  return launchUrl(uri);
+  return launchExternal(uri);
 }
 
 /// Opens a WhatsApp chat for [phone] (digits, optional leading `+`).
@@ -94,7 +110,7 @@ Future<bool> openWhatsApp(String phone) async {
   final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
   if (digits.isEmpty) return false;
   final uri = Uri.parse('https://wa.me/$digits');
-  return launchUrl(uri, mode: LaunchMode.externalApplication);
+  return launchExternal(uri);
 }
 
 /// Opens a demo video / brochure / recorded preview URL. These are trusted
@@ -102,5 +118,5 @@ Future<bool> openWhatsApp(String phone) async {
 /// confirmation) but still must be safe absolute http(s) URLs.
 Future<bool> openMediaUrl(String raw) async {
   if (!isSafeExternalUrl(raw)) return false;
-  return launchUrl(Uri.parse(raw.trim()), mode: LaunchMode.externalApplication);
+  return launchExternal(Uri.parse(raw.trim()));
 }

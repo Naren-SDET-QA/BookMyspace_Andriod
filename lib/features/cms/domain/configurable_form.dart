@@ -6,6 +6,15 @@
 /// Never stores HTML, JavaScript, or executable code.
 library;
 
+/// JSON objects from Postgres sometimes arrive as [Map] without `String` keys.
+Map<String, dynamic>? asStringKeyMap(Object? raw) {
+  if (raw is Map<String, dynamic>) return raw;
+  if (raw is Map) {
+    return raw.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return null;
+}
+
 enum ConfigurableFieldType {
   text,
   multiline,
@@ -79,7 +88,8 @@ class ConfigurableFieldDefinition {
       helpText: json['help_text'] as String? ?? '',
       displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
       options: (json['options'] as List? ?? const [])
-          .whereType<String>()
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
           .toList(growable: false),
       sensitive: json['sensitive'] as bool? ?? false,
       custom: json['custom'] as bool? ?? false,

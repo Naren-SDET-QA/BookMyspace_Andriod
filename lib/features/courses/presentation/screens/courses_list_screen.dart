@@ -7,7 +7,9 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/skeleton.dart';
+import '../../../home/presentation/discovery_location.dart';
 import '../../domain/class_category_filter.dart';
 import '../../domain/course.dart';
 import '../../domain/education_category.dart';
@@ -101,30 +103,15 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
 
   List<({Course course, CourseBatch batch})> _matchingBatches(
     List<Course> courses,
+    DiscoveryLocation location,
   ) {
-    final query = _query.trim().toLowerCase();
-    final filter = _filter;
-    final matches = <({Course course, CourseBatch batch})>[];
-    for (final course in courses) {
-      for (final batch in course.batches.where((b) => b.isActive)) {
-        if (_ongoingToday && !batch.isOngoingToday) continue;
-        if (_waitlistOnly && !batch.waitlistEnabled) continue;
-        if (!filter.matchesBatch(course, batch)) continue;
-        if (query.isNotEmpty) {
-          final haystack = [
-            course.title,
-            batch.subject,
-            batch.label,
-            course.instituteName,
-            course.instructorName,
-            course.instituteCity,
-          ].join(' ').toLowerCase();
-          if (!haystack.contains(query)) continue;
-        }
-        matches.add((course: course, batch: batch));
-      }
-    }
-    return matches;
+    return ClassFeedQuery(
+      text: _query,
+      filter: _filter,
+      ongoingToday: _ongoingToday,
+      fullOrWaitlistOnly: _waitlistOnly,
+      city: location.hasCity ? location.city : null,
+    ).apply(courses);
   }
 
   @override
@@ -132,6 +119,7 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final courses = ref.watch(publishedCoursesProvider);
+    final location = ref.watch(discoveryLocationProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -175,11 +163,17 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
         ),
         data: (items) {
           final filtered = _applyFilters(items);
-          final batchCards = _matchingBatches(items);
-          return CustomScrollView(
+          final batchCards = _matchingBatches(items, location);
+          return ResponsiveLayoutBuilder(
+            builder: (context, responsive) => CustomScrollView(
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                padding: EdgeInsets.fromLTRB(
+                  responsive.horizontalPadding,
+                  12,
+                  responsive.horizontalPadding,
+                  4,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,16 +206,18 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                             setState(() => _waitlistOnly = !_waitlistOnly),
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        alignment: WrapAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: Text(
-                              _showBatches
-                                  ? 'Batches (${batchCards.length})'
-                                  : '${l10n.courses} (${filtered.length})',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          Text(
+                            _showBatches
+                                ? 'Batches (${batchCards.length})'
+                                : '${l10n.courses} (${filtered.length})',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           _ViewToggle(
@@ -255,7 +251,12 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: EdgeInsets.fromLTRB(
+                      responsive.horizontalPadding,
+                      8,
+                      responsive.horizontalPadding,
+                      16,
+                    ),
                     sliver: SliverList.separated(
                       itemCount: batchCards.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -272,7 +273,12 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  padding: EdgeInsets.fromLTRB(
+                    responsive.horizontalPadding,
+                    4,
+                    responsive.horizontalPadding,
+                    16,
+                  ),
                   sliver: SliverList.separated(
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 14),
@@ -281,6 +287,7 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                   ),
                 ),
             ],
+          ),
           );
         },
       ),
@@ -362,39 +369,44 @@ class _CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: EducationCategory.values.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final category = EducationCategory.values[i];
-          final isSelected = multi.isNotEmpty
-              ? multi.contains(category)
-              : category == selected;
-          return ChoiceChip(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final category in EducationCategory.values)
+          ChoiceChip(
             label: Text(category.label),
-            selected: isSelected,
+            selected: multi.isNotEmpty
+                ? multi.contains(category)
+                : category == selected,
             onSelected: (_) => onSelected(category),
             showCheckmark: false,
             selectedColor: AppTheme.violet,
             labelStyle: TextStyle(
-              color: isSelected ? Colors.white : null,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: (multi.isNotEmpty
+                      ? multi.contains(category)
+                      : category == selected)
+                  ? Colors.white
+                  : null,
+              fontWeight: (multi.isNotEmpty
+                      ? multi.contains(category)
+                      : category == selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
               fontSize: 13,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: isSelected
+                color: (multi.isNotEmpty
+                        ? multi.contains(category)
+                        : category == selected)
                     ? AppTheme.violet
                     : Theme.of(context).colorScheme.outlineVariant,
               ),
             ),
-          );
-        },
-      ),
+          ),
+      ],
     );
   }
 }
@@ -420,34 +432,43 @@ class _ModeFilterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
-      runSpacing: 6,
+      runSpacing: 8,
       children: [
-        for (final mode in CourseMode.values)
-          FilterChip(
-            label: Text(mode.name.toUpperCase()),
-            selected: selectedMode == mode,
-            onSelected: (_) => onModeSelected(mode),
-            selectedColor: AppTheme.violet,
-            labelStyle: TextStyle(
-              color: selectedMode == mode ? Colors.white : null,
-              fontWeight: selectedMode == mode
-                  ? FontWeight.w700
-                  : FontWeight.w500,
-              fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: const Text('All modes'),
+              selected: selectedMode == null,
+              onSelected: (_) {
+                if (selectedMode != null) onModeSelected(selectedMode!);
+              },
             ),
           ),
-        FilterChip(
-          avatar: const Icon(Icons.wb_sunny_rounded, size: 16),
-          label: const Text('Ongoing Today'),
-          selected: ongoingToday,
-          onSelected: (_) => onOngoingToggle(),
-        ),
-        FilterChip(
-          avatar: const Icon(Icons.hourglass_top_rounded, size: 16),
-          label: const Text('Waitlist Available'),
-          selected: waitlistOnly,
-          onSelected: (_) => onWaitlistToggle(),
-        ),
+          for (final mode in CourseMode.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                key: Key('courses-mode-${mode.name}'),
+                label: Text(mode.discoveryLabel),
+                selected: selectedMode == mode,
+                onSelected: (_) => onModeSelected(mode),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              key: const Key('courses-ongoing-today'),
+              label: const Text('Ongoing today'),
+              selected: ongoingToday,
+              onSelected: (_) => onOngoingToggle(),
+            ),
+          ),
+          FilterChip(
+            key: const Key('courses-full-waitlist'),
+            label: const Text('Full / waitlist'),
+            selected: waitlistOnly,
+            onSelected: (_) => onWaitlistToggle(),
+          ),
       ],
     );
   }

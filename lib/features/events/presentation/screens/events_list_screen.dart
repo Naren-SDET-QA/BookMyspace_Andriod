@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/filter_checkbox_tile.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../modules/presentation/module_providers.dart';
 import '../../domain/event.dart';
@@ -77,47 +78,60 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen> {
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      child: Row(
-                        children: [
-                          ChoiceChip(
-                            label: Text(l10n.allEvents),
-                            selected: _category == null,
-                            onSelected: (_) => setState(() => _category = null),
+                    ExpansionTile(
+                      title: const Text('Event category'),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Column(
+                            children: [
+                              FilterCheckboxTile(
+                                label: l10n.allEvents,
+                                value: _category == null,
+                                onChanged: (selected) {
+                                  if (selected) {
+                                    setState(() => _category = null);
+                                  }
+                                },
+                              ),
+                              for (final category in EventCategory.values)
+                                FilterCheckboxTile(
+                                  label: category.name,
+                                  value: _category == category,
+                                  onChanged: (selected) {
+                                    if (selected) {
+                                      setState(() => _category = category);
+                                    } else if (_category == category) {
+                                      setState(() => _category = null);
+                                    }
+                                  },
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          for (final category in EventCategory.values)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Text(category.name),
-                                selected: _category == category,
-                                onSelected: (_) =>
-                                    setState(() => _category = category),
-                              ),
-                            ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: Row(
-                        children: [
-                          for (final filter in EventPriceFilter.values)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Text(_priceLabel(filter, l10n)),
-                                selected: _price == filter,
-                                onSelected: (_) =>
-                                    setState(() => _price = filter),
-                              ),
-                            ),
-                        ],
-                      ),
+                    ExpansionTile(
+                      title: const Text('Price'),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Column(
+                            children: [
+                              for (final filter in EventPriceFilter.values)
+                                FilterCheckboxTile(
+                                  label: _priceLabel(filter, l10n),
+                                  value: _price == filter,
+                                  onChanged: (selected) {
+                                    if (selected) {
+                                      setState(() => _price = filter);
+                                    }
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     Expanded(
                       child: items.isEmpty

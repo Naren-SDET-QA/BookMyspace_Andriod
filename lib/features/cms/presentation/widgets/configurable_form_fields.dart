@@ -27,11 +27,14 @@ class ConfigurableFormFields extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final field in fields) ...[
-          _Field(
-            field: field,
-            value: values[field.key],
-            onChanged: (value) => onChanged(field.key, value),
-            autovalidate: autovalidate,
+          KeyedSubtree(
+            key: Key('enroll-field-${field.key}'),
+            child: _Field(
+              field: field,
+              value: values[field.key],
+              onChanged: (value) => onChanged(field.key, value),
+              autovalidate: autovalidate,
+            ),
           ),
           const SizedBox(height: 12),
         ],

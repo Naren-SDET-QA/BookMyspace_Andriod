@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/category_icon_text.dart';
 import '../../../../core/widgets/interactive_tilt_card.dart';
+import '../../../../core/widgets/shimmer_loading.dart';
+import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
+import '../../../cms/domain/cms_banner.dart';
 import '../../../venues/domain/venue.dart';
 import '../home_category_catalog.dart';
-import '../../../cms/domain/cms_banner.dart';
-import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
-import '../../../../core/widgets/category_icon_text.dart';
 
 /// Responsive category discovery panel with master carousel + sub-section grid.
 ///
@@ -686,20 +687,13 @@ class _SkeletonCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final placeholder = Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.outline.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-    );
     if (mode == _ViewMode.list) {
       return Column(
         children: [
           for (var i = 0; i < count; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: SizedBox(height: 44, child: placeholder),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: ShimmerBox(height: 44, radius: 16),
             ),
         ],
       );
@@ -711,7 +705,11 @@ class _SkeletonCards extends StatelessWidget {
         itemCount: count,
         itemBuilder: (context, index) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          child: SizedBox(width: compact ? 148 : 190, child: placeholder),
+          child: ShimmerBox(
+            width: compact ? 148 : 190,
+            height: compact ? 96 : 124,
+            radius: 16,
+          ),
         ),
       ),
     );

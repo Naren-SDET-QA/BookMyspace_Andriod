@@ -42,6 +42,18 @@ class DiscoveryLocation {
     return 'Select location';
   }
 
+  /// State › District › City › PIN. Falls back to [label] when unset.
+  String get hierarchyLabel {
+    final parts = <String>[
+      if (state != null && state!.trim().isNotEmpty) state!.trim(),
+      if (district != null && district!.trim().isNotEmpty) district!.trim(),
+      if (hasCity) city!.trim(),
+      if (pincode != null && pincode!.trim().isNotEmpty) pincode!.trim(),
+    ];
+    if (parts.isEmpty) return label;
+    return parts.join(' › ');
+  }
+
   DiscoveryLocation copyWith({
     String? city,
     String? district,

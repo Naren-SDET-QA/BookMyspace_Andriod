@@ -12,12 +12,14 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
+import '../../../../core/widgets/shimmer_loading.dart';
 import '../../../calendar/presentation/calendar_export_service.dart';
 import '../../../payments/presentation/payment_providers.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../qr_checkin/presentation/qr_checkin_providers.dart';
+import '../../../qr_checkin/presentation/widgets/pass_actions.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/booking.dart';
@@ -165,7 +167,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
   Future<void> _bookAgain(Booking booking) async {
     Venue? venue;
     try {
-      venue = await ref.read(venueRepositoryProvider).venueById(booking.venueId);
+      venue = await ref
+          .read(venueRepositoryProvider)
+          .venueById(booking.venueId);
     } catch (_) {
       venue = null;
     }
@@ -220,9 +224,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     const service = CalendarExportService();
     final message = await service.exportBooking(booking);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -250,13 +254,13 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
 
   Widget _buildBody(MyBookingsPageState pageState, AppLocalizations l10n) {
     if (pageState.isLoadingFirstPage) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [BookingSummarySkeleton(), BookingSummarySkeleton()],
+      );
     }
     if (pageState.error != null && pageState.bookings.isEmpty) {
-      return ErrorView(
-        message: pageState.error.toString(),
-        onRetry: _refresh,
-      );
+      return ErrorView(message: pageState.error.toString(), onRetry: _refresh);
     }
     final list = pageState.bookings;
     if (list.isEmpty) {
@@ -271,7 +275,8 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     // there is no separate "you've reached the end" row so as not to
     // change the screen's existing visual footprint beyond what
     // pagination itself requires.
-    final showTrailingRow = pageState.isLoadingMore ||
+    final showTrailingRow =
+        pageState.isLoadingMore ||
         (pageState.error != null && pageState.bookings.isNotEmpty);
     final itemCount = list.length + (showTrailingRow ? 1 : 0);
     return RefreshIndicator(
@@ -311,19 +316,22 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: _BookingCard(
               booking: list[i],
-              onShowPass: (list[i].status == BookingStatus.confirmed ||
+              onShowPass:
+                  (list[i].status == BookingStatus.confirmed ||
                       list[i].status == BookingStatus.completed)
                   ? () => _showEntryPass(list[i])
                   : null,
-              onCancel:
-                  list[i].canCancel ? () => _cancelBooking(list[i]) : null,
-              onRefund:
-                  list[i].canRefund ? () => _requestRefund(list[i]) : null,
+              onCancel: list[i].canCancel
+                  ? () => _cancelBooking(list[i])
+                  : null,
+              onRefund: list[i].canRefund
+                  ? () => _requestRefund(list[i])
+                  : null,
               onPay: list[i].canPay
                   ? () => context.push(
-                        '/bookings/${list[i].id}/pay',
-                        extra: list[i],
-                      )
+                      '/bookings/${list[i].id}/pay',
+                      extra: list[i],
+                    )
                   : null,
               onReceipt: list[i].canViewReceipt
                   ? () => context.push('/bookings/${list[i].id}/receipt')
@@ -351,8 +359,11 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
       builder: (dialogCtx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.qr_code_2_rounded,
-                color: AppTheme.violet, size: 28),
+            const Icon(
+              Icons.qr_code_2_rounded,
+              color: AppTheme.violet,
+              size: 28,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -371,10 +382,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // High Contrast 2D QR Code Pass
-              QrCodePassWidget(
-                booking: booking,
-                size: 190,
-              ),
+              QrCodePassWidget(booking: booking, size: 190),
+              const SizedBox(height: 14),
+              PassActions(booking: booking),
               const SizedBox(height: 14),
 
               Text(
@@ -418,8 +428,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
 
               // Status badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isCheckedIn
                       ? const Color(0xFFE8F5E9)
@@ -511,27 +523,23 @@ class _BookingCard extends StatelessWidget {
 
     final statusGradient = switch (booking.status) {
       BookingStatus.confirmed ||
-      BookingStatus.completed =>
-        const LinearGradient(
-          colors: [Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399)],
-        ),
+      BookingStatus.completed => const LinearGradient(
+        colors: [Color(0xFF059669), Color(0xFF10B981), Color(0xFF34D399)],
+      ),
       BookingStatus.pending => const LinearGradient(
-          colors: [AppTheme.accent, Color(0xFFFBBF24), Color(0xFFF59E0B)],
-        ),
+        colors: [AppTheme.accent, Color(0xFFFBBF24), Color(0xFFF59E0B)],
+      ),
       BookingStatus.awaitingOwnerApproval => const LinearGradient(
-          colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
-        ),
-      BookingStatus.ownerRejected ||
-      BookingStatus.approvalExpired =>
-        const LinearGradient(
-          colors: [Color(0xFFB91C1C), Color(0xFFF87171)],
-        ),
+        colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
+      ),
+      BookingStatus.ownerRejected || BookingStatus.approvalExpired =>
+        const LinearGradient(colors: [Color(0xFFB91C1C), Color(0xFFF87171)]),
       BookingStatus.cancelled => const LinearGradient(
-          colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
-        ),
+        colors: [Color(0xFF64748B), Color(0xFF94A3B8)],
+      ),
       _ => const LinearGradient(
-          colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
-        ),
+        colors: [AppTheme.violet, AppTheme.action, AppTheme.accent],
+      ),
     };
 
     return GlassmorphicCard(
@@ -706,10 +714,7 @@ class _StatusBadge extends StatelessWidget {
       BookingStatus.held => ('Held', Colors.orange),
       BookingStatus.pending => ('Pending', Colors.orange),
       BookingStatus.awaitingOwnerApproval ||
-      BookingStatus.pendingOwnerApproval => (
-          'Awaiting owner',
-          AppTheme.violet,
-        ),
+      BookingStatus.pendingOwnerApproval => ('Awaiting owner', AppTheme.violet),
       BookingStatus.ownerRejected ||
       BookingStatus.rejected => ('Declined', Colors.red),
       BookingStatus.approvalExpired => ('Request expired', Colors.red),
@@ -720,18 +725,30 @@ class _StatusBadge extends StatelessWidget {
       BookingStatus.noShow => ('No show', Colors.red),
       BookingStatus.unknown => ('Status unavailable', Colors.grey),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOut,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.92, end: 1).animate(animation),
+          child: child,
+        ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+      child: Container(
+        key: ValueKey(status),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

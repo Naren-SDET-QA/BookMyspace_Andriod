@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -118,6 +119,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
   List<Institute> _filterInstitutes(
     List<Institute> items,
     List<Course> courses,
+    DiscoveryLocation location,
   ) {
     final query = _query.trim().toLowerCase();
     return items.where((institute) {
@@ -128,6 +130,20 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
           institute.city.toLowerCase().contains(query) ||
           institute.address.toLowerCase().contains(query);
       if (!matchesType || !matchesQuery) return false;
+      if (location.hasCity) {
+        final city = location.city!.trim().toLowerCase();
+        final instituteCity = institute.city.toLowerCase();
+        if (instituteCity.isNotEmpty && !instituteCity.contains(city)) {
+          return false;
+        }
+      }
+      if (location.hasCoordinates) {
+        final km = _distanceKm(institute, location);
+        if (km != null && km > location.radiusKm) return false;
+      }
+      if (_mode != null && !_instituteMatchesMode(institute, courses)) {
+        return false;
+      }
       if (_parkingOnly && !_hasParking(institute)) return false;
       if (!_instituteMatchesCategory(institute, courses)) return false;
       if (_maxFee != null) {
@@ -170,36 +186,45 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     );
   }
 
+  bool _instituteMatchesMode(Institute institute, List<Course> courses) {
+    if (_mode == null) return true;
+    if (institute.mode == _mode) return true;
+    final own = courses.where((course) => course.instituteId == institute.id);
+    if (own.isEmpty) return false;
+    return own.any(
+      (course) =>
+          course.mode == _mode ||
+          course.batches.any((batch) => (batch.mode ?? course.mode) == _mode),
+    );
+  }
+
   List<({Course course, CourseBatch batch})> _matchingClasses(
     List<Course> courses,
+    List<Institute> institutes,
+    DiscoveryLocation location,
   ) {
-    final query = _query.trim().toLowerCase();
-    final filter = _classFilter;
-    final matches = <({Course course, CourseBatch batch})>[];
-    for (final course in courses) {
-      for (final batch in course.batches.where((item) => item.isActive)) {
-        if (_ongoingToday && !batch.isOngoingToday) continue;
-        if (_waitlistOnly && !batch.waitlistEnabled) continue;
-        if (!filter.matchesBatch(course, batch)) continue;
-        final fee = batch.feeAmount > 0
-            ? batch.feeAmount
-            : course.payableAmount;
-        if (_maxFee != null && fee > _maxFee!) continue;
-        if (query.isNotEmpty) {
-          final haystack = [
-            course.title,
-            batch.subject,
-            course.instituteName,
-            course.instructorName,
-            course.instituteCity,
-            batch.label,
-          ].join(' ').toLowerCase();
-          if (!haystack.contains(query)) continue;
+    final rows = ClassFeedQuery(
+      text: _query,
+      filter: _classFilter,
+      ongoingToday: _ongoingToday,
+      fullOrWaitlistOnly: _waitlistOnly,
+      maxFee: _maxFee,
+      city: location.hasCity ? location.city : null,
+    ).apply(courses);
+    if (!location.hasCoordinates) return rows;
+    return rows.where((row) {
+      Institute? institute;
+      for (final item in institutes) {
+        if (item.id == row.course.instituteId) {
+          institute = item;
+          break;
         }
-        matches.add((course: course, batch: batch));
       }
-    }
-    return matches;
+      if (institute == null) return true;
+      final km = _distanceKm(institute, location);
+      if (km == null) return true;
+      return km <= location.radiusKm;
+    }).toList();
   }
 
   static bool _hasParking(Institute institute) =>
@@ -425,7 +450,20 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     final location = ref.watch(discoveryLocationProvider);
     final section = MainHomeSection.institutesClasses;
 
-    return Scaffold(
+    final dark = Theme.of(context).copyWith(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF070B14),
+      canvasColor: const Color(0xFF070B14),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF7C3AED),
+        brightness: Brightness.dark,
+        surface: const Color(0xFF070B14),
+      ),
+    );
+    return Theme(
+      data: dark,
+      child: Scaffold(
+      backgroundColor: const Color(0xFF070B14),
       body: !enabled
           ? EmptyState(
               icon: Icons.school_outlined,
@@ -448,11 +486,15 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                     final courses =
                         coursesAsync.valueOrNull ?? const <Course>[];
                     final filtered = _applySort(
-                      _filterInstitutes(allInstitutes, courses),
+                      _filterInstitutes(allInstitutes, courses, location),
                       courses,
                       location,
                     );
-                    final classCards = _matchingClasses(courses);
+                    final classCards = _matchingClasses(
+                      courses,
+                      allInstitutes,
+                      location,
+                    );
 
                     return CustomScrollView(
                       cacheExtent: 2400,
@@ -466,19 +508,24 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                           ),
                           sliver: SliverToBoxAdapter(
                             child: _SectionHero(
-                              title: section.displayTitle,
-                              subtitle: section.subtitle,
+                              liveSelected: _ongoingToday,
                               onBack: _goBack,
-                              onAllCategories: () => context.go(AppRoutes.home),
-                              onMyCourses: () =>
-                                  context.push(AppRoutes.myCourses),
+                              onLiveBatches: () => setState(() {
+                                _ongoingToday = !_ongoingToday;
+                                if (_ongoingToday) {
+                                  _scope = _ListingScope.classes;
+                                }
+                              }),
+                              onHostAcademy: () => context.push(
+                                AppRoutes.ownerInstituteDashboard,
+                              ),
                             ),
                           ),
                         ),
                         SliverPadding(
                           padding: EdgeInsets.fromLTRB(
                             responsive.horizontalPadding,
-                            12,
+                            8,
                             responsive.horizontalPadding,
                             4,
                           ),
@@ -486,7 +533,8 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                             child: _DiscoverySearchCard(
                               controller: _searchController,
                               hint: 'Search dance, music, sports, coaching...',
-                              locationLabel: location.label,
+                              locationLabel:
+                                  '${location.hierarchyLabel} · ${location.radiusKm} km',
                               slotLabel: _slotDateLabel(_slotDate),
                               attendeesLabel: _attendees == 1
                                   ? '1 Attendee'
@@ -522,9 +570,24 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                             }),
                             onCourses: () => context.go(AppRoutes.coursesList),
                             onCategory: (value) => setState(() {
-                              _scope = _ListingScope.institutes;
                               _category = value;
                               _classCategories = const {};
+                            }),
+                            mode: _mode,
+                            ongoingToday: _ongoingToday,
+                            waitlistOnly: _waitlistOnly,
+                            onMode: (mode) => setState(() => _mode = mode),
+                            onOngoing: () => setState(() {
+                              _ongoingToday = !_ongoingToday;
+                              if (_ongoingToday) {
+                                _scope = _ListingScope.classes;
+                              }
+                            }),
+                            onWaitlist: () => setState(() {
+                              _waitlistOnly = !_waitlistOnly;
+                              if (_waitlistOnly) {
+                                _scope = _ListingScope.classes;
+                              }
                             }),
                           ),
                         ),
@@ -672,6 +735,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                 ),
               ),
             ),
+      ),
     );
   }
 
@@ -750,116 +814,134 @@ class _LoadingHub extends StatelessWidget {
 
 class _SectionHero extends StatelessWidget {
   const _SectionHero({
-    required this.title,
-    required this.subtitle,
+    required this.liveSelected,
     required this.onBack,
-    required this.onAllCategories,
-    required this.onMyCourses,
+    required this.onLiveBatches,
+    required this.onHostAcademy,
   });
 
-  final String title;
-  final String subtitle;
+  final bool liveSelected;
   final VoidCallback onBack;
-  final VoidCallback onAllCategories;
-  final VoidCallback onMyCourses;
+  final VoidCallback onLiveBatches;
+  final VoidCallback onHostAcademy;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.violetDeep.withValues(alpha: 0.92),
-            const Color(0xFF3E2A78).withValues(alpha: 0.88),
-          ],
-        ),
-        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.35)),
-      ),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: AppLocalizations.of(context).back,
-            onPressed: onBack,
-            style: IconButton.styleFrom(
-              backgroundColor: theme.colorScheme.surface,
-              foregroundColor: AppTheme.violet,
-              minimumSize: const Size(40, 40),
-              maximumSize: const Size(40, 40),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: const Icon(Icons.arrow_back_rounded, size: 20),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text('🎓', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.78),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            flex: 1,
-            child: FilledButton.tonal(
-              onPressed: onAllCategories,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF5B3FA8),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showHostLabel = constraints.maxWidth >= 360;
+        return Row(
+          children: [
+            IconButton(
+              tooltip: AppLocalizations.of(context).back,
+              onPressed: onBack,
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                minimumSize: const Size(0, 36),
+                minimumSize: const Size(36, 36),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
               ),
+              icon: const Icon(Icons.arrow_back_rounded, size: 22),
+            ),
+            const Expanded(
               child: Text(
-                AppLocalizations.of(context).allCategories,
+                'Institutes & Classes',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
                 ),
               ),
             ),
+            const SizedBox(width: 4),
+            _LiveBatchesMark(selected: liveSelected, onTap: onLiveBatches),
+            const SizedBox(width: 4),
+            _HostAcademyButton(onTap: onHostAcademy, showLabel: showHostLabel),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _LiveBatchesMark extends StatelessWidget {
+  const _LiveBatchesMark({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xFF5B21B6) : const Color(0xFF2E2366),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'LIVE',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+              Text(
+                'BATCHES',
+                style: TextStyle(
+                  color: Color(0xFFDDD6FE),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: AppLocalizations.of(context).myCourses,
-            onPressed: onMyCourses,
-            visualDensity: VisualDensity.compact,
-            style: IconButton.styleFrom(
-              minimumSize: const Size(36, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+    );
+  }
+}
+
+class _HostAcademyButton extends StatelessWidget {
+  const _HostAcademyButton({required this.onTap, required this.showLabel});
+
+  final VoidCallback onTap;
+  final bool showLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF2A1848),
+        side: const BorderSide(color: Color(0xFF6D28D9)),
+        padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 8, vertical: 6),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.apartment_rounded, size: 14),
+          if (showLabel) ...[
+            const SizedBox(width: 4),
+            const Text(
+              'Host Academy',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
             ),
-            icon: const Icon(Icons.backpack_rounded, color: Colors.white),
-          ),
+          ],
         ],
       ),
     );
@@ -968,7 +1050,7 @@ class _DiscoverySearchCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 72),
+                            constraints: const BoxConstraints(maxWidth: 120),
                             child: Text(
                               locationLabel,
                               maxLines: 1,
@@ -1123,6 +1205,12 @@ class _ScopeChipRow extends StatelessWidget {
     required this.onAllClasses,
     required this.onCourses,
     required this.onCategory,
+    required this.mode,
+    required this.ongoingToday,
+    required this.waitlistOnly,
+    required this.onMode,
+    required this.onOngoing,
+    required this.onWaitlist,
   });
 
   final EdgeInsets padding;
@@ -1132,59 +1220,96 @@ class _ScopeChipRow extends StatelessWidget {
   final VoidCallback onAllClasses;
   final VoidCallback onCourses;
   final ValueChanged<EducationCategory> onCategory;
+  final CourseMode? mode;
+  final bool ongoingToday;
+  final bool waitlistOnly;
+  final ValueChanged<CourseMode?> onMode;
+  final VoidCallback onOngoing;
+  final VoidCallback onWaitlist;
 
   @override
   Widget build(BuildContext context) {
+    final chips = <Widget>[
+      AnimatedCategoryChip(
+        selected:
+            scope == _ListingScope.institutes &&
+            category == EducationCategory.all,
+        emoji: '✨',
+        label: 'All Education & Institutes',
+        onTap: onAllInstitutes,
+      ),
+      AnimatedCategoryChip(
+        selected:
+            scope == _ListingScope.classes &&
+            category == EducationCategory.all,
+        emoji: '✨',
+        label: 'All Classes',
+        onTap: onAllClasses,
+      ),
+      AnimatedCategoryChip(
+        selected: false,
+        emoji: '📚',
+        label: AppLocalizations.of(context).courses,
+        onTap: onCourses,
+      ),
+      for (final item in EducationCategory.values.where(
+        (item) => item != EducationCategory.all,
+      ))
+        AnimatedCategoryChip(
+          selected: category == item,
+          label: item.label,
+          onTap: () => onCategory(item),
+        ),
+      ChoiceChip(
+        label: const Text('All modes'),
+        selected: mode == null,
+        onSelected: (_) => onMode(null),
+      ),
+      for (final item in CourseMode.values)
+        ChoiceChip(
+          key: Key('education-mode-${item.name}'),
+          label: Text(item.discoveryLabel),
+          selected: mode == item,
+          onSelected: (_) => onMode(mode == item ? null : item),
+        ),
+      FilterChip(
+        key: const Key('education-ongoing-today'),
+        label: const Text('Ongoing today'),
+        selected: ongoingToday,
+        onSelected: (_) => onOngoing(),
+      ),
+      FilterChip(
+        key: const Key('education-full-waitlist'),
+        label: const Text('Full / waitlist'),
+        selected: waitlistOnly,
+        onSelected: (_) => onWaitlist(),
+      ),
+    ];
+
+    // One row on every width. Extra rows push the results off the first
+    // screen. Touch, mouse, and trackpad can drag the row sideways.
     return SizedBox(
       height: 52,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: padding,
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: AnimatedCategoryChip(
-                selected:
-                    scope == _ListingScope.institutes &&
-                    category == EducationCategory.all,
-                emoji: '✨',
-                label: 'All Education & Institutes',
-                onTap: onAllInstitutes,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: AnimatedCategoryChip(
-                selected:
-                    scope == _ListingScope.classes &&
-                    category == EducationCategory.all,
-                emoji: '✨',
-                label: 'All Classes',
-                onTap: onAllClasses,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: AnimatedCategoryChip(
-                selected: false,
-                emoji: '📚',
-                label: AppLocalizations.of(context).courses,
-                onTap: onCourses,
-              ),
-            ),
-            for (final item in EducationCategory.values.where(
-              (item) => item != EducationCategory.all,
-            ))
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: AnimatedCategoryChip(
-                  selected: category == item,
-                  label: item.label,
-                  onTap: () => onCategory(item),
-                ),
-              ),
-          ],
+      child: ScrollConfiguration(
+        behavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+            PointerDeviceKind.stylus,
+          },
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: padding,
+          child: Row(
+            children: [
+              for (var i = 0; i < chips.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                chips[i],
+              ],
+            ],
+          ),
         ),
       ),
     );

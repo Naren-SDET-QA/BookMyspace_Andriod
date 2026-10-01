@@ -15,6 +15,13 @@ enum CourseMode {
       };
 
   String get dbValue => name;
+
+  /// Short label for the delivery-mode chips on Education and Courses.
+  String get discoveryLabel => switch (this) {
+        CourseMode.offline => 'In-Person',
+        CourseMode.online => 'Online Live',
+        CourseMode.hybrid => 'Hybrid',
+      };
 }
 
 /// Institute ownership / government classification (`institutes.institute_type`).
@@ -155,9 +162,7 @@ class Institute {
             .toList(),
         modules: TargetModuleConfig.fromJson(json['module_config']),
         registrationForm: ConfigurableFormSchema.fromJson(
-          json['registration_form'] is Map<String, dynamic>
-              ? json['registration_form'] as Map<String, dynamic>
-              : null,
+          asStringKeyMap(json['registration_form']),
         ),
         profile: json['profile'] is Map<String, dynamic>
             ? Map<String, dynamic>.from(json['profile'] as Map)
@@ -337,6 +342,7 @@ class Course {
     this.instituteVerified = false,
     this.instituteCity = '',
     this.instituteModules = const TargetModuleConfig({}),
+    this.registrationForm,
     this.batches = const [],
     this.categoryId = '',
     this.discountAmount = 0,
@@ -369,6 +375,10 @@ class Course {
   final bool instituteVerified;
   final String instituteCity;
   final TargetModuleConfig instituteModules;
+
+  /// Published registration form joined from the institute, when the course
+  /// query included `registration_form`. Null when that column was not loaded.
+  final ConfigurableFormSchema? registrationForm;
   final List<CourseBatch> batches;
   final String categoryId;
   final double discountAmount;
@@ -398,10 +408,7 @@ class Course {
       demoMethods.isNotEmpty && !demoMethods.contains(CourseDemoMethod.noDemo);
 
   factory Course.fromJson(Map<String, dynamic> json) {
-    final instituteRaw = json['institutes'];
-    final institute = instituteRaw is Map<String, dynamic>
-        ? instituteRaw
-        : <String, dynamic>{};
+    final institute = asStringKeyMap(json['institutes']) ?? <String, dynamic>{};
     final batchesRaw = json['course_batches'];
     final batches = batchesRaw is List
         ? batchesRaw
@@ -452,6 +459,11 @@ class Course {
       instituteVerified: institute['is_verified'] as bool? ?? false,
       instituteCity: institute['city'] as String? ?? '',
       instituteModules: TargetModuleConfig.fromJson(institute['module_config']),
+      registrationForm: institute.containsKey('registration_form')
+          ? ConfigurableFormSchema.fromJson(
+              asStringKeyMap(institute['registration_form']),
+            )
+          : null,
       batches: batches,
       categoryId: json['category_id'] as String? ?? '',
       discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0,
@@ -478,6 +490,7 @@ class Course {
     String? status,
     List<CourseFaculty>? faculty,
     List<CourseFaq>? faqs,
+    ConfigurableFormSchema? registrationForm,
   }) {
     return Course(
       id: id,
@@ -495,6 +508,7 @@ class Course {
       instituteVerified: instituteVerified ?? this.instituteVerified,
       instituteCity: instituteCity,
       instituteModules: instituteModules,
+      registrationForm: registrationForm ?? this.registrationForm,
       batches: batches ?? this.batches,
       categoryId: categoryId,
       discountAmount: discountAmount,

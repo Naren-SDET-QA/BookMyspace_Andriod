@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../install/presentation/app_install_card.dart';
 
 /// Settings screen: theme, language and account management entry points.
 class SettingsScreen extends ConsumerWidget {
@@ -35,6 +36,7 @@ class SettingsScreen extends ConsumerWidget {
             vertical: 12,
           ),
           children: [
+            const AppInstallCard(),
             // Appearance section
             _SectionHeader(label: 'Appearance'),
             const SizedBox(height: 8),

@@ -144,7 +144,7 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
     final location = ref.watch(discoveryLocationProvider);
     final citiesAsync = ref.watch(listedVenueCitiesProvider);
     final gps = ref.watch(gpsSessionProvider);
-    const radii = [5, 10, 25];
+    const radii = [5, 10, 25, 50];
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final topInset = MediaQuery.viewPaddingOf(context).top;
 

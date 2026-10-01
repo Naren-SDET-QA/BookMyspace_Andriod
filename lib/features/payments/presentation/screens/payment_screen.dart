@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../booking/domain/booking.dart';
 import '../../../booking/presentation/booking_providers.dart';
+import '../../../qr_checkin/presentation/widgets/pass_actions.dart';
 import '../../../qr_checkin/presentation/widgets/qr_code_pass_widget.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/payment.dart';
@@ -743,6 +744,8 @@ class _PaymentSuccessView extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  PassActions(booking: booking),
                 ],
               ),
             ),

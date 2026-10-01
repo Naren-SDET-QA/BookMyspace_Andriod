@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'app_install_config.dart';
+
 class AdminSettings {
   const AdminSettings({
     this.home = const {},
     this.theme = const {},
     this.modules = const {},
     this.push = const {},
+    this.install = const {},
   });
   final Map<String, dynamic> home;
   final Map<String, dynamic> theme;
@@ -18,8 +21,13 @@ class AdminSettings {
   /// lives in Supabase Edge Function secrets.
   final Map<String, dynamic> push;
 
+  /// Web, Play Store, and APK install offer. Stored as module_key
+  /// [installSection]. Customers only see a channel an admin turned on.
+  final Map<String, dynamic> install;
+
   static const pushSection = 'push_notifications';
   static const pushEnabledKey = 'enabled';
+  static const installSection = 'app_install';
 
   /// OFF by default: OneSignal is never initialised unless an admin
   /// explicitly turns push on.
@@ -35,7 +43,9 @@ class AdminSettings {
       'search_banner_visible': true,
       // Optional extra Home page: admin chooses which Home is shown.
       // home_layout: 'glass' (existing, default) | 'modern' (category tiles)
-      // | 'premium' (hero search, offers, recently viewed).
+      // | 'premium' (hero search, offers, recently viewed)
+      // | 'moment' (light "Your Space for Every Moment")
+      // | 'life' (dark "Spaces for Your Life").
       // bottom_nav_style: 'classic' (existing 6 tabs, default) | 'modern'.
       'home_layout': 'glass',
       'bottom_nav_style': 'classic',
@@ -48,6 +58,7 @@ class AdminSettings {
       'space_radar_visible': true,
       'activity_visible': true,
     },
+    install: AppInstallConfig.defaultMap,
     theme: {
       'primary_color': '#3F51B5',
       'accent_color': '#757DE8',
@@ -61,12 +72,16 @@ class AdminSettings {
     Map<String, dynamic>? theme,
     Map<String, dynamic>? modules,
     Map<String, dynamic>? push,
+    Map<String, dynamic>? install,
   }) => AdminSettings(
     home: home ?? this.home,
     theme: theme ?? this.theme,
     modules: modules ?? this.modules,
     push: push ?? this.push,
+    install: install ?? this.install,
   );
+
+  AppInstallConfig get appInstall => AppInstallConfig.fromMap(install);
 
   static bool validHex(String value) =>
       RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(value.trim());

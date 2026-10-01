@@ -120,3 +120,63 @@ class ClassCategoryFilter {
     return counts;
   }
 }
+
+/// Client-side class feed used by Education and the courses list.
+///
+/// Seat counts are not changed here. Enrollment still goes through the
+/// server, which is the same path on iOS, web, and Android.
+class ClassFeedQuery {
+  const ClassFeedQuery({
+    this.text = '',
+    this.filter = const ClassCategoryFilter(),
+    this.ongoingToday = false,
+    this.fullOrWaitlistOnly = false,
+    this.maxFee,
+    this.city,
+  });
+
+  final String text;
+  final ClassCategoryFilter filter;
+  final bool ongoingToday;
+  final bool fullOrWaitlistOnly;
+  final double? maxFee;
+  final String? city;
+
+  List<({Course course, CourseBatch batch})> apply(List<Course> courses) {
+    final needle = text.trim().toLowerCase();
+    final cityNeedle = city?.trim().toLowerCase() ?? '';
+    final matches = <({Course course, CourseBatch batch})>[];
+    for (final course in courses) {
+      if (cityNeedle.isNotEmpty &&
+          course.instituteCity.isNotEmpty &&
+          !course.instituteCity.toLowerCase().contains(cityNeedle)) {
+        continue;
+      }
+      for (final batch in course.batches.where((item) => item.isActive)) {
+        if (ongoingToday && !batch.isOngoingToday) continue;
+        if (fullOrWaitlistOnly && !batch.isFull && !batch.waitlistEnabled) {
+          continue;
+        }
+        if (!filter.matchesBatch(course, batch)) continue;
+        final fee =
+            batch.feeAmount > 0 ? batch.feeAmount : course.payableAmount;
+        if (maxFee != null && fee > maxFee!) continue;
+        if (needle.isNotEmpty) {
+          final haystack = [
+            course.title,
+            batch.subject,
+            batch.label,
+            course.description,
+            course.instituteName,
+            course.instructorName,
+            course.instituteCity,
+            for (final faculty in course.faculty) faculty.name,
+          ].join(' ').toLowerCase();
+          if (!haystack.contains(needle)) continue;
+        }
+        matches.add((course: course, batch: batch));
+      }
+    }
+    return matches;
+  }
+}

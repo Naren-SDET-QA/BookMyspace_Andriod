@@ -7,7 +7,10 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/validators/app_validators.dart';
 import '../../../../core/widgets/responsive_layout.dart';
+import '../../../../core/widgets/shimmer_loading.dart';
+import '../../../auth/presentation/auth_providers.dart';
 import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
@@ -43,6 +46,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   DateTime? _selectedDate;
   SlotAvailability? _selectedSlot;
   bool _confirming = false;
+  late final TextEditingController _customerNameController;
+  late final TextEditingController _customerPhoneController;
   final Map<String, String> _extraValues = {};
   final TextEditingController _couponController = TextEditingController();
   Coupon? _appliedCoupon;
@@ -51,6 +56,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   @override
   void initState() {
     super.initState();
+    final user = ref.read(currentUserProvider);
+    _customerNameController = TextEditingController(text: user?.fullName ?? '');
+    _customerPhoneController = TextEditingController(text: user?.phone ?? '');
     final prefs = ref.read(discoveryBookingPrefsProvider);
     _selectedDate = prefs.day;
     if (prefs.guests > 0) {
@@ -75,6 +83,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
   @override
   void dispose() {
+    _customerNameController.dispose();
+    _customerPhoneController.dispose();
     _couponController.dispose();
     super.dispose();
   }
@@ -92,9 +102,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final code = _couponController.text.trim().toUpperCase();
     if (code.isEmpty) return;
     final match = coupons.cast<Coupon?>().firstWhere(
-          (c) => c!.code.toUpperCase() == code,
-          orElse: () => null,
-        );
+      (c) => c!.code.toUpperCase() == code,
+      orElse: () => null,
+    );
     String? error;
     if (match == null) {
       error = 'Invalid or expired coupon code';
@@ -149,7 +159,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             : null,
       ),
       body: date == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const BookingSummarySkeleton()
           : ResponsiveLayoutBuilder(
               builder: (context, responsive) {
                 final extras = _BookingExtraFields(
@@ -183,6 +193,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         child: Column(
                           children: [
                             _VenueHeader(venue: widget.venue),
+                            _BookingContactFields(
+                              nameController: _customerNameController,
+                              phoneController: _customerPhoneController,
+                            ),
                             extras,
                             couponWidget,
                             ListingDateStrip(
@@ -225,6 +239,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 return Column(
                   children: [
                     _VenueHeader(venue: widget.venue),
+                    _BookingContactFields(
+                      nameController: _customerNameController,
+                      phoneController: _customerPhoneController,
+                    ),
                     extras,
                     couponWidget,
                     const Divider(height: 1),
@@ -243,7 +261,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 );
               },
             ),
-      bottomNavigationBar: _selectedSlot != null &&
+      bottomNavigationBar:
+          _selectedSlot != null &&
               date != null &&
               MediaQuery.sizeOf(context).width < 840
           ? _ConfirmBar(
@@ -271,15 +290,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     return null;
   }
 
+  String? _registrationError() {
+    return AppValidators.name(_customerNameController.text) ??
+        AppValidators.phone(_customerPhoneController.text);
+  }
+
   Future<void> _confirmBooking(DateTime date) async {
     final slot = _selectedSlot;
     if (slot == null || _confirming) return;
     final l10n = AppLocalizations.of(context);
+    final registrationError = _registrationError();
+    if (registrationError != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(registrationError)));
+      return;
+    }
     final missing = _missingRequiredField();
     if (missing != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter $missing')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please enter $missing')));
       return;
     }
     final repo = ref.read(bookingRepositoryProvider);
@@ -298,6 +329,14 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SummaryRow(label: l10n.venueDetails, value: widget.venue.name),
+            _SummaryRow(
+              label: 'Guest name',
+              value: _customerNameController.text.trim(),
+            ),
+            _SummaryRow(
+              label: 'Mobile',
+              value: _customerPhoneController.text.trim(),
+            ),
             _SummaryRow(
               label: l10n.selectDate,
               value: DateFormat.yMMMd().format(date),
@@ -354,6 +393,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         bookDate: date,
         amount: amount,
         couponCode: _appliedCoupon?.code,
+        metadata: {
+          'customer_name': _customerNameController.text.trim(),
+          'customer_phone': _customerPhoneController.text.trim(),
+          'full_name': _customerNameController.text.trim(),
+          'phone': _customerPhoneController.text.trim(),
+          ..._extraValues,
+        },
       );
       ref.invalidate(myBookingsProvider);
       if (!mounted) return;
@@ -455,8 +501,8 @@ class _AlternativeSlotsSheet extends StatelessWidget {
             Text(
               alternatives.isEmpty
                   ? 'No other slots are free on '
-                      '${DateFormat.yMMMd().format(date)}. '
-                      'Please pick another date.'
+                        '${DateFormat.yMMMd().format(date)}. '
+                        'Please pick another date.'
                   : 'Other free slots on ${DateFormat.yMMMd().format(date)}:',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -516,25 +562,25 @@ class _DateAvailabilityBadge extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final (background, foreground, icon) = switch (info.status) {
       DateAvailabilityStatus.soldOut => (
-          scheme.errorContainer,
-          scheme.onErrorContainer,
-          Icons.block_rounded,
-        ),
+        scheme.errorContainer,
+        scheme.onErrorContainer,
+        Icons.block_rounded,
+      ),
       DateAvailabilityStatus.past => (
-          scheme.surfaceContainerHighest,
-          scheme.onSurfaceVariant,
-          Icons.history_rounded,
-        ),
+        scheme.surfaceContainerHighest,
+        scheme.onSurfaceVariant,
+        Icons.history_rounded,
+      ),
       DateAvailabilityStatus.limited => (
-          scheme.tertiaryContainer,
-          scheme.onTertiaryContainer,
-          Icons.local_fire_department_rounded,
-        ),
+        scheme.tertiaryContainer,
+        scheme.onTertiaryContainer,
+        Icons.local_fire_department_rounded,
+      ),
       _ => (
-          scheme.secondaryContainer,
-          scheme.onSecondaryContainer,
-          Icons.trending_up_rounded,
-        ),
+        scheme.secondaryContainer,
+        scheme.onSecondaryContainer,
+        Icons.trending_up_rounded,
+      ),
     };
     final detail = switch (info.status) {
       DateAvailabilityStatus.soldOut => 'No slots left on this date',
@@ -559,10 +605,10 @@ class _DateAvailabilityBadge extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(color: foreground, fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -573,10 +619,59 @@ class _DateAvailabilityBadge extends StatelessWidget {
               detail,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookingContactFields extends StatelessWidget {
+  const _BookingContactFields({
+    required this.nameController,
+    required this.phoneController,
+  });
+
+  final TextEditingController nameController;
+  final TextEditingController phoneController;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your details',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('booking_customer_name'),
+            controller: nameController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Full name',
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('booking_customer_phone'),
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              labelText: 'Mobile number',
+              isDense: true,
             ),
           ),
         ],
@@ -599,9 +694,11 @@ class _BookingExtraFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final extras = fields
-        .where((field) =>
-            field.type != ListingFieldType.date &&
-            field.type != ListingFieldType.slot)
+        .where(
+          (field) =>
+              field.type != ListingFieldType.date &&
+              field.type != ListingFieldType.slot,
+        )
         .toList(growable: false);
     if (extras.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -617,15 +714,11 @@ class _BookingExtraFields extends StatelessWidget {
               child: DropdownButtonFormField<String>(
                 key: Key('booking_field_${field.key}'),
                 initialValue: field.options.contains(value) ? value : null,
-                decoration: InputDecoration(
-                  labelText: field.label,
-                ),
+                decoration: InputDecoration(labelText: field.label),
                 items: field.options
                     .map(
-                      (option) => DropdownMenuItem(
-                        value: option,
-                        child: Text(option),
-                      ),
+                      (option) =>
+                          DropdownMenuItem(value: option, child: Text(option)),
                     )
                     .toList(),
                 onChanged: (next) => onChanged(field.key, next ?? ''),
@@ -751,15 +844,15 @@ class _ConfirmBar extends StatelessWidget {
                 Text(
                   l10n.total,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 Text(
                   formatInr(total),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.violet,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: AppTheme.violet,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -814,8 +907,8 @@ class _SummaryRow extends StatelessWidget {
                 color: discountRow
                     ? Colors.green.shade700
                     : (emphasize
-                        ? theme.colorScheme.onSurface
-                        : theme.colorScheme.onSurfaceVariant),
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -864,20 +957,23 @@ class _CouponField extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: Row(
           children: [
-            const Icon(Icons.local_offer_rounded,
-                size: 16, color: Colors.green),
+            const Icon(
+              Icons.local_offer_rounded,
+              size: 16,
+              color: Colors.green,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 '${appliedCoupon!.code} — ${appliedCoupon!.valueLabel} applied',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: Colors.green.shade700),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.green.shade700,
+                ),
               ),
             ),
             TextButton(
               onPressed: onRemove,
-              style:
-                  TextButton.styleFrom(foregroundColor: Colors.red.shade400),
+              style: TextButton.styleFrom(foregroundColor: Colors.red.shade400),
               child: const Text('Remove'),
             ),
           ],

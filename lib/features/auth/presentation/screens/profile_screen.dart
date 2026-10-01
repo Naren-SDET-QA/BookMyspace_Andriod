@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../booking/presentation/booking_providers.dart';
+import '../../../install/presentation/app_install_card.dart';
+import '../../../location/domain/search_area.dart';
+import '../../../location/presentation/widgets/location_picker_sheet.dart'
+    as places;
 import '../../../modules/presentation/module_providers.dart';
+import '../../../rewards/domain/rewards.dart';
+import '../../../rewards/presentation/rewards_providers.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../domain/app_role.dart';
 import '../auth_providers.dart';
@@ -38,7 +47,15 @@ class ProfileScreen extends ConsumerWidget {
     final analyticsEnabled = ref.watch(moduleEnabledProvider('analytics'));
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: theme.brightness == Brightness.dark
+          ? theme.colorScheme.surface
+          : Colors.white,
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('profile-ai-help'),
+        onPressed: () => context.push(AppRoutes.assistant),
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('AI Help'),
+      ),
       appBar: AppBar(
         title: Text(
           l10n.navProfile,
@@ -238,7 +255,140 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // Menu Options
+                const AppInstallCard(),
+
+                if (signedIn) ...[
+                  _WalletHighlight(
+                    onOpen: () => context.push(AppRoutes.wallet),
+                  ),
+                  if (referralsEnabled)
+                    _ReferHighlight(
+                      onOpen: () => context.push(AppRoutes.referrals),
+                    ),
+                ],
+                Text(
+                  'Your space',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _ProfileMenuTile(
+                  key: const Key('profile-location-discovery'),
+                  icon: Icons.travel_explore_outlined,
+                  title: 'India Location & Automatic Place Discovery',
+                  subtitle:
+                      'Country, state, district, mandal, town, and PIN search',
+                  onTap: () => places.LocationPickerSheet.show(
+                    context,
+                    initial: SearchArea.defaultArea,
+                  ),
+                ),
+                _ProfileMenuTile(
+                  key: const Key('profile-saved-spaces'),
+                  icon: Icons.favorite_outline,
+                  title: 'My Favorites & Saved Spaces',
+                  subtitle: 'Venues and courts saved on your account',
+                  onTap: () => context.push(AppRoutes.saved),
+                ),
+                if (coursesEnabled)
+                  _ProfileMenuTile(
+                    key: const Key('profile-institutes-directory'),
+                    icon: Icons.school_outlined,
+                    title: 'Institutes & Classes Directory',
+                    subtitle:
+                        'Certified coaching, sports academies, and batch timings',
+                    onTap: () => context.push(AppRoutes.education),
+                  ),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-kyc-registration'),
+                    icon: Icons.assignment_ind_outlined,
+                    title: 'Unified Registration & Multi-Module Profile',
+                    subtitle:
+                        'One registration form for customer, host, academy, and KYC',
+                    onTap: () => context.push(AppRoutes.unifiedRegistration),
+                  ),
+                _ProfileMenuTile(
+                  key: const Key('profile-features-hub'),
+                  icon: Icons.extension_outlined,
+                  title: 'Plug & Play Features Hub',
+                  subtitle:
+                      'Maps, KYC, coupons, QR check-in, AI copilot, and voice',
+                  onTap: () => context.push(AppRoutes.featuresHub),
+                ),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-payment-history'),
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Payment Transactions & Receipts',
+                    subtitle: 'Payment history, status, and receipts',
+                    onTap: () => context.push(AppRoutes.paymentHistory),
+                  ),
+                _ProfileMenuTile(
+                  key: const Key('profile-connected-apps'),
+                  icon: Icons.hub_outlined,
+                  title: 'Connected Apps, MCP & Developer APIs',
+                  subtitle:
+                      'MCP, REST API keys, webhooks, calendar export, and deep links',
+                  onTap: () => context.push(AppRoutes.connectedApps),
+                ),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-usage-analytics'),
+                    icon: Icons.insights_outlined,
+                    title: 'Usage Analytics & Spending',
+                    subtitle: 'Your bookings and spending',
+                    onTap: () => context.push(AppRoutes.customerAnalytics),
+                  ),
+                _ProfileMenuTile(
+                  key: const Key('profile-help-support'),
+                  icon: Icons.support_agent_outlined,
+                  title: 'Help & Support',
+                  subtitle: 'FAQs, support desk, and booking help',
+                  onTap: () => context.push(AppRoutes.support),
+                ),
+                _LanguageRow(
+                  locale: ref.watch(localeProvider),
+                  onTap: () => showLanguagePickerSheet(
+                    context,
+                    ref,
+                    keyPrefix: 'profile-language',
+                  ),
+                ),
+                _SwitchRow(
+                  switchKey: const Key('profile-simple-mode'),
+                  icon: Icons.accessibility_new_rounded,
+                  title: 'Elderly / Simple Mode',
+                  subtitle:
+                      'Hides complex filters, enlarges text, and keeps booking to one tap',
+                  value: ref.watch(simpleModeProvider),
+                  onChanged: (enabled) => ref
+                      .read(simpleModeProvider.notifier)
+                      .setEnabled(enabled),
+                ),
+                _SwitchRow(
+                  switchKey: const Key('profile-quick-book'),
+                  icon: Icons.flash_on_rounded,
+                  title: 'Booking Mode Configuration',
+                  subtitle: ref.watch(bookingModeProvider) == BookingMode.quick
+                      ? 'On: 1-tap quick booking is applied'
+                      : 'Off: the full booking steps stay available',
+                  value: ref.watch(bookingModeProvider) == BookingMode.quick,
+                  onChanged: (enabled) => ref
+                      .read(bookingModeProvider.notifier)
+                      .setMode(
+                        enabled ? BookingMode.quick : BookingMode.normal,
+                      ),
+                ),
+                _ThemeModeRow(
+                  mode: ref.watch(themeModeProvider),
+                  onMode: (mode) =>
+                      ref.read(themeModeProvider.notifier).setThemeMode(mode),
+                  onOpenThemes: () => context.push(AppRoutes.themeCustomizer),
+                ),
+                const SizedBox(height: 16),
+
                 Text(
                   'Account Settings',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -265,30 +415,6 @@ class ProfileScreen extends ConsumerWidget {
                   subtitle: 'Institutes, batches, and enrollments',
                   onTap: () => context.push(AppRoutes.coursesList),
                 ),
-                if (signedIn)
-                  _ProfileMenuTile(
-                    key: const Key('profile-payment-history'),
-                    icon: Icons.payments_outlined,
-                    title: l10n.paymentHistory,
-                    subtitle: 'Completed transactions and receipts',
-                    onTap: () => context.push(AppRoutes.paymentHistory),
-                  ),
-                if (signedIn && referralsEnabled)
-                  _ProfileMenuTile(
-                    key: const Key('profile-refer-earn'),
-                    icon: Icons.card_giftcard_outlined,
-                    title: 'Refer & Earn',
-                    subtitle: 'Share your code and track rewards',
-                    onTap: () => context.push(AppRoutes.referrals),
-                  ),
-                if (signedIn)
-                  _ProfileMenuTile(
-                    key: const Key('profile-kyc-registration'),
-                    icon: Icons.verified_user_outlined,
-                    title: 'Complete KYC / registration',
-                    subtitle: 'Verify your details and module registrations',
-                    onTap: () => context.push(AppRoutes.unifiedRegistration),
-                  ),
                 _ProfileMenuTile(
                   icon: Icons.notifications_none_rounded,
                   title: 'Notifications & Alerts',
@@ -445,12 +571,14 @@ class _ProfileMenuTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -513,7 +641,7 @@ class _ProfileMenuTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, size: 20),
+                trailing ?? const Icon(Icons.chevron_right_rounded, size: 20),
               ],
             ),
           ),
@@ -521,4 +649,311 @@ class _ProfileMenuTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WalletHighlight extends ConsumerWidget {
+  const _WalletHighlight({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final entries = ref.watch(walletEntriesProvider);
+    final summary = entries.maybeWhen(
+      data: WalletSummary.fromEntries,
+      orElse: () => null,
+    );
+    final balance = summary == null
+        ? (entries.isLoading ? '…' : '—')
+        : _rupees(summary.balance);
+    return _HighlightCard(
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet_outlined),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Flexible(
+                      child: Text(
+                        'BookMySpace Wallet',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (summary != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'ACTIVE',
+                          style: TextStyle(
+                            color: Color(0xFF166534),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$balance available',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Usable on advance bookings and discounts',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          FilledButton(
+            key: const Key('profile-wallet-redeem'),
+            onPressed: onOpen,
+            child: const Text('Redeem'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReferHighlight extends ConsumerWidget {
+  const _ReferHighlight({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final summary = ref.watch(referralSummaryProvider).valueOrNull;
+    final code = summary?.code.isNotEmpty == true ? summary!.code : '—';
+    return _HighlightCard(
+      onTap: onOpen,
+      child: Row(
+        children: [
+          const Icon(Icons.card_giftcard_outlined),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Refer & Earn',
+                  key: Key('profile-refer-earn'),
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text('Your code: $code'),
+                Text(
+                  'Reward credits post to your wallet when a referral qualifies',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Copy referral link',
+            onPressed: summary == null
+                ? onOpen
+                : () async {
+                    await Clipboard.setData(
+                      ClipboardData(
+                        text:
+                            'https://bookmyspace.app/register?ref=${summary.code}',
+                      ),
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Referral link copied')),
+                    );
+                  },
+            icon: const Icon(Icons.share_outlined),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HighlightCard extends StatelessWidget {
+  const _HighlightCard({required this.child, this.onTap});
+
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: theme.brightness == Brightness.dark
+            ? theme.colorScheme.surfaceContainerHigh
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LanguageRow extends StatelessWidget {
+  const _LanguageRow({required this.locale, required this.onTap});
+
+  final Locale locale;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfileMenuTile(
+      key: const Key('profile-language'),
+      icon: Icons.language_rounded,
+      title: 'App Language / भाषा',
+      subtitle:
+          '${languageEnglishName(locale)} · navigation and voice readouts',
+      onTap: onTap,
+    );
+  }
+}
+
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.switchKey,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Key? switchKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfileMenuTile(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      onTap: () => onChanged(!value),
+      trailing: Switch(
+        key: switchKey,
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _ThemeModeRow extends StatelessWidget {
+  const _ThemeModeRow({
+    required this.mode,
+    required this.onMode,
+    required this.onOpenThemes,
+  });
+
+  final ThemeMode mode;
+  final ValueChanged<ThemeMode> onMode;
+  final VoidCallback onOpenThemes;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: theme.brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                onTap: onOpenThemes,
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Theme & Color Engine',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '12 themes, a custom accent, and System, Light, or Dark',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                key: const Key('profile-theme-mode'),
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final option in const [
+                    (ThemeMode.system, 'System'),
+                    (ThemeMode.light, 'Light'),
+                    (ThemeMode.dark, 'Dark'),
+                  ])
+                    ChoiceChip(
+                      label: Text(option.$2),
+                      selected: mode == option.$1,
+                      onSelected: (_) => onMode(option.$1),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _rupees(double value) {
+  if (value == value.roundToDouble()) return '₹${value.toStringAsFixed(0)}';
+  return '₹${value.toStringAsFixed(2)}';
 }

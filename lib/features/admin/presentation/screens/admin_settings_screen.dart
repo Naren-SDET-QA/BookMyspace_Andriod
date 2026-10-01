@@ -6,6 +6,7 @@ import '../../../../core/notifications/onesignal_push_service.dart';
 import '../../../../core/router/app_router.dart';
 import '../../domain/admin_settings.dart';
 import '../admin_settings_providers.dart';
+import '../widgets/app_install_section.dart';
 import '../widgets/platform_finance_section.dart';
 import '../widgets/platform_status_section.dart';
 import '../../../auth/presentation/auth_providers.dart';
@@ -38,6 +39,15 @@ class AdminSettingsScreen extends ConsumerWidget {
             _ThemeSection(settings: settings),
             _ModuleSection(settings: settings),
             _PushSection(settings: settings),
+            AppInstallSection(
+              install: settings.install,
+              onSave: (values) async {
+                await ref
+                    .read(adminSettingsRepositoryProvider)
+                    .saveSection(AdminSettings.installSection, values);
+                ref.invalidate(adminSettingsProvider);
+              },
+            ),
             const _ExistingSettingsLinks(),
           ],
         ),
@@ -110,13 +120,26 @@ class _HomeSectionState extends ConsumerState<_HomeSection> {
         initialValue: switch (values['home_layout']?.toString()) {
           'modern' => 'modern',
           'premium' => 'premium',
+          'moment' => 'moment',
+          'life' => 'life',
           _ => 'glass',
         },
-        decoration: const InputDecoration(labelText: 'Home layout'),
+        decoration: const InputDecoration(
+          labelText: 'Home layout',
+          helperText: 'Every admin can choose the Home customers see.',
+        ),
         items: const [
           DropdownMenuItem(
             value: 'glass',
             child: Text('Glass — current Home (default)'),
+          ),
+          DropdownMenuItem(
+            value: 'moment',
+            child: Text('Moment — Your Space for Every Moment'),
+          ),
+          DropdownMenuItem(
+            value: 'life',
+            child: Text('Life — Spaces for Your Life'),
           ),
           DropdownMenuItem(
             value: 'modern',

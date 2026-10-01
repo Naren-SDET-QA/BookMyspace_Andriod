@@ -108,8 +108,23 @@ class CachingBookingRepository implements BookingRepository {
   // Delegates for BookingRepository/VenueRepository members added by the
   // main lineage (no offline caching for these yet).
   @override
-  Future<Booking> requestBooking({ required String venueId, required String slotId, required DateTime bookDate, required double amount, int approvalMinutes = 120, String? couponCode, }) =>
-      _inner.requestBooking(venueId: venueId, slotId: slotId, bookDate: bookDate, amount: amount, approvalMinutes: approvalMinutes, couponCode: couponCode);
+  Future<Booking> requestBooking({
+    required String venueId,
+    required String slotId,
+    required DateTime bookDate,
+    required double amount,
+    int approvalMinutes = 120,
+    String? couponCode,
+    Map<String, dynamic> metadata = const {},
+  }) => _inner.requestBooking(
+    venueId: venueId,
+    slotId: slotId,
+    bookDate: bookDate,
+    amount: amount,
+    approvalMinutes: approvalMinutes,
+    couponCode: couponCode,
+    metadata: metadata,
+  );
 
   @override
   Future<Booking> approveBooking(String bookingId) =>
@@ -124,12 +139,13 @@ class CachingBookingRepository implements BookingRepository {
       _inner.recentBookings(limit: limit);
 
   @override
-  Future<List<Booking>> myBookingsPage({ required int offset, required int limit, }) =>
-      _inner.myBookingsPage(offset: offset, limit: limit);
+  Future<List<Booking>> myBookingsPage({
+    required int offset,
+    required int limit,
+  }) => _inner.myBookingsPage(offset: offset, limit: limit);
 
   @override
-  Future<List<Booking>> ownerVenueBookings() =>
-      _inner.ownerVenueBookings();
+  Future<List<Booking>> ownerVenueBookings() => _inner.ownerVenueBookings();
 
   @override
   Future<Booking> checkInBooking(String qrOrRef) =>

@@ -4,15 +4,59 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr/qr.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../cms/domain/configurable_form.dart';
 import '../../../cms/presentation/widgets/configurable_form_fields.dart';
+import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/course.dart';
 import '../course_providers.dart';
+import 'academic_sheet.dart';
+import 'external_link.dart';
+
+const _enrollSheetBg = Colors.white;
+
+/// White sheet with dark text. The class feed's dark theme must not paint
+/// this form.
+ThemeData enrollmentSheetTheme() {
+  const border = Color(0xFFE2E8F0);
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: _enrollSheetBg,
+    colorScheme: const ColorScheme.light(
+      surface: _enrollSheetBg,
+      onSurface: Color(0xFF0F172A),
+      primary: Color(0xFF6D28D9),
+      onPrimary: Colors.white,
+      secondary: Color(0xFF6D28D9),
+      error: Color(0xFFDC2626),
+    ),
+  );
+  return base.copyWith(
+    inputDecorationTheme: const InputDecorationTheme(
+      filled: true,
+      fillColor: _enrollSheetBg,
+      labelStyle: TextStyle(color: Color(0xFF334155)),
+      floatingLabelStyle: TextStyle(color: Color(0xFF6D28D9)),
+      hintStyle: TextStyle(color: Color(0xFF64748B)),
+      helperStyle: TextStyle(color: Color(0xFF64748B)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: Color(0xFF6D28D9), width: 1.4),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: border),
+      ),
+    ),
+  );
+}
 
 Future<void> showClassEnrollmentSheet(
   BuildContext context, {
@@ -20,16 +64,32 @@ Future<void> showClassEnrollmentSheet(
   required CourseBatch batch,
   required bool isTrial,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+  return showAcademicSheet<void>(
+    context,
+    backgroundColor: _enrollSheetBg,
+    child: Theme(
+      data: enrollmentSheetTheme(),
       child: _EnrollmentForm(course: course, batch: batch, isTrial: isTrial),
     ),
   );
+}
+
+/// Fields the student must fill. Prefer the institute row (published owner
+/// edits, including custom fields). Fall back to the form joined on the
+/// course, then the name/mobile/email defaults once loading finishes.
+ConfigurableFormSchema? enrollmentSchema({
+  required AsyncValue<Institute> instituteAsync,
+  required ConfigurableFormSchema? embedded,
+}) {
+  final institute = instituteAsync.valueOrNull;
+  if (institute != null) return institute.publishedRegistrationForm;
+  if (embedded != null) {
+    return embedded.activeFields.isNotEmpty
+        ? embedded
+        : ConfigurableFormSchema.defaults();
+  }
+  if (instituteAsync.isLoading) return null;
+  return ConfigurableFormSchema.defaults();
 }
 
 class _EnrollmentForm extends ConsumerStatefulWidget {
@@ -54,16 +114,36 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
   bool _busy = false;
   bool _agreedToTerms = false;
   CourseMode _modePreference = CourseMode.offline;
+  String _payment = 'full_course';
+  late CourseBatch _batch = widget.batch;
   String? _error;
+
+  static const paymentPreferenceKey = 'payment_preference';
+
+  @override
+  void initState() {
+    super.initState();
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    if (user.fullName.isNotEmpty) _answers['full_name'] = user.fullName;
+    if (user.phone.isNotEmpty) _answers['mobile'] = user.phone;
+  }
 
   /// Answer key under which the learner's offline/online preference for a
   /// hybrid batch is stored in the enrollment's `form_answers`.
   static const modePreferenceKey = 'delivery_mode_preference';
 
   bool get _isHybrid =>
-      (widget.batch.mode ?? widget.course.mode) == CourseMode.hybrid;
+      (_batch.mode ?? widget.course.mode) == CourseMode.hybrid;
 
-  Future<void> _submit(ConfigurableFormSchema schema) async {
+  double get _baseFee =>
+      _batch.feeAmount > 0 ? _batch.feeAmount : widget.course.feeAmount;
+
+  double get _payable =>
+      _batch.feeAmount > 0 ? _batch.feeAmount : widget.course.payableAmount;
+
+  Future<void> _submit(ConfigurableFormSchema? schema) async {
+    if (schema == null) return;
     if (!_agreedToTerms) {
       setState(() => _error = 'Please agree to the terms to continue.');
       return;
@@ -92,7 +172,7 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
           .read(courseEnrollmentControllerProvider)
           .enroll(
             courseId: widget.course.id,
-            batchId: widget.batch.id,
+            batchId: _batch.id,
             isTrial: widget.isTrial,
             studentName: (_answers['full_name'] ?? '').toString(),
             contactPhone: (_answers['mobile'] ?? '').toString(),
@@ -100,6 +180,7 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
             formAnswers: {
               ..._answers,
               if (_isHybrid) modePreferenceKey: _modePreference.dbValue,
+              if (!widget.isTrial) paymentPreferenceKey: _payment,
             },
           );
       if (!mounted) return;
@@ -107,7 +188,7 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
       await showEnrollmentVoucherDialog(
         context,
         course: widget.course,
-        batch: widget.batch,
+        batch: _batch,
         record: record,
       );
     } catch (error) {
@@ -123,16 +204,17 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
   Widget build(BuildContext context) {
     final title = widget.isTrial ? 'Book Free Trial' : 'Enroll Now';
     final theme = Theme.of(context);
-    final seatsLeft = widget.batch.seatsLeft;
-    final total = widget.batch.capacity;
+    final seatsLeft = _batch.seatsLeft;
+    final total = _batch.capacity;
     final isLow = seatsLeft <= 5 && !widget.isTrial;
     final instituteAsync = ref.watch(
       instituteDetailProvider(widget.course.instituteId),
     );
     final institute = instituteAsync.valueOrNull;
-    final schema =
-        institute?.publishedRegistrationForm ??
-        ConfigurableFormSchema.defaults();
+    final schema = enrollmentSchema(
+      instituteAsync: instituteAsync,
+      embedded: widget.course.registrationForm,
+    );
     final showSeats =
         widget.course.instituteModules.enabled('seats') &&
         (institute?.modules.enabled('seats') ?? true);
@@ -150,7 +232,7 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                 Text(title, style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),
                 Text(
-                  '${widget.course.title} · ${widget.batch.label}',
+                  '${widget.course.title} · ${_batch.label}',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),
@@ -213,12 +295,31 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                     ),
                   ),
                 if (!widget.isTrial && showSeats) const SizedBox(height: 12),
-                ConfigurableFormFields(
-                  schema: schema,
-                  values: _answers,
-                  onChanged: (key, value) =>
-                      setState(() => _answers[key] = value),
+                Text(
+                  'Registration details',
+                  key: const Key('enroll-registration-form'),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'Fill every required field. The institute chooses which fields appear here.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                if (schema == null)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  ConfigurableFormFields(
+                    schema: schema,
+                    values: _answers,
+                    onChanged: (key, value) =>
+                        setState(() => _answers[key] = value),
+                  ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -235,6 +336,60 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                     if (picked != null) setState(() => _start = picked);
                   },
                 ),
+                if (widget.course.batches.length > 1) ...[
+                  Text('Batch', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final option in widget.course.batches)
+                        ChoiceChip(
+                          label: Text(
+                            option.label.isEmpty ? option.timing : option.label,
+                          ),
+                          selected: option.id == _batch.id,
+                          onSelected: (_) => setState(() => _batch = option),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (!widget.isTrial) ...[
+                  Text('Payment', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    key: const Key('enroll-payment-options'),
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final option in const [
+                        ('full_course', 'Full course fee'),
+                        ('monthly', 'Monthly installment'),
+                        ('pay_at_institute', 'Pay at institute'),
+                      ])
+                        ChoiceChip(
+                          label: Text(option.$2),
+                          selected: _payment == option.$1,
+                          onSelected: (_) =>
+                              setState(() => _payment = option.$1),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Course fee ${formatInr(_baseFee)}'),
+                  if (widget.course.discountAmount > 0 && _batch.feeAmount <= 0)
+                    Text('Discount ${formatInr(widget.course.discountAmount)}'),
+                  Text(
+                    'Payable ${formatInr(_payable)}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    'The institute confirms this amount. Invoice taxes come from the server receipt.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 if (_isHybrid) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -293,7 +448,7 @@ class _EnrollmentFormState extends ConsumerState<_EnrollmentForm> {
                 const SizedBox(height: 16),
                 FilledButton(
                   key: const Key('enroll-submit'),
-                  onPressed: _busy || !_agreedToTerms
+                  onPressed: _busy || !_agreedToTerms || schema == null
                       ? null
                       : () => _submit(schema),
                   style: FilledButton.styleFrom(
@@ -486,7 +641,7 @@ Future<void> showEnrollmentVoucherDialog(
                 '&dates=${_cal(start)}/${_cal(end)}'
                 '&details=${Uri.encodeComponent('Admission ID: $code\n${course.instituteName}')}',
               );
-              launchUrl(uri, mode: LaunchMode.externalApplication);
+              launchExternal(uri);
             },
             icon: const Icon(Icons.calendar_today_rounded, size: 16),
             label: const Text('Reminder'),

@@ -16,11 +16,20 @@ class InvoiceDocument {
     required this.config,
     required this.snapshot,
     required this.issuedAt,
+    this.sacCode = '',
+    this.sellerGstin = '',
+    this.taxMode = '',
+    this.cgst = 0,
+    this.sgst = 0,
+    this.igst = 0,
+    this.amountInWords = '',
   });
   final String id, number, documentType, status, currency;
   final double subtotal, discount, taxTotal, feeTotal, total, paid, due, refund;
   final Map<String, dynamic> config, snapshot;
   final DateTime issuedAt;
+  final String sacCode, sellerGstin, taxMode, amountInWords;
+  final double cgst, sgst, igst;
 
   factory InvoiceDocument.fromJson(Map<String, dynamic> json) =>
       InvoiceDocument(
@@ -46,6 +55,13 @@ class InvoiceDocument {
         issuedAt:
             DateTime.tryParse(json['issued_at']?.toString() ?? '') ??
             DateTime(1970),
+        sacCode: json['sac_code']?.toString() ?? '',
+        sellerGstin: json['seller_gstin']?.toString() ?? '',
+        taxMode: json['tax_mode']?.toString() ?? '',
+        cgst: (json['cgst_amount'] as num?)?.toDouble() ?? 0,
+        sgst: (json['sgst_amount'] as num?)?.toDouble() ?? 0,
+        igst: (json['igst_amount'] as num?)?.toDouble() ?? 0,
+        amountInWords: json['amount_in_words']?.toString() ?? '',
       );
 }
 

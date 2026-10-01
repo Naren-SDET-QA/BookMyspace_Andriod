@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/filter_checkbox_tile.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../domain/course_discovery_query.dart';
 import '../course_providers.dart';
@@ -70,39 +71,45 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreenV1> {
                   onChanged: (_) => setState(() {}),
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  children: [
-                    for (final filter in CourseModeFilter.values)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(_modeLabel(filter, l10n)),
-                          selected: _mode == filter,
-                          onSelected: (_) => setState(() => _mode = filter),
-                        ),
-                      ),
-                  ],
-                ),
+              ExpansionTile(
+                title: const Text('Class mode'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Column(
+                      children: [
+                        for (final filter in CourseModeFilter.values)
+                          FilterCheckboxTile(
+                            label: _modeLabel(filter, l10n),
+                            value: _mode == filter,
+                            onChanged: (selected) {
+                              if (selected) setState(() => _mode = filter);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
-                  children: [
-                    for (final filter in CourseOfferFilter.values)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(_offerLabel(filter, l10n)),
-                          selected: _offer == filter,
-                          onSelected: (_) => setState(() => _offer = filter),
-                        ),
-                      ),
-                  ],
-                ),
+              ExpansionTile(
+                title: const Text('Offers'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Column(
+                      children: [
+                        for (final filter in CourseOfferFilter.values)
+                          FilterCheckboxTile(
+                            label: _offerLabel(filter, l10n),
+                            value: _offer == filter,
+                            onChanged: (selected) {
+                              if (selected) setState(() => _offer = filter);
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               Expanded(
                 child: items.isEmpty

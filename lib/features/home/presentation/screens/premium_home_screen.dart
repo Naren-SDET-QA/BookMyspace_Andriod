@@ -102,14 +102,10 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
       case _SearchTab.classes:
         context.push(AppRoutes.coursesList);
       case _SearchTab.stays:
-        final cats =
-            ref.read(venueCategoriesProvider).valueOrNull ??
-            const <VenueCategory>[];
-        _openSearch(
-          categorySlug:
-              MainHomeSection.lodgeRooms.matchMaster(cats)?.slug ??
-              MainHomeSection.lodgeRooms.id,
-          query: text,
+        context.push(
+          text.isEmpty
+              ? AppRoutes.staysList
+              : '${AppRoutes.staysList}?q=${Uri.encodeQueryComponent(text)}',
         );
     }
   }
