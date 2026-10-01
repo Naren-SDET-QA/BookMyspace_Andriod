@@ -194,6 +194,7 @@ class _VenueDiscoveryScreenState extends State<VenueDiscoveryScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           value: _state,
           decoration: const InputDecoration(labelText: 'State'),
           items: [
@@ -212,6 +213,7 @@ class _VenueDiscoveryScreenState extends State<VenueDiscoveryScreen> {
           decoration: const InputDecoration(labelText: 'Town / City'),
         ),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           value: _category,
           decoration: const InputDecoration(labelText: 'Venue Category'),
           items: [

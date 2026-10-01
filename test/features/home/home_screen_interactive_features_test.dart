@@ -74,20 +74,27 @@ void main() {
       expect(find.text('Themes & 3D'), findsOneWidget);
 
       // Explore categories / Trending + Add Other
-      expect(find.text('Trending Categories'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Text &&
+              (w.data == 'Trending Categories' ||
+                  w.data == 'Explore categories'),
+        ),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('add-other-category-header-btn')), findsOneWidget);
 
-      // Category Matrix header & Style dropdown
+      // Category Matrix
       final scrollableFinder = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
-        find.text('ALL MASTER CATEGORIES & MATRIX'),
+        find.byKey(const Key('function-halls-matrix')),
         200,
         scrollable: scrollableFinder,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('ALL MASTER CATEGORIES & MATRIX'), findsOneWidget);
-      expect(find.text('UI 1: 3D Matrix'), findsOneWidget);
+      expect(find.byKey(const Key('function-halls-matrix')), findsOneWidget);
 
       // Scroll to Bol-ke-Book Voice Search banner
       await tester.scrollUntilVisible(

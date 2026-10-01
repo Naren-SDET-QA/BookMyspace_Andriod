@@ -1406,7 +1406,7 @@ class _ExploreCategoryCards extends ConsumerWidget {
               child: LiveUiText(
                 screenKey: 'home',
                 elementKey: 'explore.categories.title',
-                fallback: 'Trending Categories',
+                fallback: 'Explore categories',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -1666,14 +1666,15 @@ class _TopHeaderBar extends ConsumerWidget {
     final actions = <Widget>[
       _LanguagePill(compact: narrow),
       const SizedBox(width: 4),
-      _ThemePill(compact: narrow),
-      const SizedBox(width: 4),
-      if (!narrow)
+      if (!narrow) ...[
+        const _ThemePill(),
+        const SizedBox(width: 4),
         IconButton(
           tooltip: 'All Screens Directory',
           onPressed: () => context.push(AppRoutes.screenDirectory),
           icon: const Icon(Icons.grid_view_rounded),
         ),
+      ],
       IconButton(
         visualDensity: VisualDensity.compact,
         padding: EdgeInsets.zero,
@@ -1705,9 +1706,13 @@ class _TopHeaderBar extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        BookMySpaceWordmark(
-                          fontSize: 16,
-                          textColor: theme.colorScheme.onSurface,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: BookMySpaceWordmark(
+                            fontSize: 16,
+                            textColor: theme.colorScheme.onSurface,
+                          ),
                         ),
                         Text(
                           'Turfs • Halls • PGs • Studios',
@@ -1726,7 +1731,13 @@ class _TopHeaderBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 4),
-            location,
+            Row(
+              children: [
+                Expanded(child: location),
+                const SizedBox(width: 8),
+                const _ThemePill(compact: true),
+              ],
+            ),
           ],
         ),
       );
@@ -2526,23 +2537,26 @@ class _DailyLuckyBookingPassCardState extends State<_DailyLuckyBookingPassCard> 
                       ),
                     ],
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('✨', style: TextStyle(fontSize: 16)),
-                      SizedBox(width: 8),
-                      Text(
-                        'TAP TO SCRATCH & UNLOCK CODE',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12.5,
-                          letterSpacing: 0.5,
-                          color: Colors.white,
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('✨', style: TextStyle(fontSize: 16)),
+                        SizedBox(width: 8),
+                        Text(
+                          'TAP TO SCRATCH & UNLOCK CODE',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12.5,
+                            letterSpacing: 0.5,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Text('🎁', style: TextStyle(fontSize: 16)),
-                    ],
+                        SizedBox(width: 8),
+                        Text('🎁', style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -2740,60 +2754,73 @@ class _HotDealsBannerCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('💒', style: TextStyle(fontSize: 12)),
+                              SizedBox(width: 4),
+                              Text(
+                                'FLASH DEAL',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      child: const Row(
-                        children: [
-                          Text('💒', style: TextStyle(fontSize: 12)),
-                          SizedBox(width: 4),
-                          Text(
-                            'FLASH DEAL',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.access_time_rounded,
-                            size: 12,
-                            color: Color(0xFFFFD54F),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 12,
+                                color: Color(0xFFFFD54F),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Ends in 03h 45m',
+                                style: TextStyle(
+                                  color: Color(0xFFFFD54F),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Ends in 03h 45m',
-                            style: TextStyle(
-                              color: Color(0xFFFFD54F),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
@@ -2823,40 +2850,47 @@ class _HotDealsBannerCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.5),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'USE CODE: ',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'ROYALWED35',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      child: const Row(
-                        children: [
-                          Text(
-                            'USE CODE: ',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            'ROYALWED35',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton(
                       key: const Key('claim-flash-deal-btn'),
                       onPressed: onClaimDeal,
@@ -2864,8 +2898,8 @@ class _HotDealsBannerCard extends StatelessWidget {
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFF1E293B),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
+                          horizontal: 10,
+                          vertical: 6,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

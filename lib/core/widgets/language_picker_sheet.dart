@@ -94,154 +94,78 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
       child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 560,
-              maxHeight: media.size.height * 0.82,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: media.size.height * 0.75),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Text(
+                  'Choose language',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: TextField(
+                  key: const Key('language-search'),
+                  controller: _controller,
+                  onChanged: (value) => setState(() => _query = value),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Search languages',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: locales.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No languages match "$_query"',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        shrinkWrap: true,
                         children: [
-                          Icon(
-                            Icons.language_rounded,
-                            size: 22,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Select Language',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
+                          for (final locale in locales)
+                            ListTile(
+                              key: Key(
+                                '${widget.keyPrefix}-${locale.languageCode}',
+                              ),
+                              title: Text(
+                                AppLocalizations.languageLabel(locale),
+                              ),
+                              subtitle: Text(languageEnglishName(locale)),
+                              selected: locale.languageCode == widget.current,
+                              trailing: locale.languageCode == widget.current
+                                  ? Icon(
+                                      Icons.check_rounded,
+                                      color: theme.colorScheme.primary,
+                                    )
+                                  : null,
+                              onTap: () => widget.onSelected(locale),
                             ),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Select your language for instant localized navigation & voice assistance:',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: TextField(
-                    key: const Key('language-search'),
-                    controller: _controller,
-                    onChanged: (value) => setState(() => _query = value),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'Search language…',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                Flexible(
-                  child: locales.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'No languages match "$_query"',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        )
-                      : ListView(
-                          shrinkWrap: true,
-                          children: [
-                            for (final locale in locales)
-                              ListTile(
-                                key: Key(
-                                  '${widget.keyPrefix}-${locale.languageCode}',
-                                ),
-                                leading: Text(
-                                  _flagFor(locale.languageCode),
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                                title: Text(
-                                  AppLocalizations.languageLabel(locale),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Text(languageEnglishName(locale)),
-                                selected: locale.languageCode == widget.current,
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.volume_up_rounded,
-                                        size: 18,
-                                      ),
-                                      tooltip: 'Listen pronunciation',
-                                      onPressed: () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Playing voice sample: ${languageEnglishName(locale)}',
-                                            ),
-                                            duration: const Duration(seconds: 1),
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    if (locale.languageCode == widget.current)
-                                      Icon(
-                                        Icons.check_rounded,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                  ],
-                                ),
-                                onTap: () => widget.onSelected(locale),
-                              ),
-                          ],
-                        ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  static String _flagFor(String code) {
-    return switch (code) {
-      'en' => '🇬🇧',
-      'te' => '🇮🇳',
-      'hi' => '🇮🇳',
-      'ta' => '🇮🇳',
-      'kn' => '🇮🇳',
-      _ => '🌐',
-    };
   }
 }

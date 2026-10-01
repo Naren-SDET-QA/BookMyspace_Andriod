@@ -17,33 +17,12 @@ import '../home_category_catalog.dart';
 /// - Desktop (840-1200px): 3-4 column grid
 /// - Extra-wide (1200px+): 4 column grid
 enum _ViewMode {
-  matrix3d(
-    shortLabel: 'UI 1: 3D Matrix',
-    title: 'Style 1: 3D Glass Matrix & Orbit',
-    description: 'Interactive 3D depth, perspective rotation & live data',
-  ),
-  grid(
-    shortLabel: 'UI 2: Grid',
-    title: 'Style 2: Classic Tactile Grid',
-    description: 'Original tactile cards with live status & quick chips',
-  ),
-  list(
-    shortLabel: 'UI 3: Carousel',
-    title: 'Style 3: Compact Glass Carousel',
-    description: 'Horizontally scrolling glass cards with quick filter pills',
-  );
+  matrix3d('UI 1: 3D Matrix'),
+  grid('UI 2: Standard Grid'),
+  list('UI 3: Compact List');
 
-  const _ViewMode({
-    required this.shortLabel,
-    required this.title,
-    required this.description,
-  });
-
-  final String shortLabel;
-  final String title;
-  final String description;
-
-  String get label => shortLabel;
+  const _ViewMode(this.label);
+  final String label;
 }
 
 class CategoryDiscoveryPanel extends StatefulWidget {
@@ -243,39 +222,13 @@ class _CategoryDiscoveryPanelState extends State<CategoryDiscoveryPanel> {
           key: const Key('discovery-hero'),
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'ALL MASTER CATEGORIES & MATRIX',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'All 6 master categories • 36+ verified sub-sections • Interactive 3D depth',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Inside this category',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             _UiModeSelector(
@@ -397,83 +350,37 @@ class _UiModeSelector extends StatelessWidget {
         tooltip: 'Change discovery layout',
         initialValue: mode,
         onSelected: onChanged,
-        offset: const Offset(0, 36),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
+        offset: const Offset(0, 32),
         itemBuilder: (context) => [
           for (final m in _ViewMode.values)
             PopupMenuItem<_ViewMode>(
               value: m,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (m == mode)
                     Icon(
                       Icons.check_rounded,
-                      size: 18,
-                      color: theme.colorScheme.primary,
+                      size: 16,
+                      color: theme.colorScheme.tertiary,
                     )
                   else
-                    const SizedBox(width: 18),
+                    const SizedBox(width: 16),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          m.title,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          m.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                  Flexible(
+                    child: Text(
+                      m.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
             ),
         ],
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                mode.shortLabel,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-            ],
-          ),
+        child: Icon(
+          Icons.tune_rounded,
+          size: 22,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );
