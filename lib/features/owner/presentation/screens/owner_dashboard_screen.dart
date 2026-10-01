@@ -134,6 +134,11 @@ class _OwnerDashboardBody extends ConsumerWidget {
         ),
         // release/v1.0 owner tools.
         _QuickAction(
+          icon: Icons.account_balance_wallet_rounded,
+          label: 'Settlements & Payouts 💰',
+          onTap: () => context.push(AppRoutes.ownerPayments),
+        ),
+        _QuickAction(
           icon: Icons.event_note_rounded,
           label: l10n.ownerBookings,
           onTap: () => context.push(AppRoutes.ownerBookingsManager),

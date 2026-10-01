@@ -50,8 +50,9 @@ class _AdminDeveloperPlatformScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Developer platform'),
-        bottom: const TabBar(
-          tabs: [
+        bottom: TabBar(
+          controller: _tabs,
+          tabs: const [
             Tab(text: 'API keys'),
             Tab(text: 'Webhooks'),
             Tab(text: 'Delivery log'),

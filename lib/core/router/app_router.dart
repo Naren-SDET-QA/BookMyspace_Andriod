@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState, AuthUser;
 
 import '../../features/accommodations/domain/accommodation.dart';
-import '../../features/accommodations/presentation/screens/accommodation_detail_screen.dart';
 import '../../features/accommodations/presentation/screens/accommodation_list_screen.dart';
 import '../../features/accommodations/presentation/screens/stay_management_screens.dart';
 import '../../features/admin/presentation/screens/admin_app_sections_screen.dart';
@@ -59,6 +58,7 @@ import '../../features/booking/presentation/screens/booking_screen.dart';
 import '../../features/booking/presentation/screens/booking_success_screen.dart';
 import '../../features/booking/presentation/screens/invoice_screen.dart';
 import '../../features/booking/presentation/screens/my_bookings_screen.dart';
+import '../../features/common/presentation/screens/master_screen_directory_screen.dart';
 import '../../features/business/presentation/screens/business_plan_configuration_screen.dart';
 import '../../features/business/presentation/screens/business_pricing_configuration_screen.dart';
 import '../../features/checkin/presentation/screens/qr_check_in_screen.dart';
@@ -94,6 +94,7 @@ import '../../features/meeting_rooms/presentation/screens/meeting_room_detail_sc
 import '../../features/meeting_rooms/presentation/screens/meeting_room_owner_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_rooms_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/offers/presentation/screens/past_coupons_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/owner/presentation/screens/owner_dashboard_screen.dart';
 import '../../features/owner/presentation/screens/owner_operations_screen.dart';
@@ -134,6 +135,7 @@ import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/search/domain/ai_search_intent.dart';
 import '../../features/search/presentation/screens/map_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
+import '../../features/settings/presentation/screens/connected_apps_screen.dart';
 import '../../features/settings/presentation/screens/features_hub_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/map/presentation/screens/venue_map_screen.dart';
@@ -189,6 +191,7 @@ abstract class AppRoutes {
   static const bookings = '/bookings';
   static const saved = '/saved';
   static const profile = '/profile';
+  static const pastCoupons = '/profile/coupons';
   static const settings = '/settings';
   static const categoryPreferences = '/settings/categories';
   static const login = '/login';
@@ -328,6 +331,7 @@ abstract class AppRoutes {
   static const termsOfService = '/terms';
   static const qrScanner = '/qr-scanner';
   static const featuresHub = '/features';
+  static const connectedApps = '/connected-apps';
   static const assistantTab = '/assistant';
   static const adminNavTabs = '/admin/nav-tabs';
   static const adminCatalog = '/admin/catalog';
@@ -357,7 +361,54 @@ abstract class AppRoutes {
   static const v1OwnerRegistration = '/v1/owner/register';
   static const v1OwnerVenues = '/v1/owner/venues';
   static const v1OwnerVenueCreate = '/v1/owner/venues/create';
+
+  // Master specification route paths & aliases
+  static const placeDiscovery = '/place_discovery';
+  static const placeDiscoveryAlt = '/place-discovery';
+  static const venueDiscovery = '/venue-discovery';
+  static const adminConsole = '/admin/console';
+  static const adminElementEditor = '/admin/element_editor';
+  static const adminAppSectionsUnderscore = '/admin/app_sections';
+  static const adminPlugAndPlayFeatures = '/admin/plug_and_play_features';
+  static const listingFieldsConfig = '/listing_fields_config';
+  static const adminRegistrationFieldsConfig = '/admin/registration_fields_config';
+  static const adminFirebaseMigration = '/admin/firebase_migration';
+  static const dailyWeeklyReports = '/reports/daily_weekly';
+  static const paymentTransactions = '/payment_transactions';
+  static const paymentConfig = '/payment_config';
+  static const externalAppsMcp = '/external_apps_mcp';
+  static const themeCustomizerUnderscore = '/theme_customizer';
+  static const referralSingular = '/referral';
+  static const ownerCreate = '/owner/create';
+  static const instituteOwner = '/institute_owner';
+  static const qrScannerUnderscore = '/qr_scanner';
+  static const screenDirectory = '/screens';
 }
+
+/// Canonical mapping between master specification route names and their GoRouter paths.
+const Map<String, String> specRouteAliases = {
+  AppRoutes.placeDiscovery: AppRoutes.venueDiscovery,
+  AppRoutes.placeDiscoveryAlt: AppRoutes.venueDiscovery,
+  AppRoutes.adminConsole: AppRoutes.adminDashboard,
+  AppRoutes.adminElementEditor: AppRoutes.adminUiElementOverrides,
+  AppRoutes.adminAppSectionsUnderscore: AppRoutes.adminAppSections,
+  AppRoutes.adminPlugAndPlayFeatures: AppRoutes.adminIntegrations,
+  AppRoutes.listingFieldsConfig: AppRoutes.adminListingFields,
+  AppRoutes.adminRegistrationFieldsConfig: AppRoutes.adminRegistrationFields,
+  AppRoutes.adminFirebaseMigration: AppRoutes.adminDeveloperPlatform,
+  AppRoutes.dailyWeeklyReports: AppRoutes.analytics,
+  AppRoutes.paymentTransactions: AppRoutes.adminPaymentsLedger,
+  AppRoutes.paymentConfig: AppRoutes.adminPaymentHealth,
+  AppRoutes.externalAppsMcp: AppRoutes.connectedApps,
+  AppRoutes.themeCustomizerUnderscore: AppRoutes.themeCustomizer,
+  AppRoutes.referralSingular: AppRoutes.referrals,
+  AppRoutes.ownerCreate: AppRoutes.ownerVenueCreate,
+  AppRoutes.instituteOwner: AppRoutes.ownerInstituteDashboard,
+  AppRoutes.qrScannerUnderscore: AppRoutes.qrScanner,
+  '/catalog': AppRoutes.screenDirectory,
+  '/screen_directory': AppRoutes.screenDirectory,
+  '/screen-directory': AppRoutes.screenDirectory,
+};
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -485,8 +536,9 @@ GoRouter createAppRouter({
       if (ready && user != null && path == AppRoutes.login) {
         return authenticatedLocationFromLogin(state.uri);
       }
+      final canonicalPath = specRouteAliases[path] ?? path;
       final resolved = resolveAppRedirect(
-        location: path,
+        location: canonicalPath,
         currentUser: user,
         authReady: ready,
         allowUnauthenticatedTestAccess: allowUnauthenticatedTestAccess,
@@ -502,6 +554,11 @@ GoRouter createAppRouter({
       return _UnknownRouteScreen(location: state.uri.path);
     },
     routes: [
+      for (final entry in specRouteAliases.entries)
+        GoRoute(
+          path: entry.key,
+          redirect: (context, state) => entry.value,
+        ),
       GoRoute(
         path: AppRoutes.root,
         builder: (context, state) => const HomeScreen(),
@@ -529,7 +586,7 @@ GoRouter createAppRouter({
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
-        path: '/venue-discovery',
+        path: AppRoutes.venueDiscovery,
         builder: (context, state) => VenueDiscoveryScreen(
           repository: SupabaseDiscoveryRepository(Supabase.instance.client),
         ),
@@ -803,9 +860,8 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.pgDetails,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => AccommodationDetailScreen(
-          propertyId: state.pathParameters['id'] ?? '',
-          module: AccommodationModule.pg,
+        builder: (context, state) => VenueDetailsScreen(
+          venueId: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
@@ -817,9 +873,8 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.stayDetails,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => AccommodationDetailScreen(
-          propertyId: state.pathParameters['id'] ?? '',
-          module: AccommodationModule.stay,
+        builder: (context, state) => VenueDetailsScreen(
+          venueId: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
@@ -945,6 +1000,11 @@ GoRouter createAppRouter({
         path: AppRoutes.support,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SupportTicketsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.screenDirectory,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const MasterScreenDirectoryScreen(),
       ),
       GoRoute(
         path: AppRoutes.adminDashboard,
@@ -1420,6 +1480,16 @@ GoRouter createAppRouter({
         builder: (context, state) => const FeaturesHubScreen(),
       ),
       GoRoute(
+        path: AppRoutes.connectedApps,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ConnectedAppsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.pastCoupons,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const PastCouponsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.paymentHistory,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const PaymentHistoryScreen(),
@@ -1712,19 +1782,20 @@ String? resolveAppRedirect({
   bool allowUnauthenticatedTestAccess = false,
   FeatureRegistry? features,
 }) {
+  final canonical = specRouteAliases[location] ?? location;
   // Backend-unavailable Phase-1 paths fail closed even while auth is still
   // resolving, so their repositories cannot issue unsupported requests.
-  if (_isPhaseOneBackendUnavailable(location)) return AppRoutes.home;
+  if (_isPhaseOneBackendUnavailable(canonical)) return AppRoutes.home;
   if (!authReady) return null;
   final isPublic =
-      location == AppRoutes.splash ||
-      location == AppRoutes.onboarding ||
-      location == AppRoutes.login ||
-      location == AppRoutes.forgotPassword ||
-      location == AppRoutes.resetPassword ||
-      location == AppRoutes.unifiedRegistration ||
-      location == AppRoutes.ownerRegistration ||
-      location.startsWith('/register/');
+      canonical == AppRoutes.splash ||
+      canonical == AppRoutes.onboarding ||
+      canonical == AppRoutes.login ||
+      canonical == AppRoutes.forgotPassword ||
+      canonical == AppRoutes.resetPassword ||
+      canonical == AppRoutes.unifiedRegistration ||
+      canonical == AppRoutes.ownerRegistration ||
+      canonical.startsWith('/register/');
   if (currentUser == null && !allowUnauthenticatedTestAccess) {
     if (!isPublic) return AppRoutes.login;
   }
@@ -1732,22 +1803,22 @@ String? resolveAppRedirect({
     // Main-lineage routes are guarded by RoleGate with the fine-grained
     // database roles (administrator, support agent, institute owner, ...);
     // the coarse role check below applies to the release/v1.0 routes only.
-    final gatedByWidget = _roleGateRoutes.contains(location);
+    final gatedByWidget = _roleGateRoutes.contains(canonical);
     final isAdminRoute = !gatedByWidget &&
-        (location == AppRoutes.adminDashboard ||
-            location.startsWith('/admin/'));
+        (canonical == AppRoutes.adminDashboard ||
+            canonical.startsWith('/admin/'));
     final isOwnerRoute = !gatedByWidget &&
-        (location.startsWith('/owner') || location == AppRoutes.analytics);
+        (canonical.startsWith('/owner') || canonical == AppRoutes.analytics);
     if (isAdminRoute && !currentUser.isAdmin) return AppRoutes.profile;
     if (isOwnerRoute && !currentUser.isOwner) return AppRoutes.profile;
-    if (location == AppRoutes.resetPassword) return null;
-    if (location == AppRoutes.onboarding ||
-        location == AppRoutes.login ||
-        location == AppRoutes.forgotPassword) {
+    if (canonical == AppRoutes.resetPassword) return null;
+    if (canonical == AppRoutes.onboarding ||
+        canonical == AppRoutes.login ||
+        canonical == AppRoutes.forgotPassword) {
       return AppRoutes.shell;
     }
   }
-  return _featureRedirect(location, features);
+  return _featureRedirect(canonical, features);
 }
 
 /// Routes whose screens are wrapped in [RoleGate] (main lineage).
@@ -1762,15 +1833,14 @@ const _roleGateRoutes = {
   '/owner/courses/create', '/owner/courses/edit', '/owner/venues/create',
 };
 
-/// These Phase-1 flows require schemas/RPCs that are present only on the
-/// Phase branch. Keep them out of PROD until their backend contracts have
-/// been reviewed and deployed; existing booking and module-registration
-/// routes intentionally remain available.
+/// These Phase-1 flows still require schemas/RPCs that are not part of the
+/// canonical customer contract. Hotel/PG discovery and detail pages use the
+/// existing venue and hotel-room read contracts; the legacy stay-management
+/// page remains gated until its accommodation booking contract is deployed.
 bool _isPhaseOneBackendUnavailable(String location) {
   const unavailableRoots = [
-    '/pg',
-    '/stays',
     '/owner/stays',
+    '/stays/bookings/mine',
     '/meeting-rooms',
     '/owner/meeting-rooms',
     '/sports',

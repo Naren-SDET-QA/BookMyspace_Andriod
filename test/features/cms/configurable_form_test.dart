@@ -9,6 +9,33 @@ import 'package:flutter_test/flutter_test.dart';
 import '../courses/mock_course_repository.dart';
 
 void main() {
+  test('loosely typed registration json keeps custom fields', () {
+    final institute = Institute.fromJson({
+      'id': 'i1',
+      'org_id': 'o1',
+      'name': 'Nexus',
+      'registration_form': <dynamic, dynamic>{
+        'status': 'published',
+        'published_fields': [
+          <dynamic, dynamic>{
+            'key': 'custom_school',
+            'label': 'School name',
+            'type': 'text',
+            'enabled': true,
+            'required': true,
+            'visible': true,
+            'custom': true,
+            'display_order': 0,
+          },
+        ],
+      },
+    });
+    expect(
+      institute.publishedRegistrationForm.activeFields.map((field) => field.key),
+      ['custom_school'],
+    );
+  });
+
   test('defaults enable name and mobile, not Aadhaar', () {
     final schema = ConfigurableFormSchema.defaults();
     final keys = schema.activeFields.map((f) => f.key).toSet();

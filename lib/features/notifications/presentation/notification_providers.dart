@@ -7,8 +7,6 @@ import '../domain/notification_repository.dart';
 import '../domain/push_notification_types.dart';
 import '../infrastructure/push_notification_service.dart';
 import '../domain/device_token_repository.dart';
-import '../domain/notification.dart';
-import '../domain/notification_repository.dart';
 import '../infrastructure/supabase_device_token_repository.dart';
 import '../infrastructure/supabase_notification_repository.dart';
 

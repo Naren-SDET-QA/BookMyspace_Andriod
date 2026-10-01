@@ -386,7 +386,7 @@ class _PriceBreakdownCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _RowText(
-              label: 'GST & Platform Fee (18%)',
+              label: _storedTaxLabel(booking),
               value: formatInr(booking.taxAmount),
             ),
             const Divider(height: 18),
@@ -400,6 +400,18 @@ class _PriceBreakdownCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Names the tax line from the amount the server stored on the booking.
+/// A flat "18%" label is only shown when that ratio is actually 18.
+String _storedTaxLabel(Booking booking) {
+  if (booking.amount <= 0 || booking.taxAmount <= 0) return 'GST & fees';
+  final percent = booking.taxAmount / booking.amount * 100;
+  final rounded = percent.roundToDouble();
+  if ((percent - rounded).abs() > 0.05 || rounded <= 0 || rounded > 100) {
+    return 'GST & fees';
+  }
+  return 'GST & fees (${rounded.toStringAsFixed(0)}%)';
 }
 
 class _RowText extends StatelessWidget {

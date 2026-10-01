@@ -1196,7 +1196,19 @@
       }
 
       window.addEventListener('flutter-first-frame', onAppReady);
-      window.addEventListener('load', function() {
+
+      // The Flutter view can be inserted before the window load event when
+      // the web-server/CanvasKit bootstrap is already cached. Start observing
+      // immediately and also handle a view that was inserted before this
+      // fallback was installed. Waiting only for `load` can miss that DOM
+      // mutation and incorrectly show the initialization timeout.
+      function observeFlutterView() {
+        if (document.querySelector('flutter-view') ||
+            document.querySelector('flt-glass-pane') ||
+            document.querySelector('canvas')) {
+          onAppReady();
+          return;
+        }
         var observer = new MutationObserver(function(mutations, obs) {
           if (document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('canvas')) {
             obs.disconnect();
@@ -1204,10 +1216,52 @@
           }
         });
         observer.observe(document.body, { childList: true, subtree: true });
-      });
+      }
+
+      observeFlutterView();
+      window.addEventListener('load', observeFlutterView);
 
       window._bmsOnAppReady = onAppReady;
     })();
+  </script>
+
+  <!-- Holds the browser install prompt so the in-app Install button can
+       open it. The browser menu can still install the app when this is unused. -->
+  <script>
+    window.bookMySpaceInstall = {
+      deferredPrompt: null,
+      isStandalone: function() {
+        var iosStandalone = window.navigator.standalone === true;
+        var displayMode = window.matchMedia('(display-mode: standalone)').matches;
+        return iosStandalone || displayMode;
+      },
+      promptAvailable: function() {
+        return !!window.bookMySpaceInstall.deferredPrompt;
+      },
+      prompt: function() {
+        var deferred = window.bookMySpaceInstall.deferredPrompt;
+        if (!deferred) return Promise.resolve('unavailable');
+        try {
+          deferred.prompt();
+        } catch (e) {
+          return Promise.resolve('failed');
+        }
+        return deferred.userChoice.then(function(choice) {
+          window.bookMySpaceInstall.deferredPrompt = null;
+          return (choice && choice.outcome) || 'dismissed';
+        }).catch(function() {
+          window.bookMySpaceInstall.deferredPrompt = null;
+          return 'failed';
+        });
+      }
+    };
+    window.addEventListener('beforeinstallprompt', function(event) {
+      event.preventDefault();
+      window.bookMySpaceInstall.deferredPrompt = event;
+    });
+    window.addEventListener('appinstalled', function() {
+      window.bookMySpaceInstall.deferredPrompt = null;
+    });
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

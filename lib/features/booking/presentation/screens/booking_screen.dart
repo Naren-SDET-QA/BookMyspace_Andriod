@@ -186,11 +186,15 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   onSelected: (slot) => setState(() => _selectedSlot = slot),
                 );
                 if (responsive.isExpanded || responsive.isExtraWide) {
+                  // The form sits beside a 320px summary. A fixed column
+                  // overflows short desktop windows, so the form scrolls and
+                  // the slot list keeps its own viewport.
                   return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        flex: 7,
-                        child: Column(
+                        child: ListView(
+                          padding: const EdgeInsets.only(bottom: 24),
                           children: [
                             _VenueHeader(venue: widget.venue),
                             _BookingContactFields(
@@ -209,29 +213,31 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                               },
                             ),
                             _DateAvailabilityBadge(info: dateAvailability),
-                            Expanded(child: slots),
+                            SizedBox(height: 440, child: slots),
                           ],
                         ),
                       ),
+                      const VerticalDivider(width: 1),
                       SizedBox(
                         width: 320,
-                        child: _selectedSlot == null
-                            ? const Center(
-                                child: Padding(
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: _selectedSlot == null
+                              ? const Padding(
                                   padding: EdgeInsets.all(24),
                                   child: Text('Select an available slot'),
+                                )
+                              : _ConfirmBar(
+                                  venue: widget.venue,
+                                  date: date,
+                                  slot: _selectedSlot!,
+                                  confirming: _confirming,
+                                  ctaLabel: template.ctaBook,
+                                  onConfirm: canBook
+                                      ? () => _confirmBooking(date)
+                                      : null,
                                 ),
-                              )
-                            : _ConfirmBar(
-                                venue: widget.venue,
-                                date: date,
-                                slot: _selectedSlot!,
-                                confirming: _confirming,
-                                ctaLabel: template.ctaBook,
-                                onConfirm: canBook
-                                    ? () => _confirmBooking(date)
-                                    : null,
-                              ),
+                        ),
                       ),
                     ],
                   );
@@ -831,48 +837,69 @@ class _ConfirmBar extends StatelessWidget {
     final tax = (slot.priceAmount * venue.taxRate / 100).roundToDouble();
     final total = slot.priceAmount + tax;
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.total,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  formatInr(total),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.violet,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: confirming ? null : onConfirm,
-                icon: confirming
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.lock_rounded),
-                label: Text(ctaLabel ?? l10n.confirmBooking),
-              ),
-            ),
-          ],
+    final price = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.total,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
+        Text(
+          formatInr(total),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: AppTheme.violet,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+    final button = FilledButton.icon(
+      onPressed: confirming ? null : onConfirm,
+      icon: confirming
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.lock_rounded),
+      label: Text(
+        ctaLabel ?? l10n.confirmBooking,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The desktop summary is 320px wide. A price-plus-button row
+        // overflows there; phones wider than 360px keep the single row.
+        final stack = constraints.maxWidth < 360;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: stack
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      price,
+                      const SizedBox(height: 12),
+                      button,
+                    ],
+                  )
+                : Row(
+                    children: [
+                      price,
+                      const SizedBox(width: 16),
+                      Expanded(child: button),
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 }

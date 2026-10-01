@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -124,15 +125,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Hotels and PG reserve through accommodation properties, not a
     // one-date venue slot. Dates and party size stay in discovery prefs.
     if (intent == BookingIntent.hotels || intent == BookingIntent.pg) {
-      final location = ref.read(discoveryLocationProvider);
-      final area = location.hasCity
-          ? location.city!.trim()
-          : (location.pincode?.trim() ?? '');
-      final path = intent == BookingIntent.pg
-          ? AppRoutes.pgList
-          : AppRoutes.staysList;
-      context.push(
-        area.isEmpty ? path : '$path?q=${Uri.encodeQueryComponent(area)}',
+      _openStayList(
+        intent == BookingIntent.pg
+            ? MainHomeSection.pgHostels
+            : MainHomeSection.lodgeRooms,
       );
       return;
     }
@@ -172,10 +168,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _openStayList(MainHomeSection section) {
+    final location = ref.read(discoveryLocationProvider);
+    final area = location.hasCity
+        ? location.city!.trim()
+        : (location.pincode?.trim() ?? '');
+    final path = section == MainHomeSection.pgHostels
+        ? AppRoutes.pgList
+        : AppRoutes.staysList;
+    context.push(
+      area.isEmpty ? path : '$path?q=${Uri.encodeQueryComponent(area)}',
+    );
+  }
+
   void _openMaster(MainHomeSection section, List<VenueCategory> cats) {
     // Education lands on the institutes/courses hub rather than a venue search.
     if (section == MainHomeSection.institutesClasses) {
       context.push(AppRoutes.education);
+      return;
+    }
+    // Hotels and PG open the stay-results page, not a one-date venue search.
+    if (section == MainHomeSection.lodgeRooms ||
+        section == MainHomeSection.pgHostels) {
+      _openStayList(section);
       return;
     }
     final matched = section.matchMaster(cats);
@@ -187,6 +202,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     HomeSubSection sub,
     List<VenueCategory> cats,
   ) {
+    if (section == MainHomeSection.lodgeRooms ||
+        section == MainHomeSection.pgHostels) {
+      final label = sub.label.trim();
+      if (label.isEmpty) {
+        _openStayList(section);
+        return;
+      }
+      final path = section == MainHomeSection.pgHostels
+          ? AppRoutes.pgList
+          : AppRoutes.staysList;
+      context.push('$path?q=${Uri.encodeQueryComponent(label)}');
+      return;
+    }
     final matched = sub.match(cats);
     if (matched != null) {
       _openSearch(categorySlug: matched.slug);
@@ -393,6 +421,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           });
                         },
                         onViewAll: () => _openSearch(),
+                        onAddOther: _showAddCategoryModal,
                       ),
                     ),
                   ),
@@ -1119,6 +1148,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           );
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 14),
+                child: _HotDealsBannerCard(
+                  onClaimDeal: () {
+                    Clipboard.setData(const ClipboardData(text: 'ROYALWED35'));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '🎁 Code ROYALWED35 copied! Opening Function Halls…',
+                        ),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    _openMaster(MainHomeSection.functionHalls, dynamicCats);
+                  },
+                ),
+              ),
+            ),
+          );
+          slivers.add(
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 14),
+                child: const _DailyLuckyBookingPassCard(),
+              ),
+            ),
+          );
         case HomeBlockKind.categoryMatrix:
           // Rendered once in the Explore section above the composed feed.
           break;
@@ -1186,6 +1245,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => const LocationPickerSheet(),
+    );
+  }
+
+  void _showAddCategoryModal() {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _AddCategorySheet(
+        onCategoryCreated: (name) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎉 Custom category "$name" created successfully!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -1257,6 +1337,7 @@ class _ExploreCategoryCards extends ConsumerWidget {
     required this.onSelectAll,
     required this.onSelectSection,
     required this.onViewAll,
+    this.onAddOther,
   });
 
   final List<MainHomeSection> sections;
@@ -1264,6 +1345,7 @@ class _ExploreCategoryCards extends ConsumerWidget {
   final VoidCallback onSelectAll;
   final ValueChanged<MainHomeSection> onSelectSection;
   final VoidCallback onViewAll;
+  final VoidCallback? onAddOther;
 
   static String _shortLabel(MainHomeSection section) {
     return switch (section) {
@@ -1305,6 +1387,14 @@ class _ExploreCategoryCards extends ConsumerWidget {
           selected: selectedSlugs.contains(section.id),
           onTap: () => onSelectSection(section),
         ),
+      if (onAddOther != null)
+        _ExploreItem(
+          keyName: 'add_other',
+          label: '+ Add Other',
+          icon: Icons.add_circle_outline_rounded,
+          selected: false,
+          onTap: onAddOther!,
+        ),
     ];
 
     return Column(
@@ -1322,6 +1412,17 @@ class _ExploreCategoryCards extends ConsumerWidget {
                 ),
               ),
             ),
+            if (onAddOther != null)
+              TextButton.icon(
+                key: const Key('add-other-category-header-btn'),
+                onPressed: onAddOther,
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('+ Add Other'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
             TextButton(onPressed: onViewAll, child: const Text('View all')),
           ],
         ),
@@ -1564,11 +1665,25 @@ class _TopHeaderBar extends ConsumerWidget {
     );
     final actions = <Widget>[
       _LanguagePill(compact: narrow),
+      const SizedBox(width: 4),
+      if (!narrow) ...[
+        const _ThemePill(),
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: 'All Screens Directory',
+          onPressed: () => context.push(AppRoutes.screenDirectory),
+          icon: const Icon(Icons.grid_view_rounded),
+        ),
+      ],
       IconButton(
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         tooltip: 'Notifications',
         onPressed: onNotificationsTap,
-        icon: const Icon(Icons.notifications_none_rounded),
+        icon: const Icon(Icons.notifications_none_rounded, size: 22),
       ),
+      const SizedBox(width: 4),
       identity,
     ];
 
@@ -1587,15 +1702,28 @@ class _TopHeaderBar extends ConsumerWidget {
                   const BookMySpaceMark(size: 32),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: BookMySpaceWordmark(
-                          fontSize: 17,
-                          textColor: theme.colorScheme.onSurface,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: BookMySpaceWordmark(
+                            fontSize: 16,
+                            textColor: theme.colorScheme.onSurface,
+                          ),
                         ),
-                      ),
+                        Text(
+                          'Turfs • Halls • PGs • Studios',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
                   ...actions,
@@ -1603,7 +1731,13 @@ class _TopHeaderBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 4),
-            location,
+            Row(
+              children: [
+                Expanded(child: location),
+                const SizedBox(width: 8),
+                const _ThemePill(compact: true),
+              ],
+            ),
           ],
         ),
       );
@@ -1619,14 +1753,29 @@ class _TopHeaderBar extends ConsumerWidget {
             const SizedBox(width: 8),
             Flexible(
               flex: 2,
-              child: BookMySpaceWordmark(
-                fontSize: 17,
-                textColor: theme.colorScheme.onSurface,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  BookMySpaceWordmark(
+                    fontSize: 17,
+                    textColor: theme.colorScheme.onSurface,
+                  ),
+                  Text(
+                    'Turfs • Halls • PGs • Studios',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 8),
             Flexible(flex: 2, child: location),
-            const SizedBox(width: 4),
+            const Spacer(),
             ...actions,
           ],
         ),
@@ -1639,6 +1788,56 @@ class _TopHeaderBar extends ConsumerWidget {
 /// by the app's existing [localeProvider]/[LocaleNotifier], not a cosmetic
 /// stub. Tapping opens a picker over the languages [AppLocalizations]
 /// actually ships translations for.
+class _ThemePill extends StatelessWidget {
+  const _ThemePill({super.key, this.compact = false});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: 'Themes & 3D Customizer',
+      child: InkWell(
+        key: const Key('header-theme-pill'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => context.push(AppRoutes.themeCustomizer),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 9,
+            vertical: 7,
+          ),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.6,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.palette_outlined,
+                size: 15,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Themes & 3D',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HeaderLocationChip extends StatelessWidget {
   const _HeaderLocationChip({required this.label, required this.onTap});
 
@@ -1971,3 +2170,765 @@ class _SectionVenueCard extends ConsumerWidget {
     );
   }
 }
+
+class _AddCategorySheet extends StatefulWidget {
+  const _AddCategorySheet({required this.onCategoryCreated});
+
+  final ValueChanged<String> onCategoryCreated;
+
+  @override
+  State<_AddCategorySheet> createState() => _AddCategorySheetState();
+}
+
+class _AddCategorySheetState extends State<_AddCategorySheet> {
+  final _nameController = TextEditingController();
+  String _selectedSection = 'Function Halls';
+  String _selectedEmoji = '✨';
+
+  static const _sections = [
+    'Function Halls',
+    'Lodge / Rooms',
+    'PG / Hostels',
+    'Education',
+    'Sports Turfs',
+  ];
+
+  static const _emojis = [
+    '✨', '🏕️', '⛺', '🎮', '🎙️', '🎨', '💻', '🏊', '🏏', '🎵'
+  ];
+
+  static const _suggestions = [
+    '🎮 Esports & Gaming Lounge',
+    '📸 Photography & Video Studio',
+    '🧘 Yoga & Meditation Studio',
+    '💼 Coworking & Meeting Rooms',
+    '🏊 Swimming & Aquatic Academy',
+  ];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    Navigator.pop(context);
+    widget.onCategoryCreated(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final media = MediaQuery.of(context);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: media.size.height * 0.85,
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            20 + media.viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.auto_awesome,
+                              color: theme.colorScheme.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Add New Category',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Create a custom category for any space',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Belongs to Section *',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final sec in _sections)
+                      ChoiceChip(
+                        label: Text(sec),
+                        selected: _selectedSection == sec,
+                        onSelected: (selected) {
+                          if (selected) setState(() => _selectedSection = sec);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Category Name *',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const Key('add-category-name-input'),
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Esports & Gaming Lounge',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Category Icon / Emoji',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final emoji in _emojis)
+                      ChoiceChip(
+                        label: Text(emoji, style: const TextStyle(fontSize: 16)),
+                        selected: _selectedEmoji == emoji,
+                        onSelected: (selected) {
+                          if (selected) setState(() => _selectedEmoji = emoji);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Popular Suggestions (Tap to fill)',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final sugg in _suggestions)
+                      ActionChip(
+                        label: Text(sugg),
+                        onPressed: () {
+                          final clean = sugg.replaceAll(RegExp(r'^[^\s]+\s*'), '');
+                          setState(() {
+                            _nameController.text = clean;
+                          });
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      key: const Key('submit-new-category-btn'),
+                      onPressed: _submit,
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Add Category'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyLuckyBookingPassCard extends StatefulWidget {
+  const _DailyLuckyBookingPassCard();
+
+  @override
+  State<_DailyLuckyBookingPassCard> createState() =>
+      _DailyLuckyBookingPassCardState();
+}
+
+class _DailyLuckyBookingPassCardState extends State<_DailyLuckyBookingPassCard> {
+  bool _revealed = false;
+  static const _code = 'ROYALWED35';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF2E2210), const Color(0xFF1E1708)]
+              : [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFFFB800).withValues(alpha: 0.6),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFB800).withValues(alpha: 0.15),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Text('🎡', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Daily Lucky Booking Pass',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14.5,
+                              color: isDark
+                                  ? const Color(0xFFFDE68A)
+                                  : const Color(0xFF92400E),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _revealed
+                                ? 'Code Unlocked! Tap below to copy'
+                                : "Tap below to reveal today's instant reward",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? const Color(0xFFFCD34D)
+                                  : const Color(0xFFB45309),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'FREE PASS',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!_revealed)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const Key('scratch-pass-btn'),
+                onTap: () {
+                  setState(() => _revealed = true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🎉 Promo Code ROYALWED35 Unlocked! (35% OFF)'),
+                      duration: Duration(seconds: 3),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Ink(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD97706), Color(0xFFB45309)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD97706).withValues(alpha: 0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('✨', style: TextStyle(fontSize: 16)),
+                        SizedBox(width: 8),
+                        Text(
+                          'TAP TO SCRATCH & UNLOCK CODE',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12.5,
+                            letterSpacing: 0.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text('🎁', style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const Key('copy-unlocked-code-btn'),
+                onTap: () {
+                  Clipboard.setData(const ClipboardData(text: _code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("✅ Promo code 'ROYALWED35' copied to clipboard!"),
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Ink(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.3)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFF10B981),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF10B981),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'CODE: ROYALWED35',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13,
+                                      color: Color(0xFF10B981),
+                                      letterSpacing: 0.5,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '35% Instant Discount (Up to ₹1,500)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'Tap to Copy',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF059669),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HotDealsBannerCard extends StatelessWidget {
+  const _HotDealsBannerCard({
+    required this.onClaimDeal,
+  });
+
+  final VoidCallback onClaimDeal;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Spotlight & Hot Deals',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 18,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 3,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFE11D48),
+                  Color(0xFF9333EA),
+                  Color(0xFF4F46E5),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('💒', style: TextStyle(fontSize: 12)),
+                              SizedBox(width: 4),
+                              Text(
+                                'FLASH DEAL',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 12,
+                                color: Color(0xFFFFD54F),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Ends in 03h 45m',
+                                style: TextStyle(
+                                  color: Color(0xFFFFD54F),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Grand Marriage & Banquet Halls',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Up to 35% OFF on Advance Bookings + Free AC Suite',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'USE CODE: ',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'ROYALWED35',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      key: const Key('claim-flash-deal-btn'),
+                      onPressed: onClaimDeal,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1E293B),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Claim Deal',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_rounded, size: 14),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

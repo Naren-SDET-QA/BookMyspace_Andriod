@@ -190,7 +190,7 @@ class _HomeAiBookingCardState extends State<HomeAiBookingCard>
                               children: [
                                 Text(
                                   widget.title.isEmpty
-                                      ? l10n.aiAssistantTitle
+                                      ? 'Bol-ke-Book (Voice Search)'
                                       : widget.title,
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     color: style.titleColor ?? Colors.white,
@@ -203,7 +203,7 @@ class _HomeAiBookingCardState extends State<HomeAiBookingCard>
                                 const SizedBox(height: 2),
                                 Text(
                                   widget.subtitle.isEmpty
-                                      ? l10n.aiAssistantSubtitle
+                                      ? '1-Tap Booking with Pictures & Voice'
                                       : widget.subtitle,
                                   style: TextStyle(
                                     color: (style.titleColor ?? Colors.white)
@@ -259,9 +259,9 @@ class _HomeAiBookingCardState extends State<HomeAiBookingCard>
         ],
       ),
       child: const Icon(
-        Icons.auto_awesome_rounded,
+        Icons.mic_rounded,
         color: Colors.white,
-        size: 20,
+        size: 22,
       ),
     );
   }

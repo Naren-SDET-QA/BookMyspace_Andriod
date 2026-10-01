@@ -8,9 +8,13 @@ import 'package:bookmyspace/features/auth/presentation/screens/profile_screen.da
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/booking/presentation/booking_providers.dart';
 import 'package:bookmyspace/features/modules/presentation/module_providers.dart';
+import 'package:bookmyspace/features/rewards/domain/rewards.dart';
+import 'package:bookmyspace/features/rewards/presentation/rewards_providers.dart';
 import 'package:bookmyspace/features/venues/domain/venue.dart';
 import 'package:bookmyspace/features/venues/presentation/venue_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/test/test_flutter_secure_storage_platform.dart';
+import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage_platform_interface.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +36,7 @@ Future<void> _pump(
   AuthUser? user = const AuthUser(id: 'u1', email: 'a@b.com'),
   bool modulesEnabled = true,
 }) async {
-  tester.view.physicalSize = const Size(320, 3000);
+  tester.view.physicalSize = const Size(320, 6400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -45,6 +49,10 @@ Future<void> _pump(
         myBookingsProvider.overrideWith((ref) async => const <Booking>[]),
         savedVenuesProvider.overrideWith((ref) async => const <Venue>[]),
         moduleEnabledProvider.overrideWith((ref, id) => modulesEnabled),
+        walletEntriesProvider.overrideWith((ref) async => const <WalletEntry>[]),
+        referralSummaryProvider.overrideWith(
+          (ref) async => const ReferralSummary(code: 'TESTCODE', items: []),
+        ),
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(
@@ -74,6 +82,12 @@ Future<void> _pump(
 }
 
 void main() {
+  setUp(() {
+    FlutterSecureStoragePlatform.instance = TestFlutterSecureStoragePlatform(
+      <String, String>{},
+    );
+  });
+
   testWidgets('customer sees payment, referral and KYC tiles only', (
     tester,
   ) async {

@@ -151,17 +151,20 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
     final sheetWidth = MediaQuery.sizeOf(context).width;
     final canApplyGps = gps.isSuccess && gps.fix != null;
     final canApplyPin = _selectedOffice != null && _pinResult.isSuccess;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        topInset > 0 ? topInset : 12,
-        20,
-        20 + bottomInset,
-      ),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.9,
-        width: sheetWidth,
-        child: Column(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 580),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            topInset > 0 ? topInset : 12,
+            20,
+            20 + bottomInset,
+          ),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.9,
+            width: double.infinity,
+            child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
@@ -401,6 +404,8 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
           ],
         ),
       ),
+    ),
+    ),
     );
   }
 }

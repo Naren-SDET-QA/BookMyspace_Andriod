@@ -221,7 +221,10 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                const _RoleSwitcherSection(),
+                const SizedBox(height: 16),
 
                 Row(
                   children: [
@@ -274,6 +277,14 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 _ProfileMenuTile(
+                  key: const Key('profile-screen-directory'),
+                  icon: Icons.grid_view_rounded,
+                  title: 'All Screens Directory (39 Master Screens)',
+                  subtitle:
+                      'Browse, preview, and test every screen across all 6 domains',
+                  onTap: () => context.push(AppRoutes.screenDirectory),
+                ),
+                _ProfileMenuTile(
                   key: const Key('profile-location-discovery'),
                   icon: Icons.travel_explore_outlined,
                   title: 'India Location & Automatic Place Discovery',
@@ -290,6 +301,14 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'My Favorites & Saved Spaces',
                   subtitle: 'Venues and courts saved on your account',
                   onTap: () => context.push(AppRoutes.saved),
+                ),
+                _ProfileMenuTile(
+                  key: const Key('profile-past-coupons'),
+                  icon: Icons.local_offer_outlined,
+                  title: 'Past Coupons & Savings',
+                  subtitle:
+                      'Redeemed coupon codes, discounts, and savings history',
+                  onTap: () => context.push(AppRoutes.pastCoupons),
                 ),
                 if (coursesEnabled)
                   _ProfileMenuTile(
@@ -725,6 +744,14 @@ class _WalletHighlight extends ConsumerWidget {
           FilledButton(
             key: const Key('profile-wallet-redeem'),
             onPressed: onOpen,
+            style: FilledButton.styleFrom(
+              // Theme minimumSize is Size.fromHeight, which is infinite width.
+              // That stretches a button in a column and crashes inside a Row.
+              minimumSize: const Size(0, 40),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              visualDensity: VisualDensity.compact,
+            ),
             child: const Text('Redeem'),
           ),
         ],
@@ -957,3 +984,93 @@ String _rupees(double value) {
   if (value == value.roundToDouble()) return '₹${value.toStringAsFixed(0)}';
   return '₹${value.toStringAsFixed(2)}';
 }
+
+class _RoleSwitcherSection extends ConsumerWidget {
+  const _RoleSwitcherSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final activeRole = ref.watch(activeDevRoleProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Switch Role (DEV Testing Mode)',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select role to test Customer, Owner, or Admin permissions:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                key: const Key('role_switch_customer'),
+                avatar: const Icon(Icons.person_outline_rounded, size: 16),
+                label: const Text('Customer'),
+                selected: activeRole == DevRole.customer || activeRole == null,
+                onSelected: (_) {
+                  ref.read(activeDevRoleProvider.notifier).state =
+                      DevRole.customer;
+                },
+              ),
+              FilterChip(
+                key: const Key('role_switch_owner'),
+                avatar: const Icon(Icons.storefront_outlined, size: 16),
+                label: const Text('Venue Owner'),
+                selected: activeRole == DevRole.venueOwner,
+                onSelected: (_) {
+                  ref.read(activeDevRoleProvider.notifier).state =
+                      DevRole.venueOwner;
+                },
+              ),
+              FilterChip(
+                key: const Key('role_switch_admin'),
+                avatar: const Icon(Icons.admin_panel_settings_outlined, size: 16),
+                label: const Text('Admin'),
+                selected: activeRole == DevRole.admin,
+                onSelected: (_) {
+                  ref.read(activeDevRoleProvider.notifier).state =
+                      DevRole.admin;
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+

@@ -121,6 +121,44 @@ void main() {
       expect(filter.matchesBatch(_dance, _dance.batches.first), isFalse);
     });
 
+    test('feed keeps ongoing sessions and full or waitlisted batches', () {
+      final today = CourseBatch(
+        id: 'today',
+        courseId: 'c1',
+        label: 'Morning',
+        startsOn: DateTime.now().subtract(const Duration(days: 1)),
+        capacity: 10,
+        enrolledCount: 1,
+        mode: CourseMode.online,
+      );
+      final later = CourseBatch(
+        id: 'later',
+        courseId: 'c1',
+        label: 'Weekend',
+        startsOn: DateTime.now().add(const Duration(days: 20)),
+        capacity: 10,
+        enrolledCount: 10,
+        waitlistEnabled: true,
+        mode: CourseMode.offline,
+      );
+      final course = _course(
+        'c1',
+        'Robotics',
+        mode: CourseMode.online,
+        batches: [today, later],
+      );
+      final ongoing = const ClassFeedQuery(ongoingToday: true).apply([course]);
+      expect(ongoing.map((row) => row.batch.id), ['today']);
+      final full = const ClassFeedQuery(fullOrWaitlistOnly: true).apply([
+        course,
+      ]);
+      expect(full.map((row) => row.batch.id), ['later']);
+      final online = const ClassFeedQuery(
+        filter: ClassCategoryFilter(mode: CourseMode.online),
+      ).apply([course]);
+      expect(online.map((row) => row.batch.id), ['today']);
+    });
+
     test('excluding full & upcoming hides waitlist-only batches', () {
       const filter = ClassCategoryFilter(includeFullAndUpcoming: false);
       expect(filter.matchesBatch(_code, _code.batches.first), isFalse);

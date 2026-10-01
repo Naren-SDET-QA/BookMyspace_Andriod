@@ -56,6 +56,7 @@ Venue _venue({
   String description = 'About this space',
   int capacity = 40,
   String food = 'In-house catering',
+  String contactPhone = '',
   List<VenueFacility> facilities = const [
     VenueFacility(facility: 'Parking'),
   ],
@@ -73,6 +74,7 @@ Venue _venue({
     originalPrice: 15000,
     parkingCapacity: 20,
     foodOptions: food,
+    contactPhone: contactPhone,
     avgRating: 4.6,
     ratingCount: 22,
     isVerified: true,
@@ -154,7 +156,10 @@ void main() {
       tester.view.physicalSize = Size(width, 900);
       tester.view.devicePixelRatio = 1;
       await tester.pumpWidget(
-        _app(_venue(slug: 'function_hall'), size: Size(width, 900)),
+        _app(
+          _venue(slug: 'function_hall', contactPhone: '9876543210'),
+          size: Size(width, 900),
+        ),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));

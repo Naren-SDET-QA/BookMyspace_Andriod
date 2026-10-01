@@ -82,10 +82,44 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
       context.push(AppRoutes.education);
       return;
     }
+    if (section == MainHomeSection.lodgeRooms ||
+        section == MainHomeSection.pgHostels) {
+      _openStayList(section);
+      return;
+    }
     final cats =
         ref.read(venueCategoriesProvider).valueOrNull ??
         const <VenueCategory>[];
     _openSearch(categorySlug: section.matchMaster(cats)?.slug ?? section.id);
+  }
+
+  /// Hotels and PG use the stay-results page (destination, dates, filters,
+  /// property cards). Halls and sports stay on venue search.
+  void _openStayList(MainHomeSection section, {String? query}) {
+    final location = ref.read(discoveryLocationProvider);
+    final typed = query?.trim() ?? '';
+    final area = typed.isNotEmpty
+        ? typed
+        : location.hasCity
+        ? location.city!.trim()
+        : (location.pincode?.trim() ?? '');
+    final path = section == MainHomeSection.pgHostels
+        ? AppRoutes.pgList
+        : AppRoutes.staysList;
+    context.push(
+      area.isEmpty ? path : '$path?q=${Uri.encodeQueryComponent(area)}',
+    );
+  }
+
+  void _openPopular(String query) {
+    switch (query.trim().toLowerCase()) {
+      case 'hostels':
+        _openStayList(MainHomeSection.pgHostels);
+      case 'resorts':
+        _openStayList(MainHomeSection.lodgeRooms);
+      default:
+        _openSearch(query: query);
+    }
   }
 
   void _submitSearch() {
@@ -371,7 +405,7 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
                       onSubmit: _submitSearch,
                       onDateTap: _pickDate,
                       onGuestsTap: _pickGuests,
-                      onPopular: (q) => _openSearch(query: q),
+                      onPopular: _openPopular,
                     ),
                   ),
                 ),

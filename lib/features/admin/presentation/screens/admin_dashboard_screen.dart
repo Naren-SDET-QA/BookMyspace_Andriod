@@ -202,6 +202,66 @@ class AdminDashboardScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.adminUiElementOverrides),
             ),
             _AdminLink(
+              icon: Icons.photo_library_outlined,
+              title: 'Media library',
+              subtitle: 'Browse, upload and manage platform media assets (up to 10 MB)',
+              onTap: () => context.push(AppRoutes.adminMedia),
+            ),
+            _AdminLink(
+              icon: Icons.toggle_on_outlined,
+              title: 'Feature toggles',
+              subtitle: 'Manage platform feature gates and runtime switches',
+              onTap: () => context.push(AppRoutes.adminFeatureConfiguration),
+            ),
+            _AdminLink(
+              icon: Icons.dynamic_form_outlined,
+              title: 'Dynamic listing fields',
+              subtitle: 'Configure custom fields and category-specific inputs',
+              onTap: () => context.push(AppRoutes.adminListingFields),
+            ),
+            _AdminLink(
+              icon: Icons.article_outlined,
+              title: 'Content editor',
+              subtitle: 'Manage published pages, policies, and editorial content',
+              onTap: () => context.push(AppRoutes.adminContent),
+            ),
+            _AdminLink(
+              icon: Icons.price_change_outlined,
+              title: 'Pricing configuration',
+              subtitle: 'Configure platform fees, commissions, and tax rules',
+              onTap: () => context.push(AppRoutes.adminBusinessPricing),
+            ),
+            _AdminLink(
+              icon: Icons.policy_outlined,
+              title: 'Cancellation policies',
+              subtitle: 'Review threshold rules, deduction policies, and refund logic',
+              onTap: () => context.push(AppRoutes.adminFeatureConfiguration),
+            ),
+            _AdminLink(
+              icon: Icons.receipt_outlined,
+              title: 'Transaction ledger',
+              subtitle: 'Inspect immutable payment records and financial transactions',
+              onTap: () => context.push(AppRoutes.adminPaymentsLedger),
+            ),
+            _AdminLink(
+              icon: Icons.currency_exchange_outlined,
+              title: 'Refunds oversight',
+              subtitle: 'Track and resolve customer refund requests and adjustments',
+              onTap: () => context.push(AppRoutes.adminRefunds),
+            ),
+            _AdminLink(
+              icon: Icons.notifications_active_outlined,
+              title: 'Notifications & settings',
+              subtitle: 'Configure OneSignal push channels, SMS alerts, and app defaults',
+              onTap: () => context.push(AppRoutes.adminSettings),
+            ),
+            _AdminLink(
+              icon: Icons.health_and_safety_outlined,
+              title: 'System health & diagnostics',
+              subtitle: 'Inspect database, network, cache, and platform connectivity',
+              onTap: () => context.push(AppRoutes.adminHealth),
+            ),
+            _AdminLink(
               icon: Icons.tab_unselected_outlined,
               title: 'Bottom navigation',
               subtitle:

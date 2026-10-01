@@ -112,7 +112,7 @@ void main() {
     expect(find.text('Nexus Learning Institute'), findsAtLeastNWidgets(1));
     expect(find.textContaining('Private'), findsAtLeastNWidgets(1));
     expect(find.byKey(const Key('featured-institute-i1')), findsOneWidget);
-    expect(find.text('Education & Institutes'), findsOneWidget);
+    expect(find.text('Institutes & Classes'), findsOneWidget);
     expect(find.text('Search Available'), findsOneWidget);
     expect(find.text('44% OFF'), findsNothing);
     expect(find.textContaining('4.8'), findsNothing);
@@ -130,7 +130,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.text('Courses'), findsOneWidget);
-      expect(find.text('Education & Institutes'), findsOneWidget);
+      expect(find.text('Institutes & Classes'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.byKey(const Key('all-institutes-i1')),
         200,

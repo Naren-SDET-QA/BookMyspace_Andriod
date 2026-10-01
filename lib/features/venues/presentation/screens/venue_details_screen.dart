@@ -1224,34 +1224,63 @@ class _StickySummary extends StatelessWidget {
           ),
           if (onCall != null || onWhatsApp != null || onChat != null) ...[
             const SizedBox(height: 8),
-            Row(
-              children: [
-                if (onCall != null)
-                  Expanded(
-                    child: OutlinedButton.icon(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final actions = <Widget>[
+                  if (onCall != null)
+                    OutlinedButton.icon(
                       onPressed: onCall,
                       icon: const Icon(Icons.call_rounded, size: 16),
-                      label: Text(template.ctaCall),
+                      label: Text(
+                        template.ctaCall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                if (onWhatsApp != null)
-                  Expanded(
-                    child: OutlinedButton.icon(
+                  if (onWhatsApp != null)
+                    OutlinedButton.icon(
                       key: const Key('listing_whatsapp'),
                       onPressed: onWhatsApp,
                       icon: const Icon(Icons.chat_rounded, size: 16),
-                      label: const Text('WhatsApp'),
+                      label: const Text(
+                        'WhatsApp',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                if (onChat != null)
-                  Expanded(
-                    child: OutlinedButton.icon(
+                  if (onChat != null)
+                    OutlinedButton.icon(
                       onPressed: onChat,
                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                      label: Text(template.ctaChat),
+                      label: Text(
+                        template.ctaChat,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-              ],
+                ];
+                // Expanded and extra-wide summaries are 220px and 320px.
+                // Three labeled actions do not fit on one row at those widths.
+                if (constraints.maxWidth < 480) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 8),
+                        actions[i],
+                      ],
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    for (var i = 0; i < actions.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      Expanded(child: actions[i]),
+                    ],
+                  ],
+                );
+              },
             ),
           ],
         ],
