@@ -11,6 +11,7 @@ import '../../../location/domain/gps_location.dart';
 import '../../../location/domain/pin_code_location.dart';
 import '../../../location/presentation/gps_session.dart';
 import '../../../location/presentation/location_providers.dart';
+import '../../../location/presentation/screens/india_place_discovery_screen.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../discovery_location.dart';
 
@@ -24,6 +25,7 @@ class LocationPickerSheet extends ConsumerStatefulWidget {
 
 class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
   final _pinController = TextEditingController();
+  final _placeController = TextEditingController();
   final _pinFocus = FocusNode();
   final _scrollController = ScrollController();
   final _pinSectionKey = GlobalKey();
@@ -31,6 +33,7 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
   PinLookupResult _pinResult =
       const PinLookupResult(status: PinLookupStatus.idle);
   PinCodeOffice? _selectedOffice;
+  bool _browseHierarchy = false;
   bool _applyingGps = false;
   GpsSessionNotifier? _gpsSession;
 
@@ -44,6 +47,7 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
   void dispose() {
     _gpsSession?.cancelIfBusy();
     _pinController.dispose();
+    _placeController.dispose();
     _pinFocus.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -144,11 +148,16 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
     final location = ref.watch(discoveryLocationProvider);
     final citiesAsync = ref.watch(listedVenueCitiesProvider);
     final gps = ref.watch(gpsSessionProvider);
-    const radii = [5, 10, 25, 50];
+    const radii = <(int, String)>[
+      (1, 'Exact Area Only'),
+      (5, 'Within 5 km'),
+      (10, 'Within 10 km'),
+      (25, 'Within 25 km'),
+      (50, 'Within 50 km'),
+    ];
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final topInset = MediaQuery.viewPaddingOf(context).top;
 
-    final sheetWidth = MediaQuery.sizeOf(context).width;
     final canApplyGps = gps.isSuccess && gps.fix != null;
     final canApplyPin = _selectedOffice != null && _pinResult.isSuccess;
     return Center(
@@ -233,6 +242,37 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                         onApply: () => _applyGps(gps.fix!),
                       ),
                     ],
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        key: const Key('open-india-hierarchy'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 48),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const IndiaPlaceDiscoveryScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Open India Hierarchy & PIN Code Discovery',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _placeController,
+                      textInputAction: TextInputAction.search,
+                      decoration: const InputDecoration(
+                        hintText: 'Search Area, Mandal, City, District...',
+                        prefixIcon: Icon(Icons.search_rounded),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
                     const SizedBox(height: 16),
                     KeyedSubtree(
                       key: _pinSectionKey,
@@ -295,25 +335,32 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                     ],
                     const SizedBox(height: 16),
                     const Text(
-                      'Radius preference (used when GPS is available):',
+                      'Discovery Radius',
                       style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Used when GPS is available',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
-                      children: radii.map((km) {
-                        return ChoiceChip(
-                          selected: location.radiusKm == km,
-                          label: Text('$km km'),
-                          onSelected: (selected) {
-                            if (selected) {
-                              ref
-                                  .read(discoveryLocationProvider.notifier)
-                                  .setRadiusKm(km);
-                            }
-                          },
-                        );
-                      }).toList(),
+                      runSpacing: 8,
+                      children: [
+                        for (final radius in radii)
+                          ChoiceChip(
+                            label: Text(radius.$2),
+                            selected: location.radiusKm == radius.$1,
+                            onSelected: (selected) {
+                              if (selected) {
+                                ref
+                                    .read(discoveryLocationProvider.notifier)
+                                    .setRadiusKm(radius.$1);
+                              }
+                            },
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     KeyedSubtree(
@@ -324,6 +371,44 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Popular Cities'),
+                          selected: !_browseHierarchy,
+                          onSelected: (_) =>
+                              setState(() => _browseHierarchy = false),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Browse Hierarchy'),
+                          selected: _browseHierarchy,
+                          onSelected: (_) =>
+                              setState(() => _browseHierarchy = true),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (_browseHierarchy)
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 48),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    const IndiaPlaceDiscoveryScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text('Browse India Hierarchy'),
+                        ),
+                      )
+                    else
                     citiesAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
@@ -335,6 +420,14 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                             ref.invalidate(listedVenueCitiesProvider),
                       ),
                       data: (cities) {
+                        final query = _placeController.text.trim().toLowerCase();
+                        final visible = query.isEmpty
+                            ? cities
+                            : cities
+                                .where(
+                                  (city) => city.toLowerCase().contains(query),
+                                )
+                                .toList();
                         if (cities.isEmpty) {
                           return const EmptyState(
                             icon: Icons.location_off_outlined,
@@ -355,7 +448,11 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                                 Navigator.pop(context);
                               },
                             ),
-                            ...cities.map((city) {
+                            if (visible.isEmpty)
+                              const ListTile(
+                                title: Text('No matching city in listings'),
+                              ),
+                            ...visible.map((city) {
                               final selected = location.city == city &&
                                   location.source ==
                                       DiscoveryLocationSource.city;
@@ -401,6 +498,41 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                 ),
               ),
             ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    key: const Key('apply-location'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: () {
+                      if (canApplyGps) {
+                        _applyGps(gps.fix!);
+                        return;
+                      }
+                      if (canApplyPin) {
+                        _applyPin();
+                        return;
+                      }
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Apply Location'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

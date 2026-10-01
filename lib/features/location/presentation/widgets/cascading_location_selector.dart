@@ -124,6 +124,7 @@ class CascadingLocationSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         _LocationDropdown(
           label: 'Country',

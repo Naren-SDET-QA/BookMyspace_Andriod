@@ -91,9 +91,16 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     final showEducation = enabled &&
         user != null &&
         savedIds.values.any((ids) => ids.isNotEmpty);
+    final favoriteCount = favorites.valueOrNull?.length;
+    final english = Localizations.localeOf(context).languageCode == 'en';
+    final favoritesTitle = !english
+        ? l10n.savedVenues
+        : favoriteCount == null
+        ? 'Favorites'
+        : 'Favorites ($favoriteCount)';
     if (!showEducation) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.savedVenues)),
+        appBar: AppBar(title: Text(favoritesTitle)),
         body: venuesBody,
       );
     }
@@ -101,7 +108,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Saved'),
+          title: Text(english ? 'Favorites' : l10n.savedVenues),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Venues'),
@@ -147,7 +154,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                 onChanged: (value) => setState(() => _query = value),
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: 'Search by name or city',
+                  hintText: 'Search your favorites...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _query.isEmpty
                       ? null

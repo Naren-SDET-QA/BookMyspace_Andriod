@@ -17,12 +17,22 @@ import '../home_category_catalog.dart';
 /// - Desktop (840-1200px): 3-4 column grid
 /// - Extra-wide (1200px+): 4 column grid
 enum _ViewMode {
-  matrix3d('UI 1: 3D Matrix'),
-  grid('UI 2: Standard Grid'),
-  list('UI 3: Compact List');
+  matrix3d(
+    'UI 1: 3D Matrix',
+    'Style 1: 3D Glass Matrix & Orbit. Interactive 3D depth and live data.',
+  ),
+  grid(
+    'UI 2: Standard Grid',
+    'Style 2: Classic Tactile Grid. Tactile cards with live status.',
+  ),
+  list(
+    'UI 3: Compact List',
+    'Style 3: Compact Glass Carousel. Horizontal glass cards.',
+  );
 
-  const _ViewMode(this.label);
+  const _ViewMode(this.label, this.detail);
   final String label;
+  final String detail;
 }
 
 class CategoryDiscoveryPanel extends StatefulWidget {
@@ -367,10 +377,21 @@ class _UiModeSelector extends StatelessWidget {
                     const SizedBox(width: 16),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text(
-                      m.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          m.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          m.detail,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
                 ],

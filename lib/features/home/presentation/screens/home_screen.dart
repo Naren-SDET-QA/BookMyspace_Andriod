@@ -309,6 +309,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         responsive.horizontalPadding,
                         4,
                         responsive.horizontalPadding,
+                        4,
+                      ),
+                      child: _HomeLocationCard(
+                        location: location,
+                        onChange: _showLocationPickerModal,
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        responsive.horizontalPadding,
+                        4,
+                        responsive.horizontalPadding,
                         0,
                       ),
                       child: _HomeHeroBanner(
@@ -1666,7 +1680,9 @@ class _TopHeaderBar extends ConsumerWidget {
     final actions = <Widget>[
       _LanguagePill(compact: narrow),
       const SizedBox(width: 4),
-      if (!narrow) ...[
+      if (narrow)
+        const _ThemePill(compact: true)
+      else ...[
         const _ThemePill(),
         const SizedBox(width: 4),
         IconButton(
@@ -1675,6 +1691,7 @@ class _TopHeaderBar extends ConsumerWidget {
           icon: const Icon(Icons.grid_view_rounded),
         ),
       ],
+      const SizedBox(width: 4),
       IconButton(
         visualDensity: VisualDensity.compact,
         padding: EdgeInsets.zero,
@@ -1687,58 +1704,45 @@ class _TopHeaderBar extends ConsumerWidget {
       identity,
     ];
 
-    // Phones: brand + actions on the first row and the location chip on its
-    // own row, so neither the wordmark nor the city gets truncated.
+    // Phones: one header row. The location card under it carries the place
+    // name, hierarchy, and Change action, so a second chip row is not needed.
     if (narrow) {
       return Padding(
         padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 48,
-              child: Row(
-                children: [
-                  const BookMySpaceMark(size: 32),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: BookMySpaceWordmark(
-                            fontSize: 16,
-                            textColor: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          'Turfs • Halls • PGs • Studios',
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              const BookMySpaceMark(size: 32),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: BookMySpaceWordmark(
+                        fontSize: 16,
+                        textColor: theme.colorScheme.onSurface,
+                      ),
                     ),
-                  ),
-                  ...actions,
-                ],
+                    Text(
+                      'Turfs • Halls • PGs • Studios',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Expanded(child: location),
-                const SizedBox(width: 8),
-                const _ThemePill(compact: true),
-              ],
-            ),
-          ],
+              ...actions,
+            ],
+          ),
         ),
       );
     }
@@ -1795,8 +1799,9 @@ class _ThemePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final showLabel = !compact;
     return Tooltip(
-      message: 'Themes & 3D Customizer',
+      message: 'Themes & 3D',
       child: InkWell(
         key: const Key('header-theme-pill'),
         borderRadius: BorderRadius.circular(20),
@@ -1823,12 +1828,80 @@ class _ThemePill extends StatelessWidget {
                 size: 15,
                 color: theme.colorScheme.primary,
               ),
-              const SizedBox(width: 4),
-              Text(
-                'Themes & 3D',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+              if (showLabel) ...[
+                const SizedBox(width: 4),
+                const Text(
+                  'Themes & 3D',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                 ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeLocationCard extends StatelessWidget {
+  const _HomeLocationCard({required this.location, required this.onChange});
+
+  final DiscoveryLocation location;
+  final VoidCallback onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtitle = location.hierarchyLabel == location.label
+        ? 'Country, state, district, mandal, or PIN'
+        : location.hierarchyLabel;
+    return Material(
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        key: const Key('home-location-card'),
+        borderRadius: BorderRadius.circular(16),
+        onTap: onChange,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on_rounded,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      location.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: onChange,
+                child: const Text('Change'),
               ),
             ],
           ),

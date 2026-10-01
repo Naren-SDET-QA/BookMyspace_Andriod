@@ -132,6 +132,10 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
+    // The peace-of-mind card sits above this action, so the button can be
+    // built in the cache while its center is still below a 900px phone.
+    await tester.ensureVisible(enquiry);
+    await tester.pumpAndSettle();
     await tester.tap(enquiry);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('venue_enquiry_sheet')), findsOneWidget);

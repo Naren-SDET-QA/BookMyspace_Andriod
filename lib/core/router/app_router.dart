@@ -536,6 +536,10 @@ GoRouter createAppRouter({
       if (ready && user != null && path == AppRoutes.login) {
         return authenticatedLocationFromLogin(state.uri);
       }
+      if (path == '/venues') {
+        final query = state.uri.hasQuery ? '?${state.uri.query}' : '';
+        return '${AppRoutes.search}$query';
+      }
       final canonicalPath = specRouteAliases[path] ?? path;
       final resolved = resolveAppRedirect(
         location: canonicalPath,
@@ -1790,6 +1794,10 @@ String? resolveAppRedirect({
   bool allowUnauthenticatedTestAccess = false,
   FeatureRegistry? features,
 }) {
+  if (location == '/venues' || location.startsWith('/venues?')) {
+    final query = location.contains('?') ? location.substring(location.indexOf('?')) : '';
+    return '${AppRoutes.search}$query';
+  }
   final canonical = specRouteAliases[location] ?? location;
   // Backend-unavailable Phase-1 paths fail closed even while auth is still
   // resolving, so their repositories cannot issue unsupported requests.

@@ -12,9 +12,7 @@ import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../booking/presentation/booking_providers.dart';
 import '../../../install/presentation/app_install_card.dart';
-import '../../../location/domain/search_area.dart';
-import '../../../location/presentation/widgets/location_picker_sheet.dart'
-    as places;
+import '../../../location/presentation/screens/india_place_discovery_screen.dart';
 import '../../../modules/presentation/module_providers.dart';
 import '../../../rewards/domain/rewards.dart';
 import '../../../rewards/presentation/rewards_providers.dart';
@@ -290,9 +288,10 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'India Location & Automatic Place Discovery',
                   subtitle:
                       'Country, state, district, mandal, town, and PIN search',
-                  onTap: () => places.LocationPickerSheet.show(
-                    context,
-                    initial: SearchArea.defaultArea,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const IndiaPlaceDiscoveryScreen(),
+                    ),
                   ),
                 ),
                 _ProfileMenuTile(

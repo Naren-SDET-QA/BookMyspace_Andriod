@@ -487,6 +487,116 @@ class _OverlayChip extends StatelessWidget {
   }
 }
 
+class _BookingAssuranceCard extends StatelessWidget {
+  const _BookingAssuranceCard({required this.venue});
+
+  final Venue venue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final points = <(IconData, String, String)>[
+      if (venue.isVerified)
+        (
+          Icons.verified_outlined,
+          'Verified listing',
+          'This space carries the BookMySpace verified badge.',
+        ),
+      (
+        Icons.payments_outlined,
+        'Pay after acceptance',
+        'Function hall payment is collected after the owner accepts the booking.',
+      ),
+      (
+        Icons.qr_code_2_rounded,
+        'QR entry pass',
+        'A confirmed booking includes a QR pass for check-in.',
+      ),
+      (
+        Icons.support_agent_rounded,
+        'Help in the app',
+        'Help & Support is available from your profile.',
+      ),
+    ];
+    return Container(
+      key: const Key('booking-assurance'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Book with 100% Peace of Mind',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 720 ? 2 : 1;
+              final width = columns == 1
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 12) / 2;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final point in points)
+                    SizedBox(
+                      width: width,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(point.$1, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  point.$2,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  point.$3,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+              onPressed: () => context.push(AppRoutes.support),
+              icon: const Icon(Icons.call_outlined),
+              label: const Text('Call Support'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ListingBody extends StatelessWidget {
   const _ListingBody({
     required this.venue,
@@ -594,6 +704,8 @@ class _ListingBody extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _BookingAssuranceCard(venue: venue),
           const SizedBox(height: 16),
           _PriceRow(venue: venue),
           if (CustomerSectionCatalog.sectionForVenue(venue) ==

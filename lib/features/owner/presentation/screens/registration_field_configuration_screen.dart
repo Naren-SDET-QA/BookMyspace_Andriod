@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/registration_field_config.dart';
@@ -17,11 +21,19 @@ class RegistrationFieldConfigurationScreen extends ConsumerStatefulWidget {
 class _RegistrationFieldConfigurationScreenState
     extends ConsumerState<RegistrationFieldConfigurationScreen> {
   late Future<List<RegistrationFieldConfig>> _future;
+  final _search = TextEditingController();
+  String _audience = 'all';
 
   @override
   void initState() {
     super.initState();
     _future = ref.read(registrationConfigRepositoryProvider).allFields();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   void _reload() => setState(() {
@@ -50,7 +62,7 @@ class _RegistrationFieldConfigurationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Owner registration fields'),
+        title: const Text('Registration Schema & KYC'),
         actions: [
           IconButton(
             tooltip: 'Add field',
@@ -86,86 +98,228 @@ class _RegistrationFieldConfigurationScreenState
                   child: Text('No registration fields configured'),
                 );
               }
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: fields.length,
-                itemBuilder: (context, index) {
-                  final field = fields[index];
-                  return Card(
-                    child: SwitchListTile(
-                      title: Text(field.label),
-                      subtitle: Text(
-                        '${field.key} · ${field.type.name} · '
-                        '${field.required ? 'required' : 'optional'}'
-                        '${field.sensitive ? ' · sensitive' : ''}'
-                        '${field.regexPattern == null ? '' : ' · regex'}'
-                        '${field.presetKey == null ? '' : ' · ${field.presetKey}'}',
-                      ),
-                      value: field.enabled,
-                      onChanged: (value) => _update(field, {'enabled': value}),
-                      secondary: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: 'Edit field',
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () => _showEditor(field),
+              final query = _search.text.trim().toLowerCase();
+              final visible = fields.where((field) {
+                final audienceOk = switch (_audience) {
+                  'customer' => field.customerVisible,
+                  'owner' => field.ownerVisible,
+                  _ => true,
+                };
+                if (!audienceOk) return false;
+                if (query.isEmpty) return true;
+                return field.label.toLowerCase().contains(query) ||
+                    field.key.toLowerCase().contains(query);
+              }).toList();
+              final quick = fields.where(_isQuickToggle).toList();
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _search,
+                          decoration: const InputDecoration(
+                            hintText: 'Search fields (photo, aadhaar, dob...)',
+                            prefixIcon: Icon(Icons.search_rounded),
+                            isDense: true,
                           ),
-                          IconButton(
-                            tooltip: 'Delete field',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _delete(field),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final audience in const [
+                              'all',
+                              'customer',
+                              'owner',
+                            ])
+                              ChoiceChip(
+                                label: Text(
+                                  audience == 'all'
+                                      ? 'All User Types (${fields.length})'
+                                      : audience == 'customer'
+                                      ? 'Customer / Member'
+                                      : 'Venue Owner',
+                                ),
+                                selected: _audience == audience,
+                                onSelected: (_) =>
+                                    setState(() => _audience = audience),
+                              ),
+                            ActionChip(
+                              avatar: const Icon(Icons.data_object_rounded, size: 18),
+                              label: const Text('JSON Schema'),
+                              onPressed: () => _showSchema(fields),
+                            ),
+                          ],
+                        ),
+                        if (quick.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Quick mandatory toggles',
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
-                          PopupMenuButton<String>(
-                            onSelected: (action) {
-                              if (action == 'required') {
-                                _update(field, {'required': !field.required});
-                              } else if (action == 'owner') {
-                                _update(field, {
-                                  'owner_visible': !field.ownerVisible,
-                                });
-                              } else if (action == 'customer') {
-                                _update(field, {
-                                  'customer_visible': !field.customerVisible,
-                                });
-                              }
-                            },
-                            itemBuilder: (_) => [
-                              PopupMenuItem(
-                                value: 'required',
-                                child: Text(
-                                  field.required
-                                      ? 'Make optional'
-                                      : 'Make required',
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final field in quick)
+                                FilterChip(
+                                  label: Text(
+                                    field.label,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  selected: field.required,
+                                  onSelected: (value) => _update(field, {
+                                    'required': value,
+                                  }),
                                 ),
-                              ),
-                              PopupMenuItem(
-                                value: 'owner',
-                                child: Text(
-                                  field.ownerVisible
-                                      ? 'Hide from owners'
-                                      : 'Show to owners',
-                                ),
-                              ),
-                              PopupMenuItem(
-                                value: 'customer',
-                                child: Text(
-                                  field.customerVisible
-                                      ? 'Hide from customers'
-                                      : 'Show to customers',
-                                ),
-                              ),
                             ],
                           ),
                         ],
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Fields: ${visible.length} shown, '
+                          '${fields.where((field) => field.required).length} mandatory, '
+                          '${fields.where((field) => field.enabled).length} active',
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: visible.length,
+                      itemBuilder: (context, index) {
+                        final field = visible[index];
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        field.label,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Switch(
+                                      value: field.enabled,
+                                      onChanged: (value) =>
+                                          _update(field, {'enabled': value}),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '${field.key} · ${field.type.name} · '
+                                  '${field.required ? 'mandatory' : 'optional'}'
+                                  '${field.customerVisible ? ' · customer' : ''}'
+                                  '${field.ownerVisible ? ' · owner' : ''}',
+                                ),
+                                Wrap(
+                                  spacing: 4,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () => _showEditor(field),
+                                      child: const Text('Edit'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _update(field, {
+                                        'required': !field.required,
+                                      }),
+                                      child: Text(
+                                        field.required
+                                            ? 'Make optional'
+                                            : 'Make mandatory',
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _delete(field),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  bool _isQuickToggle(RegistrationFieldConfig field) {
+    final haystack = '${field.key} ${field.label}'.toLowerCase();
+    return haystack.contains('aadhaar') ||
+        haystack.contains('identity') ||
+        haystack.contains('dob') ||
+        haystack.contains('birth') ||
+        haystack.contains('company') ||
+        haystack.contains('photo');
+  }
+
+  Future<void> _showSchema(List<RegistrationFieldConfig> fields) async {
+    final json = const JsonEncoder.withIndent('  ').convert({
+      'schemaVersion': '2.0',
+      'description': 'BookMySpace owner registration fields',
+      'totalFields': fields.length,
+      'requiredCount': fields.where((field) => field.required).length,
+      'fields': [
+        for (final field in fields)
+          {
+            'key': field.key,
+            'label': field.label,
+            'type': field.type.name,
+            'required': field.required,
+            'enabled': field.enabled,
+            'customerVisible': field.customerVisible,
+            'ownerVisible': field.ownerVisible,
+          },
+      ],
+    });
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('JSON Schema Configuration'),
+        content: SizedBox(
+          width: math.min(
+            520,
+            math.max(0, MediaQuery.sizeOf(dialogContext).width - 128),
+          ),
+          child: SingleChildScrollView(child: SelectableText(json)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: json));
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            child: const Text('Copy'),
+          ),
+        ],
       ),
     );
   }
@@ -184,20 +338,27 @@ class _RegistrationFieldConfigurationScreenState
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(field == null ? 'Add registration field' : 'Edit field'),
+          title: Text(
+            field == null ? 'Add New Registration Field' : 'Edit field',
+          ),
           content: SingleChildScrollView(
             child: SizedBox(
-              width: 420,
+              width: math.min(
+                420,
+                math.max(0, MediaQuery.sizeOf(context).width - 128),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
-                    controller: key,
-                    decoration: const InputDecoration(labelText: 'Key'),
+                    controller: label,
+                    decoration: const InputDecoration(labelText: 'Display Label *'),
                   ),
                   TextField(
-                    controller: label,
-                    decoration: const InputDecoration(labelText: 'Label'),
+                    controller: key,
+                    decoration: const InputDecoration(
+                      labelText: 'Internal Key * (e.g. aadhaar_number)',
+                    ),
                   ),
                   DropdownButtonFormField<String>(
                     value: type,
@@ -248,8 +409,9 @@ class _RegistrationFieldConfigurationScreenState
               child: const Text('Cancel'),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Save'),
+              child: Text(field == null ? 'Add Field' : 'Save'),
             ),
           ],
         ),
@@ -303,6 +465,7 @@ class _RegistrationFieldConfigurationScreenState
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),

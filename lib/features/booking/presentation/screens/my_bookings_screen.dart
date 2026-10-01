@@ -26,6 +26,83 @@ import '../../domain/booking.dart';
 import '../widgets/booking_start_countdown.dart';
 import '../booking_providers.dart';
 
+enum _BookingListFilter { active, completed, declined }
+
+bool _matchesFilter(Booking booking, _BookingListFilter filter) {
+  final declined =
+      booking.status == BookingStatus.cancelled ||
+      booking.status == BookingStatus.refunded ||
+      booking.status.isOwnerRejected ||
+      booking.status == BookingStatus.approvalExpired;
+  final completed =
+      booking.status == BookingStatus.completed ||
+      booking.status == BookingStatus.noShow;
+  return switch (filter) {
+    _BookingListFilter.declined => declined,
+    _BookingListFilter.completed => completed,
+    _BookingListFilter.active => !declined && !completed,
+  };
+}
+
+class _BookingFilterBar extends StatelessWidget {
+  const _BookingFilterBar({
+    required this.filter,
+    required this.activeCount,
+    required this.completedCount,
+    required this.declinedCount,
+    required this.onChanged,
+  });
+
+  final _BookingListFilter filter;
+  final int activeCount;
+  final int completedCount;
+  final int declinedCount;
+  final ValueChanged<_BookingListFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'My Bookings & Payments',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                key: const Key('booking-filter-active'),
+                label: Text('Active ($activeCount)'),
+                selected: filter == _BookingListFilter.active,
+                onSelected: (_) => onChanged(_BookingListFilter.active),
+              ),
+              ChoiceChip(
+                key: const Key('booking-filter-completed'),
+                label: Text('Completed ($completedCount)'),
+                selected: filter == _BookingListFilter.completed,
+                onSelected: (_) => onChanged(_BookingListFilter.completed),
+              ),
+              ChoiceChip(
+                key: const Key('booking-filter-declined'),
+                label: Text('Declined/Cancelled ($declinedCount)'),
+                selected: filter == _BookingListFilter.declined,
+                onSelected: (_) => onChanged(_BookingListFilter.declined),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Lists the signed-in user's bookings with status and cancel action.
 class MyBookingsScreen extends ConsumerStatefulWidget {
   const MyBookingsScreen({super.key});
@@ -35,6 +112,7 @@ class MyBookingsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
+  _BookingListFilter _filter = _BookingListFilter.active;
   RealtimeChannel? _bookingChannel;
   // Captured for dispose(): `ref` must not be used after dispose (debug
   // builds throw), so dispose() cannot call ref.read for the client.
@@ -278,7 +356,13 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
     final showTrailingRow =
         pageState.isLoadingMore ||
         (pageState.error != null && pageState.bookings.isNotEmpty);
-    final itemCount = list.length + (showTrailingRow ? 1 : 0);
+    final filtered = [
+      for (final booking in list)
+        if (_matchesFilter(booking, _filter)) booking,
+    ];
+    final showEmpty = filtered.isEmpty;
+    final itemCount =
+        1 + (showEmpty ? 1 : filtered.length) + (showTrailingRow ? 1 : 0);
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView.builder(
@@ -287,7 +371,35 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         padding: const EdgeInsets.all(16),
         itemCount: itemCount,
         itemBuilder: (context, i) {
-          if (i >= list.length) {
+          if (i == 0) {
+            return _BookingFilterBar(
+              filter: _filter,
+              activeCount: list
+                  .where((booking) => _matchesFilter(booking, _BookingListFilter.active))
+                  .length,
+              completedCount: list
+                  .where(
+                    (booking) =>
+                        _matchesFilter(booking, _BookingListFilter.completed),
+                  )
+                  .length,
+              declinedCount: list
+                  .where(
+                    (booking) =>
+                        _matchesFilter(booking, _BookingListFilter.declined),
+                  )
+                  .length,
+              onChanged: (value) => setState(() => _filter = value),
+            );
+          }
+          if (showEmpty && i == 1) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Text('No bookings in this tab.'),
+            );
+          }
+          final bookingIndex = i - 1;
+          if (bookingIndex >= filtered.length) {
             if (pageState.error != null) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -312,35 +424,36 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
               ),
             );
           }
+          final booking = filtered[bookingIndex];
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _BookingCard(
-              booking: list[i],
+              booking: booking,
               onShowPass:
-                  (list[i].status == BookingStatus.confirmed ||
-                      list[i].status == BookingStatus.completed)
-                  ? () => _showEntryPass(list[i])
+                  (booking.status == BookingStatus.confirmed ||
+                      booking.status == BookingStatus.completed)
+                  ? () => _showEntryPass(booking)
                   : null,
-              onCancel: list[i].canCancel
-                  ? () => _cancelBooking(list[i])
+              onCancel: booking.canCancel
+                  ? () => _cancelBooking(booking)
                   : null,
-              onRefund: list[i].canRefund
-                  ? () => _requestRefund(list[i])
+              onRefund: booking.canRefund
+                  ? () => _requestRefund(booking)
                   : null,
-              onPay: list[i].canPay
+              onPay: booking.canPay
                   ? () => context.push(
-                      '/bookings/${list[i].id}/pay',
-                      extra: list[i],
+                      '/bookings/${booking.id}/pay',
+                      extra: booking,
                     )
                   : null,
-              onReceipt: list[i].canViewReceipt
-                  ? () => context.push('/bookings/${list[i].id}/receipt')
+              onReceipt: booking.canViewReceipt
+                  ? () => context.push('/bookings/${booking.id}/receipt')
                   : null,
-              onCalendar: list[i].canExportCalendar
-                  ? () => _exportCalendar(list[i])
+              onCalendar: booking.canExportCalendar
+                  ? () => _exportCalendar(booking)
                   : null,
-              onBookAgain: list[i].canBookAgain
-                  ? () => _bookAgain(list[i])
+              onBookAgain: booking.canBookAgain
+                  ? () => _bookAgain(booking)
                   : null,
             ),
           );
