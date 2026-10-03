@@ -83,15 +83,10 @@ class SupabaseListingModerationRepository
       return maps.map((row) {
         final venue = row['venues'];
         final name = venue is Map ? venue['name']?.toString() ?? '' : '';
-        final org = venue is Map ? venue['organizations'] : null;
-        final orgName = org is Map ? org['name']?.toString() ?? '' : '';
-        final owner = profiles[ownerIdOf(row)] ?? const <String, dynamic>{};
-        final ownerFullName = owner['full_name']?.toString() ?? '';
-        final ownerName = ownerFullName.isNotEmpty ? ownerFullName : orgName;
-        final ownerContact = [
-          owner['phone']?.toString() ?? '',
-          owner['email']?.toString() ?? '',
-        ].where((s) => s.isNotEmpty).join(' · ');
+        final owner = ownerDetails(
+          organization: venue is Map ? venue['organizations'] : null,
+          ownerProfile: profiles[ownerIdOf(row)],
+        );
         final id = row['id'] as String? ?? '';
         final ref = row['booking_ref'] as String? ?? '';
         final metadata = row['metadata'];
@@ -117,13 +112,32 @@ class SupabaseListingModerationRepository
           reference: ref,
           customerName: customer,
           customerContact: contact,
-          ownerName: ownerName,
-          ownerContact: ownerContact,
+          ownerName: owner.name,
+          ownerContact: owner.contact,
         );
       }).toList();
     } catch (e) {
       throw mapError(e);
     }
+  }
+
+  /// Owner shown on an admin booking card, from the booking's venue
+  /// organization (`organizations(name, owner_user_id)`) and the owner's
+  /// `profiles` row. Name: profile full name, else organization name.
+  /// Contact: phone and/or email, joined with " · "; empty when neither is
+  /// known.
+  static ({String name, String contact}) ownerDetails({
+    Object? organization,
+    Map<String, dynamic>? ownerProfile,
+  }) {
+    String text(Object? value) => value?.toString().trim() ?? '';
+    final orgName = organization is Map ? text(organization['name']) : '';
+    final fullName = text(ownerProfile?['full_name']);
+    final contact = [
+      text(ownerProfile?['phone']),
+      text(ownerProfile?['email']),
+    ].where((s) => s.isNotEmpty).join(' · ');
+    return (name: fullName.isNotEmpty ? fullName : orgName, contact: contact);
   }
 
   /// Best-effort customer lookup for booking rows (bookings.user_id

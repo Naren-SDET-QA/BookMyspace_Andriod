@@ -1,3 +1,4 @@
+import 'package:bookmyspace/core/errors/app_exceptions.dart' as app_errors;
 import 'package:bookmyspace/features/booking/domain/booking.dart';
 import 'package:bookmyspace/features/owner_bookings/domain/owner_booking_repository.dart';
 
@@ -19,6 +20,7 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
   String? lastDecidedBookingId;
   OwnerBookingDecision? lastDecision;
   String? lastDecisionReason;
+  int decideCalls = 0;
 
   @override
   Future<List<Booking>> myVenueBookings() async => List.of(_bookings);
@@ -101,6 +103,26 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
     return _bookings[index];
   }
 
+  /// Read access for assertions.
+  Booking bookingById(String id) => _bookings.firstWhere((b) => b.id == id);
+
+  /// Simulates a decision made by someone else (e.g. an administrator)
+  /// after the owner's list was loaded.
+  void decideElsewhere(String bookingId, BookingStatus status) {
+    final index = _bookings.indexWhere((b) => b.id == bookingId);
+    _bookings[index] = _withStatus(_bookings[index], status);
+  }
+
+  /// Mirrors SupabaseOwnerBookingRepository.decideBooking:
+  /// * `awaiting_owner_approval` goes through approve_venue_booking /
+  ///   reject_venue_booking: approve moves the request to `pending`
+  ///   (waiting for payment, never `confirmed`), reject to `owner_rejected`.
+  /// * legacy `pending_owner_approval` goes through owner-booking-manage:
+  ///   approve -> confirmed, reject -> rejected.
+  /// * anything else was already decided: the RPCs answer ALREADY_PROCESSED
+  ///   (already approved) or INVALID_STATUS, mapped to the same
+  ///   BusinessException messages as the real repository. Rejecting an
+  ///   already rejected/expired/cancelled request is idempotent.
   @override
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
@@ -110,16 +132,54 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
     lastDecidedBookingId = bookingId;
     lastDecision = decision;
     lastDecisionReason = reason;
+    decideCalls++;
     if (failDecideBooking) {
       throw decideBookingError ?? Exception('decide failed');
     }
     final index = _bookings.indexWhere((b) => b.id == bookingId);
     if (index < 0) throw Exception('Booking not found: $bookingId');
-    final next = decision == OwnerBookingDecision.approve
-        ? BookingStatus.confirmed
-        : BookingStatus.rejected;
     final current = _bookings[index];
-    final updated = Booking(
+    final isApprove = decision == OwnerBookingDecision.approve;
+    final BookingStatus next;
+    switch (current.status) {
+      case BookingStatus.awaitingOwnerApproval:
+        next = isApprove ? BookingStatus.pending : BookingStatus.ownerRejected;
+      case BookingStatus.pendingOwnerApproval:
+        next = isApprove ? BookingStatus.confirmed : BookingStatus.rejected;
+      case BookingStatus.ownerRejected ||
+              BookingStatus.approvalExpired ||
+              BookingStatus.cancelled
+          when !isApprove:
+        return BookingDecisionOutcome(booking: current);
+      case BookingStatus.pending when isApprove:
+        throw const app_errors.BusinessException(
+          'This request has already been processed.',
+          code: 'ALREADY_PROCESSED',
+        );
+      default:
+        throw const app_errors.BusinessException(
+          'This booking cannot be moved to that status.',
+          code: 'INVALID_STATUS',
+        );
+    }
+    final updated = _withStatus(
+      current,
+      next,
+      rejectionReason: isApprove ? null : reason,
+    );
+    _bookings[index] = updated;
+    return BookingDecisionOutcome(
+      booking: updated,
+      refundStatus: isApprove ? null : decideBookingRefundStatus,
+    );
+  }
+
+  static Booking _withStatus(
+    Booking current,
+    BookingStatus next, {
+    String? rejectionReason,
+  }) {
+    return Booking(
       id: current.id,
       bookingRef: current.bookingRef,
       venueId: current.venueId,
@@ -141,16 +201,7 @@ class MockOwnerBookingRepository implements OwnerBookingRepository {
       paymentRef: current.paymentRef,
       paidAt: current.paidAt,
       metadata: current.metadata,
-      rejectionReason: decision == OwnerBookingDecision.reject
-          ? reason
-          : current.rejectionReason,
-    );
-    _bookings[index] = updated;
-    return BookingDecisionOutcome(
-      booking: updated,
-      refundStatus: decision == OwnerBookingDecision.reject
-          ? decideBookingRefundStatus
-          : null,
+      rejectionReason: rejectionReason ?? current.rejectionReason,
     );
   }
 }

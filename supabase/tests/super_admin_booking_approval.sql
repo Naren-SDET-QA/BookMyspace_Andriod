@@ -23,6 +23,7 @@
 --      booking row lock FOR UPDATE taken before the status check)
 --  14  other categories (hotel)               -> admin can approve too; owner unchanged
 --  15  a new request notifies every admin (not the owner twice, not the customer)
+--  16  that notification names the customer, venue, date, time and owner
 --  plus: payment gate intact (approved booking is `pending`, not
 --  `confirmed`), hold kept active, audit actor_role recorded.
 
@@ -336,6 +337,21 @@ begin
   if not exists (select 1 from public.notifications where data->>'booking_id' = v_b::text
         and user_id = v_super and body like '%SAT Function Hall%' and body like '%Owner:%') then
     raise exception '15: admin notification must name the venue and owner';
+  end if;
+
+  -- 16: the admin notification names customer, venue, date, time and owner
+  insert into public.profiles (id, full_name) values (v_customer, 'Ravi Kumar')
+  on conflict (id) do update set full_name = excluded.full_name;
+  insert into public.profiles (id, full_name) values (v_owner, 'Lakshmi Rao')
+  on conflict (id) do update set full_name = excluded.full_name;
+  v_b := pg_temp.mk_booking(v_hotel_venue, v_hotel_slot, v_customer, 24);
+  select n.body into v_status from public.notifications n
+   where n.user_id = v_admin and n.data->>'booking_id' = v_b::text
+     and n.data->>'audience' = 'admin';
+  if v_status is distinct from format(
+       'Ravi Kumar requested SAT Hotel on %s (14:00-23:00). Owner: Lakshmi Rao. You or the owner can approve.',
+       to_char(current_date + 24, 'DD Mon YYYY')) then
+    raise exception '16: unexpected admin notification body: %', v_status;
   end if;
 
   raise notice 'super_admin_booking_approval: all scenarios passed';

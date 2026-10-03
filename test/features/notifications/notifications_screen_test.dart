@@ -274,4 +274,46 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // Shape of the row the `trg_notify_admins_of_booking_request` trigger
+  // inserts for each administrator (migration 20261003160000).
+  testWidgets(
+    'admin booking-request notification shows customer, venue, date, time '
+    'and owner',
+    (tester) async {
+      final row = <String, dynamic>{
+        'id': 'n-admin-1',
+        'user_id': 'u1',
+        'title': 'New booking request',
+        'body':
+            'Ravi Kumar requested Lake View Hotel on 18 Oct 2026 '
+            '(18:00-22:00). Owner: Lakshmi Rao. You or the owner can approve.',
+        'type': 'system',
+        'read': false,
+        'data': {
+          'booking_id': 'b-77',
+          'venue_id': 'v-9',
+          'owner_user_id': 'o-1',
+          'audience': 'admin',
+        },
+      };
+      final repo = MockNotificationRepository(
+        notifications: [notif_domain.Notification.fromJson(row)],
+      );
+
+      await tester.pumpWidget(_app(repo));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New booking request'), findsOneWidget);
+      final body = find.textContaining('requested Lake View Hotel');
+      expect(body, findsOneWidget);
+      final text = tester.widget<Text>(body).data!;
+      expect(text, contains('Ravi Kumar')); // customer
+      expect(text, contains('Lake View Hotel')); // venue
+      expect(text, contains('18 Oct 2026')); // date
+      expect(text, contains('18:00-22:00')); // time
+      expect(text, contains('Owner: Lakshmi Rao')); // owner
+      expect(find.text('Unread'), findsOneWidget);
+    },
+  );
 }

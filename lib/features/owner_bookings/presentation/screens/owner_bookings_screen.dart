@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/errors/app_exceptions.dart' show AppException;
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -127,9 +128,23 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
                 : l10n.bookingRejected);
       messenger.showSnackBar(SnackBar(content: Text(resultMessage)));
     } catch (e) {
+      // Someone else (an administrator) already decided this request, or
+      // it expired: reload so the stale Approve/Reject buttons disappear.
+      if (e is AppException && _staleDecisionCodes.contains(e.code)) {
+        ref.invalidate(ownerBookingsProvider);
+        messenger.showSnackBar(SnackBar(content: Text(e.message)));
+        return;
+      }
       messenger.showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
+
+  static const _staleDecisionCodes = {
+    'ALREADY_PROCESSED',
+    'INVALID_STATUS',
+    'APPROVAL_EXPIRED',
+    'EXTERNALLY_BOOKED',
+  };
 
   String _actionLabel(OwnerBookingAction action, AppLocalizations l10n) {
     return switch (action) {

@@ -127,6 +127,19 @@ class SupabaseOwnerBookingRepository implements OwnerBookingRepository {
     }
   }
 
+  /// Whether an owner decision for a booking currently in [status] goes
+  /// through `approve_venue_booking` / `reject_venue_booking`.
+  ///
+  /// Only the legacy `pending_owner_approval` state uses the
+  /// `owner-booking-manage` edge function. Every other status (including a
+  /// request an administrator already approved, now `pending` and waiting
+  /// for payment) must go through the approval RPCs, which answer
+  /// `ALREADY_PROCESSED` / `INVALID_STATUS` instead of letting a stale
+  /// Approve tap reach the legacy path, which would confirm an unpaid
+  /// `pending` booking.
+  static bool routesThroughApprovalRpc(Object? status) =>
+      status != 'pending_owner_approval';
+
   @override
   Future<BookingDecisionOutcome> decideBooking(
     String bookingId,
@@ -140,7 +153,7 @@ class SupabaseOwnerBookingRepository implements OwnerBookingRepository {
           .select('status')
           .eq('id', bookingId)
           .maybeSingle();
-      if (current?['status'] == 'awaiting_owner_approval') {
+      if (routesThroughApprovalRpc(current?['status'])) {
         return await _decideRequest(bookingId, decision, trimmedReason);
       }
       final response = await _client.functions.invoke(
@@ -203,7 +216,9 @@ class SupabaseOwnerBookingRepository implements OwnerBookingRepository {
     if (response is Map && response['success'] == false) {
       final code = response['error_code']?.toString() ?? 'decision_failed';
       throw app_errors.BusinessException(
-        code == 'INVALID_STATUS'
+        code == 'ALREADY_PROCESSED'
+            ? 'This request has already been processed.'
+            : code == 'INVALID_STATUS'
             ? 'This booking cannot be moved to that status.'
             : code == 'NOT_OWNER_OR_NOT_FOUND'
             ? 'You are not allowed to manage this booking.'
