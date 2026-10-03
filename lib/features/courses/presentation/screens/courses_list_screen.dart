@@ -148,6 +148,45 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('courses_list_ai_help_fab'),
+        heroTag: 'courses_list_ai_help',
+        backgroundColor: const Color(0xFF2E2366),
+        foregroundColor: const Color(0xFFE9D5FF),
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFF4C1D95), width: 1),
+        ),
+        onPressed: () => context.push(AppRoutes.assistant),
+        icon: const Icon(
+          Icons.auto_awesome_rounded,
+          color: Color(0xFFA78BFA),
+          size: 18,
+        ),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'AI Help',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: Color(0xFF34D399),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: courses.when(
         loading: () => ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -257,14 +296,34 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                       responsive.horizontalPadding,
                       16,
                     ),
-                    sliver: SliverList.separated(
-                      itemCount: batchCards.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => BatchClassCard(
-                        course: batchCards[i].course,
-                        batch: batchCards[i].batch,
-                      ),
-                    ),
+                    sliver: responsive.isCompact
+                        ? SliverList.separated(
+                            itemCount: batchCards.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (_, i) => BatchClassCard(
+                              course: batchCards[i].course,
+                              batch: batchCards[i].batch,
+                            ),
+                          )
+                        : SliverGrid(
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: responsive.isMedium
+                                  ? 2
+                                  : (responsive.isExpanded ? 2 : 3),
+                              mainAxisSpacing: responsive.gridSpacing,
+                              crossAxisSpacing: responsive.gridSpacing,
+                              mainAxisExtent: 640,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => BatchClassCard(
+                                course: batchCards[i].course,
+                                batch: batchCards[i].batch,
+                              ),
+                              childCount: batchCards.length,
+                            ),
+                          ),
                   )
               else if (filtered.isEmpty)
                 const SliverFillRemaining(
@@ -279,12 +338,30 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                     responsive.horizontalPadding,
                     16,
                   ),
-                  sliver: SliverList.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (context, i) =>
-                        CourseCard(course: filtered[i]),
-                  ),
+                  sliver: responsive.isCompact
+                      ? SliverList.separated(
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (context, i) =>
+                              CourseCard(course: filtered[i]),
+                        )
+                      : SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: responsive.isMedium
+                                ? 2
+                                : (responsive.isExpanded ? 2 : 3),
+                            mainAxisSpacing: responsive.gridSpacing,
+                            crossAxisSpacing: responsive.gridSpacing,
+                            childAspectRatio: 0.95,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, i) =>
+                                CourseCard(course: filtered[i]),
+                            childCount: filtered.length,
+                          ),
+                        ),
                 ),
             ],
           ),

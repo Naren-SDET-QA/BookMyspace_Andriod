@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +25,7 @@ import '../../../courses/presentation/course_providers.dart';
 import '../../../events/presentation/event_providers.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../cms/presentation/cms_providers.dart';
+import '../../../cms/presentation/widgets/live_brand.dart';
 import '../../../cms/presentation/widgets/live_ui_text.dart';
 import '../../../cms/presentation/widgets/live_ui_image.dart';
 import '../../../courses/presentation/screens/education_hub_screen.dart';
@@ -1693,12 +1695,14 @@ class _TopHeaderBar extends ConsumerWidget {
         const _ThemePill(compact: true)
       else ...[
         const _ThemePill(),
-        const SizedBox(width: 4),
-        IconButton(
-          tooltip: 'All Screens Directory',
-          onPressed: () => context.push(AppRoutes.screenDirectory),
-          icon: const Icon(Icons.grid_view_rounded),
-        ),
+        if (kDebugMode) ...[
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Screen Directory (debug)',
+            onPressed: () => context.push(AppRoutes.screenDirectory),
+            icon: const Icon(Icons.grid_view_rounded),
+          ),
+        ],
       ],
       const SizedBox(width: 4),
       IconButton(
@@ -1722,7 +1726,7 @@ class _TopHeaderBar extends ConsumerWidget {
           height: 48,
           child: Row(
             children: [
-              const BookMySpaceMark(size: 32),
+              const LiveBrandMark(size: 32),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -1764,7 +1768,7 @@ class _TopHeaderBar extends ConsumerWidget {
         height: 48,
         child: Row(
           children: [
-            const BookMySpaceMark(size: 32),
+            const LiveBrandMark(size: 32),
             const SizedBox(width: 8),
             Flexible(
               flex: 2,

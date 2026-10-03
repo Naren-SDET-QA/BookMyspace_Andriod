@@ -7,8 +7,10 @@ import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/validators/app_validators.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
+import '../../../cms/presentation/widgets/live_brand.dart';
 import '../../domain/phone_otp_provider.dart';
 import '../auth_providers.dart';
+import '../role_providers.dart';
 
 /// Email/phone OTP sign-in screen.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -261,7 +263,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Center(child: BookMySpaceMark(size: 88)),
+                      const Center(child: LiveBrandMark(size: 88)),
                       const SizedBox(height: 16),
                       const BookMySpaceWordmark(
                         fontSize: 32,
@@ -460,6 +462,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ? 'Sign in'
                                       : 'Send code')),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        key: const Key('explore-as-guest'),
+                        onPressed: _busy
+                            ? null
+                            : () {
+                                ref.read(previewAllScreensModeProvider.notifier).state = true;
+                                context.go(AppRoutes.home);
+                              },
+                        icon: const Icon(Icons.explore_outlined),
+                        label: const Text('Explore Spaces as Guest'),
                       ),
                       if (!_phoneMode &&
                           !_codeSent &&

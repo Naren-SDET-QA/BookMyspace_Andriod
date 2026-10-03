@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,8 +65,8 @@ import '../../features/business/presentation/screens/business_plan_configuration
 import '../../features/business/presentation/screens/business_pricing_configuration_screen.dart';
 import '../../features/checkin/presentation/screens/qr_check_in_screen.dart';
 import '../../features/courses/presentation/screens/course_detail_screen.dart';
-import '../../features/courses/presentation/screens/instructor_profile_screen.dart';
 import '../../features/courses/presentation/screens/courses_list_screen.dart';
+import '../../features/courses/presentation/screens/instructor_profile_screen.dart';
 import '../../features/courses/presentation/screens/admin_education_screen.dart';
 import '../../features/courses/presentation/screens/education_hub_screen.dart';
 import '../../features/courses/presentation/screens/institute_detail_screen.dart'
@@ -147,6 +148,7 @@ import '../../features/venue_discovery/infrastructure/supabase_discovery_reposit
 import '../../features/venue_discovery/presentation/screens/venue_discovery_screen.dart';
 import '../../features/venues/domain/venue.dart';
 import '../../features/venues/presentation/screens/venue_details_screen.dart';
+import '../../features/venues/presentation/venue_providers.dart';
 import '../../features/navigation/presentation/nav_tab_labels.dart';
 import '../../features/navigation/domain/nav_tabs.dart';
 import '../../features/navigation/presentation/nav_tabs_providers.dart';
@@ -1075,14 +1077,22 @@ GoRouter createAppRouter({
         builder: (context, state) {
           final extra = state.extra;
           final venue = extra is Venue ? extra : null;
-          if (venue == null) {
-            // Bookmark/refresh navigation without a venue object — fall back
-            // to the details screen which can re-fetch the venue.
-            return VenueDetailsScreen(
-              venueId: state.pathParameters['id'] ?? '',
-            );
+          final venueId = state.pathParameters['id'] ?? '';
+          if (venue != null) {
+            return BookingScreen(venue: venue);
           }
-          return BookingScreen(venue: venue);
+          return Consumer(
+            builder: (context, ref, child) {
+              final asyncVenue = ref.watch(venueDetailsProvider(venueId));
+              return asyncVenue.when(
+                data: (v) => BookingScreen(venue: v),
+                loading: () => const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, __) => VenueDetailsScreen(venueId: venueId),
+              );
+            },
+          );
         },
       ),
       GoRoute(
@@ -1114,6 +1124,7 @@ GoRouter createAppRouter({
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => EducationHubScreen(
           initialQuery: state.uri.queryParameters['q'] ?? '',
+          initialScope: state.uri.queryParameters['scope'] ?? 'institutes',
         ),
       ),
       GoRoute(
@@ -1156,6 +1167,8 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppRoutes.screenDirectory,
         parentNavigatorKey: rootNavigatorKey,
+        // QA-only catalog with a RoleGate preview bypass: debug builds only.
+        redirect: (context, state) => kDebugMode ? null : AppRoutes.home,
         builder: (context, state) => const MasterScreenDirectoryScreen(),
       ),
       GoRoute(
@@ -1945,6 +1958,8 @@ String? resolveAppRedirect({
   if (_isPhaseOneBackendUnavailable(canonical)) return AppRoutes.home;
   if (!authReady) return null;
   final isPublic =
+      canonical.startsWith('/venues/') ||
+      canonical == AppRoutes.screenDirectory ||
       canonical == AppRoutes.splash ||
       canonical == AppRoutes.onboarding ||
       canonical == AppRoutes.login ||
@@ -1952,7 +1967,12 @@ String? resolveAppRedirect({
       canonical == AppRoutes.resetPassword ||
       canonical == AppRoutes.unifiedRegistration ||
       canonical == AppRoutes.ownerRegistration ||
-      canonical.startsWith('/register/');
+      canonical.startsWith('/register/') ||
+      canonical == AppRoutes.education ||
+      canonical.startsWith('/education') ||
+      canonical == AppRoutes.coursesList ||
+      canonical.startsWith('/courses') ||
+      canonical.startsWith('/instructors');
   if (currentUser == null && !allowUnauthenticatedTestAccess) {
     if (!isPublic) return AppRoutes.login;
   }

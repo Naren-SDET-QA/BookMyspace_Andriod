@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,11 +6,15 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../cms/domain/app_element_registry.dart';
+import '../../../cms/domain/cms_media_asset.dart';
 import '../../../cms/domain/ui_element_override.dart';
+import '../../../cms/presentation/cms_media_providers.dart';
 import '../../../cms/presentation/ui_element_override_providers.dart';
 import '../admin_settings_providers.dart';
 import '../app_branding_providers.dart';
+import '../widgets/brand_loading_indicator.dart';
 
 /// Central Global UI Content & Branding Studio (`/admin/studio`).
 ///
@@ -663,18 +668,26 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
   late TextEditingController _splashCtrl;
   late TextEditingController _firstColorCtrl;
   late TextEditingController _restColorCtrl;
+  late TextEditingController _animationColorCtrl;
+  late TextEditingController _animationThicknessCtrl;
+  bool _animationEnabled = AppBranding.defaultAnimationEnabled;
   bool _saving = false;
+  bool _uploading = false;
 
   @override
   void initState() {
     super.initState();
-    _appNameCtrl = TextEditingController(text: widget.branding.appName);
-    _taglineCtrl = TextEditingController(text: widget.branding.tagline);
-    _logoLightCtrl = TextEditingController(text: widget.branding.logoUrl ?? '');
-    _logoDarkCtrl = TextEditingController(text: widget.branding.logoDarkUrl ?? '');
-    _splashCtrl = TextEditingController(text: widget.branding.splashUrl ?? '');
-    _firstColorCtrl = TextEditingController(text: widget.branding.wordmarkFirstColor ?? '#3F51B5');
-    _restColorCtrl = TextEditingController(text: widget.branding.wordmarkRestColor ?? '');
+    final b = widget.branding;
+    _appNameCtrl = TextEditingController(text: b.appName);
+    _taglineCtrl = TextEditingController(text: b.tagline);
+    _logoLightCtrl = TextEditingController(text: b.logoUrl ?? '');
+    _logoDarkCtrl = TextEditingController(text: b.logoDarkUrl ?? '');
+    _splashCtrl = TextEditingController(text: b.splashUrl ?? '');
+    _firstColorCtrl = TextEditingController(text: b.wordmarkFirstColor ?? '#3F51B5');
+    _restColorCtrl = TextEditingController(text: b.wordmarkRestColor ?? '');
+    _animationColorCtrl = TextEditingController(text: b.animationColor ?? '');
+    _animationThicknessCtrl = TextEditingController(text: b.animationThickness.toString());
+    _animationEnabled = b.animationEnabled;
   }
 
   @override
@@ -686,47 +699,200 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
     _splashCtrl.dispose();
     _firstColorCtrl.dispose();
     _restColorCtrl.dispose();
+    _animationColorCtrl.dispose();
+    _animationThicknessCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _saveBranding() async {
+  String? _nullIfEmpty(TextEditingController c) {
+    final v = c.text.trim();
+    return v.isEmpty ? null : v;
+  }
+
+  /// Validation message for the spinner colour field, or null when valid.
+  String? get _animationColorError {
+    final v = _animationColorCtrl.text.trim();
+    if (v.isEmpty) return null;
+    return parseBrandHexColor(v) == null ? 'Use a hex colour like #FF5733' : null;
+  }
+
+  /// Validation message for the spinner thickness field, or null when valid.
+  String? get _animationThicknessError {
+    final v = _animationThicknessCtrl.text.trim();
+    if (v.isEmpty) return null;
+    final parsed = double.tryParse(v);
+    if (parsed == null || !parsed.isFinite) return 'Enter a number';
+    if (parsed < AppBranding.minAnimationThickness ||
+        parsed > AppBranding.maxAnimationThickness) {
+      return 'Must be between ${AppBranding.minAnimationThickness} '
+          'and ${AppBranding.maxAnimationThickness}';
+    }
+    return null;
+  }
+
+  bool get _hasErrors =>
+      _animationEnabled && (_animationColorError != null || _animationThicknessError != null);
+
+  /// The values the form would publish, in the stored metadata shape.
+  Map<String, dynamic> _formValues() {
+    final thickness = double.tryParse(_animationThicknessCtrl.text.trim());
+    return {
+      'app_name': _nullIfEmpty(_appNameCtrl) ?? 'BookMySpace',
+      'tagline': _taglineCtrl.text.trim(),
+      'logo_url': _nullIfEmpty(_logoLightCtrl),
+      'logo_dark_url': _nullIfEmpty(_logoDarkCtrl),
+      'splash_url': _nullIfEmpty(_splashCtrl),
+      'wordmark_first_color': _nullIfEmpty(_firstColorCtrl) ?? '#3F51B5',
+      'wordmark_rest_color': _nullIfEmpty(_restColorCtrl),
+      'animation_enabled': _animationEnabled,
+      'animation_color': _nullIfEmpty(_animationColorCtrl),
+      'animation_thickness': AppBranding.clampThickness(thickness),
+    };
+  }
+
+  /// Draft branding used for the live preview and for publishing, so the
+  /// preview always matches exactly what customers will get.
+  AppBranding get _draft => AppBranding.fromMap(_formValues());
+
+  Future<void> _uploadLogo(TextEditingController target) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: CmsMediaRules.allowedExtensions.toList(),
+      withData: true,
+    );
+    if (result == null || result.files.single.bytes == null || !mounted) return;
+    setState(() => _uploading = true);
+    try {
+      final asset = await ref.read(cmsMediaRepositoryProvider).upload(
+            name: result.files.single.name,
+            bytes: result.files.single.bytes!,
+          );
+      if (!mounted) return;
+      setState(() => target.text = asset.ref.url);
+      _toast('Logo uploaded. Review the preview, then Publish.');
+    } catch (_) {
+      _toast('Logo upload failed. Check the file (PNG/JPG/WebP) and retry.');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  void _toast(String message, {Color? color}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+  }
+
+  Future<void> _publish({String success = 'Global branding published across the app.'}) async {
+    if (_hasErrors) {
+      _toast('Fix the highlighted loading animation fields first.');
+      return;
+    }
     setState(() => _saving = true);
     try {
-      final updated = {
-        'app_name': _appNameCtrl.text.trim().isEmpty ? 'BookMySpace' : _appNameCtrl.text.trim(),
-        'tagline': _taglineCtrl.text.trim(),
-        'logo_url': _logoLightCtrl.text.trim().isEmpty ? null : _logoLightCtrl.text.trim(),
-        'logo_dark_url': _logoDarkCtrl.text.trim().isEmpty ? null : _logoDarkCtrl.text.trim(),
-        'splash_url': _splashCtrl.text.trim().isEmpty ? null : _splashCtrl.text.trim(),
-        'wordmark_first_color': _firstColorCtrl.text.trim().isEmpty ? '#3F51B5' : _firstColorCtrl.text.trim(),
-        'wordmark_rest_color': _restColorCtrl.text.trim().isEmpty ? null : _restColorCtrl.text.trim(),
-      };
-
-      await ref.read(adminSettingsRepositoryProvider).saveSection('branding', updated);
+      // Normalise through AppBranding so only valid values are stored.
+      final values = _draft.toMap();
+      await ref.read(adminSettingsRepositoryProvider).saveSection('branding', values);
       ref.invalidate(appBrandingProvider);
       ref.invalidate(adminSettingsProvider);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Global branding updated and published across the app!'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-      }
+      _toast(success, color: AppTheme.success);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update branding: $e')),
-        );
-      }
+      _toast('Failed to update branding: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  Future<void> _resetLogo() async {
+    setState(() {
+      _logoLightCtrl.clear();
+      _logoDarkCtrl.clear();
+    });
+    await _publish(success: 'Logo reset to the bundled BookMySpace logo.');
+  }
+
+  Future<void> _resetAnimation() async {
+    setState(() {
+      _animationEnabled = AppBranding.defaultAnimationEnabled;
+      _animationColorCtrl.clear();
+      _animationThicknessCtrl.text = AppBranding.defaultAnimationThickness.toString();
+    });
+    await _publish(success: 'Loading animation reset to defaults.');
+  }
+
+  Widget _logoField({
+    required Key key,
+    required TextEditingController controller,
+    required String label,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            key: key,
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: 'https://...',
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: IconButton.filledTonal(
+            tooltip: 'Upload logo',
+            onPressed: _uploading || _saving ? null : () => _uploadLogo(controller),
+            icon: _uploading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload_file_outlined),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _previewTile({required String label, required bool dark, required AppBranding draft}) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BookMySpaceMark(
+            key: ValueKey('branding-preview-logo-${dark ? 'dark' : 'light'}'),
+            size: 56,
+            logoUrlOverride: draft.logoForBrightness(dark),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: dark ? Colors.white70 : Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final draft = _draft;
+    final busy = _saving || _uploading;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -742,7 +908,7 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Changes propagate systemically to headers, splash, authentication, and wordmarks throughout the application.',
+                  'Changes propagate to splash, login, home headers and every other place the global logo appears.',
                   style: TextStyle(fontSize: 12),
                 ),
                 const SizedBox(height: 16),
@@ -762,24 +928,16 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _logoField(
+                  key: const ValueKey('branding-logo-light'),
                   controller: _logoLightCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Logo Image URL (Light theme)',
-                    hintText: 'https://...',
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (_) => setState(() {}),
+                  label: 'Logo Image URL (Light theme)',
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _logoField(
+                  key: const ValueKey('branding-logo-dark'),
                   controller: _logoDarkCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Logo Image URL (Dark theme)',
-                    hintText: 'https://...',
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (_) => setState(() {}),
+                  label: 'Logo Image URL (Dark theme, optional)',
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -816,19 +974,136 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: _saving ? null : _saveBranding,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.save_rounded),
-                    label: const Text('Save & Apply Global Branding'),
+                // Loading animation settings
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Loading Animation',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      SwitchListTile(
+                        key: const ValueKey('branding-animation-enabled'),
+                        title: const Text('Enable Loading Animation'),
+                        subtitle: const Text('Show the spinner on the splash/loading screen'),
+                        value: _animationEnabled,
+                        onChanged: (val) => setState(() => _animationEnabled = val),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      if (_animationEnabled) ...[
+                        const SizedBox(height: 8),
+                        TextField(
+                          key: const ValueKey('branding-animation-color'),
+                          controller: _animationColorCtrl,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Spinner Color (Hex, e.g. #FF5733)',
+                            helperText: 'Leave empty to use the brand colour',
+                            errorText: _animationColorError,
+                            border: const OutlineInputBorder(),
+                            hintText: '#FF5733',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          key: const ValueKey('branding-animation-thickness'),
+                          controller: _animationThicknessCtrl,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText:
+                                'Spinner Thickness (${AppBranding.minAnimationThickness} - ${AppBranding.maxAnimationThickness})',
+                            errorText: _animationThicknessError,
+                            border: const OutlineInputBorder(),
+                            hintText: '${AppBranding.defaultAnimationThickness}',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Live preview of the unpublished draft
+                const Text(
+                  'Preview (not yet published)',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _previewTile(label: 'Light logo', dark: false, draft: draft),
+                    _previewTile(label: 'Dark logo', dark: true, draft: draft),
+                    Container(
+                      key: const ValueKey('branding-preview-spinner'),
+                      width: 150,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: 56,
+                            child: Center(
+                              child: _hasErrors
+                                  ? const Icon(Icons.error_outline, color: Colors.red)
+                                  : BrandLoadingIndicator(branding: draft, size: 40),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            draft.animationEnabled ? 'Spinner' : 'Spinner disabled',
+                            style: const TextStyle(fontSize: 11, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('branding-reset-logo'),
+                      onPressed: busy ? null : _resetLogo,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: const Text('Reset Logo'),
+                    ),
+                    OutlinedButton.icon(
+                      key: const ValueKey('branding-reset-animation'),
+                      onPressed: busy ? null : _resetAnimation,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: const Text('Reset Animation'),
+                    ),
+                    FilledButton.icon(
+                      key: const ValueKey('branding-publish'),
+                      onPressed: busy || _hasErrors ? null : _publish,
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.publish_rounded),
+                      label: const Text('Publish Global Branding'),
+                    ),
+                  ],
                 ),
               ],
             ),

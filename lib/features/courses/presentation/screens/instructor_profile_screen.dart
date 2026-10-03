@@ -119,7 +119,12 @@ class InstructorProfileScreen extends ConsumerWidget {
               message: 'This profile is no longer available.',
             );
           }
-          return _ProfileBody(profile: profile);
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: _ProfileBody(profile: profile),
+            ),
+          );
         },
       ),
     );

@@ -1,15 +1,12 @@
-import 'dart:convert';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../domain/registration_field_config.dart';
-import '../../../auth/presentation/auth_providers.dart';
-import '../owner_providers.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../registration/domain/user_registration_config_models.dart';
+import '../../../registration/presentation/providers/registration_fields_provider.dart';
 
-/// Admin-only configuration for the fields shown during owner registration.
 class RegistrationFieldConfigurationScreen extends ConsumerStatefulWidget {
   const RegistrationFieldConfigurationScreen({super.key});
 
@@ -20,484 +17,1139 @@ class RegistrationFieldConfigurationScreen extends ConsumerStatefulWidget {
 
 class _RegistrationFieldConfigurationScreenState
     extends ConsumerState<RegistrationFieldConfigurationScreen> {
-  late Future<List<RegistrationFieldConfig>> _future;
-  final _search = TextEditingController();
-  String _audience = 'all';
+  final TextEditingController _searchController = TextEditingController();
+  RegistrationTargetModule _selectedModule = RegistrationTargetModule.customer;
+  RegistrationFieldCategory? _selectedCategory;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _future = ref.read(registrationConfigRepositoryProvider).allFields();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
   }
 
   @override
   void dispose() {
-    _search.dispose();
+    _searchController.dispose();
     super.dispose();
-  }
-
-  void _reload() => setState(() {
-    _future = ref.read(registrationConfigRepositoryProvider).allFields();
-  });
-
-  Future<void> _update(
-    RegistrationFieldConfig field,
-    Map<String, dynamic> changes,
-  ) async {
-    try {
-      await ref
-          .read(registrationConfigRepositoryProvider)
-          .updateFieldConfig(field.key, changes);
-      _reload();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not update field: $error')),
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final allFields = ref.watch(registrationFieldsProvider);
+    final notifier = ref.read(registrationFieldsProvider.notifier);
+
+    // Filter fields according to module, category, and search query
+    final filteredFields = allFields.where((field) {
+      if (_selectedModule != RegistrationTargetModule.all) {
+        if (field.targetModule != RegistrationTargetModule.all &&
+            field.targetModule != _selectedModule) {
+          return false;
+        }
+      }
+      if (_selectedCategory != null && field.category != _selectedCategory) {
+        return false;
+      }
+      if (_searchQuery.isNotEmpty) {
+        final matchesKey = field.key.toLowerCase().contains(_searchQuery);
+        final matchesLabel = field.label.toLowerCase().contains(_searchQuery);
+        final matchesHelp = field.helpText.toLowerCase().contains(_searchQuery);
+        final matchesType = field.fieldType.displayName.toLowerCase().contains(_searchQuery);
+        if (!matchesKey && !matchesLabel && !matchesHelp && !matchesType) {
+          return false;
+        }
+      }
+      return true;
+    }).toList()
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+
+    // Stats calculations
+    final totalMandatory = allFields.where((f) => f.required).length;
+    final totalActive = allFields.where((f) => f.isEnabled).length;
+
+    // Quick toggle field references
+    final aadhaarField = allFields.firstWhere(
+      (f) => f.key == 'aadhaar_number',
+      orElse: () => allFields.first,
+    );
+    final dobField = allFields.firstWhere(
+      (f) => f.key == 'dob',
+      orElse: () => allFields.first,
+    );
+    final orgField = allFields.firstWhere(
+      (f) => f.key == 'organization_name',
+      orElse: () => allFields.first,
+    );
+
     return Scaffold(
+      backgroundColor: const Color(0xFF0B1120),
       appBar: AppBar(
-        title: const Text('Registration Schema & KYC'),
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Registration Schema & KYC',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'JSON-Configurable Field Rules',
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            tooltip: 'Add field',
-            icon: const Icon(Icons.add),
-            onPressed: _showEditor,
+            tooltip: 'JSON Schema Configuration',
+            icon: const Icon(Icons.data_object, color: Color(0xFF818CF8)),
+            onPressed: () => _showJsonConfigDialog(context, allFields, notifier),
+          ),
+          IconButton(
+            tooltip: 'Live Form Preview',
+            icon: const Icon(Icons.visibility, color: Color(0xFF818CF8)),
+            onPressed: () => context.push(AppRoutes.unifiedRegistration),
+          ),
+          IconButton(
+            tooltip: 'Reset Defaults',
+            icon: const Icon(Icons.restart_alt, color: Color(0xFF94A3B8)),
+            onPressed: () => _showResetDialog(context, notifier),
           ),
         ],
       ),
-      body: FutureBuilder<bool>(
-        future: _isAdmin(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.data != true) {
-            return const Center(child: Text('Administrator access required'));
-          }
-          return FutureBuilder<List<RegistrationFieldConfig>>(
-            future: _future,
-            builder: (context, fieldsSnapshot) {
-              if (fieldsSnapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (fieldsSnapshot.hasError) {
-                return Center(
-                  child: Text('Could not load fields: ${fieldsSnapshot.error}'),
-                );
-              }
-              final fields =
-                  fieldsSnapshot.data ?? const <RegistrationFieldConfig>[];
-              if (fields.isEmpty) {
-                return const Center(
-                  child: Text('No registration fields configured'),
-                );
-              }
-              final query = _search.text.trim().toLowerCase();
-              final visible = fields.where((field) {
-                final audienceOk = switch (_audience) {
-                  'customer' => field.customerVisible,
-                  'owner' => field.ownerVisible,
-                  _ => true,
-                };
-                if (!audienceOk) return false;
-                if (query.isEmpty) return true;
-                return field.label.toLowerCase().contains(query) ||
-                    field.key.toLowerCase().contains(query);
-              }).toList();
-              final quick = fields.where(_isQuickToggle).toList();
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: _search,
-                          decoration: const InputDecoration(
-                            hintText: 'Search fields (photo, aadhaar, dob...)',
-                            prefixIcon: Icon(Icons.search_rounded),
-                            isDense: true,
-                          ),
-                          onChanged: (_) => setState(() {}),
+      body: CustomScrollView(
+        slivers: [
+          // Target Module Filter Tabs
+          SliverToBoxAdapter(
+            child: Container(
+              color: const Color(0xFF0F172A),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    _buildModuleTab(
+                      RegistrationTargetModule.customer,
+                      'Customer / Member',
+                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.customer).length,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildModuleTab(
+                      RegistrationTargetModule.venueOwner,
+                      'Venue & Space Owner',
+                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.venueOwner).length,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildModuleTab(
+                      RegistrationTargetModule.instituteStudent,
+                      'Institute Student / Coach',
+                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.instituteStudent).length,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildModuleTab(
+                      RegistrationTargetModule.eventAttendee,
+                      'Event / Tournament Attendee',
+                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.eventAttendee).length,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildModuleTab(
+                      RegistrationTargetModule.all,
+                      'All User Types',
+                      allFields.length,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Main body cards
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Dynamic JSON Configuration System card
+                _buildSystemConfigCard(
+                  context,
+                  notifier,
+                  aadhaarField,
+                  dobField,
+                  orgField,
+                  allFields,
+                ),
+                const SizedBox(height: 16),
+
+                // Search fields bar
+                _buildSearchBar(),
+                const SizedBox(height: 12),
+
+                // Category filter chips
+                _buildCategoryChips(allFields),
+                const SizedBox(height: 16),
+
+                // Status row: Fields count + Live Form Preview button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Fields: ${allFields.length} ($totalMandatory mandatory, $totalActive active)',
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final audience in const [
-                              'all',
-                              'customer',
-                              'owner',
-                            ])
-                              ChoiceChip(
-                                label: Text(
-                                  audience == 'all'
-                                      ? 'All User Types (${fields.length})'
-                                      : audience == 'customer'
-                                      ? 'Customer / Member'
-                                      : 'Venue Owner',
-                                ),
-                                selected: _audience == audience,
-                                onSelected: (_) =>
-                                    setState(() => _audience = audience),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => context.push(AppRoutes.unifiedRegistration),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF312E81),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.visibility, size: 14, color: Color(0xFFA5B4FC)),
+                            SizedBox(width: 6),
+                            Text(
+                              '+ Live Form Preview',
+                              style: TextStyle(
+                                color: Color(0xFFA5B4FC),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ActionChip(
-                              avatar: const Icon(Icons.data_object_rounded, size: 18),
-                              label: const Text('JSON Schema'),
-                              onPressed: () => _showSchema(fields),
                             ),
                           ],
                         ),
-                        if (quick.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Quick mandatory toggles',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final field in quick)
-                                FilterChip(
-                                  label: Text(
-                                    field.label,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  selected: field.required,
-                                  onSelected: (value) => _update(field, {
-                                    'required': value,
-                                  }),
-                                ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Text(
-                          'Fields: ${visible.length} shown, '
-                          '${fields.where((field) => field.required).length} mandatory, '
-                          '${fields.where((field) => field.enabled).length} active',
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: visible.length,
-                      itemBuilder: (context, index) {
-                        final field = visible[index];
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        field.label,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    Switch(
-                                      value: field.enabled,
-                                      onChanged: (value) =>
-                                          _update(field, {'enabled': value}),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  '${field.key} · ${field.type.name} · '
-                                  '${field.required ? 'mandatory' : 'optional'}'
-                                  '${field.customerVisible ? ' · customer' : ''}'
-                                  '${field.ownerVisible ? ' · owner' : ''}',
-                                ),
-                                Wrap(
-                                  spacing: 4,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () => _showEditor(field),
-                                      child: const Text('Edit'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => _update(field, {
-                                        'required': !field.required,
-                                      }),
-                                      child: Text(
-                                        field.required
-                                            ? 'Make optional'
-                                            : 'Make mandatory',
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => _delete(field),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Field list cards
+                if (filteredFields.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'No matching registration fields found',
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
                     ),
+                  )
+                else
+                  ...filteredFields.map(
+                    (field) => _buildFieldCard(context, field, notifier),
                   ),
-                ],
-              );
-            },
-          );
-        },
+
+                const SizedBox(height: 80),
+              ]),
+            ),
+          ),
+        ],
       ),
-    );
-  }
-
-  bool _isQuickToggle(RegistrationFieldConfig field) {
-    final haystack = '${field.key} ${field.label}'.toLowerCase();
-    return haystack.contains('aadhaar') ||
-        haystack.contains('identity') ||
-        haystack.contains('dob') ||
-        haystack.contains('birth') ||
-        haystack.contains('company') ||
-        haystack.contains('photo');
-  }
-
-  Future<void> _showSchema(List<RegistrationFieldConfig> fields) async {
-    final json = const JsonEncoder.withIndent('  ').convert({
-      'schemaVersion': '2.0',
-      'description': 'BookMySpace owner registration fields',
-      'totalFields': fields.length,
-      'requiredCount': fields.where((field) => field.required).length,
-      'fields': [
-        for (final field in fields)
-          {
-            'key': field.key,
-            'label': field.label,
-            'type': field.type.name,
-            'required': field.required,
-            'enabled': field.enabled,
-            'customerVisible': field.customerVisible,
-            'ownerVisible': field.ownerVisible,
-          },
-      ],
-    });
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('JSON Schema Configuration'),
-        content: SizedBox(
-          width: math.min(
-            520,
-            math.max(0, MediaQuery.sizeOf(dialogContext).width - 128),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'add_field_fab',
+            onPressed: () => _showAddEditFieldDialog(context, null, notifier),
+            backgroundColor: const Color(0xFF2563EB),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Add Field',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
-          child: SingleChildScrollView(child: SelectableText(json)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: json));
-              if (dialogContext.mounted) Navigator.pop(dialogContext);
-            },
-            child: const Text('Copy'),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'ai_help_fab',
+            onPressed: () => _showAiHelpDialog(context, allFields),
+            backgroundColor: const Color(0xFF4F46E5),
+            icon: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
+            label: const Text(
+              'AI Help',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _showEditor([RegistrationFieldConfig? field]) async {
-    final key = TextEditingController(text: field?.key ?? '');
-    final label = TextEditingController(text: field?.label ?? '');
-    final regex = TextEditingController(text: field?.regexPattern ?? '');
-    final preset = TextEditingController(text: field?.presetKey ?? '');
-    final options = TextEditingController(
-      text: field?.options.join(', ') ?? '',
+  Widget _buildModuleTab(RegistrationTargetModule module, String label, int count) {
+    final isSelected = _selectedModule == module;
+    return InkWell(
+      onTap: () => setState(() => _selectedModule = module),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF312E81) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF334155),
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    var type = field?.type.name ?? 'text';
-    var required = field?.required ?? false;
-    final saved = await showDialog<bool>(
+  }
+
+  Widget _buildSystemConfigCard(
+    BuildContext context,
+    RegistrationFieldsNotifier notifier,
+    UserRegistrationFieldDefinition aadhaarField,
+    UserRegistrationFieldDefinition dobField,
+    UserRegistrationFieldDefinition orgField,
+    List<UserRegistrationFieldDefinition> allFields,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E1B4B), Color(0xFF172554)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF4338CA).withValues(alpha: 0.6)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.account_tree, color: Color(0xFF818CF8), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Dynamic JSON Configuration System',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => _showJsonConfigDialog(context, allFields, notifier),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF831843),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.code, color: Colors.white, size: 12),
+                      SizedBox(width: 4),
+                      Text(
+                        'Edit',
+                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Toggle mandatory fields instantly without hardcoding. Changes take effect across user registration, checkout KYC, and host onboarding in real time.',
+            style: TextStyle(
+              color: Color(0xFFCBD5E1),
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'QUICK MANDATORY TOGGLES',
+            style: TextStyle(
+              color: Color(0xFF818CF8),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildQuickToggle(
+                  label: 'Identity Proof',
+                  isMandatory: aadhaarField.required,
+                  onTap: () => notifier.toggleFieldRequired(aadhaarField.key),
+                ),
+                const SizedBox(width: 8),
+                _buildQuickToggle(
+                  label: 'Date of Birth',
+                  isMandatory: dobField.required,
+                  onTap: () => notifier.toggleFieldRequired(dobField.key),
+                ),
+                const SizedBox(width: 8),
+                _buildQuickToggle(
+                  label: 'Company Name',
+                  isMandatory: orgField.required,
+                  onTap: () => notifier.toggleFieldRequired(orgField.key),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickToggle({
+    required String label,
+    required bool isMandatory,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isMandatory ? const Color(0xFF312E81) : const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isMandatory ? const Color(0xFF6366F1) : const Color(0xFF334155),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isMandatory ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 16,
+              color: isMandatory ? const Color(0xFFA5B4FC) : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  isMandatory ? 'MANDATORY' : 'OPTIONAL',
+                  style: TextStyle(
+                    color: isMandatory ? const Color(0xFF818CF8) : const Color(0xFF94A3B8),
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        decoration: InputDecoration(
+          hintText: 'Search fields (e.g. photo, aadhaar, dob, company, phone)...',
+          hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: Color(0xFF94A3B8), size: 18),
+                  onPressed: () => _searchController.clear(),
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChips(List<UserRegistrationFieldDefinition> allFields) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildCategoryFilterChip(
+            null,
+            'All Categories',
+            allFields.length,
+          ),
+          const SizedBox(width: 8),
+          _buildCategoryFilterChip(
+            RegistrationFieldCategory.personal,
+            'Personal Information',
+            allFields.where((f) => f.category == RegistrationFieldCategory.personal).length,
+          ),
+          const SizedBox(width: 8),
+          _buildCategoryFilterChip(
+            RegistrationFieldCategory.identityKyc,
+            'Government ID & KYC',
+            allFields.where((f) => f.category == RegistrationFieldCategory.identityKyc).length,
+          ),
+          const SizedBox(width: 8),
+          _buildCategoryFilterChip(
+            RegistrationFieldCategory.address,
+            'Address & Location',
+            allFields.where((f) => f.category == RegistrationFieldCategory.address).length,
+          ),
+          const SizedBox(width: 8),
+          _buildCategoryFilterChip(
+            RegistrationFieldCategory.professionalBusiness,
+            'Business & Academy Details',
+            allFields.where((f) => f.category == RegistrationFieldCategory.professionalBusiness).length,
+          ),
+          const SizedBox(width: 8),
+          _buildCategoryFilterChip(
+            RegistrationFieldCategory.custom,
+            'Custom & Additional Fields',
+            allFields.where((f) => f.category == RegistrationFieldCategory.custom).length,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilterChip(RegistrationFieldCategory? category, String label, int count) {
+    final isSelected = _selectedCategory == category;
+    return InkWell(
+      onTap: () => setState(() => _selectedCategory = isSelected ? null : category),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF312E81) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF334155),
+          ),
+        ),
+        child: Text(
+          '$label ($count)',
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldCard(
+    BuildContext context,
+    UserRegistrationFieldDefinition field,
+    RegistrationFieldsNotifier notifier,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161F30),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: field.required
+              ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+              : const Color(0xFF334155).withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tags row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _buildBadge(field.category.displayName, const Color(0xFF1E293B), const Color(0xFF94A3B8)),
+                    _buildBadge(field.targetModule.displayName, const Color(0xFF1E3A8A), const Color(0xFF93C5FD)),
+                    _buildBadge(
+                      field.isSystemStandard ? 'Standard' : 'Custom',
+                      const Color(0xFF0F172A),
+                      const Color(0xFF94A3B8),
+                    ),
+                    _buildBadge(
+                      field.required ? 'Required' : 'Optional',
+                      field.required ? const Color(0xFF881337) : const Color(0xFF1E293B),
+                      field.required ? const Color(0xFFFDA4AF) : const Color(0xFF94A3B8),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.edit, size: 16, color: Color(0xFF94A3B8)),
+                onPressed: () => _showAddEditFieldDialog(context, field, notifier),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Main row with icon, title, switch
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Icon(_getIconForField(field), size: 18, color: const Color(0xFF818CF8)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: field.label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: [
+                      if (field.required)
+                        const TextSpan(
+                          text: ' *Mandatory',
+                          style: TextStyle(
+                            color: Color(0xFFF43F5E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Switch(
+                value: field.isEnabled,
+                activeColor: const Color(0xFF6366F1),
+                onChanged: (val) => notifier.toggleFieldEnabled(field.id, val),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+          // Subtitle
+          Padding(
+            padding: const EdgeInsets.only(left: 48),
+            child: Text(
+              'Key: ${field.key} • Type: ${field.fieldType.displayName}',
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+            ),
+          ),
+
+          if (field.helpText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 48),
+              child: Text(
+                field.helpText,
+                style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(String text, Color bg, Color textCol) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  IconData _getIconForField(UserRegistrationFieldDefinition field) {
+    switch (field.fieldType) {
+      case RegistrationFieldType.phone:
+        return Icons.phone;
+      case RegistrationFieldType.email:
+        return Icons.email;
+      case RegistrationFieldType.photo:
+        return Icons.camera_alt;
+      case RegistrationFieldType.aadhaar:
+        return Icons.shield;
+      case RegistrationFieldType.govtId:
+        return Icons.credit_card;
+      case RegistrationFieldType.addressLine:
+        return Icons.home;
+      case RegistrationFieldType.locationHierarchy:
+        return Icons.location_on;
+      case RegistrationFieldType.pincode:
+        return Icons.pin_drop;
+      case RegistrationFieldType.dateOfBirth:
+        return Icons.calendar_today;
+      case RegistrationFieldType.dropdown:
+        return Icons.arrow_drop_down_circle;
+      case RegistrationFieldType.radioGroup:
+        return Icons.radio_button_checked;
+      case RegistrationFieldType.checkbox:
+        return Icons.check_box;
+      case RegistrationFieldType.number:
+        return Icons.tag;
+      case RegistrationFieldType.textarea:
+        return Icons.notes;
+      case RegistrationFieldType.text:
+        return Icons.person;
+    }
+  }
+
+  void _showAddEditFieldDialog(
+    BuildContext context,
+    UserRegistrationFieldDefinition? existing,
+    RegistrationFieldsNotifier notifier,
+  ) {
+    final keyController = TextEditingController(text: existing?.key ?? '');
+    final labelController = TextEditingController(text: existing?.label ?? '');
+    final placeholderController = TextEditingController(text: existing?.placeholder ?? '');
+    final helpTextController = TextEditingController(text: existing?.helpText ?? '');
+    final optionsController = TextEditingController(text: existing?.options.join(', ') ?? '');
+
+    RegistrationFieldType selectedType = existing?.fieldType ?? RegistrationFieldType.text;
+    RegistrationFieldCategory selectedCategory = existing?.category ?? RegistrationFieldCategory.personal;
+    RegistrationTargetModule selectedModule = existing?.targetModule ?? RegistrationTargetModule.all;
+    bool isRequired = existing?.required ?? false;
+    bool isEnabled = existing?.isEnabled ?? true;
+
+    showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
           title: Text(
-            field == null ? 'Add New Registration Field' : 'Edit field',
+            existing == null ? 'Add Registration Field' : 'Edit Registration Field',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: SizedBox(
-              width: math.min(
-                420,
-                math.max(0, MediaQuery.sizeOf(context).width - 128),
-              ),
+              width: 440,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: label,
-                    decoration: const InputDecoration(labelText: 'Display Label *'),
-                  ),
-                  TextField(
-                    controller: key,
+                    controller: labelController,
+                    style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
-                      labelText: 'Internal Key * (e.g. aadhaar_number)',
+                      labelText: 'Display Label *',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF475569))),
                     ),
                   ),
-                  DropdownButtonFormField<String>(
-                    value: type,
-                    decoration: const InputDecoration(labelText: 'Type'),
-                    items: RegistrationFieldType.values
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value.name,
-                            child: Text(value.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) =>
-                        setDialogState(() => type = value ?? type),
-                  ),
+                  const SizedBox(height: 12),
                   TextField(
-                    controller: options,
+                    controller: keyController,
+                    enabled: existing == null,
+                    style: TextStyle(color: existing == null ? Colors.white : const Color(0xFF64748B)),
                     decoration: const InputDecoration(
-                      labelText: 'Options (comma separated)',
+                      labelText: 'Field Key (Internal Identifier) *',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF475569))),
                     ),
                   ),
-                  TextField(
-                    controller: regex,
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<RegistrationFieldType>(
+                    value: selectedType,
+                    dropdownColor: const Color(0xFF1E293B),
+                    style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
-                      labelText: 'Validation regex (optional)',
+                      labelText: 'Field Type',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                    items: RegistrationFieldType.values.map((t) {
+                      return DropdownMenuItem(value: t, child: Text(t.displayName));
+                    }).toList(),
+                    onChanged: (val) => setDlgState(() => selectedType = val!),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<RegistrationFieldCategory>(
+                    value: selectedCategory,
+                    dropdownColor: const Color(0xFF1E293B),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                    items: RegistrationFieldCategory.values.map((c) {
+                      return DropdownMenuItem(value: c, child: Text(c.displayName));
+                    }).toList(),
+                    onChanged: (val) => setDlgState(() => selectedCategory = val!),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<RegistrationTargetModule>(
+                    value: selectedModule,
+                    dropdownColor: const Color(0xFF1E293B),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Audience / Target Module',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                    items: RegistrationTargetModule.values.map((m) {
+                      return DropdownMenuItem(value: m, child: Text(m.displayName));
+                    }).toList(),
+                    onChanged: (val) => setDlgState(() => selectedModule = val!),
+                  ),
+                  const SizedBox(height: 12),
+                  if (selectedType.hasOptions) ...[
+                    TextField(
+                      controller: optionsController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Options (comma-separated)',
+                        labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+                        hintText: 'e.g. Option 1, Option 2, Option 3',
+                        hintStyle: TextStyle(color: Color(0xFF475569)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: placeholderController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Placeholder text',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                     ),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
-                    controller: preset,
+                    controller: helpTextController,
+                    style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
-                      labelText: 'JSON preset key (optional)',
+                      labelText: 'Help text / description',
+                      labelStyle: TextStyle(color: Color(0xFF94A3B8)),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: const Text('Mandatory (Required)', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    value: isRequired,
+                    activeColor: const Color(0xFF6366F1),
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (val) => setDlgState(() => isRequired = val),
                   ),
                   SwitchListTile(
+                    title: const Text('Active (Enabled in Form)', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    value: isEnabled,
+                    activeColor: const Color(0xFF6366F1),
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Required'),
-                    value: required,
-                    onChanged: (value) =>
-                        setDialogState(() => required = value),
+                    onChanged: (val) => setDlgState(() => isEnabled = val),
                   ),
                 ],
               ),
             ),
           ),
           actions: [
+            if (existing != null && !existing.isSystemStandard)
+              TextButton(
+                onPressed: () {
+                  notifier.deleteField(existing.id);
+                  Navigator.of(ctx).pop();
+                },
+                child: const Text('Delete Field', style: TextStyle(color: Color(0xFFF43F5E))),
+              ),
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(field == null ? 'Add Field' : 'Save'),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+              onPressed: () {
+                final label = labelController.text.trim();
+                final key = keyController.text.trim();
+                if (label.isEmpty || key.isEmpty) return;
+
+                final rawOptions = optionsController.text
+                    .split(',')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList();
+
+                final updated = UserRegistrationFieldDefinition(
+                  id: existing?.id ?? 'field_${DateTime.now().millisecondsSinceEpoch}',
+                  key: key,
+                  label: label,
+                  fieldType: selectedType,
+                  category: selectedCategory,
+                  targetModule: selectedModule,
+                  required: isRequired,
+                  isEnabled: isEnabled,
+                  placeholder: placeholderController.text.trim(),
+                  helpText: helpTextController.text.trim(),
+                  options: rawOptions,
+                  displayOrder: existing?.displayOrder ?? 99,
+                  isSystemStandard: existing?.isSystemStandard ?? false,
+                );
+
+                notifier.saveField(updated);
+                Navigator.of(ctx).pop();
+              },
+              child: Text(existing == null ? 'Create Field' : 'Save Changes'),
             ),
           ],
         ),
       ),
     );
-    if (saved != true) return;
-    try {
-      await ref
-          .read(registrationConfigRepositoryProvider)
-          .saveField(
-            key: key.text,
-            label: label.text,
-            type: type,
-            required: required,
-            regexPattern: regex.text,
-            presetKey: preset.text,
-            validationRules: {
-              'options': options.text
-                  .split(',')
-                  .map((value) => value.trim())
-                  .where((value) => value.isNotEmpty)
-                  .toList(),
-            },
-            displayOrder: field == null ? 9999 : 0,
-          );
-      _reload();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not save field: $error')));
-    }
-    key.dispose();
-    label.dispose();
-    regex.dispose();
-    preset.dispose();
-    options.dispose();
   }
 
-  Future<void> _delete(RegistrationFieldConfig field) async {
-    final confirmed = await showDialog<bool>(
+  void _showJsonConfigDialog(
+    BuildContext context,
+    List<UserRegistrationFieldDefinition> allFields,
+    RegistrationFieldsNotifier notifier,
+  ) {
+    final jsonController = TextEditingController(text: notifier.exportToJson());
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete ${field.label}?'),
-        content: const Text(
-          'Existing owner values for this field will also be removed.',
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Row(
+          children: const [
+            Icon(Icons.data_object, color: Color(0xFF818CF8)),
+            SizedBox(width: 8),
+            Text(
+              'Dynamic JSON Schema Configuration',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 540,
+          height: 420,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Live JSON Schema representation of registration rules. You can edit this directly or copy to version control.',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF334155)),
+                  ),
+                  child: TextField(
+                    controller: jsonController,
+                    maxLines: null,
+                    expands: true,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      color: Color(0xFFA5B4FC),
+                    ),
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.all(12),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          TextButton.icon(
+            icon: const Icon(Icons.copy, size: 16, color: Color(0xFF818CF8)),
+            label: const Text('Copy JSON', style: TextStyle(color: Color(0xFF818CF8))),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: jsonController.text));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('JSON copied to clipboard')),
+              );
+            },
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+            onPressed: () {
+              final ok = notifier.importFromJson(jsonController.text);
+              if (ok) {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Registration schema updated successfully!')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid JSON schema format')),
+                );
+              }
+            },
+            child: const Text('Apply JSON Schema'),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
-    try {
-      await ref
-          .read(registrationConfigRepositoryProvider)
-          .deleteField(field.key);
-      _reload();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not delete field: $error')));
-    }
   }
 
-  Future<bool> _isAdmin() async {
-    final client = ref.read(supabaseProvider);
-    final userId = client.auth.currentUser?.id;
-    if (userId == null) return false;
-    final rows = await client
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-    return rows.any(
-      (row) =>
-          row['role'] == 'administrator' ||
-          row['role'] == 'super_administrator',
+  void _showResetDialog(BuildContext context, RegistrationFieldsNotifier notifier) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Reset Defaults?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'This will restore the 17 default system fields (including Aadhaar, Location Hierarchy, Mobile, and Owner GSTIN rules). Any custom fields will be reset.',
+          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE11D48)),
+            onPressed: () {
+              notifier.resetToDefaults();
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Reset to standard 17 fields')),
+              );
+            },
+            child: const Text('Reset to Defaults'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAiHelpDialog(BuildContext context, List<UserRegistrationFieldDefinition> allFields) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Row(
+          children: const [
+            Icon(Icons.smart_toy, color: Color(0xFF818CF8)),
+            SizedBox(width: 8),
+            Text('BookMySpace AI Schema Advisor', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Dynamic Schema Compliance Rules:',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '• Indian Telecom Act: 10-digit mobile number must remain mandatory for OTP instant validation.\n'
+              '• UIDAI Circular: Aadhaar numbers are securely encrypted with only the last 4 digits stored for audit trails.\n'
+              '• Tax Invoicing: GSTIN is required exclusively for Venue & Space Owners claiming input tax credit.\n'
+              '• Multi-Module Profile: Fields configured as "All User Types" automatically sync across customer bookings and owner payouts.',
+              style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
     );
   }
 }

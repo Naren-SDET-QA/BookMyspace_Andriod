@@ -42,9 +42,14 @@ enum _HubSort { distance, name, priceLow, priceHigh }
 /// [ResponsiveLayoutBuilder], matching the pattern already used on the
 /// venues home screen.
 class EducationHubScreen extends ConsumerStatefulWidget {
-  const EducationHubScreen({super.key, this.initialQuery = ''});
+  const EducationHubScreen({
+    super.key,
+    this.initialQuery = '',
+    this.initialScope = 'institutes',
+  });
 
   final String initialQuery;
+  final String initialScope;
 
   @override
   ConsumerState<EducationHubScreen> createState() => _EducationHubScreenState();
@@ -108,6 +113,9 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
       _searchController.text = widget.initialQuery;
       _query = widget.initialQuery;
     }
+    _scope = widget.initialScope == 'institutes'
+        ? _ListingScope.institutes
+        : _ListingScope.classes;
   }
 
   @override
@@ -448,7 +456,7 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
     final institutesAsync = ref.watch(institutesProvider);
     final coursesAsync = ref.watch(publishedCoursesProvider);
     final location = ref.watch(discoveryLocationProvider);
-    final section = MainHomeSection.institutesClasses;
+    const section = MainHomeSection.institutesClasses;
 
     final dark = Theme.of(context).copyWith(
       brightness: Brightness.dark,
@@ -464,6 +472,45 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
       data: dark,
       child: Scaffold(
       backgroundColor: const Color(0xFF070B14),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('courses_ai_help_fab'),
+        heroTag: 'education_hub_ai_help',
+        backgroundColor: const Color(0xFF2E2366),
+        foregroundColor: const Color(0xFFE9D5FF),
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFF4C1D95), width: 1),
+        ),
+        onPressed: () => context.push(AppRoutes.assistant),
+        icon: const Icon(
+          Icons.auto_awesome_rounded,
+          color: Color(0xFFA78BFA),
+          size: 18,
+        ),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'AI Help',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: Color(0xFF34D399),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: !enabled
           ? EmptyState(
               icon: Icons.school_outlined,
@@ -670,15 +717,34 @@ class _EducationHubScreenState extends ConsumerState<EducationHubScreen> {
                                 responsive.horizontalPadding,
                                 24,
                               ),
-                              sliver: SliverList.separated(
-                                itemCount: classCards.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 12),
-                                itemBuilder: (_, i) => BatchClassCard(
-                                  course: classCards[i].course,
-                                  batch: classCards[i].batch,
-                                ),
-                              ),
+                              sliver: responsive.isCompact
+                                  ? SliverList.separated(
+                                      itemCount: classCards.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 12),
+                                      itemBuilder: (_, i) => BatchClassCard(
+                                        course: classCards[i].course,
+                                        batch: classCards[i].batch,
+                                      ),
+                                    )
+                                  : SliverGrid(
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: responsive.isMedium
+                                            ? 2
+                                            : (responsive.isExpanded ? 2 : 3),
+                                        mainAxisSpacing: responsive.gridSpacing,
+                                        crossAxisSpacing: responsive.gridSpacing,
+                                        mainAxisExtent: 640,
+                                      ),
+                                      delegate: SliverChildBuilderDelegate(
+                                        (_, i) => BatchClassCard(
+                                          course: classCards[i].course,
+                                          batch: classCards[i].batch,
+                                        ),
+                                        childCount: classCards.length,
+                                      ),
+                                    ),
                             )
                         else if (filtered.isEmpty)
                           SliverFillRemaining(

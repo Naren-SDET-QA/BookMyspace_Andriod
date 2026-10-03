@@ -153,13 +153,17 @@ fun InstitutesAndClassesScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        com.bookmyspace.bookmyspace.ui.components.ResponsiveLayout(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .testTag("institutes_and_classes_main_list"),
-            contentPadding = PaddingValues(bottom = 80.dp)
-        ) {
+        ) { responsive ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("institutes_and_classes_main_list"),
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
             // 1. Location Bar
             item {
                 LocationHierarchyHeaderBar(
@@ -406,28 +410,34 @@ fun InstitutesAndClassesScreen(
                     }
                 }
             } else {
-                items(filteredClasses, key = { it.id }) { classItem ->
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                        DedicatedClassItemCard(
-                            classItem = classItem,
-                            onCardClick = { selectedClassForDetail = classItem },
-                            onBookNow = { bookingClassTarget = classItem },
-                            onFacultyClick = { facultyName ->
-                                selectedFacultyForModal = BookMySpaceRepository.getFacultyMember(facultyName)
-                            },
-                            onCall = { initiatePhoneCall(context, classItem.contactPhone) },
-                            onWhatsApp = {
-                                initiateWhatsApp(
-                                    context = context,
-                                    phone = classItem.contactWhatsapp,
-                                    message = "Hi! I am interested in joining '${classItem.title}' by ${classItem.facultyName} (${classItem.facultyExperienceYears}+ yrs exp) at ${classItem.instituteName}. Please share admission details."
-                                )
-                            },
-                            onDirections = { openMaps(context, classItem.location) }
-                        )
-                    }
+                com.bookmyspace.bookmyspace.ui.components.responsiveGridItems(
+                    items = filteredClasses,
+                    columns = responsive.resultsGridColumns,
+                    key = { it.id },
+                    contentPadding = PaddingValues(horizontal = responsive.horizontalPadding, vertical = 6.dp),
+                    horizontalSpacing = responsive.gridSpacing,
+                    verticalSpacing = responsive.gridSpacing
+                ) { classItem, _ ->
+                    DedicatedClassItemCard(
+                        classItem = classItem,
+                        onCardClick = { selectedClassForDetail = classItem },
+                        onBookNow = { bookingClassTarget = classItem },
+                        onFacultyClick = { facultyName ->
+                            selectedFacultyForModal = BookMySpaceRepository.getFacultyMember(facultyName)
+                        },
+                        onCall = { initiatePhoneCall(context, classItem.contactPhone) },
+                        onWhatsApp = {
+                            initiateWhatsApp(
+                                context = context,
+                                phone = classItem.contactWhatsapp,
+                                message = "Hi! I am interested in joining '${classItem.title}' by ${classItem.facultyName} (${classItem.facultyExperienceYears}+ yrs exp) at ${classItem.instituteName}. Please share admission details."
+                            )
+                        },
+                        onDirections = { openMaps(context, classItem.location) }
+                    )
                 }
             }
+        }
         }
     }
 
@@ -2290,13 +2300,18 @@ fun FacultyProfileDetailModalSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-                .verticalScroll(rememberScrollState())
-                .testTag("faculty_profile_modal_sheet")
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 680.dp)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .verticalScroll(rememberScrollState())
+                    .testTag("faculty_profile_modal_sheet")
+            ) {
             // Header Bar with Close Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2880,6 +2895,7 @@ fun FacultyProfileDetailModalSheet(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }

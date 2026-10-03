@@ -20,6 +20,7 @@ import '../../../../core/errors/app_exceptions.dart';
 import '../../domain/booking.dart';
 import '../../domain/date_availability.dart';
 import '../booking_providers.dart';
+import '../widgets/peak_booking_hours_card.dart';
 import '../../../offers/domain/coupon.dart';
 import '../../../offers/presentation/coupon_providers.dart';
 import '../../../admin/domain/platform_status.dart';
@@ -213,6 +214,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                               },
                             ),
                             _DateAvailabilityBadge(info: dateAvailability),
+                            PeakBookingHoursCard(
+                              venueId: widget.venue.id,
+                              selectedDate: date,
+                              selectedSlotStart: _selectedSlot?.startTime,
+                              initiallyExpanded: true,
+                            ),
                             SizedBox(height: 440, child: slots),
                           ],
                         ),
@@ -262,7 +269,31 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       },
                     ),
                     _DateAvailabilityBadge(info: dateAvailability),
-                    Expanded(child: slots),
+                    // The forecast card shares the space left for the slot
+                    // list: collapsed by default, and when opened it scrolls
+                    // within at most half of that space, so it can never
+                    // push the column past the screen.
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => Column(
+                          children: [
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: constraints.maxHeight * 0.5,
+                              ),
+                              child: SingleChildScrollView(
+                                child: PeakBookingHoursCard(
+                                  venueId: widget.venue.id,
+                                  selectedDate: date,
+                                  selectedSlotStart: _selectedSlot?.startTime,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: slots),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 );
               },

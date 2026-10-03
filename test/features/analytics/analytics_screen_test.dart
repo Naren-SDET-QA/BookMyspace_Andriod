@@ -1,8 +1,10 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/features/analytics/domain/analytics_repository.dart';
 import 'package:bookmyspace/features/analytics/domain/revenue_analytics.dart';
+import 'package:bookmyspace/features/analytics/domain/venue_optimizer.dart';
 import 'package:bookmyspace/features/analytics/presentation/analytics_providers.dart';
 import 'package:bookmyspace/features/analytics/presentation/screens/analytics_screen.dart';
+import 'package:bookmyspace/features/analytics/presentation/venue_optimizer_providers.dart';
 import 'package:bookmyspace/features/auth/domain/auth_user.dart';
 import 'package:bookmyspace/features/auth/presentation/auth_providers.dart';
 import 'package:bookmyspace/features/booking/domain/booking.dart';
@@ -76,7 +78,10 @@ const _data = RevenueAnalytics(
 
 const _owner = AuthUser(id: 'owner1', email: 'owner@bms.test');
 
-Widget _app({OwnerBookingRepository? ownerBookings}) {
+Widget _app({
+  OwnerBookingRepository? ownerBookings,
+  List<Override> extra = const [],
+}) {
   return ProviderScope(
     overrides: [
       authRepositoryProvider.overrideWithValue(
@@ -100,6 +105,7 @@ Widget _app({OwnerBookingRepository? ownerBookings}) {
       ownerBookingRepositoryProvider.overrideWithValue(
         ownerBookings ?? const _EmptyOwnerBookingRepository(),
       ),
+      ...extra,
     ],
     child: MaterialApp(
       home: const AnalyticsScreen(),
@@ -226,6 +232,8 @@ void main() {
       expect(find.text('Cash / pay at venue'), findsOneWidget);
       expect(find.text('100'), findsOneWidget); // total guests
 
+      await tester.ensureVisible(find.byKey(AnalyticsScreen.venueFilterKey));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(AnalyticsScreen.venueFilterKey));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Lotus Banquet').last);
@@ -243,4 +251,52 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final size in const [Size(360, 740), Size(800, 1280), Size(1440, 900)]) {
+    testWidgets(
+      'Venue Optimizer shows on the analytics screen at '
+      '${size.width.toInt()}px and follows the date range',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          _app(
+            extra: [
+              ownerCapacityProvider.overrideWith(
+                (ref) async => [
+                  const VenueCapacity(
+                    venueId: 'v1',
+                    slots: [
+                      TimeSlot(
+                        id: 's1',
+                        venueId: 'v1',
+                        label: 'Evening',
+                        startTime: '18:00:00',
+                        endTime: '19:00:00',
+                        priceAmount: 800,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              ownerPricingRulesProvider.overrideWith((ref) async => const []),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('venue_optimizer_section')),
+          findsOneWidget,
+        );
+        expect(find.textContaining('· 1 day'), findsOneWidget);
+        await tester.tap(find.text('Last 7 days'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('· 7 days'), findsOneWidget);
+        expect(find.text('0 of 7 slots'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 }
+

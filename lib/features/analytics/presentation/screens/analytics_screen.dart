@@ -15,6 +15,7 @@ import '../../domain/revenue_analytics.dart';
 import '../analytics_providers.dart';
 import '../widgets/daily_report_preference_card.dart';
 import '../widgets/peak_hours_chart.dart';
+import '../widgets/venue_optimizer_section.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../modules/presentation/module_providers.dart';
 import '../../domain/analytics_event.dart';
@@ -130,6 +131,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               if (display.dateRanges.contains('custom'))
                 _button('Custom', _customRange),
             ],
+          ),
+          // Owner Insights: Venue Optimizer (occupancy, demand heatmap,
+          // pricing rules, recommendations) for the same range and venue.
+          VenueOptimizerSection(
+            start: _range.start,
+            end: _range.end,
+            venueId: _venueId,
           ),
           const SizedBox(height: 16),
           query.when(

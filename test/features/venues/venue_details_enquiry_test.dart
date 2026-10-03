@@ -105,8 +105,9 @@ void main() {
           supportTicketRepositoryProvider.overrideWithValue(support),
           analyticsRepositoryProvider.overrideWithValue(analytics),
         ],
-        child: const MaterialApp(
-          home: VenueDetailsScreen(venueId: 'v-enq'),
+        child: MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: const VenueDetailsScreen(venueId: 'v-enq'),
           localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,

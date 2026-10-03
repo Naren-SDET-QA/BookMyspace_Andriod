@@ -24,6 +24,17 @@
 
   <title>BookMySpace</title>
 
+  <!-- Prevent stale ServiceWorker caching in dev/browser test environments -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var r of registrations) {
+          r.unregister();
+        }
+      });
+    }
+  </script>
+
   <!-- Web maps use OSM/CARTO tiles via flutter_map (no Google key needed).
        Do NOT add a Google Maps script here without also switching the map
        screen's kIsWeb branch and providing a build-time-injected key. -->

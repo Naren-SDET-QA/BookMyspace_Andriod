@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../domain/booking.dart';
 import '../domain/booking_repository.dart';
+import '../domain/slot_demand.dart';
 import '../infrastructure/supabase_booking_repository.dart';
 import '../infrastructure/caching_booking_repository.dart';
 import '../../../core/offline/offline_providers.dart';
@@ -248,3 +249,65 @@ class SlotAvailabilityQuery {
   @override
   int get hashCode => Object.hash(venueId, date);
 }
+
+
+/// Number of upcoming days sampled for the venue crowd forecast. Matches the
+/// 14-day booking date strip: ten weekdays and four weekend days.
+const venueDemandWindowDays = 14;
+
+/// Slot availability of a venue for the next [venueDemandWindowDays] days,
+/// keyed by local-midnight date. Feeds the "Peak Booking Hours" card.
+///
+/// Each date is read through [slotAvailabilityProvider] with the same
+/// normalized key the booking date strip uses, so the selected date's slot
+/// list, its availability badge and this forecast share one request per
+/// date instead of fetching twice. Dates that fail are skipped; if every
+/// date fails the provider errors so the UI can say so.
+final venueDemandSlotsProvider = FutureProvider.autoDispose
+    .family<Map<DateTime, List<SlotAvailability>>, String>((
+      ref,
+      venueId,
+    ) async {
+      final now = DateTime.now();
+      final dates = [
+        for (var i = 0; i < venueDemandWindowDays; i++)
+          DateTime(now.year, now.month, now.day + i),
+      ];
+      final futures = [
+        for (final date in dates)
+          ref.watch(
+            slotAvailabilityProvider(
+              SlotAvailabilityQuery(venueId: venueId, date: date),
+            ).future,
+          ),
+      ];
+      Object? lastError;
+      final results = await Future.wait(
+        futures.map((future) async {
+          try {
+            return await future;
+          } catch (error) {
+            lastError = error;
+            return null;
+          }
+        }),
+      );
+      final loaded = <DateTime, List<SlotAvailability>>{
+        for (var i = 0; i < dates.length; i++)
+          if (results[i] != null) dates[i]: results[i]!,
+      };
+      if (loaded.isEmpty && lastError != null) throw lastError!;
+      return loaded;
+    });
+
+/// Crowd forecast for a venue and day type (weekday / weekend).
+final venueDemandForecastProvider = Provider.autoDispose
+    .family<AsyncValue<SlotDemandForecast>, (String, DemandDayType)>((
+      ref,
+      args,
+    ) {
+      final (venueId, dayType) = args;
+      return ref
+          .watch(venueDemandSlotsProvider(venueId))
+          .whenData((slots) => SlotDemandForecast.build(slots, dayType));
+    });

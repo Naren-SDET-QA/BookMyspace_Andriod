@@ -8,6 +8,7 @@ import '../../../../core/router/search_route.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../cms/presentation/widgets/live_brand.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../discovery_booking_prefs.dart';
@@ -369,7 +370,7 @@ class _Header extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const BookMySpaceMark(size: 22),
+              const LiveBrandMark(size: 22),
               const SizedBox(width: 4),
               BookMySpaceWordmark(
                 fontSize: 13,

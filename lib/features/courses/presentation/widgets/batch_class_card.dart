@@ -81,9 +81,12 @@ class BatchClassCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFF243049)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           _Cover(
             batchId: batch.id,
             course: course,
@@ -311,6 +314,7 @@ class BatchClassCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

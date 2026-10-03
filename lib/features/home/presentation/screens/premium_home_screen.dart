@@ -13,6 +13,7 @@ import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../cms/presentation/cms_providers.dart';
+import '../../../cms/presentation/widgets/live_brand.dart';
 import '../../../courses/domain/course.dart';
 import '../../../courses/presentation/course_providers.dart';
 import '../../../modules/presentation/module_providers.dart';
@@ -758,7 +759,7 @@ class _HeaderBar extends ConsumerWidget {
     final brand = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const BookMySpaceMark(size: 32),
+        const LiveBrandMark(size: 32),
         const SizedBox(width: 8),
         Flexible(
           child: FittedBox(

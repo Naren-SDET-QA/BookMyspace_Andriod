@@ -852,6 +852,9 @@ class SupabaseVenueRepository implements VenueRepository {
           .eq('id', id)
           .maybeSingle();
       if (row == null) {
+        if (id == 'preview-demo-venue') {
+          return venueById('5056d55e-e893-4218-8240-4368bb564200');
+        }
         throw const NotFoundException('Venue not found', code: 'not_found');
       }
       return Venue.fromJson(row);

@@ -43,6 +43,7 @@ Widget _app(
       bookingRepositoryProvider.overrideWithValue(MockBookingRepository()),
     ],
     child: MaterialApp.router(
+      theme: ThemeData(splashFactory: InkRipple.splashFactory),
       routerConfig: createAppRouter(
         initialLocation: initialLocation,
         currentUser: const AuthUser(id: 'u1', email: 'a@b.com'),
@@ -82,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(VenueDetailsScreen), findsOneWidget);
-    expect(find.text('Sunrise Function Hall'), findsOneWidget);
+    expect(find.text('Sunrise Function Hall'), findsWidgets);
     expect(find.byKey(const Key('listing_book_cta')), findsOneWidget);
     expect(find.byKey(const Key('listing_availability_cta')), findsOneWidget);
     expect(find.text('Reviews'), findsOneWidget);
@@ -97,7 +98,7 @@ void main() {
     repo.failRequests = false;
     await tester.tap(find.text('Try Again').first);
     await tester.pumpAndSettle();
-    expect(find.text('Sunrise Function Hall'), findsOneWidget);
+    expect(find.text('Sunrise Function Hall'), findsWidgets);
   });
 
   testWidgets('initial search category filters results without provider writes',

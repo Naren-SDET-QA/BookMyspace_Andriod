@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -268,27 +269,38 @@ class ProfileScreen extends ConsumerWidget {
                       onOpen: () => context.push(AppRoutes.referrals),
                     ),
                 ],
-                Text(
-                  'Your space',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+                const _SectionHeader('Bookings & payments'),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-payment-history'),
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Payments & Receipts',
+                    subtitle: 'Payment history, status, and receipts',
+                    onTap: () => context.push(AppRoutes.paymentHistory),
                   ),
-                ),
-                const SizedBox(height: 8),
                 _ProfileMenuTile(
-                  key: const Key('profile-screen-directory'),
-                  icon: Icons.grid_view_rounded,
-                  title: 'All Screens Directory (39 Master Screens)',
+                  key: const Key('profile-past-coupons'),
+                  icon: Icons.local_offer_outlined,
+                  title: 'Coupons & Savings',
                   subtitle:
-                      'Browse, preview, and test every screen across all 6 domains',
-                  onTap: () => context.push(AppRoutes.screenDirectory),
+                      'Redeemed coupon codes, discounts, and savings history',
+                  onTap: () => context.push(AppRoutes.pastCoupons),
                 ),
+                if (signedIn)
+                  _ProfileMenuTile(
+                    key: const Key('profile-usage-analytics'),
+                    icon: Icons.insights_outlined,
+                    title: 'My Spending',
+                    subtitle: 'Your bookings and spending over time',
+                    onTap: () => context.push(AppRoutes.customerAnalytics),
+                  ),
+
+                const _SectionHeader('Explore'),
                 _ProfileMenuTile(
                   key: const Key('profile-location-discovery'),
                   icon: Icons.travel_explore_outlined,
-                  title: 'India Location & Automatic Place Discovery',
-                  subtitle:
-                      'Country, state, district, mandal, town, and PIN search',
+                  title: 'Browse by Location',
+                  subtitle: 'State, district, mandal, town, and PIN search',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const IndiaPlaceDiscoveryScreen(),
@@ -296,76 +308,27 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
                 _ProfileMenuTile(
-                  key: const Key('profile-saved-spaces'),
-                  icon: Icons.favorite_outline,
-                  title: 'My Favorites & Saved Spaces',
-                  subtitle: 'Venues and courts saved on your account',
-                  onTap: () => context.go(AppRoutes.saved),
-                ),
-                _ProfileMenuTile(
-                  key: const Key('profile-past-coupons'),
-                  icon: Icons.local_offer_outlined,
-                  title: 'Past Coupons & Savings',
-                  subtitle:
-                      'Redeemed coupon codes, discounts, and savings history',
-                  onTap: () => context.push(AppRoutes.pastCoupons),
+                  key: const Key('profile-events'),
+                  icon: Icons.event_available_outlined,
+                  title: 'Upcoming Events',
+                  subtitle: 'Workshops, concerts, and community events',
+                  onTap: () => context.push(AppRoutes.eventsList),
                 ),
                 if (coursesEnabled)
                   _ProfileMenuTile(
                     key: const Key('profile-institutes-directory'),
                     icon: Icons.school_outlined,
-                    title: 'Institutes & Classes Directory',
-                    subtitle:
-                        'Certified coaching, sports academies, and batch timings',
+                    title: 'Courses & Institutes',
+                    subtitle: 'Coaching, academies, batches, and enrollments',
                     onTap: () => context.push(AppRoutes.education),
                   ),
-                if (signedIn)
-                  _ProfileMenuTile(
-                    key: const Key('profile-kyc-registration'),
-                    icon: Icons.assignment_ind_outlined,
-                    title: 'Unified Registration & Multi-Module Profile',
-                    subtitle:
-                        'One registration form for customer, host, academy, and KYC',
-                    onTap: () => context.push(AppRoutes.unifiedRegistration),
-                  ),
+
+                const _SectionHeader('Preferences'),
                 _ProfileMenuTile(
-                  key: const Key('profile-features-hub'),
-                  icon: Icons.extension_outlined,
-                  title: 'Plug & Play Features Hub',
-                  subtitle:
-                      'Maps, KYC, coupons, QR check-in, AI copilot, and voice',
-                  onTap: () => context.push(AppRoutes.featuresHub),
-                ),
-                if (signedIn)
-                  _ProfileMenuTile(
-                    key: const Key('profile-payment-history'),
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Payment Transactions & Receipts',
-                    subtitle: 'Payment history, status, and receipts',
-                    onTap: () => context.push(AppRoutes.paymentHistory),
-                  ),
-                _ProfileMenuTile(
-                  key: const Key('profile-connected-apps'),
-                  icon: Icons.hub_outlined,
-                  title: 'Connected Apps, MCP & Developer APIs',
-                  subtitle:
-                      'MCP, REST API keys, webhooks, calendar export, and deep links',
-                  onTap: () => context.push(AppRoutes.connectedApps),
-                ),
-                if (signedIn)
-                  _ProfileMenuTile(
-                    key: const Key('profile-usage-analytics'),
-                    icon: Icons.insights_outlined,
-                    title: 'Usage Analytics & Spending',
-                    subtitle: 'Your bookings and spending',
-                    onTap: () => context.push(AppRoutes.customerAnalytics),
-                  ),
-                _ProfileMenuTile(
-                  key: const Key('profile-help-support'),
-                  icon: Icons.support_agent_outlined,
-                  title: 'Help & Support',
-                  subtitle: 'FAQs, support desk, and booking help',
-                  onTap: () => context.push(AppRoutes.support),
+                  icon: Icons.notifications_none_rounded,
+                  title: 'Notifications & Alerts',
+                  subtitle: 'Booking updates, reminders, and offers',
+                  onTap: () => context.go(AppRoutes.notifications),
                 ),
                 _LanguageRow(
                   locale: ref.watch(localeProvider),
@@ -378,7 +341,7 @@ class ProfileScreen extends ConsumerWidget {
                 _SwitchRow(
                   switchKey: const Key('profile-simple-mode'),
                   icon: Icons.accessibility_new_rounded,
-                  title: 'Elderly / Simple Mode',
+                  title: 'Simple Mode',
                   subtitle:
                       'Hides complex filters, enlarges text, and keeps booking to one tap',
                   value: ref.watch(simpleModeProvider),
@@ -389,7 +352,7 @@ class ProfileScreen extends ConsumerWidget {
                 _SwitchRow(
                   switchKey: const Key('profile-quick-book'),
                   icon: Icons.flash_on_rounded,
-                  title: 'Booking Mode Configuration',
+                  title: 'Quick Booking',
                   subtitle: ref.watch(bookingModeProvider) == BookingMode.quick
                       ? 'On: 1-tap quick booking is applied'
                       : 'Off: the full booking steps stay available',
@@ -406,112 +369,114 @@ class ProfileScreen extends ConsumerWidget {
                       ref.read(themeModeProvider.notifier).setThemeMode(mode),
                   onOpenThemes: () => context.push(AppRoutes.themeCustomizer),
                 ),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Account Settings',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                _ProfileMenuTile(
-                  icon: Icons.manage_accounts_outlined,
-                  title: 'Edit Profile & Avatar',
-                  subtitle: 'Update your display name and photo in Supabase',
-                  onTap: () => EditProfileModal.show(context),
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.event_available_outlined,
-                  title: 'Upcoming Events',
-                  subtitle: 'Workshops, concerts, and community events',
-                  onTap: () => context.push(AppRoutes.eventsList),
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.school_outlined,
-                  title: 'Courses',
-                  subtitle: 'Institutes, batches, and enrollments',
-                  onTap: () => context.go(AppRoutes.coursesList),
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.notifications_none_rounded,
-                  title: 'Notifications & Alerts',
-                  subtitle: 'Booking updates, reminders, and offers',
-                  onTap: () => context.go(AppRoutes.notifications),
-                ),
                 _ProfileMenuTile(
                   icon: Icons.tune_rounded,
-                  title: 'App Preferences',
-                  subtitle: 'Theme, language, and display options',
+                  title: 'All Settings',
+                  subtitle: 'Privacy, security, and display options',
                   onTap: () => context.push(AppRoutes.settings),
                 ),
-                _ProfileMenuTile(
-                  icon: Icons.storefront_outlined,
-                  title: isVenueOwner
-                      ? 'Partner / Venue Owner Hub'
-                      : 'Become a Venue Partner',
-                  subtitle: isVenueOwner
-                      ? 'List your spaces, halls, and classes'
-                      : 'List your spaces, halls, and classes',
-                  onTap: () => context.push(
-                    isVenueOwner
-                        ? AppRoutes.ownerDashboard
-                        : AppRoutes.ownerRegistration,
-                  ),
-                ),
-                if (coursesEnabled && (isInstituteOwner || isAdmin))
+
+                if (signedIn) ...[
+                  const _SectionHeader('Business'),
                   _ProfileMenuTile(
-                    key: const Key('profile-institute-portal'),
-                    icon: Icons.school_outlined,
-                    title: l10n.instituteOwnerPortal,
-                    subtitle: 'Faculty, batches, admissions and demo sessions',
-                    onTap: () =>
-                        context.push(AppRoutes.ownerInstituteDashboard),
+                    key: const Key('profile-partner-hub'),
+                    icon: Icons.storefront_outlined,
+                    title: isVenueOwner
+                        ? 'Partner / Venue Owner Hub'
+                        : 'Become a Venue Partner',
+                    subtitle: isVenueOwner
+                        ? 'Venues, bookings, availability, and payouts'
+                        : 'List your spaces, halls, and classes',
+                    onTap: () => context.push(
+                      isVenueOwner
+                          ? AppRoutes.ownerDashboard
+                          : AppRoutes.ownerRegistration,
+                    ),
                   ),
-                if (analyticsEnabled && (isVenueOwner || isAdmin))
+                  if (coursesEnabled && (isInstituteOwner || isAdmin))
+                    _ProfileMenuTile(
+                      key: const Key('profile-institute-portal'),
+                      icon: Icons.school_outlined,
+                      title: l10n.instituteOwnerPortal,
+                      subtitle:
+                          'Faculty, batches, admissions and demo sessions',
+                      onTap: () =>
+                          context.push(AppRoutes.ownerInstituteDashboard),
+                    ),
+                  if (analyticsEnabled && (isVenueOwner || isAdmin))
+                    _ProfileMenuTile(
+                      key: const Key('profile-owner-analytics'),
+                      icon: Icons.insights_outlined,
+                      title: l10n.analytics,
+                      subtitle: 'Bookings, revenue and occupancy trends',
+                      onTap: () => context.push(AppRoutes.analytics),
+                    ),
                   _ProfileMenuTile(
-                    key: const Key('profile-owner-analytics'),
-                    icon: Icons.insights_outlined,
-                    title: l10n.analytics,
-                    subtitle: 'Bookings, revenue and occupancy trends',
-                    onTap: () => context.push(AppRoutes.analytics),
-                  ),
-                if (isAdmin)
-                  _ProfileMenuTile(
-                    icon: Icons.admin_panel_settings_outlined,
-                    title: 'Admin console',
-                    subtitle: 'Users, owners, venues, support, and audit',
-                    onTap: () => context.push(AppRoutes.adminDashboard),
-                  ),
-                if (isAdmin)
-                  _ProfileMenuTile(
-                    icon: Icons.health_and_safety_outlined,
-                    title: 'System Health & Diagnostics',
-                    subtitle: 'Supabase, Razorpay, OneSignal, cache metrics',
-                    onTap: () => context.push(AppRoutes.adminHealth),
-                  ),
-                if (isVenueOwner)
-                  _ProfileMenuTile(
-                    icon: Icons.event_busy_outlined,
-                    title: 'Slot Availability & Blackout Management',
+                    key: const Key('profile-kyc-registration'),
+                    icon: Icons.assignment_ind_outlined,
+                    title: 'Registration & KYC',
                     subtitle:
-                        'Block slots for maintenance, tournaments, or rain closures',
-                    onTap: () => context.push(AppRoutes.ownerAvailability),
+                        'Host, academy, and identity verification details',
+                    onTap: () => context.push(AppRoutes.unifiedRegistration),
                   ),
-                if (roles.contains(AppRole.supportAgent) && !isAdmin)
-                  _ProfileMenuTile(
-                    icon: Icons.support_agent_outlined,
-                    title: l10n.support,
-                    subtitle: 'Tickets your support role can read',
-                    onTap: () => context.push(AppRoutes.adminSupport),
-                  ),
+                  if (isVenueOwner || isInstituteOwner || isAdmin)
+                    _ProfileMenuTile(
+                      key: const Key('profile-connected-apps'),
+                      icon: Icons.hub_outlined,
+                      title: 'Connected Apps & APIs',
+                      subtitle:
+                          'API keys, webhooks, MCP, and calendar export',
+                      onTap: () => context.push(AppRoutes.connectedApps),
+                    ),
+                ],
+
+                if (isAdmin || roles.contains(AppRole.supportAgent)) ...[
+                  const _SectionHeader('Administration'),
+                  if (isAdmin)
+                    _ProfileMenuTile(
+                      key: const Key('profile-admin-console'),
+                      icon: Icons.admin_panel_settings_outlined,
+                      title: 'Admin Console',
+                      subtitle:
+                          'Users, venues, settings, audit logs, and system health',
+                      onTap: () => context.push(AppRoutes.adminDashboard),
+                    ),
+                  if (roles.contains(AppRole.supportAgent) && !isAdmin)
+                    _ProfileMenuTile(
+                      icon: Icons.support_agent_outlined,
+                      title: l10n.support,
+                      subtitle: 'Tickets your support role can read',
+                      onTap: () => context.push(AppRoutes.adminSupport),
+                    ),
+                ],
+
+                const _SectionHeader('Help'),
                 _ProfileMenuTile(
-                  icon: Icons.headset_mic_outlined,
-                  title: 'Support & Help Desk',
-                  subtitle: 'Get quick assistance with bookings',
+                  key: const Key('profile-help-support'),
+                  icon: Icons.support_agent_outlined,
+                  title: 'Help & Support',
+                  subtitle: 'FAQs, support desk, and booking help',
                   onTap: () => context.push(AppRoutes.support),
                 ),
+
+                // Internal QA tools. Never shown in profile/release builds.
+                if (kDebugMode) ...[
+                  const _SectionHeader('Developer tools'),
+                  _ProfileMenuTile(
+                    key: const Key('profile-screen-directory'),
+                    icon: Icons.grid_view_rounded,
+                    title: 'Screen Directory',
+                    subtitle: 'Debug only: preview every screen',
+                    onTap: () => context.push(AppRoutes.screenDirectory),
+                  ),
+                  _ProfileMenuTile(
+                    key: const Key('profile-features-hub'),
+                    icon: Icons.extension_outlined,
+                    title: 'Features Hub',
+                    subtitle: 'Debug only: modular feature catalog',
+                    onTap: () => context.push(AppRoutes.featuresHub),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // Sign out button
@@ -1089,3 +1054,23 @@ class _RoleSwitcherSection extends ConsumerWidget {
   }
 }
 
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 8),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}

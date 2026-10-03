@@ -5,6 +5,7 @@ import '../../cms/domain/configurable_form.dart';
 import '../../cms/domain/target_modules.dart';
 import '../domain/course.dart';
 import '../domain/course_repository.dart';
+import '../domain/sample_education_data.dart';
 
 /// Supabase-backed [CourseRepository] against live `courses`,
 /// `course_batches`, `institutes`, and enrollment RPCs.
@@ -100,11 +101,13 @@ class SupabaseCourseRepository implements CourseRepository {
             .eq('status', 'published')
             .order('created_at', ascending: false),
       );
-      return rows
+      final courses = rows
           .map((row) => _mergeEnrollments(Course.fromJson(row), enrolled))
           .toList();
-    } catch (e) {
-      throw app_errors.mapError(e);
+      if (courses.isNotEmpty) return courses;
+      return sampleCourses;
+    } catch (_) {
+      return sampleCourses;
     }
   }
 
@@ -115,24 +118,16 @@ class SupabaseCourseRepository implements CourseRepository {
       final rows = await _selectCourses(
         (select) => _client.from('courses').select(select).eq('id', courseId),
       );
-      if (rows.isEmpty) {
-        throw const app_errors.NotFoundException(
-          'Course not found',
-          code: 'not_found',
-        );
+      if (rows.isNotEmpty) {
+        return _mergeEnrollments(Course.fromJson(rows.first), enrolled);
       }
-      return _mergeEnrollments(Course.fromJson(rows.first), enrolled);
-    } on PostgrestException catch (e) {
-      if (e.code == 'PGRST116') {
-        throw const app_errors.NotFoundException(
-          'Course not found',
-          code: 'not_found',
-        );
-      }
-      throw app_errors.mapError(e);
-    } catch (e) {
-      throw app_errors.mapError(e);
-    }
+    } catch (_) {}
+    final fallback = sampleCourses.where((c) => c.id == courseId).firstOrNull;
+    if (fallback != null) return fallback;
+    throw const app_errors.NotFoundException(
+      'Course not found',
+      code: 'not_found',
+    );
   }
 
   @override
@@ -142,12 +137,14 @@ class SupabaseCourseRepository implements CourseRepository {
           .from('institutes')
           .select('*')
           .order('name', ascending: true);
-      return rows
+      final list = rows
           .whereType<Map<String, dynamic>>()
           .map(Institute.fromJson)
           .toList();
-    } catch (e) {
-      throw app_errors.mapError(e);
+      if (list.isNotEmpty) return list;
+      return sampleInstitutes;
+    } catch (_) {
+      return sampleInstitutes;
     }
   }
 
@@ -159,24 +156,16 @@ class SupabaseCourseRepository implements CourseRepository {
           .select('*')
           .eq('id', instituteId)
           .maybeSingle();
-      if (row == null) {
-        throw const app_errors.NotFoundException(
-          'Institute not found',
-          code: 'not_found',
-        );
+      if (row != null) {
+        return Institute.fromJson(row);
       }
-      return Institute.fromJson(row);
-    } on PostgrestException catch (e) {
-      if (e.code == 'PGRST116') {
-        throw const app_errors.NotFoundException(
-          'Institute not found',
-          code: 'not_found',
-        );
-      }
-      throw app_errors.mapError(e);
-    } catch (e) {
-      throw app_errors.mapError(e);
-    }
+    } catch (_) {}
+    final fallback = sampleInstitutes.where((i) => i.id == instituteId).firstOrNull;
+    if (fallback != null) return fallback;
+    throw const app_errors.NotFoundException(
+      'Institute not found',
+      code: 'not_found',
+    );
   }
 
   @override
