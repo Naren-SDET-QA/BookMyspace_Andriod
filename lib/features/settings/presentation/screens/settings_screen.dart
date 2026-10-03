@@ -6,6 +6,7 @@ import '../../../../core/config/settings_controller.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/language_picker_sheet.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../auth/presentation/auth_providers.dart';
@@ -24,6 +25,8 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: Text(
           l10n.settings,
           style: const TextStyle(fontWeight: FontWeight.bold),

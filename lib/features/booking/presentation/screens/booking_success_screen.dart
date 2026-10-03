@@ -66,8 +66,10 @@ class _ConfirmedBody extends StatelessWidget {
         AppTheme.success,
       ),
       BookingStatus.awaitingOwnerApproval => (
-        'Request sent to venue owner',
-        'The owner is reviewing your exact date and time. Payment will become available only after approval.',
+        booking.ownerDisplayName.isNotEmpty && booking.ownerDisplayName != 'Venue Host'
+            ? 'Request sent to ${booking.ownerDisplayName}'
+            : 'Request sent to venue owner',
+        'The owner is reviewing your exact date and time. Payment will become available once approved.',
         Icons.hourglass_top_rounded,
         theme.colorScheme.primary,
       ),
@@ -144,6 +146,137 @@ class _ConfirmedBody extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.violet.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.business_rounded,
+                          size: 20,
+                          color: AppTheme.violet,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Host & Venue Owner Details',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              booking.ownerOrgName.isNotEmpty
+                                  ? booking.ownerOrgName
+                                  : (booking.ownerName.isNotEmpty ? booking.ownerName : 'Venue Management'),
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.violet.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Host',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppTheme.violet,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  if (booking.ownerName.isNotEmpty &&
+                      booking.ownerName != booking.ownerOrgName) ...[
+                    _OwnerDetailRow(
+                      icon: Icons.person_outline_rounded,
+                      label: 'Owner / Contact',
+                      value: booking.ownerName,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (booking.ownerEmail.isNotEmpty) ...[
+                    _OwnerDetailRow(
+                      icon: Icons.email_outlined,
+                      label: 'Owner Email',
+                      value: booking.ownerEmail,
+                      isHighlighted: true,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (booking.ownerPhone.isNotEmpty) ...[
+                    _OwnerDetailRow(
+                      icon: Icons.phone_outlined,
+                      label: 'Phone',
+                      value: booking.ownerPhone,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            booking.status == BookingStatus.awaitingOwnerApproval
+                                ? 'The booking request was sent directly to this owner for review and slot approval.'
+                                : 'For questions regarding this booking, you can contact the owner at the email above.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           if (booking.status == BookingStatus.confirmed) ...[
             const SizedBox(height: 10),
             BookingStartCountdown(booking: booking),
@@ -191,3 +324,49 @@ class _ConfirmedBody extends StatelessWidget {
     );
   }
 }
+
+class _OwnerDetailRow extends StatelessWidget {
+  const _OwnerDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.isHighlighted = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isHighlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: isHighlighted ? AppTheme.violet : theme.colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w500,
+              color: isHighlighted ? AppTheme.violet : theme.colorScheme.onSurface,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+

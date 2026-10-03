@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -11,7 +10,6 @@ import '../../../location/domain/gps_location.dart';
 import '../../../location/domain/pin_code_location.dart';
 import '../../../location/presentation/gps_session.dart';
 import '../../../location/presentation/location_providers.dart';
-import '../../../location/presentation/screens/india_place_discovery_screen.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../discovery_location.dart';
 
@@ -24,16 +22,14 @@ class LocationPickerSheet extends ConsumerStatefulWidget {
 }
 
 class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
-  final _pinController = TextEditingController();
-  final _placeController = TextEditingController();
-  final _pinFocus = FocusNode();
+  // Single search field: accepts a place name OR a 6-digit Indian PIN.
+  final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
   final _scrollController = ScrollController();
-  final _pinSectionKey = GlobalKey();
-  final _citySectionKey = GlobalKey();
+  final _searchKey = GlobalKey();
   PinLookupResult _pinResult =
       const PinLookupResult(status: PinLookupStatus.idle);
   PinCodeOffice? _selectedOffice;
-  bool _browseHierarchy = false;
   bool _applyingGps = false;
   GpsSessionNotifier? _gpsSession;
 
@@ -46,9 +42,8 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
   @override
   void dispose() {
     _gpsSession?.cancelIfBusy();
-    _pinController.dispose();
-    _placeController.dispose();
-    _pinFocus.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -58,8 +53,33 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
     await ref.read(gpsSessionProvider.notifier).requestCurrentLocation();
   }
 
+  static final _pinPattern = RegExp(r'^\d{6}$');
+
+  bool get _queryIsNumeric =>
+      RegExp(r'^\d+$').hasMatch(_searchController.text.trim());
+
+  void _onSearchChanged(String value) {
+    final query = value.trim();
+    if (_pinPattern.hasMatch(query)) {
+      if (_pinResult.pincode != query ||
+          _pinResult.status == PinLookupStatus.idle) {
+        _lookupPin();
+      }
+      return;
+    }
+    setState(() {
+      _selectedOffice = null;
+      _pinResult = const PinLookupResult(status: PinLookupStatus.idle);
+    });
+  }
+
+  void _focusSearch() {
+    _scrollTo(_searchKey);
+    _searchFocus.requestFocus();
+  }
+
   Future<void> _lookupPin() async {
-    final pin = _pinController.text.trim();
+    final pin = _searchController.text.trim();
     final invalid = validateIndianPin(pin);
     if (invalid != null) {
       setState(() {
@@ -84,12 +104,12 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
           .read(pinCodeRepositoryProvider)
           .lookup(pin)
           .timeout(const Duration(seconds: 12));
-      if (!mounted) return;
+      if (!mounted || _searchController.text.trim() != pin) return;
       setState(() {
         _pinResult = result;
         _selectedOffice = result.offices.isEmpty ? null : result.offices.first;
       });
-      _pinFocus.unfocus();
+      _searchFocus.unfocus();
       FocusScope.of(context).unfocus();
     } on TimeoutException {
       if (!mounted) return;
@@ -228,11 +248,8 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                         onOpenSettings: () => ref
                             .read(gpsSessionProvider.notifier)
                             .openSettings(),
-                        onChooseCity: () => _scrollTo(_citySectionKey),
-                        onEnterPin: () {
-                          _scrollTo(_pinSectionKey);
-                          _pinFocus.requestFocus();
-                        },
+                        onChooseCity: _focusSearch,
+                        onEnterPin: _focusSearch,
                       ),
                     ],
                     if (gps.isSuccess && gps.fix != null) ...[
@@ -242,85 +259,43 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                         onApply: () => _applyGps(gps.fix!),
                       ),
                     ],
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        key: const Key('open-india-hierarchy'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 48),
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const IndiaPlaceDiscoveryScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Open India Hierarchy & PIN Code Discovery',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _placeController,
-                      textInputAction: TextInputAction.search,
-                      decoration: const InputDecoration(
-                        hintText: 'Search Area, Mandal, City, District...',
-                        prefixIcon: Icon(Icons.search_rounded),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 16),
                     KeyedSubtree(
-                      key: _pinSectionKey,
-                      child: const Text(
-                        'Find by Indian PIN code',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _pinController,
-                            focusNode: _pinFocus,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            decoration: const InputDecoration(
-                              counterText: '',
-                              hintText: '6-digit PIN',
-                              border: OutlineInputBorder(),
-                            ),
-                            onSubmitted: (_) => _lookupPin(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton.tonal(
-                          onPressed:
+                      key: _searchKey,
+                      child: TextField(
+                        key: const Key('location-search'),
+                        controller: _searchController,
+                        focusNode: _searchFocus,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText: 'Search city, area or 6-digit PIN',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon:
                               _pinResult.status == PinLookupStatus.loading
-                                  ? null
-                                  : _lookupPin,
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(88, 48),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                          child: _pinResult.status == PinLookupStatus.loading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Lookup'),
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(14),
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                    )
+                                  : _searchController.text.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          icon: const Icon(Icons.close_rounded),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            _onSearchChanged('');
+                                          },
+                                        ),
                         ),
-                      ],
+                        onChanged: _onSearchChanged,
+                        onSubmitted: (value) {
+                          if (_queryIsNumeric) _lookupPin();
+                        },
+                      ),
                     ),
                     if (_pinResult.status != PinLookupStatus.idle) ...[
                       const SizedBox(height: 8),
@@ -330,7 +305,6 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                         onSelect: (office) =>
                             setState(() => _selectedOffice = office),
                         onRetry: _lookupPin,
-                        onApply: _selectedOffice != null ? _applyPin : null,
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -362,53 +336,13 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                           ),
                       ],
                     ),
+                    if (!_queryIsNumeric) ...[
                     const SizedBox(height: 16),
-                    KeyedSubtree(
-                      key: _citySectionKey,
-                      child: const Text(
-                        'Cities from listed venues',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                    const Text(
+                      'Cities from listed venues',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Popular Cities'),
-                          selected: !_browseHierarchy,
-                          onSelected: (_) =>
-                              setState(() => _browseHierarchy = false),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Browse Hierarchy'),
-                          selected: _browseHierarchy,
-                          onSelected: (_) =>
-                              setState(() => _browseHierarchy = true),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (_browseHierarchy)
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 48),
-                          ),
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    const IndiaPlaceDiscoveryScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text('Browse India Hierarchy'),
-                        ),
-                      )
-                    else
                     citiesAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
@@ -420,7 +354,8 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                             ref.invalidate(listedVenueCitiesProvider),
                       ),
                       data: (cities) {
-                        final query = _placeController.text.trim().toLowerCase();
+                        final query =
+                            _searchController.text.trim().toLowerCase();
                         final visible = query.isEmpty
                             ? cities
                             : cities
@@ -475,26 +410,20 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
                         );
                       },
                     ),
+                    ],
                   ],
                 ),
               ),
             ),
-            if (canApplyGps || canApplyPin) ...[
+            if (canApplyGps) ...[
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  key: Key(
-                    canApplyGps
-                        ? 'apply_gps_location_footer'
-                        : 'apply_pin_location_footer',
-                  ),
+                  key: const Key('apply_gps_location_footer'),
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 52)),
-                  onPressed:
-                      canApplyGps ? () => _applyGps(gps.fix!) : _applyPin,
-                  child: Text(
-                    canApplyGps ? 'Apply this location' : 'Apply PIN location',
-                  ),
+                  onPressed: () => _applyGps(gps.fix!),
+                  child: const Text('Apply this location'),
                 ),
               ),
             ],
@@ -739,14 +668,12 @@ class _PinStatusCard extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onRetry,
-    this.onApply,
   });
 
   final PinLookupResult result;
   final PinCodeOffice? selected;
   final ValueChanged<PinCodeOffice> onSelect;
   final VoidCallback onRetry;
-  final VoidCallback? onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -782,14 +709,6 @@ class _PinStatusCard extends StatelessWidget {
                     selected: isSelected,
                   );
                 }),
-                const SizedBox(height: 8),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 52),
-                  ),
-                  onPressed: onApply,
-                  child: const Text('Apply PIN location'),
-                ),
               ],
             ),
           ),

@@ -7,6 +7,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/category_accent.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/glassmorphic_card.dart';
@@ -54,7 +55,10 @@ class VenueDetailsScreen extends ConsumerWidget {
     return venueAsync.when(
       loading: () => const Scaffold(body: _ListingSkeleton()),
       error: (e, _) => Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          leading: const AppNavigationControls(),
+          leadingWidth: AppNavigationControls.kLeadingWidth,
+        ),
         body: ErrorView(
           message: e.toString(),
           onRetry: () => ref.invalidate(venueDetailsProvider(venueId)),
@@ -498,17 +502,8 @@ class _VenueDetailsScaffoldState extends ConsumerState<_VenueDetailsScaffold> {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
       ),
-      leading: IconButton(
-        tooltip: l10n.back,
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go(AppRoutes.home);
-          }
-        },
-        icon: const Icon(Icons.arrow_back_rounded),
-      ),
+      leading: const AppNavigationControls(),
+      leadingWidth: AppNavigationControls.kLeadingWidth,
       actions: [
         IconButton(
           key: const Key('venue_analytics_overlay_button'),

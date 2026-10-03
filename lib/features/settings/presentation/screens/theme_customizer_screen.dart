@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/config/settings_controller.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 
 class ThemeCustomizerScreen extends ConsumerStatefulWidget {
   const ThemeCustomizerScreen({super.key});
@@ -72,6 +73,8 @@ class _ThemeCustomizerScreenState extends ConsumerState<ThemeCustomizerScreen> {
     return Scaffold(
       key: const Key('theme_customizer_screen'),
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: const Text('Theme customizer'),
         actions: [
           TextButton(

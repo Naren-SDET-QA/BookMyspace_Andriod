@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_exceptions.dart' as app_errors;
 import '../domain/booking.dart';
 import '../domain/booking_repository.dart';
-import '../../../core/config/app_config.dart';
 
 /// Supabase-backed [BookingRepository].
 ///
@@ -307,7 +306,24 @@ class SupabaseBookingRepository implements BookingRepository {
           .eq('user_id', user.id)
           .maybeSingle();
       if (row == null) return null;
-      return Booking.fromJson(row);
+      var booking = Booking.fromJson(row);
+      if (!booking.hasOwnerDetails || booking.ownerEmail.isEmpty) {
+        try {
+          final res = await _client.rpc(
+            'get_booking_owner_details',
+            params: {'p_booking_id': bookingId},
+          );
+          if (res is Map<String, dynamic> && res['success'] == true) {
+            booking = booking.copyWith(
+              ownerName: res['owner_name'] as String? ?? booking.ownerName,
+              ownerEmail: res['owner_email'] as String? ?? booking.ownerEmail,
+              ownerPhone: res['owner_phone'] as String? ?? booking.ownerPhone,
+              ownerOrgName: res['org_name'] as String? ?? booking.ownerOrgName,
+            );
+          }
+        } catch (_) {}
+      }
+      return booking;
     } catch (e) {
       throw app_errors.mapError(e);
     }
@@ -399,7 +415,24 @@ class SupabaseBookingRepository implements BookingRepository {
         code: 'booking_not_found',
       );
     }
-    return Booking.fromJson(row);
+    var booking = Booking.fromJson(row);
+    if (!booking.hasOwnerDetails || booking.ownerEmail.isEmpty) {
+      try {
+        final res = await _client.rpc(
+          'get_booking_owner_details',
+          params: {'p_booking_id': bookingId},
+        );
+        if (res is Map<String, dynamic> && res['success'] == true) {
+          booking = booking.copyWith(
+            ownerName: res['owner_name'] as String? ?? booking.ownerName,
+            ownerEmail: res['owner_email'] as String? ?? booking.ownerEmail,
+            ownerPhone: res['owner_phone'] as String? ?? booking.ownerPhone,
+            ownerOrgName: res['org_name'] as String? ?? booking.ownerOrgName,
+          );
+        }
+      } catch (_) {}
+    }
+    return booking;
   }
 
   static void _ensureRpcSuccess(

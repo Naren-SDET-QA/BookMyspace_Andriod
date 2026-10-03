@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../venues/domain/category_configuration.dart';
 import '../../../venues/domain/media_item.dart';
@@ -27,7 +28,11 @@ class MediaManagerScreen extends ConsumerWidget {
     final venueState = ref.watch(myVenuesProvider);
     final mediaState = ref.watch(mediaForVenueProvider(venueId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Media')),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: const Text('Media'),
+      ),
       body: venueState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Unable to load listing.')),

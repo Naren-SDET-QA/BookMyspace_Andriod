@@ -210,8 +210,9 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Use my current location'), findsOneWidget);
-    expect(find.text('Find by Indian PIN code'), findsOneWidget);
-    expect(find.text('Lookup'), findsOneWidget);
+    expect(find.byKey(const Key('location-search')), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Find by Indian PIN code'), findsNothing);
   });
 
   testWidgets('GPS timeout leaves the sheet and never keeps a spinner',

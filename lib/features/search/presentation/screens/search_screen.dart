@@ -19,6 +19,7 @@ import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../home/presentation/discovery_location.dart';
 import '../../../venues/domain/listing_template.dart';
 import '../../../venues/domain/venue.dart';
+import '../../../venues/presentation/town_fallback_provider.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../../../venues/presentation/widgets/venue_card.dart';
 import '../widgets/voice_search_bottom_sheet.dart';
@@ -537,11 +538,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             child: results.when(
               data: (venues) {
                 if (venues.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.search_off_rounded,
-                    title: 'No results found',
-                    message:
-                        'Try a different keyword, category or price range.',
+                  return _TownFallbackResults(
+                    text: query.query,
+                    categorySlug: query.categorySlug,
                   );
                 }
                 final section = CustomerSectionCatalog.fromAny(
@@ -1529,6 +1528,102 @@ class _SortChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
+    );
+  }
+}
+
+/// Shown when a search returns nothing. If the search text is a town in the
+/// location hierarchy, venues from the town's district (or state) are shown
+/// with a note; otherwise the usual "No results" message.
+class _TownFallbackResults extends ConsumerWidget {
+  const _TownFallbackResults({required this.text, this.categorySlug});
+
+  final String text;
+  final String? categorySlug;
+
+  static const _noResults = EmptyState(
+    icon: Icons.search_off_rounded,
+    title: 'No results found',
+    message: 'Try a different keyword, category or price range.',
+  );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (text.trim().length < 3) return _noResults;
+    final fallback = ref.watch(
+      townFallbackProvider((text: text.trim(), categorySlug: categorySlug)),
+    );
+    return fallback.when(
+      loading: () => const ListSkeleton(),
+      error: (_, _) => _noResults,
+      data: (result) {
+        if (result == null || result.venues.isEmpty) {
+          return EmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'No results found',
+            message: result == null
+                ? 'Try a different keyword, category or price range.'
+                : 'No venues in ${result.townName} or nearby yet.',
+          );
+        }
+        final area = result.scopeLabel.isEmpty
+            ? result.scopeName
+            : '${result.scopeName} ${result.scopeLabel}';
+        final note = result.inTown
+            ? 'Venues in ${result.townName}'
+            : 'No venues in ${result.townName} yet. Showing venues in $area.';
+        final venues = result.venues;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final responsive = ResponsiveInfo.fromConstraints(constraints);
+            final banner = Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.place_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      note,
+                      key: const Key('search-town-fallback-note'),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            );
+            final Widget list = responsive.resultsColumns <= 1
+                ? ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: venues.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, i) =>
+                        VenueCard(venue: venues[i], entranceIndex: i),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: responsive.resultsColumns,
+                      mainAxisSpacing: responsive.gridSpacing,
+                      crossAxisSpacing: responsive.gridSpacing,
+                      childAspectRatio: 0.78,
+                    ),
+                    itemCount: venues.length,
+                    itemBuilder: (context, i) =>
+                        VenueCard(venue: venues[i], entranceIndex: i),
+                  );
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [banner, Expanded(child: list)],
+            );
+          },
+        );
+      },
     );
   }
 }

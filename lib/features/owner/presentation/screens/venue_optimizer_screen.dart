@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../owner_bookings/presentation/owner_booking_providers.dart';
@@ -22,7 +23,11 @@ class _VenueOptimizerScreenState extends ConsumerState<VenueOptimizerScreen> {
   Widget build(BuildContext context) {
     final bookings = ref.watch(ownerBookingsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Venue Optimizer')),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: const Text('Venue Optimizer'),
+      ),
       body: bookings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorView(

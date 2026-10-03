@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../auth/presentation/role_providers.dart';
 import '../../../venues/presentation/venue_providers.dart';
 
@@ -503,17 +504,12 @@ class _MasterScreenDirectoryScreenState
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: const Text(
           'Screen Directory',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Home',
-            icon: const Icon(Icons.home_outlined),
-            onPressed: () => context.go(AppRoutes.home),
-          ),
-        ],
       ),
       body: Column(
         children: [

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/widgets/responsive_layout.dart';
 import '../../../registration/domain/user_registration_config_models.dart';
 import '../../../registration/presentation/providers/registration_fields_provider.dart';
 
@@ -133,83 +134,89 @@ class _RegistrationFieldConfigurationScreenState
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          // Target Module Filter Tabs
-          SliverToBoxAdapter(
-            child: Container(
-              color: const Color(0xFF0F172A),
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    _buildModuleTab(
-                      RegistrationTargetModule.customer,
-                      'Customer / Member',
-                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.customer).length,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildModuleTab(
-                      RegistrationTargetModule.venueOwner,
-                      'Venue & Space Owner',
-                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.venueOwner).length,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildModuleTab(
-                      RegistrationTargetModule.instituteStudent,
-                      'Institute Student / Coach',
-                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.instituteStudent).length,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildModuleTab(
-                      RegistrationTargetModule.eventAttendee,
-                      'Event / Tournament Attendee',
-                      allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.eventAttendee).length,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildModuleTab(
-                      RegistrationTargetModule.all,
-                      'All User Types',
-                      allFields.length,
-                    ),
-                  ],
+      body: ResponsiveLayoutBuilder(
+        builder: (context, responsive) => CustomScrollView(
+          slivers: [
+            // Target Module Filter Tabs
+            SliverToBoxAdapter(
+              child: Container(
+                color: const Color(0xFF0F172A),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: responsive.horizontalPadding),
+                  child: Row(
+                    children: [
+                      _buildModuleTab(
+                        RegistrationTargetModule.customer,
+                        'Customer / Member',
+                        allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.customer).length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildModuleTab(
+                        RegistrationTargetModule.venueOwner,
+                        'Venue & Space Owner',
+                        allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.venueOwner).length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildModuleTab(
+                        RegistrationTargetModule.instituteStudent,
+                        'Institute Student / Coach',
+                        allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.instituteStudent).length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildModuleTab(
+                        RegistrationTargetModule.eventAttendee,
+                        'Event / Tournament Attendee',
+                        allFields.where((f) => f.targetModule == RegistrationTargetModule.all || f.targetModule == RegistrationTargetModule.eventAttendee).length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildModuleTab(
+                        RegistrationTargetModule.all,
+                        'All User Types',
+                        allFields.length,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Main body cards
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // Dynamic JSON Configuration System card
-                _buildSystemConfigCard(
-                  context,
-                  notifier,
-                  aadhaarField,
-                  dobField,
-                  orgField,
-                  allFields,
-                ),
-                const SizedBox(height: 16),
+            // Main body cards
+            SliverPadding(
+              padding: EdgeInsets.symmetric(
+                horizontal: responsive.horizontalPadding,
+                vertical: 16,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Dynamic JSON Configuration System card
+                  _buildSystemConfigCard(
+                    context,
+                    notifier,
+                    aadhaarField,
+                    dobField,
+                    orgField,
+                    allFields,
+                  ),
+                  const SizedBox(height: 16),
 
-                // Search fields bar
-                _buildSearchBar(),
-                const SizedBox(height: 12),
+                  // Search fields bar
+                  _buildSearchBar(),
+                  const SizedBox(height: 12),
 
-                // Category filter chips
-                _buildCategoryChips(allFields),
-                const SizedBox(height: 16),
+                  // Category filter chips
+                  _buildCategoryChips(allFields),
+                  const SizedBox(height: 16),
 
-                // Status row: Fields count + Live Form Preview button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
+                  // Status row: Fields count + Live Form Preview button
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Text(
                         'Fields: ${allFields.length} ($totalMandatory mandatory, $totalActive active)',
                         style: const TextStyle(
                           color: Color(0xFF94A3B8),
@@ -217,59 +224,58 @@ class _RegistrationFieldConfigurationScreenState
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () => context.push(AppRoutes.unifiedRegistration),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF312E81),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.visibility, size: 14, color: Color(0xFFA5B4FC)),
-                            SizedBox(width: 6),
-                            Text(
-                              '+ Live Form Preview',
-                              style: TextStyle(
-                                color: Color(0xFFA5B4FC),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                      InkWell(
+                        onTap: () => context.push(AppRoutes.unifiedRegistration),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF312E81),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.visibility, size: 14, color: Color(0xFFA5B4FC)),
+                              SizedBox(width: 6),
+                              Text(
+                                '+ Live Form Preview',
+                                style: TextStyle(
+                                  color: Color(0xFFA5B4FC),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Field list cards
-                if (filteredFields.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'No matching registration fields found',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
-                    ),
-                  )
-                else
-                  ...filteredFields.map(
-                    (field) => _buildFieldCard(context, field, notifier),
+                    ],
                   ),
+                  const SizedBox(height: 14),
 
-                const SizedBox(height: 80),
-              ]),
+                  // Field list cards
+                  if (filteredFields.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(32),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'No matching registration fields found',
+                        style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                      ),
+                    )
+                  else
+                    ...filteredFields.map(
+                      (field) => _buildFieldCard(context, field, notifier),
+                    ),
+
+                  const SizedBox(height: 80),
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -290,10 +296,24 @@ class _RegistrationFieldConfigurationScreenState
             heroTag: 'ai_help_fab',
             onPressed: () => _showAiHelpDialog(context, allFields),
             backgroundColor: const Color(0xFF4F46E5),
-            icon: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
-            label: const Text(
-              'AI Help',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            icon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFA78BFA), size: 18),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'AI Help',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF34D399),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -816,12 +836,14 @@ class _RegistrationFieldConfigurationScreenState
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
-            child: SizedBox(
-              width: 440,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   TextField(
                     controller: labelController,
                     style: const TextStyle(color: Colors.white),
@@ -934,6 +956,7 @@ class _RegistrationFieldConfigurationScreenState
               ),
             ),
           ),
+        ),
           actions: [
             if (existing != null && !existing.isSystemStandard)
               TextButton(

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../application/receipt_pdf.dart';
@@ -91,6 +92,8 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: Text(
           async.valueOrNull == null
               ? 'Receipt'

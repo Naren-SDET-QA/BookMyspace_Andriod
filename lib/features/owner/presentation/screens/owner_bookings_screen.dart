@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../booking/domain/booking.dart';
@@ -139,7 +140,11 @@ class _OwnerBookingsScreenState extends ConsumerState<OwnerBookingsScreen> {
     final bookings = ref.watch(ownerVenueBookingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Venue bookings')),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: const Text('Venue bookings'),
+      ),
       body: bookings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorView(

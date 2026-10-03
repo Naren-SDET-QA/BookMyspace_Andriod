@@ -164,6 +164,10 @@ class Booking {
     this.paymentMethod = '',
     this.paymentRef = '',
     this.paidAt,
+    this.ownerName = '',
+    this.ownerEmail = '',
+    this.ownerPhone = '',
+    this.ownerOrgName = '',
     this.metadata = const {},
   });
 
@@ -207,6 +211,27 @@ class Booking {
   final String paymentMethod;
   final String paymentRef;
   final DateTime? paidAt;
+
+  /// Host / Owner contact and identity fields
+  final String ownerName;
+  final String ownerEmail;
+  final String ownerPhone;
+  final String ownerOrgName;
+
+  /// Effective display name for the host/owner who handles approval and management.
+  String get ownerDisplayName {
+    if (ownerName.isNotEmpty && ownerName != 'Venue Owner') return ownerName;
+    if (ownerOrgName.isNotEmpty) return ownerOrgName;
+    if (ownerName.isNotEmpty) return ownerName;
+    return 'Venue Host';
+  }
+
+  /// Whether owner details or host contact are present
+  bool get hasOwnerDetails =>
+      ownerName.isNotEmpty ||
+      ownerEmail.isNotEmpty ||
+      ownerOrgName.isNotEmpty ||
+      ownerPhone.isNotEmpty;
 
   /// Raw `metadata` jsonb, e.g. guests / sharing / deposit info.
   final Map<String, dynamic> metadata;
@@ -290,6 +315,82 @@ class Booking {
   String get displayEnd =>
       endTime.length >= 5 ? endTime.substring(0, 5) : endTime;
 
+  Booking copyWith({
+    String? id,
+    String? bookingRef,
+    String? venueId,
+    String? slotId,
+    DateTime? bookDate,
+    String? startTime,
+    String? endTime,
+    BookingStatus? status,
+    double? amount,
+    double? taxAmount,
+    double? totalAmount,
+    double? discountAmount,
+    String? venueName,
+    String? venueCity,
+    String? slotLabel,
+    DateTime? createdAt,
+    bool? approvalRequired,
+    DateTime? approvalRequestedAt,
+    DateTime? approvalExpiresAt,
+    DateTime? approvedAt,
+    DateTime? paymentExpiresAt,
+    String? rejectionReason,
+    String? receiptNumber,
+    DateTime? receiptIssuedAt,
+    String? customerName,
+    String? customerPhone,
+    bool? isOffline,
+    String? paymentMethod,
+    String? paymentRef,
+    DateTime? paidAt,
+    String? ownerName,
+    String? ownerEmail,
+    String? ownerPhone,
+    String? ownerOrgName,
+    Map<String, dynamic>? metadata,
+  }) {
+    return Booking(
+      id: id ?? this.id,
+      bookingRef: bookingRef ?? this.bookingRef,
+      venueId: venueId ?? this.venueId,
+      slotId: slotId ?? this.slotId,
+      bookDate: bookDate ?? this.bookDate,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      status: status ?? this.status,
+      amount: amount ?? this.amount,
+      taxAmount: taxAmount ?? this.taxAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      discountAmount: discountAmount ?? this.discountAmount,
+      venueName: venueName ?? this.venueName,
+      venueCity: venueCity ?? this.venueCity,
+      slotLabel: slotLabel ?? this.slotLabel,
+      createdAt: createdAt ?? this.createdAt,
+      approvalRequired: approvalRequired ?? this.approvalRequired,
+      approvalRequestedAt: approvalRequestedAt ?? this.approvalRequestedAt,
+      approvalExpiresAt: approvalExpiresAt ?? this.approvalExpiresAt,
+      approvedAt: approvedAt ?? this.approvedAt,
+      paymentExpiresAt: paymentExpiresAt ?? this.paymentExpiresAt,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      receiptNumber: receiptNumber ?? this.receiptNumber,
+      receiptIssuedAt: receiptIssuedAt ?? this.receiptIssuedAt,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      isOffline: isOffline ?? this.isOffline,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentRef: paymentRef ?? this.paymentRef,
+      paidAt: paidAt ?? this.paidAt,
+      ownerName: ownerName ?? this.ownerName,
+      ownerEmail: ownerEmail ?? this.ownerEmail,
+      ownerPhone: ownerPhone ?? this.ownerPhone,
+      ownerOrgName: ownerOrgName ?? this.ownerOrgName,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
   factory Booking.fromJson(Map<String, dynamic> json) {
     final venueRaw = json['venues'];
     final slotRaw = json['time_slots'];
@@ -307,11 +408,11 @@ class Booking {
               ? Map<String, dynamic>.from(paymentsRaw.first as Map)
               : null
         : paymentsRaw is Map
-        ? Map<String, dynamic>.from(paymentsRaw as Map)
+        ? Map<String, dynamic>.from(paymentsRaw)
         : null;
     final metadataRaw = json['metadata'];
     final metadata = metadataRaw is Map
-        ? Map<String, dynamic>.from(metadataRaw as Map)
+        ? Map<String, dynamic>.from(metadataRaw)
         : const <String, dynamic>{};
     return Booking(
       id: json['id'] as String? ?? '',
@@ -358,6 +459,18 @@ class Booking {
       paidAt: payment?['created_at'] != null
           ? DateTime.tryParse(payment!['created_at'] as String? ?? '')
           : null,
+      ownerName: (json['owner_name'] as String?)?.trim() ??
+          (metadata['owner_name'] as String?)?.trim() ??
+          '',
+      ownerEmail: (json['owner_email'] as String?)?.trim() ??
+          (metadata['owner_email'] as String?)?.trim() ??
+          '',
+      ownerPhone: (json['owner_phone'] as String?)?.trim() ??
+          (metadata['owner_phone'] as String?)?.trim() ??
+          '',
+      ownerOrgName: (json['org_name'] as String?)?.trim() ??
+          (metadata['org_name'] as String?)?.trim() ??
+          '',
       metadata: metadata,
     );
   }

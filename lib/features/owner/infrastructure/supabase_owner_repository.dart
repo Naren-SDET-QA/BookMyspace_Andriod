@@ -17,10 +17,12 @@ class SupabaseOwnerRepository implements OwnerRepository {
   final SupabaseClient _client;
   final PendingOwnerRegistrationStore _pending;
 
-  static const String _ownerSelect = '''
-    *,
-    auth:auth_users(id, email, raw_user_meta_data)
-  ''';
+  // `owner_profiles` already carries id, user_id, email and name, which is
+  // all `Owner.fromJson` reads. The previous `auth:auth_users(...)` embed
+  // pointed at a relation that does not exist in the public schema, so
+  // PostgREST rejected every owner query (PGRST200) and the Owner Dashboard
+  // showed "[null] Something went wrong".
+  static const String _ownerSelect = '*';
 
   @override
   Future<void> requestOwnerOtp(String email, String name) async {

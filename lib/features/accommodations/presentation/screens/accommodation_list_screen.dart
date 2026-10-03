@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/responsive_layout.dart';
@@ -107,7 +108,11 @@ class _AccommodationListScreenState
     final title = _isPg ? 'PG & co-living' : 'Hotels & stays';
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: Text(title),
+      ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final viewport = MediaQuery.sizeOf(context);

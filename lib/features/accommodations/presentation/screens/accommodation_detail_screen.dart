@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../home/presentation/discovery_booking_prefs.dart';
 import '../../../invoices/presentation/invoice_providers.dart';
@@ -29,6 +30,10 @@ class AccommodationDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(accommodationDetailProvider(propertyId));
     return Scaffold(
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+      ),
       body: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorView(
@@ -306,6 +311,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       slivers: [
         SliverAppBar.large(
           pinned: true,
+          leading: const AppNavigationControls(),
+          leadingWidth: AppNavigationControls.kLeadingWidth,
           title: Text(property.name),
           flexibleSpace: FlexibleSpaceBar(
             background: property.coverImage.isNotEmpty

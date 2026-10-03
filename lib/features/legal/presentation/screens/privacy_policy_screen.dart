@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 
 /// Privacy policy screen.
 class PrivacyPolicyScreen extends StatelessWidget {
@@ -12,7 +13,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.privacyPolicy)),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: Text(l10n.privacyPolicy),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [

@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/errors/app_exceptions.dart'
     show BusinessException, mapError;
@@ -64,17 +65,33 @@ class SupabaseListingModerationRepository
           .from('bookings')
           .select(
             'id, booking_ref, status, total_amount, created_at, user_id, '
-            'metadata, venues(name)',
+            'metadata, venues(name, organizations(name, owner_user_id))',
           )
           .order('created_at', ascending: false)
           .limit(limit);
       final maps = rows.whereType<Map<String, dynamic>>().toList();
-      final profiles = await _profilesFor(
-        maps.map((r) => r['user_id'] as String? ?? '').toSet(),
-      );
+      String? ownerIdOf(Map<String, dynamic> row) {
+        final venue = row['venues'];
+        final org = venue is Map ? venue['organizations'] : null;
+        return org is Map ? org['owner_user_id'] as String? : null;
+      }
+
+      final profiles = await _profilesFor({
+        ...maps.map((r) => r['user_id'] as String? ?? ''),
+        ...maps.map((r) => ownerIdOf(r) ?? ''),
+      });
       return maps.map((row) {
         final venue = row['venues'];
         final name = venue is Map ? venue['name']?.toString() ?? '' : '';
+        final org = venue is Map ? venue['organizations'] : null;
+        final orgName = org is Map ? org['name']?.toString() ?? '' : '';
+        final owner = profiles[ownerIdOf(row)] ?? const <String, dynamic>{};
+        final ownerFullName = owner['full_name']?.toString() ?? '';
+        final ownerName = ownerFullName.isNotEmpty ? ownerFullName : orgName;
+        final ownerContact = [
+          owner['phone']?.toString() ?? '',
+          owner['email']?.toString() ?? '',
+        ].where((s) => s.isNotEmpty).join(' · ');
         final id = row['id'] as String? ?? '';
         final ref = row['booking_ref'] as String? ?? '';
         final metadata = row['metadata'];
@@ -100,6 +117,8 @@ class SupabaseListingModerationRepository
           reference: ref,
           customerName: customer,
           customerContact: contact,
+          ownerName: ownerName,
+          ownerContact: ownerContact,
         );
       }).toList();
     } catch (e) {
@@ -162,6 +181,75 @@ class SupabaseListingModerationRepository
     'NO_CAPTURED_PAYMENT' => 'There is no captured payment to refund.',
     'AMOUNT_EXCEEDS_CAPTURED' => 'Refund amount exceeds the captured payment.',
     _ => 'Booking cancellation failed ($code).',
+  };
+
+  @override
+  Future<void> adminApproveBooking(String bookingId) async {
+    try {
+      final response = await _client.rpc<dynamic>(
+        'approve_venue_booking',
+        params: {
+          'p_booking_id': bookingId,
+          'p_idempotency_key': const Uuid().v4(),
+        },
+      );
+      _throwIfDecisionFailed(response, fallback: 'APPROVAL_FAILED');
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> adminRejectBooking(
+    String bookingId, {
+    required String reason,
+  }) async {
+    final trimmed = reason.trim();
+    if (trimmed.isEmpty) {
+      throw const BusinessException(
+        'A reason is required to decline a request.',
+        code: 'REASON_REQUIRED',
+      );
+    }
+    try {
+      final response = await _client.rpc<dynamic>(
+        'reject_venue_booking',
+        params: {
+          'p_booking_id': bookingId,
+          'p_idempotency_key': const Uuid().v4(),
+          'p_reason': trimmed,
+        },
+      );
+      _throwIfDecisionFailed(response, fallback: 'REJECTION_FAILED');
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  static void _throwIfDecisionFailed(
+    Object? response, {
+    required String fallback,
+  }) {
+    if (response is Map && response['success'] == false) {
+      final code = response['error_code']?.toString() ?? fallback;
+      throw BusinessException(adminDecisionMessage(code), code: code);
+    }
+  }
+
+  /// User-facing text for the error codes returned by
+  /// `approve_venue_booking` / `reject_venue_booking`.
+  static String adminDecisionMessage(String code) => switch (code) {
+    'ALREADY_PROCESSED' => 'This request has already been processed.',
+    'INVALID_STATUS' => 'This request is no longer awaiting approval.',
+    'APPROVAL_EXPIRED' =>
+      'The approval window expired. The slot was released.',
+    'SLOT_UNAVAILABLE' =>
+      'Availability changed. This request cannot be approved.',
+    'EXTERNALLY_BOOKED' =>
+      'This slot was booked through an external channel.',
+    'NOT_OWNER_OR_NOT_FOUND' =>
+      'You are not allowed to decide this request.',
+    _ => 'The decision could not be saved ($code).',
   };
 
   @override

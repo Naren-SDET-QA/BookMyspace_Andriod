@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/test_id.dart';
 import '../providers/owner_venue_providers.dart';
 import '../../domain/owner_availability.dart';
@@ -47,7 +48,11 @@ class _OwnerAvailabilityScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Availability')),
+    appBar: AppBar(
+      leading: const AppNavigationControls(),
+      leadingWidth: AppNavigationControls.kLeadingWidth,
+      title: const Text('Availability'),
+    ),
     body: FutureBuilder<(List<OwnerOperatingHours>, List<OwnerTimeSlot>)>(
       future: _future,
       builder: (context, snap) {

@@ -12,6 +12,7 @@ import '../../../venues/presentation/widgets/venue_badges.dart';
 import '../../domain/payment.dart';
 import '../payment_providers.dart';
 import '../widgets/payment_options_card.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 
 /// Payment checkout screen matching the Android native Razorpay payment experience.
@@ -105,7 +106,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     // boundary as well; this is only the matching UI guard.
     if (!booking.canPay) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Payment unavailable')),
+        appBar: AppBar(
+          leading: const AppNavigationControls(),
+          leadingWidth: AppNavigationControls.kLeadingWidth,
+          title: const Text('Payment unavailable'),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -144,11 +149,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          key: const Key('checkout_back_btn'),
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+        leading: AppNavigationControls(
+          backKey: const Key('checkout_back_btn'),
+          onBack: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.home);
+            }
+          },
         ),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

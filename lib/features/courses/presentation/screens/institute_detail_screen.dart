@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -63,6 +64,8 @@ class _InstituteBody extends ConsumerWidget {
     return CustomScrollView(
       slivers: [
         SliverAppBar(
+          leading: const AppNavigationControls(),
+          leadingWidth: AppNavigationControls.kLeadingWidth,
           pinned: true,
           expandedHeight: 200,
           actions: [

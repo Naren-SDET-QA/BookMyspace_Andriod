@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/widgets/app_navigation_controls.dart';
+
 import '../../../booking/domain/booking.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
@@ -1079,6 +1081,8 @@ class _CreateVenueScreenState extends ConsumerState<CreateVenueScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: Text(
           _isEditMode ? 'Edit Space Listing 🏛️' : 'List Space & Media 🏛️',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),

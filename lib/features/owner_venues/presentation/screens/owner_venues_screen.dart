@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../venues/domain/venue.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../providers/owner_venue_providers.dart';
 import 'create_venue_screen.dart';
 import '../../../venue_sections/presentation/screens/owner_venue_sections_screen.dart';
@@ -116,6 +117,8 @@ class _OwnerVenuesScreenState extends ConsumerState<OwnerVenuesScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: const Text(
           'My Spaces & Properties 🏛️',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),

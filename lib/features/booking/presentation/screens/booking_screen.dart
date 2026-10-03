@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/validators/app_validators.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/shimmer_loading.dart';
 import '../../../auth/presentation/auth_providers.dart';
@@ -151,6 +152,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: Text(template.ctaBook),
         bottom: platform.maintenanceEnabled
             ? PreferredSize(
@@ -249,7 +252,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     ],
                   );
                 }
-                return Column(
+                // Phones and portrait tablets: one scroll view for the whole
+                // form, so short screens (e.g. 320x568) can still reach the
+                // date strip, Peak Booking Hours and every slot. The confirm
+                // bar lives in bottomNavigationBar, which the Scaffold lays
+                // out below this body, so nothing scrolls underneath it.
+                return ListView(
+                  key: const Key('booking_phone_scroll'),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.only(bottom: 24),
                   children: [
                     _VenueHeader(venue: widget.venue),
                     _BookingContactFields(
@@ -269,30 +281,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       },
                     ),
                     _DateAvailabilityBadge(info: dateAvailability),
-                    // The forecast card shares the space left for the slot
-                    // list: collapsed by default, and when opened it scrolls
-                    // within at most half of that space, so it can never
-                    // push the column past the screen.
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => Column(
-                          children: [
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight: constraints.maxHeight * 0.5,
-                              ),
-                              child: SingleChildScrollView(
-                                child: PeakBookingHoursCard(
-                                  venueId: widget.venue.id,
-                                  selectedDate: date,
-                                  selectedSlotStart: _selectedSlot?.startTime,
-                                ),
-                              ),
-                            ),
-                            Expanded(child: slots),
-                          ],
-                        ),
-                      ),
+                    PeakBookingHoursCard(
+                      venueId: widget.venue.id,
+                      selectedDate: date,
+                      selectedSlotStart: _selectedSlot?.startTime,
+                    ),
+                    ListingSlotList(
+                      key: const Key('booking_phone_slots'),
+                      venueId: widget.venue.id,
+                      date: date,
+                      selectedSlot: _selectedSlot,
+                      onSelected: (slot) =>
+                          setState(() => _selectedSlot = slot),
+                      shrinkWrap: true,
                     ),
                   ],
                 );
@@ -361,10 +362,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.confirmBooking),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             _SummaryRow(label: l10n.venueDetails, value: widget.venue.name),
             _SummaryRow(
               label: 'Guest name',
@@ -405,9 +407,34 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               value: formatInr(total),
               emphasize: true,
             ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Request will be routed to venue host for slot approval.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-        actions: [
+      ),
+      actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(l10n.cancel),
@@ -740,53 +767,72 @@ class _BookingExtraFields extends StatelessWidget {
     if (extras.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: extras.map((field) {
-          final value = values[field.key] ?? '';
-          if (field.type == ListingFieldType.dropdown) {
-            return SizedBox(
-              width: 220,
-              child: DropdownButtonFormField<String>(
+      child: LayoutBuilder(
+        builder: (context, constraints) => Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: extras.map((field) {
+            final value = values[field.key] ?? '';
+            if (field.type == ListingFieldType.dropdown) {
+              // Fills the row on narrow forms, capped on wide ones; the
+              // expanded button keeps the selected label inside its box.
+              return SizedBox(
+                width: constraints.maxWidth < 280 ? constraints.maxWidth : 280,
+                child: DropdownButtonFormField<String>(
+                  key: Key('booking_field_${field.key}'),
+                  isExpanded: true,
+                  initialValue: field.options.contains(value) ? value : null,
+                  decoration: InputDecoration(labelText: field.label),
+                  selectedItemBuilder: (context) => field.options
+                      .map(
+                        (option) => Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            option,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  items: field.options
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option,
+                          child: Text(option),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (next) => onChanged(field.key, next ?? ''),
+                ),
+              );
+            }
+            if (field.type == ListingFieldType.toggle) {
+              return FilterChip(
                 key: Key('booking_field_${field.key}'),
-                initialValue: field.options.contains(value) ? value : null,
-                decoration: InputDecoration(labelText: field.label),
-                items: field.options
-                    .map(
-                      (option) =>
-                          DropdownMenuItem(value: option, child: Text(option)),
-                    )
-                    .toList(),
-                onChanged: (next) => onChanged(field.key, next ?? ''),
+                label: Text(field.label),
+                selected: value == 'true',
+                onSelected: (selected) =>
+                    onChanged(field.key, selected ? 'true' : 'false'),
+              );
+            }
+            return SizedBox(
+              width: 160,
+              child: TextFormField(
+                key: Key('booking_field_${field.key}'),
+                initialValue: value,
+                keyboardType: field.type == ListingFieldType.number
+                    ? TextInputType.number
+                    : TextInputType.text,
+                decoration: InputDecoration(
+                  labelText: field.label,
+                  hintText: field.placeholder,
+                ),
+                onChanged: (next) => onChanged(field.key, next),
               ),
             );
-          }
-          if (field.type == ListingFieldType.toggle) {
-            return FilterChip(
-              key: Key('booking_field_${field.key}'),
-              label: Text(field.label),
-              selected: value == 'true',
-              onSelected: (selected) =>
-                  onChanged(field.key, selected ? 'true' : 'false'),
-            );
-          }
-          return SizedBox(
-            width: 160,
-            child: TextFormField(
-              key: Key('booking_field_${field.key}'),
-              initialValue: value,
-              keyboardType: field.type == ListingFieldType.number
-                  ? TextInputType.number
-                  : TextInputType.text,
-              decoration: InputDecoration(
-                labelText: field.label,
-                hintText: field.placeholder,
-              ),
-              onChanged: (next) => onChanged(field.key, next),
-            ),
-          );
-        }).toList(),
+          }).toList(),
+        ),
       ),
     );
   }

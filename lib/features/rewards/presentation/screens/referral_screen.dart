@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../domain/rewards.dart';
 import '../rewards_providers.dart';
 
@@ -17,7 +18,11 @@ class ReferralScreen extends ConsumerWidget {
         ? null
         : WalletSummary.fromEntries(wallet).balance;
     return Scaffold(
-      appBar: AppBar(title: const Text('Refer & Earn')),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: const Text('Refer & Earn'),
+      ),
       body: summary.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(

@@ -712,6 +712,55 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
           ),
+          if (booking.hasOwnerDetails) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.business_outlined,
+                    size: 16,
+                    color: AppTheme.violet,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.status.isAwaitingOwner
+                              ? 'Request sent to: ${booking.ownerDisplayName}'
+                              : 'Host: ${booking.ownerDisplayName}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (booking.ownerEmail.isNotEmpty)
+                          Text(
+                            booking.ownerEmail,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (booking.status == BookingStatus.confirmed) ...[
             const SizedBox(height: 10),
             BookingStartCountdown(booking: booking),

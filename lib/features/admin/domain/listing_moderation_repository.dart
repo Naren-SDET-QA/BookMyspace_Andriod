@@ -24,6 +24,18 @@ abstract interface class ListingModerationRepository {
     required String reason,
     double? refundAmount,
   });
+
+  /// Platform-admin approval of a booking request in
+  /// `awaiting_owner_approval`, through the existing `approve_venue_booking`
+  /// RPC. The request moves to `pending` and still needs payment. Throws a
+  /// `BusinessException` (code `ALREADY_PROCESSED`, `INVALID_STATUS`,
+  /// `APPROVAL_EXPIRED`, `SLOT_UNAVAILABLE`, ...) when it cannot be approved.
+  Future<void> adminApproveBooking(String bookingId);
+
+  /// Platform-admin decline of a booking request in
+  /// `awaiting_owner_approval`, through the existing `reject_venue_booking`
+  /// RPC. [reason] is stored as the rejection reason and the hold is released.
+  Future<void> adminRejectBooking(String bookingId, {required String reason});
 }
 
 abstract interface class ListingLifecycleRepository {

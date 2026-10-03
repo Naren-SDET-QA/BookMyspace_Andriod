@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../owner_providers.dart';
@@ -32,7 +33,11 @@ class _OwnerProfileScreenState extends ConsumerState<OwnerProfileScreen> {
   Widget build(BuildContext context) {
     final owner = ref.watch(currentOwnerProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Owner profile')),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: const Text('Owner profile'),
+      ),
       body: owner.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorView(message: error.toString()),

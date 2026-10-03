@@ -39,6 +39,8 @@ class OversightRow {
     this.reference = '',
     this.customerName = '',
     this.customerContact = '',
+    this.ownerName = '',
+    this.ownerContact = '',
   });
 
   final String id;
@@ -56,4 +58,11 @@ class OversightRow {
 
   /// Customer email/phone for booking rows, empty when unknown.
   final String customerContact;
+
+  /// Booking rows only: the venue owner's name (owner profile, account name
+  /// or organization name), empty when unknown.
+  final String ownerName;
+
+  /// Booking rows only: the venue owner's email/phone, empty when unknown.
+  final String ownerContact;
 }

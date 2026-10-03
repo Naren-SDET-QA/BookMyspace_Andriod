@@ -88,7 +88,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Revenue & Booking Analytics'),
+        // Scales down to fit narrow phones instead of truncating.
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text('Revenue & Booking Analytics'),
+        ),
         actions: [
           if (query.hasValue)
             IconButton(

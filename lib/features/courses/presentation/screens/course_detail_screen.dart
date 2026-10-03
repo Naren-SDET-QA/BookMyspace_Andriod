@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -45,7 +46,11 @@ class CourseDetailScreen extends ConsumerWidget {
 
     if (!enabled) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.courses)),
+        appBar: AppBar(
+          leading: const AppNavigationControls(),
+          leadingWidth: AppNavigationControls.kLeadingWidth,
+          title: Text(l10n.courses),
+        ),
         body: EmptyState(
           icon: Icons.school_outlined,
           title: l10n.educationUnavailable,
@@ -165,6 +170,8 @@ class _CourseBodyState extends ConsumerState<_CourseBody> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
+            leading: const AppNavigationControls(),
+            leadingWidth: AppNavigationControls.kLeadingWidth,
             pinned: true,
             expandedHeight: 220,
             actions: [

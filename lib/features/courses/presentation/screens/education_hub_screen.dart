@@ -8,6 +8,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/animated_category_chip.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
@@ -898,17 +899,11 @@ class _SectionHero extends StatelessWidget {
         final showHostLabel = constraints.maxWidth >= 360;
         return Row(
           children: [
-            IconButton(
-              tooltip: AppLocalizations.of(context).back,
-              onPressed: onBack,
-              visualDensity: VisualDensity.compact,
-              style: IconButton.styleFrom(
-                foregroundColor: Colors.white,
-                minimumSize: const Size(36, 36),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              icon: const Icon(Icons.arrow_back_rounded, size: 22),
+            AppNavigationControls(
+              color: Colors.white,
+              onBack: onBack,
             ),
+            const SizedBox(width: 8),
             const Expanded(
               child: Text(
                 'Institutes & Classes',

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -30,8 +32,33 @@ class ListingDateStrip extends StatelessWidget {
       (i) => DateTime(today.year, today.month, today.day + i),
     );
 
+    // Height follows the text scale: the three chip labels are measured with
+    // the active TextScaler, so 1.5x / 2x text grows the strip instead of
+    // overflowing a fixed 76px row.
+    final theme = Theme.of(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    double lineHeight(TextStyle? style) {
+      final painter = TextPainter(
+        text: TextSpan(text: 'Ag', style: style),
+        textScaler: scaler,
+        textDirection: Directionality.of(context),
+        maxLines: 1,
+      )..layout();
+      final height = painter.height;
+      painter.dispose();
+      return height;
+    }
+    final chipContent =
+        lineHeight(theme.textTheme.labelSmall) * 2 +
+        lineHeight(theme.textTheme.titleMedium) +
+        2; // gap between day name and number
+    final height = math.max(
+      76.0,
+      chipContent + 16 + 2,
+    ); // list padding + border
+
     return SizedBox(
-      height: 76,
+      height: height,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         scrollDirection: Axis.horizontal,
@@ -68,6 +95,11 @@ class _DateChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Wider chips at large text so "Wed" / "30" never clip.
+    final chipWidth = math.max(
+      60.0,
+      MediaQuery.textScalerOf(context).scale(14) * 2 + 16,
+    );
     final dayName = DateFormat('EEE').format(date);
     final dayNum = DateFormat('d').format(date);
     final month = DateFormat('MMM').format(date);
@@ -81,7 +113,7 @@ class _DateChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 60,
+          width: chipWidth,
           decoration: BoxDecoration(
             color: isSelected ? AppTheme.violet : theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),

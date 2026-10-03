@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../cms/domain/app_element_registry.dart';
@@ -100,6 +101,8 @@ class _AdminAppStudioScreenState extends ConsumerState<AdminAppStudioScreen>
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: const Text('App Studio — Global UI & Branding'),
         bottom: TabBar(
           controller: _tabController,

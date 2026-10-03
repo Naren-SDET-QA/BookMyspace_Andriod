@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../cms/domain/cms_banner.dart';
 import '../../../cms/presentation/cms_providers.dart';
@@ -16,6 +17,8 @@ class AdminCmsScreen extends ConsumerWidget {
     final banners = ref.watch(adminCmsBannersProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
         title: const Text('Home banners'),
       ),
       floatingActionButton: FloatingActionButton.extended(

@@ -7,6 +7,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/modular/feature_id.dart';
 import '../../../../core/modular/feature_providers.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../domain/invoice_display_config.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart';
@@ -30,7 +31,11 @@ class InvoiceScreen extends ConsumerWidget {
     final booking = ref.watch(bookingByIdProvider(id ?? ''));
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.invoice)),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: Text(l10n.invoice),
+      ),
       body: id == null
           ? const ErrorView(message: 'Missing booking id')
           : booking.when(

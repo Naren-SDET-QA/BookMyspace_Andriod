@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/errors/app_exceptions.dart' show AppException;
+import '../../../../core/widgets/app_navigation_controls.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../auth/domain/app_role.dart';
+import '../../../auth/presentation/role_providers.dart';
 import '../../domain/admin_booking_filters.dart';
 import '../../domain/listing_moderation.dart';
 import '../admin_moderation_providers.dart';
@@ -31,7 +35,11 @@ class AdminOversightScreen extends ConsumerWidget {
       AdminOversightKind.refunds => 'Refund oversight',
     };
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: Text(title),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
@@ -93,13 +101,15 @@ class _RowCard extends StatelessWidget {
   }
 }
 
-/// Admin bookings management: status tabs with counts, free-text search and
-/// an admin cancellation action for confirmed bookings.
+/// Admin bookings management: status tabs with counts, free-text search, an
+/// admin cancellation action for confirmed bookings, and Approve / Decline for
+/// booking requests awaiting approval.
 ///
-/// The backend only lets a platform admin act on **confirmed** bookings
-/// (`admin_cancel_booking`); owner-approval requests can only be rejected by
-/// the venue owner (`reject_venue_booking` checks venue ownership), so
-/// pending rows are read-only here.
+/// Every request in `awaiting_owner_approval` goes to the venue owner AND the
+/// platform administrators; either one may decide and only one decision is
+/// needed. `approve_venue_booking` / `reject_venue_booking` enforce that on
+/// the server; the buttons are only shown to administrators. Approval moves
+/// the request to `pending`; the customer still has to pay.
 class AdminBookingsManagementView extends ConsumerStatefulWidget {
   const AdminBookingsManagementView({super.key});
 
@@ -107,6 +117,8 @@ class AdminBookingsManagementView extends ConsumerStatefulWidget {
   static Key filterKey(AdminBookingFilter f) =>
       Key('admin-bookings-filter-${f.name}');
   static Key cancelKey(String id) => Key('admin-booking-cancel-$id');
+  static Key approveKey(String id) => Key('admin-booking-approve-$id');
+  static Key declineKey(String id) => Key('admin-booking-decline-$id');
 
   @override
   ConsumerState<AdminBookingsManagementView> createState() =>
@@ -146,11 +158,79 @@ class _AdminBookingsManagementViewState
     }
   }
 
+  /// Codes after which the row must be re-read: someone else already decided
+  /// it, or the server moved it to another status.
+  static const _staleCodes = {
+    'ALREADY_PROCESSED',
+    'INVALID_STATUS',
+    'APPROVAL_EXPIRED',
+    'EXTERNALLY_BOOKED',
+  };
+
+  String _errorText(Object e) => e is AppException ? e.message : e.toString();
+
+  Future<void> _approve(OversightRow row) async {
+    if (_busy.contains(row.id)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy.add(row.id));
+    try {
+      await ref
+          .read(listingModerationRepositoryProvider)
+          .adminApproveBooking(row.id);
+      ref.invalidate(adminBookingsOversightProvider);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Request approved. The customer can now pay.'),
+        ),
+      );
+    } catch (e) {
+      if (e is AppException && _staleCodes.contains(e.code)) {
+        ref.invalidate(adminBookingsOversightProvider);
+      }
+      messenger.showSnackBar(SnackBar(content: Text(_errorText(e))));
+    } finally {
+      if (mounted) setState(() => _busy.remove(row.id));
+    }
+  }
+
+  Future<void> _decline(OversightRow row) async {
+    if (_busy.contains(row.id)) return;
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (_) => _AdminDeclineDialog(row: row),
+    );
+    if (reason == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy.add(row.id));
+    try {
+      await ref
+          .read(listingModerationRepositoryProvider)
+          .adminRejectBooking(row.id, reason: reason);
+      ref.invalidate(adminBookingsOversightProvider);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Request declined. The slot was released.'),
+        ),
+      );
+    } catch (e) {
+      if (e is AppException && _staleCodes.contains(e.code)) {
+        ref.invalidate(adminBookingsOversightProvider);
+      }
+      messenger.showSnackBar(SnackBar(content: Text(_errorText(e))));
+    } finally {
+      if (mounted) setState(() => _busy.remove(row.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(adminBookingsOversightProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Bookings management')),
+      appBar: AppBar(
+        leading: const AppNavigationControls(),
+        leadingWidth: AppNavigationControls.kLeadingWidth,
+        title: const Text('Bookings management'),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
@@ -164,6 +244,9 @@ class _AdminBookingsManagementViewState
             filter: _filter,
             query: _query,
           );
+          // Roles are only read when a decidable row is on screen. The server
+          // re-checks authorization on every approve/decline call.
+          final canDecide = visible.any(_isDecidable) && _isPlatformAdmin(ref);
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(adminBookingsOversightProvider);
@@ -225,6 +308,12 @@ class _AdminBookingsManagementViewState
                                 AdminBookingFilter.confirmed
                             ? () => _cancel(row)
                             : null,
+                        onApprove: canDecide && _isDecidable(row)
+                            ? () => _approve(row)
+                            : null,
+                        onDecline: canDecide && _isDecidable(row)
+                            ? () => _decline(row)
+                            : null,
                       ),
                     ),
               ],
@@ -235,6 +324,17 @@ class _AdminBookingsManagementViewState
     );
   }
 }
+
+bool _isPlatformAdmin(WidgetRef ref) {
+  final roles =
+      ref.watch(currentUserRolesProvider).valueOrNull ?? const <AppRole>{};
+  return roles.contains(AppRole.administrator) ||
+      roles.contains(AppRole.superAdministrator);
+}
+
+/// Only requests still awaiting a decision can be approved or declined.
+bool _isDecidable(OversightRow row) =>
+    row.status.trim().toLowerCase() == 'awaiting_owner_approval';
 
 class _CountsRow extends StatelessWidget {
   const _CountsRow({required this.counts});
@@ -290,11 +390,15 @@ class _AdminBookingCard extends StatelessWidget {
     required this.row,
     required this.busy,
     this.onCancel,
+    this.onApprove,
+    this.onDecline,
   });
 
   final OversightRow row;
   final bool busy;
   final VoidCallback? onCancel;
+  final VoidCallback? onApprove;
+  final VoidCallback? onDecline;
 
   @override
   Widget build(BuildContext context) {
@@ -304,6 +408,10 @@ class _AdminBookingCard extends StatelessWidget {
     final customer = [
       row.customerName,
       row.customerContact,
+    ].where((s) => s.isNotEmpty).join(' · ');
+    final owner = [
+      row.ownerName,
+      row.ownerContact,
     ].where((s) => s.isNotEmpty).join(' · ');
     return Card(
       margin: EdgeInsets.zero,
@@ -347,6 +455,46 @@ class _AdminBookingCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall,
               ),
+            if (owner.isNotEmpty)
+              Text(
+                'Owner: $owner',
+                key: Key('admin-booking-owner-${row.id}'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+            if (onApprove != null || onDecline != null) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (onDecline != null)
+                    OutlinedButton.icon(
+                      key: AdminBookingsManagementView.declineKey(row.id),
+                      onPressed: busy ? null : onDecline,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text('Decline'),
+                    ),
+                  if (onApprove != null)
+                    FilledButton.icon(
+                      key: AdminBookingsManagementView.approveKey(row.id),
+                      onPressed: busy ? null : onApprove,
+                      icon: busy
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check, size: 18),
+                      label: const Text('Approve'),
+                    ),
+                ],
+              ),
+            ],
             if (onCancel != null) ...[
               const SizedBox(height: 8),
               Align(
@@ -499,6 +647,115 @@ class _AdminCancelDialogState extends State<_AdminCancelDialog> {
           key: const Key('admin-cancel-confirm'),
           onPressed: _submit,
           child: const Text('Cancel booking'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Confirms an admin decline of a booking request and collects the
+/// reason (required), following the cancel dialog's preset-chips pattern.
+/// Pops the trimmed reason, or null when the admin keeps the request.
+class _AdminDeclineDialog extends StatefulWidget {
+  const _AdminDeclineDialog({required this.row});
+
+  final OversightRow row;
+
+  @override
+  State<_AdminDeclineDialog> createState() => _AdminDeclineDialogState();
+}
+
+class _AdminDeclineDialogState extends State<_AdminDeclineDialog> {
+  static const _presets = [
+    'Declined by Platform Admin',
+    'Venue unavailable on this date',
+    'Duplicate request',
+    'Policy violation',
+  ];
+  final _reason = TextEditingController(text: _presets.first);
+  String? _error;
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final reason = _reason.text.trim();
+    if (reason.isEmpty) {
+      setState(() => _error = 'Please enter a reason');
+      return;
+    }
+    Navigator.of(context).pop(reason);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Decline request'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${widget.row.title} · ${widget.row.subtitle}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The customer is notified, the slot is released and no payment '
+              'is taken.',
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final p in _presets)
+                  ChoiceChip(
+                    label: Text(p),
+                    selected: _reason.text.trim() == p,
+                    onSelected: (_) => setState(() {
+                      _reason.text = p;
+                      _error = null;
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('admin-decline-reason'),
+              controller: _reason,
+              maxLines: 3,
+              minLines: 1,
+              onChanged: (_) => setState(() => _error = null),
+              decoration: const InputDecoration(
+                labelText: 'Reason (required)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Keep request'),
+        ),
+        FilledButton(
+          key: const Key('admin-decline-confirm'),
+          onPressed: _submit,
+          child: const Text('Decline request'),
         ),
       ],
     );
