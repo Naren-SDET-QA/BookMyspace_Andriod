@@ -748,6 +748,86 @@
       </div>
     </div>
 
+    <!-- Admin branding for this boot loader (logo, app name, loading
+         animation). The Flutter app caches the PUBLISHED global branding
+         row here (window.bookMySpaceBrandBoot.save) after it loads, so the
+         next start / refresh shows the same logo + animation before Flutter
+         boots. Empty cache = the bundled defaults above. -->
+    <script>
+      (function () {
+        var KEY = 'bms.branding.boot.v1';
+        function safeUrl(u) {
+          return typeof u === 'string' && /^https?:\/\//i.test(u.trim()) ? u.trim() : null;
+        }
+        function safeColor(c) {
+          return typeof c === 'string' && /^#?([0-9a-f]{6}|[0-9a-f]{8})$/i.test(c.trim())
+            ? (c.trim().charAt(0) === '#' ? c.trim() : '#' + c.trim()) : null;
+        }
+        function apply(b) {
+          if (!b || typeof b !== 'object') return;
+          var root = document.getElementById('loading');
+          if (!root) return;
+          var logo = safeUrl(b.logo_url);
+          var badge = root.querySelector('.app-brand-logo');
+          if (logo && badge) {
+            var img = document.createElement('img');
+            img.src = logo;
+            img.alt = '';
+            img.style.cssText = 'width:80%;height:80%;object-fit:contain;';
+            img.onerror = function () { badge.textContent = '\uD83C\uDFDF\uFE0F'; };
+            badge.textContent = '';
+            badge.appendChild(img);
+            badge.setAttribute('data-brand', 'custom');
+          }
+          var title = root.querySelector('.loading-title');
+          if (title && typeof b.app_name === 'string' && b.app_name.trim()) {
+            title.textContent = b.app_name.trim();
+          }
+          var spinner = root.querySelector('.loading-spinner');
+          if (!spinner) return;
+          if (b.animation_enabled === false) {
+            spinner.style.visibility = 'hidden';
+            spinner.setAttribute('data-brand', 'disabled');
+            return;
+          }
+          var asset = safeUrl(b.animation_asset_url);
+          if (asset) {
+            var anim = document.createElement('img');
+            anim.src = asset;
+            anim.alt = '';
+            anim.className = 'loading-asset';
+            anim.style.cssText = 'width:64px;height:64px;object-fit:contain;';
+            anim.onerror = function () { anim.replaceWith(spinner); };
+            spinner.replaceWith(anim);
+            return;
+          }
+          var color = safeColor(b.animation_color);
+          if (color) {
+            spinner.style.borderTopColor = color;
+            spinner.style.borderRightColor = color;
+            spinner.setAttribute('data-brand', 'custom');
+          }
+          var t = Number(b.animation_thickness);
+          if (isFinite(t) && t > 0 && t !== 2.5) {
+            spinner.style.borderWidth = Math.min(12, Math.max(1, t * 1.4)) + 'px';
+          }
+        }
+        window.bookMySpaceBrandBoot = {
+          key: KEY,
+          save: function (json) {
+            try { localStorage.setItem(KEY, json); } catch (_) {}
+          },
+          clear: function () {
+            try { localStorage.removeItem(KEY); } catch (_) {}
+          }
+        };
+        try {
+          var raw = localStorage.getItem(KEY);
+          if (raw) apply(JSON.parse(raw));
+        } catch (_) {}
+      })();
+    </script>
+
     <!-- Timeout & Failure Feedback Card -->
     <div id="loading-timeout-view" class="timeout-card" role="alert">
       <!-- Explicit Root Cause Attribution Badge -->

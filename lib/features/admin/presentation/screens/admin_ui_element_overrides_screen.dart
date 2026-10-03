@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/router/app_router.dart';
 
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -9,7 +12,9 @@ import '../../../cms/domain/ui_element_override.dart';
 import '../../../cms/presentation/ui_element_override_providers.dart';
 
 /// Universal live element editor: any text, field hint, image, link, color,
-/// visibility on ANY screen, plus branding/logo via the `branding` screen.
+/// visibility on ANY screen. Global branding elements (logo, loading
+/// animation, wordmark — registry screen `branding`) are listed here but are
+/// edited in App Studio → Global Branding, their single source of truth.
 class AdminUiElementOverridesScreen extends ConsumerStatefulWidget {
   const AdminUiElementOverridesScreen({super.key});
 
@@ -104,15 +109,18 @@ class _AdminUiElementOverridesScreenState
                                 'field' => Icons.text_fields_outlined,
                                 'color' => Icons.palette_outlined,
                                 'toggle' => Icons.toggle_on_outlined,
+                                'animation' => Icons.animation_outlined,
                                 _ => Icons.title_outlined,
                               },
                               size: 16,
                             ),
-                            onPressed: () => _edit(
-                              screenKey,
-                              presetKey: e.$1,
-                              presetKind: e.$3,
-                            ),
+                            onPressed: e.isGlobalBranding
+                                ? () => context.push(AppRoutes.adminAppStudio)
+                                : () => _edit(
+                                    screenKey,
+                                    presetKey: e.$1,
+                                    presetKind: e.$3,
+                                  ),
                           ),
                       ],
                     ),

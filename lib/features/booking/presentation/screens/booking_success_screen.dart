@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../cms/presentation/widgets/live_brand.dart';
 import '../../../venues/presentation/widgets/venue_badges.dart' show formatInr;
 import '../../domain/booking.dart';
 import '../booking_providers.dart';
@@ -112,7 +112,7 @@ class _ConfirmedBody extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Center(child: PulsingBrandMark(size: 64)),
+          const Center(child: LivePulsingBrandMark(size: 64)),
           const SizedBox(height: 12),
           Center(child: Icon(icon, size: 64, color: color)),
           const SizedBox(height: 16),

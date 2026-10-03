@@ -4,6 +4,21 @@ enum UiElementType {
   image,
   field,
   color,
+
+  /// Loading / splash animation settings (toggle + asset + spinner props).
+  animation,
+}
+
+/// Where an element's live value is stored.
+enum AppElementSource {
+  /// Per-screen row in `ui_element_overrides` (text / image / color slots).
+  uiOverride,
+
+  /// A field of the single global branding row
+  /// (`module_feature_configs`, module_key `branding`). Edited only in
+  /// App Studio → Global Branding, which owns draft / publish / history, so
+  /// the value is never duplicated into `ui_element_overrides`.
+  globalBranding,
 }
 
 /// Rich definition of an editable element registered in the application.
@@ -17,6 +32,7 @@ class AppElementDefinition {
     required this.fallback,
     this.editable = true,
     required this.category,
+    this.source = AppElementSource.uiOverride,
   });
 
   final String screenKey;
@@ -27,6 +43,12 @@ class AppElementDefinition {
   final String fallback;
   final bool editable;
   final String category;
+  final AppElementSource source;
+
+  /// Stable, globally unique registry key: `<screenKey>.<elementKey>`.
+  String get qualifiedKey => '$screenKey.$elementKey';
+
+  bool get isGlobalBranding => source == AppElementSource.globalBranding;
 
   // Record accessor compatibility ($1 = elementKey, $2 = label, $3 = type string)
   String get $1 => elementKey;
@@ -42,6 +64,11 @@ class AppElementDefinition {
 class AppElementRegistry {
   const AppElementRegistry._();
 
+  /// Stable registry keys for the global brand logo and loading animation.
+  static const brandLogoKey = 'branding.logo_url';
+  static const brandLogoDarkKey = 'branding.logo_dark_url';
+  static const loadingAnimationKey = 'branding.loading_animation';
+
   static const List<AppElementDefinition> all = [
     // -------------------------------------------------------------
     // BRANDING
@@ -54,6 +81,7 @@ class AppElementRegistry {
       description: 'Global application name displayed on headers, login, and splash',
       fallback: 'BookMySpace',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
     AppElementDefinition(
       screenKey: 'branding',
@@ -63,24 +91,30 @@ class AppElementRegistry {
       description: 'Tagline displayed on splash and headers',
       fallback: 'Find your perfect space',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
     AppElementDefinition(
       screenKey: 'branding',
       elementKey: 'logo_url',
       elementType: UiElementType.image,
-      label: 'Light Logo Image',
-      description: 'Primary logo image URL used on light backgrounds',
+      label: 'App Logo',
+      description:
+          'Global BookMySpace logo (light backgrounds). Rendered on splash, '
+          'login, home headers, booking success and Admin Studio preview. '
+          'Empty = bundled logo.',
       fallback: '',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
     AppElementDefinition(
       screenKey: 'branding',
       elementKey: 'logo_dark_url',
       elementType: UiElementType.image,
-      label: 'Dark Logo Image',
-      description: 'Logo image URL used in dark mode',
+      label: 'App Logo (Dark Mode)',
+      description: 'Logo used in dark mode; empty = light logo / bundled logo.',
       fallback: '',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
     AppElementDefinition(
       screenKey: 'branding',
@@ -90,6 +124,7 @@ class AppElementRegistry {
       description: 'Brand artwork displayed during application launch',
       fallback: '',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
     AppElementDefinition(
       screenKey: 'branding',
@@ -99,6 +134,7 @@ class AppElementRegistry {
       description: 'Accent color for brand wordmark (#3F51B5)',
       fallback: '#3F51B5',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
     AppElementDefinition(
       screenKey: 'branding',
@@ -108,6 +144,20 @@ class AppElementRegistry {
       description: 'Secondary color for brand wordmark',
       fallback: '',
       category: 'Branding',
+      source: AppElementSource.globalBranding,
+    ),
+    AppElementDefinition(
+      screenKey: 'branding',
+      elementKey: 'loading_animation',
+      elementType: UiElementType.animation,
+      label: 'Loading / Splash Animation',
+      description:
+          'Global loading animation on the splash screen (and the web boot '
+          'loader): on/off, spinner colour and thickness, or an animated '
+          'GIF/WebP from Media. Empty = default spinner.',
+      fallback: 'Spinner · brand colour · 2.5px',
+      category: 'Branding',
+      source: AppElementSource.globalBranding,
     ),
 
     // -------------------------------------------------------------
@@ -1101,6 +1151,14 @@ class AppElementRegistry {
       if (def.screenKey == screenKey && def.elementKey == elementKey) {
         return def;
       }
+    }
+    return null;
+  }
+
+  /// Finds a definition by its [AppElementDefinition.qualifiedKey].
+  static AppElementDefinition? findByKey(String qualifiedKey) {
+    for (final def in all) {
+      if (def.qualifiedKey == qualifiedKey) return def;
     }
     return null;
   }

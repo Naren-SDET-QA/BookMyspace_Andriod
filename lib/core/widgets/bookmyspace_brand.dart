@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/app_theme.dart';
 import 'app_network_image.dart';
@@ -10,9 +9,20 @@ import 'app_network_image.dart';
 /// so Flutter, iOS and Android use the same emblem rather than platform icons.
 /// Logo with two soft rings. The rings stay still when reduced motion is on.
 class PulsingBrandMark extends StatefulWidget {
-  const PulsingBrandMark({super.key, this.size = 72});
+  const PulsingBrandMark({
+    super.key,
+    this.size = 72,
+    this.logoUrlOverride,
+    this.animate = true,
+  });
 
   final double size;
+
+  /// Admin logo URL (see `LivePulsingBrandMark`); null = bundled asset.
+  final String? logoUrlOverride;
+
+  /// When false the rings are not drawn (admin "loading animation" off).
+  final bool animate;
 
   @override
   State<PulsingBrandMark> createState() => _PulsingBrandMarkState();
@@ -40,8 +50,11 @@ class _PulsingBrandMarkState extends State<PulsingBrandMark>
   @override
   Widget build(BuildContext context) {
     final reduce = MediaQuery.disableAnimationsOf(context);
-    final mark = BookMySpaceMark(size: widget.size);
-    if (reduce) return mark;
+    final mark = BookMySpaceMark(
+      size: widget.size,
+      logoUrlOverride: widget.logoUrlOverride,
+    );
+    if (reduce || !widget.animate) return mark;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -107,7 +120,8 @@ class BookMySpaceMark extends StatelessWidget {
   final String semanticLabel;
 
   /// When set, renders this network logo instead of the bundled asset.
-  /// [ConsumerBookMySpaceMark] feeds this from the admin branding row.
+  /// `LiveBrandMark` (cms/live_brand.dart) feeds this from the admin
+  /// branding row — the single source of truth for the logo.
   final String? logoUrlOverride;
 
   @override
@@ -128,23 +142,6 @@ class BookMySpaceMark extends StatelessWidget {
       label: semanticLabel,
       child: SizedBox(width: size, height: size, child: image),
     );
-  }
-}
-
-/// Riverpod-connected mark: shows the admin-uploaded logo (module_key
-/// `branding`, `logo_url` / `logo_dark_url`) when present, otherwise the
-/// bundled asset. Use this for any NEW placement; existing [BookMySpaceMark]
-/// call sites keep working unchanged.
-class ConsumerBookMySpaceMark extends ConsumerWidget {
-  const ConsumerBookMySpaceMark({super.key, this.size = 64});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Lazy import-safe: branding provider lives in admin feature; fall back
-    // to the bundled asset when admin prefs are unavailable.
-    return BookMySpaceMark(size: size);
   }
 }
 

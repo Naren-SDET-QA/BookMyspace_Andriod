@@ -30,6 +30,21 @@ class SupabaseAdminSettingsRepository {
     );
   }
 
+  /// Reads one global (venue_id is null) section's metadata, or `{}` when
+  /// the row does not exist yet. Used for auxiliary rows such as the
+  /// branding draft / history that [load] intentionally ignores.
+  Future<Map<String, dynamic>> loadSection(String section) async {
+    final row = await client
+        .from('module_feature_configs')
+        .select('metadata')
+        .eq('module_key', section)
+        .isFilter('venue_id', null)
+        .maybeSingle();
+    final meta = row?['metadata'];
+    if (meta is Map) return Map<String, dynamic>.from(meta);
+    return const {};
+  }
+
   Future<void> saveSection(String section, Map<String, dynamic> values) async {
     final existing = await client
         .from('module_feature_configs')

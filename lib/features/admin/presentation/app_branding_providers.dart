@@ -39,6 +39,7 @@ class AppBranding {
     this.animationEnabled = defaultAnimationEnabled,
     this.animationColor,
     this.animationThickness = defaultAnimationThickness,
+    this.animationAssetUrl,
   });
 
   /// Loading spinner defaults (match the original splash spinner).
@@ -65,6 +66,12 @@ class AppBranding {
   /// Spinner stroke width in logical pixels, always within
   /// [minAnimationThickness]..[maxAnimationThickness].
   final double animationThickness;
+
+  /// Optional animated asset (GIF / animated WebP from the CMS Media
+  /// library) shown instead of the built-in spinner. `null` keeps the
+  /// spinner. Flutter's [Image] widget animates these formats natively, so
+  /// no extra runtime is involved.
+  final String? animationAssetUrl;
 
   /// Clamps [value] into the supported spinner thickness range. Non-finite
   /// values fall back to [defaultAnimationThickness].
@@ -131,6 +138,7 @@ class AppBranding {
           ? null
           : rawAnimationColor,
       animationThickness: thicknessOpt('animation_thickness'),
+      animationAssetUrl: opt('animation_asset_url'),
     );
   }
 
@@ -145,6 +153,7 @@ class AppBranding {
     'animation_enabled': animationEnabled,
     'animation_color': animationColor,
     'animation_thickness': animationThickness,
+    'animation_asset_url': animationAssetUrl,
   };
 
   static const defaults = AppBranding();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +18,9 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/offline_banner.dart';
 import 'features/admin/domain/admin_settings.dart';
+import 'features/admin/infrastructure/web_brand_boot.dart';
 import 'features/admin/presentation/admin_settings_providers.dart';
+import 'features/admin/presentation/app_branding_providers.dart';
 import 'features/auth/presentation/auth_providers.dart';
 import 'features/booking/presentation/booking_providers.dart';
 import 'features/notifications/presentation/notification_providers.dart';
@@ -61,6 +64,14 @@ class BookMySpaceApp extends ConsumerWidget {
           settings.pushNotificationsEnabled,
         ),
       );
+    });
+    // Web only: cache the PUBLISHED global branding (logo + loading
+    // animation) for the HTML boot loader in web/index.html, so the next
+    // start/refresh shows it before Flutter boots. No-op elsewhere.
+    ref.listen<AsyncValue<AppBranding>>(appBrandingProvider, (previous, next) {
+      final branding = next.valueOrNull;
+      if (branding == null) return;
+      WebBrandBoot.save(jsonEncode(branding.toMap()));
     });
     // Register/deregister this device's OneSignal push subscription
     // whenever the signed-in user changes. A no-op when ONESIGNAL_APP_ID

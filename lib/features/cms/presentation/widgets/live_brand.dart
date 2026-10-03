@@ -47,3 +47,23 @@ class LiveBrandLockup extends ConsumerWidget {
     );
   }
 }
+
+/// [PulsingBrandMark] wired to live admin branding: shows the published logo
+/// and only pulses while the global loading animation is enabled.
+class LivePulsingBrandMark extends ConsumerWidget {
+  const LivePulsingBrandMark({super.key, this.size = 72});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final branding = ref.watch(appBrandingProvider).valueOrNull;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final url = branding?.logoForBrightness(dark)?.trim();
+    return PulsingBrandMark(
+      size: size,
+      logoUrlOverride: url?.isEmpty == true ? null : url,
+      animate: branding?.animationEnabled ?? AppBranding.defaultAnimationEnabled,
+    );
+  }
+}

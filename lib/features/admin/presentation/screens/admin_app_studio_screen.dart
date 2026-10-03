@@ -15,6 +15,7 @@ import '../../../cms/presentation/cms_media_providers.dart';
 import '../../../cms/presentation/ui_element_override_providers.dart';
 import '../admin_settings_providers.dart';
 import '../app_branding_providers.dart';
+import '../branding_revisions.dart';
 import '../widgets/brand_loading_indicator.dart';
 
 /// Central Global UI Content & Branding Studio (`/admin/studio`).
@@ -237,6 +238,18 @@ class _AdminAppStudioScreenState extends ConsumerState<AdminAppStudioScreen>
                           override.colorValue != null ||
                           override.hidden);
 
+                  if (def.isGlobalBranding) {
+                    // Single source of truth: branding fields live in the
+                    // global `branding` row, edited (draft / publish /
+                    // history) only in the Global Branding tab.
+                    return _ElementEditorCard(
+                      definition: def,
+                      activeOverride: null,
+                      isOverridden: false,
+                      onEdit: _openGlobalBranding,
+                      onRestore: null,
+                    );
+                  }
                   return _ElementEditorCard(
                     definition: def,
                     activeOverride: override,
@@ -252,6 +265,18 @@ class _AdminAppStudioScreenState extends ConsumerState<AdminAppStudioScreen>
           ),
         ),
       ],
+    );
+  }
+
+  void _openGlobalBranding() {
+    _tabController.animateTo(1);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Global brand elements (logo, loading animation, wordmark) are '
+          'edited in Global Branding with draft, preview, publish and history.',
+        ),
+      ),
     );
   }
 
@@ -484,6 +509,9 @@ class _AdminAppStudioScreenState extends ConsumerState<AdminAppStudioScreen>
       case UiElementType.color:
         color = Colors.amber;
         break;
+      case UiElementType.animation:
+        color = Colors.pink;
+        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -573,7 +601,7 @@ class _ElementEditorCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Key: ${definition.elementKey} • ${definition.description}',
+            'Key: ${definition.qualifiedKey} • ${definition.description}',
             style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
@@ -644,7 +672,12 @@ class _ElementEditorCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_rounded, size: 16),
-                label: Text(isOverridden ? 'Edit Override' : 'Override Element', style: const TextStyle(fontSize: 12)),
+                label: Text(
+                  definition.isGlobalBranding
+                      ? 'Edit in Global Branding'
+                      : (isOverridden ? 'Edit Override' : 'Override Element'),
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -673,6 +706,7 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
   late TextEditingController _restColorCtrl;
   late TextEditingController _animationColorCtrl;
   late TextEditingController _animationThicknessCtrl;
+  late TextEditingController _animationAssetCtrl;
   bool _animationEnabled = AppBranding.defaultAnimationEnabled;
   bool _saving = false;
   bool _uploading = false;
@@ -680,16 +714,32 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
   @override
   void initState() {
     super.initState();
-    final b = widget.branding;
-    _appNameCtrl = TextEditingController(text: b.appName);
-    _taglineCtrl = TextEditingController(text: b.tagline);
-    _logoLightCtrl = TextEditingController(text: b.logoUrl ?? '');
-    _logoDarkCtrl = TextEditingController(text: b.logoDarkUrl ?? '');
-    _splashCtrl = TextEditingController(text: b.splashUrl ?? '');
-    _firstColorCtrl = TextEditingController(text: b.wordmarkFirstColor ?? '#3F51B5');
-    _restColorCtrl = TextEditingController(text: b.wordmarkRestColor ?? '');
-    _animationColorCtrl = TextEditingController(text: b.animationColor ?? '');
-    _animationThicknessCtrl = TextEditingController(text: b.animationThickness.toString());
+    _appNameCtrl = TextEditingController();
+    _taglineCtrl = TextEditingController();
+    _logoLightCtrl = TextEditingController();
+    _logoDarkCtrl = TextEditingController();
+    _splashCtrl = TextEditingController();
+    _firstColorCtrl = TextEditingController();
+    _restColorCtrl = TextEditingController();
+    _animationColorCtrl = TextEditingController();
+    _animationThicknessCtrl = TextEditingController();
+    _animationAssetCtrl = TextEditingController();
+    _applyToForm(widget.branding);
+  }
+
+  /// Loads [b] into the form (initial values, a saved draft, or a history
+  /// snapshot). Nothing is published until the admin presses Publish.
+  void _applyToForm(AppBranding b) {
+    _appNameCtrl.text = b.appName;
+    _taglineCtrl.text = b.tagline;
+    _logoLightCtrl.text = b.logoUrl ?? '';
+    _logoDarkCtrl.text = b.logoDarkUrl ?? '';
+    _splashCtrl.text = b.splashUrl ?? '';
+    _firstColorCtrl.text = b.wordmarkFirstColor ?? '#3F51B5';
+    _restColorCtrl.text = b.wordmarkRestColor ?? '';
+    _animationColorCtrl.text = b.animationColor ?? '';
+    _animationThicknessCtrl.text = b.animationThickness.toString();
+    _animationAssetCtrl.text = b.animationAssetUrl ?? '';
     _animationEnabled = b.animationEnabled;
   }
 
@@ -704,6 +754,7 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
     _restColorCtrl.dispose();
     _animationColorCtrl.dispose();
     _animationThicknessCtrl.dispose();
+    _animationAssetCtrl.dispose();
     super.dispose();
   }
 
@@ -750,6 +801,7 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
       'animation_enabled': _animationEnabled,
       'animation_color': _nullIfEmpty(_animationColorCtrl),
       'animation_thickness': AppBranding.clampThickness(thickness),
+      'animation_asset_url': _nullIfEmpty(_animationAssetCtrl),
     };
   }
 
@@ -757,7 +809,25 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
   /// preview always matches exactly what customers will get.
   AppBranding get _draft => AppBranding.fromMap(_formValues());
 
-  Future<void> _uploadLogo(TextEditingController target) async {
+  /// Lets the admin pick an existing image / GIF / WebP from the CMS Media
+  /// library (the same `category-media` bucket used everywhere else).
+  Future<void> _chooseFromMedia(
+    TextEditingController target, {
+    bool animatedOnly = false,
+  }) async {
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _MediaPickerDialog(animatedOnly: animatedOnly),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => target.text = picked);
+    _toast('Selected from Media. Review the preview, then Publish.');
+  }
+
+  Future<void> _uploadMedia(
+    TextEditingController target, {
+    required String what,
+  }) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: CmsMediaRules.allowedExtensions.toList(),
@@ -772,9 +842,9 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
           );
       if (!mounted) return;
       setState(() => target.text = asset.ref.url);
-      _toast('Logo uploaded. Review the preview, then Publish.');
+      _toast('$what uploaded. Review the preview, then Publish.');
     } catch (_) {
-      _toast('Logo upload failed. Check the file (PNG/JPG/WebP) and retry.');
+      _toast('$what upload failed. Check the file (PNG/JPG/WebP/GIF) and retry.');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -787,21 +857,89 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
     );
   }
 
-  Future<void> _publish({String success = 'Global branding published across the app.'}) async {
+  void _refreshBranding() {
+    ref.invalidate(appBrandingProvider);
+    ref.invalidate(adminSettingsProvider);
+    ref.invalidate(brandingHistoryProvider);
+    ref.invalidate(brandingDraftProvider);
+  }
+
+  Future<void> _publish({
+    String success = 'Global branding published across the app.',
+    String label = 'Published',
+  }) async {
     if (_hasErrors) {
       _toast('Fix the highlighted loading animation fields first.');
       return;
     }
     setState(() => _saving = true);
     try {
-      // Normalise through AppBranding so only valid values are stored.
-      final values = _draft.toMap();
-      await ref.read(adminSettingsRepositoryProvider).saveSection('branding', values);
-      ref.invalidate(appBrandingProvider);
-      ref.invalidate(adminSettingsProvider);
+      // Normalised through AppBranding so only valid values are stored; the
+      // service also records history and clears the saved draft.
+      await ref
+          .read(brandingRevisionServiceProvider)
+          .publish(_draft.toMap(), label: label);
+      _refreshBranding();
       _toast(success, color: AppTheme.success);
     } catch (e) {
       _toast('Failed to update branding: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    if (_hasErrors) {
+      _toast('Fix the highlighted loading animation fields first.');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(brandingRevisionServiceProvider).saveDraft(_draft.toMap());
+      ref.invalidate(brandingDraftProvider);
+      _toast('Draft saved. Customers still see the published branding.');
+    } catch (e) {
+      _toast('Failed to save draft: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _loadDraft(BrandingDraft draft) {
+    setState(() => _applyToForm(draft.branding));
+    _toast('Draft loaded into the editor. Preview it, then Publish.');
+  }
+
+  Future<void> _discardDraft() async {
+    try {
+      await ref.read(brandingRevisionServiceProvider).discardDraft();
+      ref.invalidate(brandingDraftProvider);
+      _toast('Draft discarded.');
+    } catch (e) {
+      _toast('Failed to discard draft: $e');
+    }
+  }
+
+  void _loadRevision(BrandingRevision revision) {
+    setState(() => _applyToForm(revision.branding));
+    _toast('Version loaded into the editor. Preview it, then Publish to restore.');
+  }
+
+  Future<void> _undoLastPublish() async {
+    setState(() => _saving = true);
+    try {
+      final restored =
+          await ref.read(brandingRevisionServiceProvider).undoLastPublish();
+      if (restored == null) {
+        _toast('Nothing to undo yet.');
+        return;
+      }
+      if (mounted) setState(() => _applyToForm(AppBranding.fromMap(restored)));
+      _refreshBranding();
+      _toast('Last publish undone — previous branding is live.',
+          color: AppTheme.success);
+    } catch (e) {
+      _toast('Undo failed: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -812,7 +950,10 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
       _logoLightCtrl.clear();
       _logoDarkCtrl.clear();
     });
-    await _publish(success: 'Logo reset to the bundled BookMySpace logo.');
+    await _publish(
+      success: 'Logo reset to the bundled BookMySpace logo.',
+      label: 'Reset logo',
+    );
   }
 
   Future<void> _resetAnimation() async {
@@ -820,14 +961,20 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
       _animationEnabled = AppBranding.defaultAnimationEnabled;
       _animationColorCtrl.clear();
       _animationThicknessCtrl.text = AppBranding.defaultAnimationThickness.toString();
+      _animationAssetCtrl.clear();
     });
-    await _publish(success: 'Loading animation reset to defaults.');
+    await _publish(
+      success: 'Loading animation reset to defaults.',
+      label: 'Reset animation',
+    );
   }
 
   Widget _logoField({
-    required Key key,
+    required ValueKey<String> key,
     required TextEditingController controller,
     required String label,
+    bool animatedOnly = false,
+    String uploadWhat = 'Logo',
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -848,8 +995,22 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: IconButton.filledTonal(
-            tooltip: 'Upload logo',
-            onPressed: _uploading || _saving ? null : () => _uploadLogo(controller),
+            key: ValueKey('${key.value}-media'),
+            tooltip: 'Choose from Media library',
+            onPressed: _uploading || _saving
+                ? null
+                : () => _chooseFromMedia(controller, animatedOnly: animatedOnly),
+            icon: const Icon(Icons.photo_library_outlined),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: IconButton.filledTonal(
+            tooltip: 'Upload $uploadWhat',
+            onPressed: _uploading || _saving
+                ? null
+                : () => _uploadMedia(controller, what: uploadWhat),
             icon: _uploading
                 ? const SizedBox(
                     width: 18,
@@ -896,9 +1057,40 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
     final draft = _draft;
     final busy = _saving || _uploading;
 
+    final savedDraft = ref.watch(brandingDraftProvider).valueOrNull;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (savedDraft != null)
+          Card(
+            key: const ValueKey('branding-draft-banner'),
+            color: theme.colorScheme.tertiaryContainer,
+            child: ListTile(
+              leading: const Icon(Icons.edit_note_rounded),
+              title: const Text('Unpublished draft saved'),
+              subtitle: Text(
+                savedDraft.savedAt == null
+                    ? 'Not visible to customers until published.'
+                    : 'Saved ${_formatWhen(savedDraft.savedAt!)} · not visible to customers until published.',
+              ),
+              trailing: Wrap(
+                spacing: 4,
+                children: [
+                  TextButton(
+                    key: const ValueKey('branding-draft-load'),
+                    onPressed: busy ? null : () => _loadDraft(savedDraft),
+                    child: const Text('Load'),
+                  ),
+                  TextButton(
+                    key: const ValueKey('branding-draft-discard'),
+                    onPressed: busy ? null : _discardDraft,
+                    child: const Text('Discard'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -992,13 +1184,18 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                         'Loading Animation',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
-                      SwitchListTile(
-                        key: const ValueKey('branding-animation-enabled'),
-                        title: const Text('Enable Loading Animation'),
-                        subtitle: const Text('Show the spinner on the splash/loading screen'),
-                        value: _animationEnabled,
-                        onChanged: (val) => setState(() => _animationEnabled = val),
-                        contentPadding: EdgeInsets.zero,
+                      // Own Material so the tile's ink is not hidden by the
+                      // tinted container (ListTile debug assertion).
+                      Material(
+                        type: MaterialType.transparency,
+                        child: SwitchListTile(
+                          key: const ValueKey('branding-animation-enabled'),
+                          title: const Text('Enable Loading Animation'),
+                          subtitle: const Text('Show the loading animation on the splash/loading screen'),
+                          value: _animationEnabled,
+                          onChanged: (val) => setState(() => _animationEnabled = val),
+                          contentPadding: EdgeInsets.zero,
+                        ),
                       ),
                       if (_animationEnabled) ...[
                         const SizedBox(height: 8),
@@ -1027,6 +1224,20 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                             hintText: '${AppBranding.defaultAnimationThickness}',
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        const SizedBox(height: 12),
+                        _logoField(
+                          key: const ValueKey('branding-animation-asset'),
+                          controller: _animationAssetCtrl,
+                          label: 'Animation asset (GIF / animated WebP, optional)',
+                          animatedOnly: true,
+                          uploadWhat: 'Animation',
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'When set, this Media asset replaces the spinner '
+                          '(colour/thickness then apply only as fallback).',
+                          style: theme.textTheme.bodySmall,
                         ),
                       ],
                     ],
@@ -1059,7 +1270,7 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
-                            height: 56,
+                            height: 84,
                             child: Center(
                               child: _hasErrors
                                   ? const Icon(Icons.error_outline, color: Colors.red)
@@ -1068,7 +1279,11 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            draft.animationEnabled ? 'Spinner' : 'Spinner disabled',
+                            !draft.animationEnabled
+                                ? 'Animation disabled'
+                                : (draft.animationAssetUrl != null
+                                      ? 'Animation asset'
+                                      : 'Spinner'),
                             style: const TextStyle(fontSize: 11, color: Colors.black54),
                           ),
                         ],
@@ -1094,6 +1309,12 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
                       icon: const Icon(Icons.restart_alt_rounded),
                       label: const Text('Reset Animation'),
                     ),
+                    OutlinedButton.icon(
+                      key: const ValueKey('branding-save-draft'),
+                      onPressed: busy || _hasErrors ? null : _saveDraft,
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('Save Draft'),
+                    ),
                     FilledButton.icon(
                       key: const ValueKey('branding-publish'),
                       onPressed: busy || _hasErrors ? null : _publish,
@@ -1111,6 +1332,182 @@ class _GlobalBrandingEditorState extends ConsumerState<_GlobalBrandingEditor> {
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+        _BrandingHistoryCard(
+          busy: busy,
+          onLoad: _loadRevision,
+          onUndo: _undoLastPublish,
+        ),
+      ],
+    );
+  }
+}
+
+String _formatWhen(DateTime at) {
+  final l = at.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+}
+
+/// Published-version history for global branding (logo + loading animation).
+/// "Load" puts a version into the editor for preview; "Undo last publish"
+/// immediately re-publishes the version before the current one.
+class _BrandingHistoryCard extends ConsumerWidget {
+  const _BrandingHistoryCard({
+    required this.busy,
+    required this.onLoad,
+    required this.onUndo,
+  });
+
+  final bool busy;
+  final ValueChanged<BrandingRevision> onLoad;
+  final VoidCallback onUndo;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(brandingHistoryProvider);
+    return Card(
+      key: const ValueKey('branding-history'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Branding History',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                TextButton.icon(
+                  key: const ValueKey('branding-undo'),
+                  onPressed: busy || (history.valueOrNull?.length ?? 0) < 2
+                      ? null
+                      : onUndo,
+                  icon: const Icon(Icons.undo_rounded, size: 18),
+                  label: const Text('Undo last publish'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            history.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Could not load history: $e'),
+              data: (entries) {
+                if (entries.isEmpty) {
+                  return const Text(
+                    'No published versions yet. Every publish / reset is recorded here.',
+                    style: TextStyle(fontSize: 12),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (var i = 0; i < entries.length; i++)
+                      ListTile(
+                        key: ValueKey('branding-history-$i'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: BookMySpaceMark(
+                          size: 36,
+                          logoUrlOverride: entries[i].branding.logoUrl,
+                        ),
+                        title: Text(
+                          i == 0 ? '${entries[i].label} (live)' : entries[i].label,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (entries[i].publishedAt != null)
+                              _formatWhen(entries[i].publishedAt!),
+                            entries[i].branding.logoUrl == null
+                                ? 'bundled logo'
+                                : 'custom logo',
+                            !entries[i].branding.animationEnabled
+                                ? 'animation off'
+                                : (entries[i].branding.animationAssetUrl != null
+                                      ? 'animation asset'
+                                      : 'spinner'),
+                          ].join(' · '),
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: TextButton(
+                          onPressed: busy ? null : () => onLoad(entries[i]),
+                          child: const Text('Load'),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Picks an existing asset from the CMS Media library.
+class _MediaPickerDialog extends ConsumerWidget {
+  const _MediaPickerDialog({this.animatedOnly = false});
+
+  /// Only show formats Flutter can animate (GIF / WebP).
+  final bool animatedOnly;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assets = ref.watch(cmsMediaAssetsProvider(''));
+    return AlertDialog(
+      title: Text(animatedOnly ? 'Choose animation from Media' : 'Choose image from Media'),
+      content: SizedBox(
+        width: 480,
+        height: 360,
+        child: assets.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Could not load Media: $e')),
+          data: (all) {
+            final items = all.where((a) {
+              if (!a.isImage) return false;
+              if (!animatedOnly) return true;
+              final ext = a.name.split('.').last.toLowerCase();
+              return ext == 'gif' || ext == 'webp';
+            }).toList();
+            if (items.isEmpty) {
+              return const Center(
+                child: Text('No matching media yet. Use Upload instead.'),
+              );
+            }
+            return GridView.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 110,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, i) => InkWell(
+                key: ValueKey('media-pick-$i'),
+                onTap: () => Navigator.pop(context, items[i].ref.url),
+                child: Tooltip(
+                  message: items[i].name,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: AppNetworkImage(url: items[i].ref.url, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
         ),
       ],
     );
