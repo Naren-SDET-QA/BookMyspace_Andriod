@@ -28,15 +28,45 @@ String classDurationLabel(int weeks) {
   return weeks == 1 ? '1 Week' : '$weeks Weeks';
 }
 
+/// Lead faculty for a course: the first active faculty member, falling back
+/// to the course's own instructor name. Credentials are the role, the first
+/// two certifications and the qualification, joined by bullets.
+({CourseFaculty? faculty, String name, String credentials}) classFacultyLead(
+  Course course,
+) {
+  final faculty = course.faculty.where((item) => item.isActive).firstOrNull;
+  final name = faculty?.name.isNotEmpty == true
+      ? faculty!.name
+      : course.instructorName;
+  if (faculty == null) {
+    return (faculty: null, name: name, credentials: '');
+  }
+  final role = faculty.designation.isNotEmpty
+      ? faculty.designation
+      : faculty.role;
+  final credentials = [
+    if (role.isNotEmpty) role,
+    for (final item in faculty.certifications.take(2)) item,
+    if (faculty.qualification.isNotEmpty) faculty.qualification,
+  ].join(' • ');
+  return (faculty: faculty, name: name, credentials: credentials);
+}
+
 class BatchClassCard extends StatelessWidget {
   const BatchClassCard({
     super.key,
     required this.course,
     required this.batch,
+    this.onOpen,
   });
 
   final Course course;
   final CourseBatch batch;
+
+  /// Overrides the default "open the class detail sheet" tap on the title.
+  /// Listings that used to push a full screen (for example the courses list)
+  /// pass their own route here so navigation stays unchanged.
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -48,20 +78,10 @@ class BatchClassCard extends StatelessWidget {
     final highlight = batch.highlightOn(DateTime.now());
     final live = highlight == BatchHighlight.liveToday;
     final upcoming = highlight == BatchHighlight.upcoming;
-    final faculty = course.faculty.where((item) => item.isActive).firstOrNull;
-    final facultyName = faculty?.name.isNotEmpty == true
-        ? faculty!.name
-        : course.instructorName;
-    final facultyRole = faculty == null
-        ? ''
-        : (faculty.designation.isNotEmpty ? faculty.designation : faculty.role);
-    final credentialLine = [
-      if (facultyRole.isNotEmpty) facultyRole,
-      if (faculty != null)
-        for (final item in faculty.certifications.take(2)) item,
-      if (faculty != null && faculty.qualification.isNotEmpty)
-        faculty.qualification,
-    ].join(' • ');
+    final lead = classFacultyLead(course);
+    final faculty = lead.faculty;
+    final facultyName = lead.name;
+    final credentialLine = lead.credentials;
     final shown = batch.feeAmount > 0 ? batch.feeAmount : course.payableAmount;
     final fullCourse = course.feeAmount;
     final showFull = fullCourse > shown && fullCourse > 0;
@@ -104,11 +124,18 @@ class BatchClassCard extends StatelessWidget {
               children: [
                 GestureDetector(
                   key: Key('class-card-details-${batch.id}'),
-                  onTap: () => showClassDetailSheet(
-                    context,
-                    course: course,
-                    batch: batch,
-                  ),
+                  onTap: () {
+                    final open = onOpen;
+                    if (open != null) {
+                      open();
+                      return;
+                    }
+                    showClassDetailSheet(
+                      context,
+                      course: course,
+                      batch: batch,
+                    );
+                  },
                   child: Text(
                     course.title,
                     maxLines: 2,
@@ -163,13 +190,13 @@ class BatchClassCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 10),
-                _TimingPanel(
+                ClassTimingPanel(
                   timing: batch.timing,
                   duration: duration,
                 ),
                 if (facultyName.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  _FacultyPanel(
+                  ClassFacultyPanel(
                     batchId: batch.id,
                     name: facultyName,
                     photoUrl: faculty?.photoUrl ?? '',
@@ -261,7 +288,7 @@ class BatchClassCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                    _RoundAction(
+                    ClassRoundAction(
                       icon: Icons.call_rounded,
                       color: const Color(0xFF4C1D95),
                       iconColor: const Color(0xFFE9D5FF),
@@ -272,7 +299,7 @@ class BatchClassCard extends StatelessWidget {
                         'Calls are not available here.',
                       ),
                     ),
-                    _RoundAction(
+                    ClassRoundAction(
                       icon: Icons.chat_rounded,
                       color: const Color(0xFF14532D),
                       iconColor: const Color(0xFF86EFAC),
@@ -340,8 +367,8 @@ class BatchClassCard extends StatelessWidget {
   }
 }
 
-class _TimingPanel extends StatelessWidget {
-  const _TimingPanel({required this.timing, required this.duration});
+class ClassTimingPanel extends StatelessWidget {
+  const ClassTimingPanel({required this.timing, required this.duration});
 
   final String timing;
   final String duration;
@@ -421,8 +448,8 @@ class _TimingPanel extends StatelessWidget {
   }
 }
 
-class _FacultyPanel extends StatelessWidget {
-  const _FacultyPanel({
+class ClassFacultyPanel extends StatelessWidget {
+  const ClassFacultyPanel({
     required this.batchId,
     required this.name,
     required this.photoUrl,
@@ -531,8 +558,8 @@ class _FacultyPanel extends StatelessWidget {
   }
 }
 
-class _RoundAction extends StatelessWidget {
-  const _RoundAction({
+class ClassRoundAction extends StatelessWidget {
+  const ClassRoundAction({
     required this.icon,
     required this.color,
     required this.iconColor,

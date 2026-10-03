@@ -12,6 +12,8 @@ import '../../../../core/widgets/glassmorphic_card.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../booking/domain/booking.dart';
 import '../../../courses/domain/course.dart';
+import '../../../courses/presentation/widgets/batch_class_card.dart'
+    show classDurationLabel;
 import '../../../events/domain/event.dart';
 import '../../../events/presentation/widgets/event_card.dart';
 import '../../../location/domain/gps_location.dart';
@@ -1680,172 +1682,245 @@ class HomeHorizontalCourses extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final course = courses[index];
-              final totalSeats =
-                  course.batches.fold<int>(0, (sum, b) => sum + b.capacity);
-              final seatsLeft =
-                  course.batches.fold<int>(0, (sum, b) => sum + b.seatsLeft);
-              return SizedBox(
-                width: 240,
-                child: GlassmorphicCard(
-                  borderRadius: 16,
-                  enableEntrance: false,
-                  onTap: () => context.push(
-                    AppRoutes.courseDetails.replaceAll(':id', course.id),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 82,
-                        width: double.infinity,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            AppNetworkImage(
-                              url: course.coverImage,
-                              fit: BoxFit.cover,
-                            ),
-                            // Category pill overlay
-                            Positioned(
-                              top: 8,
-                              left: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  course.mode.name.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Verified badge
-                            if (course.instituteVerified)
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.verified_rounded,
-                                    size: 14,
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                course.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13.5,
-                                ),
-                              ),
-                              if (course.instituteName.isNotEmpty)
-                                Text(
-                                  course.instituteName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              const SizedBox(height: 4),
-                              // Seat availability
-                              if (totalSeats > 0)
-                                Row(
-                                  children: [
-                                    Icon(
-                                      seatsLeft <= 3
-                                          ? Icons.event_seat_rounded
-                                          : Icons.event_available_rounded,
-                                      size: 12,
-                                      color: seatsLeft <= 3
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF10B981),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '$seatsLeft seats left',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: seatsLeft <= 3
-                                            ? const Color(0xFFEF4444)
-                                            : const Color(0xFF10B981),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              const Spacer(),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      formatInr(course.feeAmount),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  if (course.durationWeeks > 0)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: theme
-                                            .colorScheme.surfaceContainerHighest
-                                            .withValues(alpha: 0.5),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${course.durationWeeks} wks',
-                                        style: theme.textTheme.labelSmall,
-                                      ),
-                                    ),
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 16,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _HomeCourseCard(course: course);
             },
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Compact member of the home courses rail. Shares the class-card design
+/// language of `BatchClassCard` (dark card, violet institute pill, timing
+/// panel, violet price) so every course feed looks the same.
+class _HomeCourseCard extends StatelessWidget {
+  const _HomeCourseCard({required this.course});
+
+  final Course course;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = classDurationLabel(course.durationWeeks);
+    final schedule = course.scheduleNotes.trim();
+    final timing = schedule.isNotEmpty
+        ? schedule
+        : (duration.isNotEmpty ? duration : 'Schedule TBA');
+    final modeLabel = switch (course.mode) {
+      CourseMode.online => 'Online Live',
+      CourseMode.offline => 'In-Person',
+      CourseMode.hybrid => 'Hybrid',
+    };
+
+    return SizedBox(
+      width: 240,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF101628),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFF243049)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 88,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (course.coverImage.isEmpty)
+                    const ColoredBox(color: Color(0xFF0F172A))
+                  else
+                    AppNetworkImage(url: course.coverImage, fit: BoxFit.cover),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x33000000), Color(0xCC070B14)],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white70),
+                      ),
+                      child: Text(
+                        modeLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (course.instituteVerified)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2E2366),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.verified_rounded,
+                          size: 14,
+                          color: Color(0xFF34D399),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (course.instituteName.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2E2366),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.apartment_rounded,
+                              size: 13,
+                              color: Color(0xFFC4B5FD),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                course.instituteName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFE9D5FF),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B1848), Color(0xFF1A1230)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF6B2148)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: Color(0xFFF9A8D4),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              timing,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            course.isFree ? 'Free' : formatInr(course.feeAmount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFC4B5FD),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () => context.push(
+                            AppRoutes.courseDetails.replaceAll(
+                              ':id',
+                              course.id,
+                            ),
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF6D28D9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 15,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -118,7 +118,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Flutter App Development Bootcamp'), findsOneWidget);
     expect(find.text('Nexus Learning Institute'), findsOneWidget);
-    expect(find.text('8 weeks'), findsOneWidget);
+    expect(find.text('2 Months'), findsOneWidget);
 
     await tester.tap(find.text('Flutter App Development Bootcamp'));
     await tester.pumpAndSettle();

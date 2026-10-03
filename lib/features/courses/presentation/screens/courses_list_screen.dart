@@ -354,7 +354,7 @@ class _CoursesListScreenState extends ConsumerState<CoursesListScreen> {
                                 : (responsive.isExpanded ? 2 : 3),
                             mainAxisSpacing: responsive.gridSpacing,
                             crossAxisSpacing: responsive.gridSpacing,
-                            childAspectRatio: 0.95,
+                            mainAxisExtent: 640,
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (context, i) =>
