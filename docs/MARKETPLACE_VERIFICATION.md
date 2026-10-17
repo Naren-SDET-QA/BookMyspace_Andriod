@@ -7,7 +7,7 @@ remaining milestones are tracked in `MARKETPLACE_IMPLEMENTATION.md`.
 
 ## Delivered behavior
 
-- `/marketplace` is a Flutter section inside the existing app, reachable from
+- `/marketplace` is a guest-readable Flutter section inside the existing app, reachable from
   the standard, premium, moment and life Home layouts and the screen directory.
 - Discovery uses a typed repository and `marketplace_search`, with full-text
   search, selected city, category, price, dates, sort and bounded 24-item pages.
@@ -50,7 +50,7 @@ for remediation guidance before a production launch.
 Local toolchain: Flutter 3.47.2 / Dart 3.13.2 on Windows. Existing CI remains
 pinned to Flutter 3.44.0 / Dart 3.12.0; no dependency upgrades are included.
 
-- Focused marketplace/affected screens/registration contract suite: **47 passed**. Viewports 320, 390,
+- Focused marketplace/affected screens/registration contract suite: **62 passed**. Viewports 320, 390,
   768 and 1440 pixels, including 200% text scaling, were tested.
 - Focused analyzer for new marketplace/localization/tests: **no issues**.
 - `flutter build web --release --no-pub`: **passed**.
@@ -61,17 +61,23 @@ pinned to Flutter 3.44.0 / Dart 3.12.0; no dependency upgrades are included.
   the guard and passed after the guard.
 - The harness intentionally tests a narrow schema. It does not replace full
   migration-chain tests against the pinned Supabase/PostgreSQL 17 stack.
-- Whole-repository initial analyzer: **780 existing diagnostics**; the repository
+- Whole-repository initial analyzer: **780 existing diagnostics**, reduced to
+  **751** after the registration repair; the repository
   already uses an analyzer baseline rather than requiring a clean global run.
 - The full initial test run completed with 1,832 passes and 4 failures. Detailed
   reruns and affected-screen checks are being collected during this branch.
-- `flutter build apk --debug --no-pub`: **passed**. A development-configured
-  build using the existing dev API URL and a public publishable key is also
-  being produced for installation testing. No service-role key is included.
-- Full regression rerun is in progress after restoring the broken registration
-  entry and fixing the directory assertions; its final outcome is a release gate.
-- iOS compilation was not executed on Windows. The existing macOS CI iOS job
-  is required; store signing and physical-device checks remain separate gates.
+- `flutter build apk --debug --no-pub`: **passed**, including a development build
+  using the existing dev API URL and a public publishable key. No service-role
+  key is included. Physical-device installation was not performed.
+- Full regression rerun: **1,868 passed, one failed** because a UI test still
+  asserted the removed simulated registration form. That test now checks the
+  real entry flow, and an additional test validates required schema fields in
+  the actual dynamic form. Both pass in the 62-test affected-suite rerun. A
+  completely green final whole-repository run is still a release gate.
+- The marketplace Android, Web and unsigned iOS build jobs **passed** in GitHub
+  Actions on commit `c632007`; the macOS iOS deployment-target checks also passed.
+  The final guest-route change is additionally compiled locally for Android/Web
+  and covered by a route test. Signing and physical-device checks remain gates.
 
 ## Reproduce
 
@@ -93,6 +99,15 @@ jobs on pull requests. The focused Flutter and PostgreSQL jobs have passed on
 GitHub Actions with Flutter 3.44.0 and PostgreSQL 17. Existing CI continues to run its full tests,
 full Supabase migration chain and Android/web/iOS build gates on pull requests.
 
+## Browser verification
+
+The rebuilt development web app was opened in the app browser at a phone-width
+viewport. Guest navigation to `/marketplace` rendered the themed catalog.
+Searching `Auditorium` returned actual existing development venue cards (not
+client fixtures), and the cards use the existing venue detail navigation.
+The route regression test confirms that guest catalog access does not make
+bookings, checkout, account or admin routes public.
+
 ### Existing release blockers found by CI
 
 - The historical migration chain has two different SQL files with version
@@ -108,7 +123,8 @@ full Supabase migration chain and Android/web/iOS build gates on pull requests.
 - The first full CI analyzer comparison found 113 diagnostics beyond the old
   baseline. Restoring the previously working registration implementation
   removes the fake form and missing registration contracts; remaining
-  diagnostics must be assessed without expanding the baseline to hide them.
+  comparison after repair still found 101 diagnostics beyond its baseline.
+  Remaining diagnostics must be assessed without expanding the baseline to hide them.
 
 ### Registration regression repaired
 

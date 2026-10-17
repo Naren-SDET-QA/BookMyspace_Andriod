@@ -1964,6 +1964,7 @@ String? resolveAppRedirect({
   if (_isPhaseOneBackendUnavailable(canonical)) return AppRoutes.home;
   if (!authReady) return null;
   final isPublic =
+      canonical == AppRoutes.marketplace ||
       canonical.startsWith('/venues/') ||
       canonical == AppRoutes.screenDirectory ||
       canonical == AppRoutes.splash ||
