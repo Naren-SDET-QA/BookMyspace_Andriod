@@ -72,6 +72,19 @@ lib/
 
 ## Documentation
 
+### Marketplace section
+
+The Flutter app includes a `/marketplace` section, reachable from the customer
+Home layouts. It searches existing published venues, events and courses through
+the RLS-preserving `marketplace_search` RPC. Apply the marketplace migration
+before enabling this branch against an environment; no remote database is
+changed by cloning or building the app.
+
+See [implementation audit and milestones](docs/MARKETPLACE_IMPLEMENTATION.md)
+and [verification and deployment notes](docs/MARKETPLACE_VERIFICATION.md).
+Movies/assigned seats and paid event commerce are pending milestones, not
+completed functionality of this catalog integration.
+
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Database schema](supabase/migrations/README.md)

@@ -8,6 +8,7 @@ import '../../../../core/router/search_route.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/bookmyspace_brand.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../marketplace/presentation/marketplace_entry_card.dart';
 import '../../../cms/presentation/widgets/live_brand.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
@@ -292,6 +293,12 @@ class _ChoiceHomeScreenState extends ConsumerState<ChoiceHomeScreen> {
                         },
                       ),
                     ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                child: const MarketplaceEntryCard(),
+              ),
             ),
           ],
         ),

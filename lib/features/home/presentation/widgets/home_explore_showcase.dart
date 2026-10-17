@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../marketplace/presentation/marketplace_entry_card.dart';
 import '../../../venues/domain/venue.dart';
 import '../../../venues/presentation/venue_providers.dart';
 import '../home_category_catalog.dart';
@@ -91,6 +92,8 @@ class HomeExploreShowcase extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _CategoryGrid(tiles: tiles),
+        const SizedBox(height: 16),
+        const MarketplaceEntryCard(),
         const SizedBox(height: 20),
         _PromoBanner(
           imageUrl: venues

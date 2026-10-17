@@ -1,0 +1,106 @@
+# Marketplace verification and rollout
+
+This branch delivers the first marketplace integration milestone, not the
+complete multi-category ticketing platform requested in the product brief.
+Movies, cinema layouts, assigned-seat holds, paid event commerce and the other
+remaining milestones are tracked in `MARKETPLACE_IMPLEMENTATION.md`.
+
+## Delivered behavior
+
+- `/marketplace` is a Flutter section inside the existing app, reachable from
+  the standard, premium, moment and life Home layouts and the screen directory.
+- Discovery uses a typed repository and `marketplace_search`, with full-text
+  search, selected city, category, price, dates, sort and bounded 24-item pages.
+- Existing venue/event/course detail routes retain ownership of booking flows.
+  Dining/experience/sports listings are classified from existing venue categories;
+  this does not implement new restaurant-table or assigned-seat inventory.
+- English/Telugu copy, light/dark theme support, loading/empty/retry states,
+  350 ms search debounce and accessible responsive layouts are implemented.
+- No catalog content or availability is invented when the backend fails.
+
+## Database and development environment
+
+Applied to the connected **bookmyspace-dev** project (`zykxneztahxbjduagutv`):
+
+1. `20261017193103_marketplace_catalog_search.sql`
+2. `20261017193222_marketplace_anonymous_policy_guard.sql`
+
+Migration filenames match the versions recorded by the remote migration tool.
+The first adds a security-invoker RPC, three full-text indexes and explicit
+column-level SELECT/EXECUTE grants. All eight source tables retain RLS.
+The second scopes existing owner/admin policies to `authenticated`, retaining
+their predicates and the separate public policies. It fixes a live anonymous
+read error caused by `venue_images_owner_write` calling owner-only
+`can_edit_venue` under a PUBLIC `ALL` policy. No owner helper was exposed to
+anonymous callers, and no booking/payment records were modified.
+
+Verified a real anonymous query with `SET LOCAL ROLE anon`: the first page
+returned 24 published venue listings. No customer, booking or payment test
+fixtures were inserted into the connected development project.
+
+Security advisor results before/after were unchanged: 10 policy-less RLS
+tables (INFO), 36 mutable function search paths, 1 existing RLS-disabled object,
+3 extensions in public, 32 anonymous and 169 authenticated security-definer
+function findings, and leaked-password protection disabled. These are baseline
+findings, not a clean security audit. See the [Supabase database linter](https://supabase.com/docs/guides/database/database-linter)
+for remediation guidance before a production launch.
+
+## Executed checks
+
+Local toolchain: Flutter 3.47.2 / Dart 3.13.2 on Windows. Existing CI remains
+pinned to Flutter 3.44.0 / Dart 3.12.0; no dependency upgrades are included.
+
+- Initial marketplace domain/widget suite: **14 passed**. Viewports 320, 390,
+  768 and 1440 pixels, including 200% text scaling, were tested.
+- Focused analyzer for new marketplace/localization/tests: **no issues**.
+- `flutter build web --release --no-pub`: **passed**.
+- PostgreSQL 18 disposable schema harness: catalog migration, publication,
+  full-text/category/price/date filtering, stable pagination, invalid inputs,
+  module platforms, explicit column grants and source RLS for anon/authenticated
+  **passed**. The legacy anonymous owner-policy failure was reproduced before
+  the guard and passed after the guard.
+- The harness intentionally tests a narrow schema. It does not replace full
+  migration-chain tests against the pinned Supabase/PostgreSQL 17 stack.
+- Whole-repository initial analyzer: **780 existing diagnostics**; the repository
+  already uses an analyzer baseline rather than requiring a clean global run.
+- The full initial test run completed with 1,832 passes and 4 failures. Detailed
+  reruns and affected-screen checks are being collected during this branch.
+- Android debug build and full regression rerun were started; final outcomes
+  must be recorded before a release is approved.
+- iOS compilation was not executed on Windows. The existing macOS CI iOS job
+  is required; store signing and physical-device checks remain separate gates.
+
+## Reproduce
+
+```sh
+flutter pub get
+dart format --output=none --set-exit-if-changed lib/features/marketplace lib/core/localization/marketplace_strings.dart test/features/marketplace
+dart analyze lib/features/marketplace lib/core/localization/marketplace_strings.dart test/features/marketplace
+flutter test test/features/marketplace test/features/common/master_screen_directory_screen_test.dart test/features/home/choice_home_screen_test.dart
+flutter build web --release
+flutter build apk --debug
+```
+
+On macOS with Xcode and CocoaPods, additionally run the existing iOS deployment
+target checks and `flutter build ios --release --no-codesign`.
+
+The `Marketplace section` workflow runs focused Flutter checks and the
+PostgreSQL 17 catalog/RLS harness. Existing CI continues to run its full tests,
+full Supabase migration chain and Android/web/iOS build gates on pull requests.
+
+## API
+
+`marketplace_search` accepts `p_query`, `p_city`, `p_category`, `p_sort`,
+`p_min_price`, `p_max_price`, `p_from`, `p_until`, `p_limit`, `p_offset`,
+`p_platform`. Limit is 1–48, offset 0–10,000. Date end is exclusive; scheduled
+filters omit undated venues. Prices are currently INR only. Search responses
+are discovery data and must never be used as authoritative checkout quotes.
+Entity IDs are UUIDs; clients derive internal routes from the typed entity
+kind and never execute a route supplied by the backend.
+
+## Remaining release gates
+
+Complete the remaining inventory/payment/ticket milestones and test the
+configured staging flows on Android/iOS/Web before describing the entire app
+as end-to-end production ready. Do not merge or publish this draft based on
+the presence of the new catalog UI alone.

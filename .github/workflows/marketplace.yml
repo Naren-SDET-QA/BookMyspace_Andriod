@@ -1,0 +1,59 @@
+name: Marketplace section
+
+on:
+  pull_request:
+    paths:
+      - 'lib/features/marketplace/**'
+      - 'lib/core/localization/marketplace_strings.dart'
+      - 'test/features/marketplace/**'
+      - 'supabase/**/marketplace*'
+      - 'supabase/migrations/*marketplace*'
+      - '.github/workflows/marketplace.yml'
+  push:
+    branches: ['codex/flutter-marketplace-integration']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-section:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib/features/marketplace lib/core/localization/marketplace_strings.dart test/features/marketplace
+      - run: dart analyze lib/features/marketplace lib/core/localization/marketplace_strings.dart test/features/marketplace
+      - run: flutter test test/features/marketplace
+
+  postgres-catalog:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: marketplace_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify catalog migration with column grants and source RLS
+        run: >-
+          psql -X -h 127.0.0.1 -p 5432 -U postgres -d marketplace_test
+          --set ON_ERROR_STOP=1
+          -f supabase/tests/fixtures/marketplace_schema.sql
+          -f supabase/migrations/20261017193103_marketplace_catalog_search.sql
+          -f supabase/migrations/20261017193222_marketplace_anonymous_policy_guard.sql
+          -f supabase/tests/marketplace_catalog.sql

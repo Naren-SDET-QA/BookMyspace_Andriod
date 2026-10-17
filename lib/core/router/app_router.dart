@@ -78,6 +78,7 @@ import '../../features/courses/presentation/screens/owner_institute_dashboard_sc
 import '../../features/courses/domain/course.dart';
 import '../../features/customer_analytics/presentation/screens/customer_analytics_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
+import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
 import '../../features/home/presentation/screens/customer_category_preferences_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
@@ -210,6 +211,7 @@ abstract class AppRoutes {
   /// [receipt]; this one moved so both stay reachable.
   static const bookingReceipt = '/bookings/:id/payment-receipt';
   static const eventsList = '/events';
+  static const marketplace = '/marketplace';
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
   static const courseDetails = '/courses/:id';
@@ -692,6 +694,10 @@ GoRouter createAppRouter({
       return _UnknownRouteScreen(location: state.uri.path);
     },
     routes: [
+      GoRoute(
+        path: AppRoutes.marketplace,
+        builder: (context, state) => const MarketplaceScreen(),
+      ),
       for (final entry in specRouteAliases.entries)
         GoRoute(
           path: entry.key,
