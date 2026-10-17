@@ -104,7 +104,8 @@ full Supabase migration chain and Android/web/iOS build gates on pull requests.
 The rebuilt development web app was opened in the app browser at a phone-width
 viewport. Guest navigation to `/marketplace` rendered the themed catalog.
 Searching `Auditorium` returned actual existing development venue cards (not
-client fixtures), and the cards use the existing venue detail navigation.
+client fixtures). Opening the first result loaded its existing venue detail
+screen with the correct title, price, availability and booking entry controls.
 The route regression test confirms that guest catalog access does not make
 bookings, checkout, account or admin routes public.
 
@@ -121,9 +122,8 @@ bookings, checkout, account or admin routes public.
   owners must assess and rotate/revoke any real exposed credentials before
   accepting a history baseline or rewriting history. The scan is not disabled.
 - The first full CI analyzer comparison found 113 diagnostics beyond the old
-  baseline. Restoring the previously working registration implementation
-  removes the fake form and missing registration contracts; remaining
-  comparison after repair still found 101 diagnostics beyond its baseline.
+  baseline. After restoring the real registration routing and its contracts,
+  the comparison still found 101 diagnostics beyond that baseline.
   Remaining diagnostics must be assessed without expanding the baseline to hide them.
 
 ### Registration regression repaired
@@ -147,6 +147,14 @@ Entity IDs are UUIDs; clients derive internal routes from the typed entity
 kind and never execute a route supplied by the backend.
 
 ## Remaining release gates
+
+Changed file groups: `features/marketplace`, marketplace localization, router,
+Home entry cards, screen directory, real registration entry, focused tests,
+workflow and audit/verification documentation. Two forward-only migrations
+were added and applied to development. **No Edge Functions were added or
+modified**; this catalog uses a read-only database RPC and retains existing
+booking/payment functions. The next milestone is movie/cinema inventory and
+seat layouts, following resolution of the shared release gates.
 
 Complete the remaining inventory/payment/ticket milestones and test the
 configured staging flows on Android/iOS/Web before describing the entire app
