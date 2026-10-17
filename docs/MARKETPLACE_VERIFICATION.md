@@ -50,7 +50,7 @@ for remediation guidance before a production launch.
 Local toolchain: Flutter 3.47.2 / Dart 3.13.2 on Windows. Existing CI remains
 pinned to Flutter 3.44.0 / Dart 3.12.0; no dependency upgrades are included.
 
-- Initial marketplace domain/widget suite: **14 passed**. Viewports 320, 390,
+- Focused marketplace/affected screens/registration contract suite: **47 passed**. Viewports 320, 390,
   768 and 1440 pixels, including 200% text scaling, were tested.
 - Focused analyzer for new marketplace/localization/tests: **no issues**.
 - `flutter build web --release --no-pub`: **passed**.
@@ -65,8 +65,11 @@ pinned to Flutter 3.44.0 / Dart 3.12.0; no dependency upgrades are included.
   already uses an analyzer baseline rather than requiring a clean global run.
 - The full initial test run completed with 1,832 passes and 4 failures. Detailed
   reruns and affected-screen checks are being collected during this branch.
-- Android debug build and full regression rerun were started; final outcomes
-  must be recorded before a release is approved.
+- `flutter build apk --debug --no-pub`: **passed**. A development-configured
+  build using the existing dev API URL and a public publishable key is also
+  being produced for installation testing. No service-role key is included.
+- Full regression rerun is in progress after restoring the broken registration
+  entry and fixing the directory assertions; its final outcome is a release gate.
 - iOS compilation was not executed on Windows. The existing macOS CI iOS job
   is required; store signing and physical-device checks remain separate gates.
 
@@ -85,8 +88,37 @@ On macOS with Xcode and CocoaPods, additionally run the existing iOS deployment
 target checks and `flutter build ios --release --no-codesign`.
 
 The `Marketplace section` workflow runs focused Flutter checks and the
-PostgreSQL 17 catalog/RLS harness. Existing CI continues to run its full tests,
+PostgreSQL 17 catalog/RLS harness, plus separate Android/Web/macOS iOS compile
+jobs on pull requests. The focused Flutter and PostgreSQL jobs have passed on
+GitHub Actions with Flutter 3.44.0 and PostgreSQL 17. Existing CI continues to run its full tests,
 full Supabase migration chain and Android/web/iOS build gates on pull requests.
+
+### Existing release blockers found by CI
+
+- The historical migration chain has two different SQL files with version
+  `20260928071656`. Supabase rejects the second with a duplicate primary key in
+  its migration history. The repository's forward-only/immutable-history policy
+  means this requires a deliberate history reconciliation; this branch does
+  not rename old migrations or reset any shared database.
+- The full-history secret scanner reports **13 historical findings** (11
+  generic API-key findings and 2 GCP API-key findings), all predating this
+  branch. The redacted report contains file/line/commit identifiers only. Key
+  owners must assess and rotate/revoke any real exposed credentials before
+  accepting a history baseline or rewriting history. The scan is not disabled.
+- The first full CI analyzer comparison found 113 diagnostics beyond the old
+  baseline. Restoring the previously working registration implementation
+  removes the fake form and missing registration contracts; remaining
+  diagnostics must be assessed without expanding the baseline to hide them.
+
+### Registration regression repaired
+
+The base commit replaced the working unified registration entry with a form
+that delayed 600 ms and reported success without persisting anything. The
+branch restores the predecessor's backend-backed routing: owners use the
+dedicated OTP flow; other roles use the existing dynamic module-registration
+repository. It restores `UnifiedRegistrationModule.resolve`, removes the
+fabricated success path and sample personal-data defaults, and adds widget
+navigation tests. Existing registered module contracts are preserved.
 
 ## API
 

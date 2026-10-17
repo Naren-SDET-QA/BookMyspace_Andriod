@@ -98,6 +98,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Home Discovery Screen'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('India Location & Multi-Tier Discovery'),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
       expect(
         find.text('India Location & Multi-Tier Discovery'),
         findsOneWidget,

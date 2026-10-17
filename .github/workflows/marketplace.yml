@@ -57,3 +57,40 @@ jobs:
           -f supabase/migrations/20261017193103_marketplace_catalog_search.sql
           -f supabase/migrations/20261017193222_marketplace_anonymous_policy_guard.sql
           -f supabase/tests/marketplace_catalog.sql
+
+  platform-build:
+    name: Marketplace ${{ matrix.platform }} build
+    if: github.event_name != 'push'
+    needs: flutter-section
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Android
+            os: ubuntu-latest
+            command: flutter build apk --debug
+          - platform: Web
+            os: ubuntu-latest
+            command: flutter build web --release
+          - platform: iOS
+            os: macos-latest
+            command: flutter build ios --release --no-codesign
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: matrix.platform == 'Android'
+        with:
+          distribution: zulu
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: python3 scripts/check_ios_deployment_target.py
+        if: matrix.platform == 'iOS'
+      - run: ${{ matrix.command }}
+      - run: python3 scripts/check_ios_deployment_target.py --after-build
+        if: matrix.platform == 'iOS'
