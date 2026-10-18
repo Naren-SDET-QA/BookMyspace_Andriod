@@ -33,8 +33,8 @@ on conflict do nothing;
 
 insert into public.user_roles (user_id, role) values (:'admin_id'::uuid, 'administrator');
 
-insert into public.organizations (id, owner_user_id, name) values
-  ('a0000000-0000-0000-0000-000000000001', :'owner_id'::uuid, 'Owner Org')
+insert into public.organizations (id, owner_user_id, org_type, name) values
+  ('a0000000-0000-0000-0000-000000000001', :'owner_id'::uuid, 'venue_owner', 'Owner Org')
 on conflict do nothing;
 
 insert into public.venues (id, org_id, name) values

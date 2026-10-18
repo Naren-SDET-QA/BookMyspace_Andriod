@@ -79,7 +79,6 @@ import '../../features/courses/domain/course.dart';
 import '../../features/customer_analytics/presentation/screens/customer_analytics_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
-import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/home/presentation/screens/customer_category_preferences_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/home_layout_switch.dart';
@@ -92,6 +91,7 @@ import '../../features/invoices/presentation/screens/invoice_screens.dart'
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
 import '../../features/location/presentation/screens/location_management_screen.dart';
+import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_room_booking_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_room_detail_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_room_owner_screen.dart';
