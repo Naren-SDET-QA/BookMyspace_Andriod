@@ -24,3 +24,24 @@ NOT idempotent (a plain `create table` followed later by a
 differently-shaped `create table if not exists` for the same name) —
 those are exactly the drift-then-patch pairs described above, and the
 patch file is load-bearing, not optional cleanup.
+
+## Duplicate version reconciliation
+
+The two historical files `20260928071656_b4_advance_payment.sql` and
+`20260928071656_b5_venue_payment_rules.sql` shared a version that Supabase
+cannot record twice. Preserve B4 at its original version. B5's SQL content is
+byte-for-byte preserved under the unique forward version
+`20261018100000_b5_venue_payment_rules_reconciled.sql`; do not recreate the
+duplicate version or edit either migration's SQL in place.
+
+Before applying this reconciliation to any shared environment, compare the
+remote migration ledger and schema effects of both migrations. Apply B4 if its
+effects are absent; if the effects already exist but the ledger row is absent,
+record that legacy state with the environment's approved forward-only
+`supabase migration repair --status applied 20260928071656` procedure. Apply
+B5 normally when its effects are absent. If B5's effects already exist, record
+the new version as applied only after verifying all B5 columns, constraint,
+function definitions and grants. Never reset a shared database to resolve
+this collision. The connected development database has B4's effects but no
+ledger row for its version, and does not yet have B5's effects; no hosted
+database was changed by this reconciliation.

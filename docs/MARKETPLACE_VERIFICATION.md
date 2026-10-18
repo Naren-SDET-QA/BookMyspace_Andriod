@@ -162,13 +162,17 @@ been allowlisted and the scanner remains enabled.
 Read-only inspection of the connected development project found no
 `20260928071656` entry in the remote migration ledger. The schema contains all
 B4 payment-plan columns/functions but none of B5's payment-rule
-columns/functions. A forward-only reconciliation can preserve the SQL
-contents: assign B5 a unique migration version, verify each environment's
-schema and migration ledger, mark the legacy B4 version applied only where its
-effects are verified, and apply B5 only where its effects are absent. No
-historical migration file or hosted database was changed. The plan still needs
-full-chain disposable validation before adoption; production data/schema were
-not modified.
+columns/functions. B5's SQL was moved byte-for-byte to the unique forward
+version `20261018100000_b5_venue_payment_rules_reconciled.sql`. On a new,
+disposable PostgreSQL 18 database, both B4 and re-versioned B5 applied
+successfully; a check confirmed the expected B4/B5 columns and functions, and
+the two unique versions inserted into a primary-key migration ledger. The
+fixture intentionally models only the dependencies for these two migrations;
+it is not the full Supabase stack. The full PostgreSQL 17 Supabase reset on the
+updated PR head remains the end-to-end migration-chain check. No hosted
+database was modified. Before applying to any shared environment, compare its
+ledger and schema and use the forward-only repair procedure in
+`supabase/migrations/README.md`; never reset a shared database.
 
 The analyzer baseline has not been expanded. Most excess findings are in
 paths unchanged by this branch; several findings in changed Home/router and
