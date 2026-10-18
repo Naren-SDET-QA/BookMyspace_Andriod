@@ -118,9 +118,11 @@ begin
 
   -- ── TEST 5: Concurrent enrollment on 2-seat batch ─────────
   -- Drop both, create a fresh 2-seat batch
+  perform set_config('request.jwt.claim.sub', v_user_a::text, true);
   perform public.drop_course_enrollment(
     (select id from public.course_enrollments where batch_id = v_batch and user_id = v_user_a)
   );
+  perform set_config('request.jwt.claim.sub', v_user_b::text, true);
   perform public.drop_course_enrollment(
     (select id from public.course_enrollments where batch_id = v_batch and user_id = v_user_b)
   );
