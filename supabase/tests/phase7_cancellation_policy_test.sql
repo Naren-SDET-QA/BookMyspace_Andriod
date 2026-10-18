@@ -41,8 +41,8 @@ insert into public.venues (id, org_id, name, latitude, longitude) values
   ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Test Venue', 17.3850, 78.4867)
 on conflict do nothing;
 
-insert into public.time_slots (id, venue_id, start_time, end_time) values
-  ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '10:00', '14:00')
+insert into public.time_slots (id, venue_id, label, start_time, end_time, price_amount) values
+  ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Test Slot', '10:00', '14:00', 1000)
 on conflict do nothing;
 
 -- =====================================================================
@@ -111,17 +111,21 @@ begin
   );
   insert into public.venue_cancellation_policy_history (venue_id, version, policy, changed_by)
   values (v_venue_id, 1, v_policy, '11111111-1111-1111-1111-111111111111');
-  insert into public.time_slots (id, venue_id, start_time, end_time)
-  values (v_slot_id, v_venue_id, v_book_ts::time, (v_book_ts + interval '4 hours')::time);
+  insert into public.time_slots (id, venue_id, label, start_time, end_time, price_amount)
+  values (v_slot_id, v_venue_id, 'Test Slot', v_book_ts::time, (v_book_ts + interval '4 hours')::time, 1000);
 
-  insert into public.booking_holds (id, venue_id, slot_id, book_date, status, expires_at)
-  values (v_hold_id, v_venue_id, v_slot_id, v_book_ts::date, 'active', now() + interval '1 hour');
+  insert into public.booking_holds (
+    id, idempotency_key, venue_id, slot_id, book_date, user_id, price_amount, status, expires_at
+  ) values (
+    v_hold_id, gen_random_uuid(), v_venue_id, v_slot_id, v_book_ts::date,
+    p_user_id, 1000, 'active', now() + interval '1 hour'
+  );
 
   insert into public.bookings (
-    id, user_id, venue_id, slot_id, book_date, start_time, end_time, hold_id,
+    id, booking_ref, user_id, venue_id, slot_id, book_date, start_time, end_time, hold_id,
     status, amount, tax_amount, total_amount, approved_at, approved_by, payment_expires_at
   ) values (
-    v_booking_id, p_user_id, v_venue_id, v_slot_id,
+    v_booking_id, 'TEST-' || replace(v_booking_id::text, '-', ''), p_user_id, v_venue_id, v_slot_id,
     v_book_ts::date, v_book_ts::time, (v_book_ts + interval '4 hours')::time, v_hold_id,
     'pending', 1000, 180, 1180, now(), '11111111-1111-1111-1111-111111111111', now() + interval '1 hour'
   );
@@ -158,8 +162,8 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 -- =====================================================================
 insert into public.venues (id, org_id, name, latitude, longitude) values
   ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'No-Policy Venue', 17.3850, 78.4867);
-insert into public.time_slots (id, venue_id, start_time, end_time) values
-  ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', '10:00', '14:00');
+insert into public.time_slots (id, venue_id, label, start_time, end_time, price_amount) values
+  ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'No-Policy Slot', '10:00', '14:00', 1000);
 
 do $$
 begin
@@ -174,10 +178,15 @@ declare
   v_result jsonb;
 begin
   v_booking := gen_random_uuid();
-  insert into public.booking_holds (id, venue_id, slot_id, book_date, status, expires_at)
-  values (v_booking, 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', current_date + 3, 'active', now() + interval '1 hour');
-  insert into public.bookings (id, user_id, venue_id, slot_id, book_date, start_time, end_time, hold_id, status, amount, tax_amount, total_amount, approved_at, approved_by, payment_expires_at)
-  values (v_booking, '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', current_date + 3, '10:00', '14:00', v_booking, 'pending', 1000, 180, 1180, now(), '11111111-1111-1111-1111-111111111111', now() + interval '1 hour');
+  insert into public.booking_holds (
+    id, idempotency_key, venue_id, slot_id, book_date, user_id, price_amount, status, expires_at
+  ) values (
+    v_booking, gen_random_uuid(), 'b0000000-0000-0000-0000-000000000002',
+    'c0000000-0000-0000-0000-000000000002', current_date + 3,
+    '33333333-3333-3333-3333-333333333333', 1000, 'active', now() + interval '1 hour'
+  );
+  insert into public.bookings (id, booking_ref, user_id, venue_id, slot_id, book_date, start_time, end_time, hold_id, status, amount, tax_amount, total_amount, approved_at, approved_by, payment_expires_at)
+  values (v_booking, 'TEST-' || replace(v_booking::text, '-', ''), '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', current_date + 3, '10:00', '14:00', v_booking, 'pending', 1000, 180, 1180, now(), '11111111-1111-1111-1111-111111111111', now() + interval '1 hour');
   v_ref := test_capture_payment(v_booking, '33333333-3333-3333-3333-333333333333', 1180);
   v_result := public.confirm_venue_booking(v_booking, '33333333-3333-3333-3333-333333333333', v_ref);
   perform test_assert('Stage <4 (default): policy-less venue confirmation SUCCEEDS unchanged (no unexpected catalog block)',
@@ -219,10 +228,15 @@ begin
 
   perform set_config('request.jwt.claim.role', 'service_role', false); -- session-scoped, back to confirm-time actor
   v_booking := gen_random_uuid();
-  insert into public.booking_holds (id, venue_id, slot_id, book_date, status, expires_at)
-  values (v_booking, 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', current_date + 4, 'active', now() + interval '1 hour');
-  insert into public.bookings (id, user_id, venue_id, slot_id, book_date, start_time, end_time, hold_id, status, amount, tax_amount, total_amount, approved_at, approved_by, payment_expires_at)
-  values (v_booking, '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', current_date + 4, '10:00', '14:00', v_booking, 'pending', 1000, 180, 1180, now(), '11111111-1111-1111-1111-111111111111', now() + interval '1 hour');
+  insert into public.booking_holds (
+    id, idempotency_key, venue_id, slot_id, book_date, user_id, price_amount, status, expires_at
+  ) values (
+    v_booking, gen_random_uuid(), 'b0000000-0000-0000-0000-000000000002',
+    'c0000000-0000-0000-0000-000000000002', current_date + 4,
+    '33333333-3333-3333-3333-333333333333', 1000, 'active', now() + interval '1 hour'
+  );
+  insert into public.bookings (id, booking_ref, user_id, venue_id, slot_id, book_date, start_time, end_time, hold_id, status, amount, tax_amount, total_amount, approved_at, approved_by, payment_expires_at)
+  values (v_booking, 'TEST-' || replace(v_booking::text, '-', ''), '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', current_date + 4, '10:00', '14:00', v_booking, 'pending', 1000, 180, 1180, now(), '11111111-1111-1111-1111-111111111111', now() + interval '1 hour');
   v_ref := test_capture_payment(v_booking, '33333333-3333-3333-3333-333333333333', 1180);
   v_result := public.confirm_venue_booking(v_booking, '33333333-3333-3333-3333-333333333333', v_ref);
   perform test_assert('Stage 4 (enforce, explicitly activated): policy-less venue confirmation now BLOCKED',
@@ -399,13 +413,13 @@ begin
   -- existed: cancellation_policy is NULL and venue's own policy is NULL.
   insert into public.venues (id, org_id, name, latitude, longitude) values
     ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Historical Venue (no policy)', 17.3850, 78.4867);
-  insert into public.time_slots (id, venue_id, start_time, end_time) values
-    ('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', '10:00', '14:00');
+  insert into public.time_slots (id, venue_id, label, start_time, end_time, price_amount) values
+    ('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 'Historical Slot', '10:00', '14:00', 1000);
 
   v_booking := gen_random_uuid();
-  insert into public.bookings (id, user_id, venue_id, slot_id, book_date, start_time, end_time,
+  insert into public.bookings (id, booking_ref, user_id, venue_id, slot_id, book_date, start_time, end_time,
     status, amount, tax_amount, total_amount, confirmed_at)
-  values (v_booking, '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000003',
+  values (v_booking, 'TEST-' || replace(v_booking::text, '-', ''), '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000003',
     'c0000000-0000-0000-0000-000000000003', current_date + 5, '10:00', '14:00',
     'confirmed', 1000, 180, 1180, now() - interval '10 days');
   v_ref := test_capture_payment(v_booking, '33333333-3333-3333-3333-333333333333', 1180);
