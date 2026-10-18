@@ -78,3 +78,11 @@ the superseded full constraint. This enables a new refund attempt only after
 the previous attempt is `failed`; active/refund-in-progress attempts remain
 unique. It is forward-only and does not alter refund data. Do not edit the
 historical migrations or manually drop constraints in a shared environment.
+
+Migration `20261018055833_revoke_anon_mark_ticket_resolved.sql` repairs a grant
+regression in `20260912140000_gap_closure_analytics_support_storage.sql`:
+recreating this SECURITY DEFINER function and revoking from `PUBLIC` did not
+explicitly revoke the Supabase `anon` role. The forward migration revokes
+both and grants only `authenticated` and `service_role`, preserving the
+function's existing authenticated authorization checks. No function body or
+data is changed.

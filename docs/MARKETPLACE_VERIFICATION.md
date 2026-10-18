@@ -269,6 +269,14 @@ no-overlap constraint when the test reused a venue/date/time. The helper now
 assigns a distinct disposable booking date to each test booking; the
 constraint remains unchanged. SQL validation is pending again.
 
+The next SQL run passed the cancellation policy suite and all 12 refund
+cancellation scenarios, then reached the security-definer RPC contract test.
+That test found `mark_ticket_resolved` still executable by `anon`: a historical
+function recreation revoked `PUBLIC` but did not revoke the Supabase `anon`
+role explicitly. A forward-only grant reconciliation now revokes both and
+grants only `authenticated` and `service_role`. Its full-chain verification is
+pending; the RPC body and its authenticated authorization checks are unchanged.
+
 The marketplace platform matrix on that head passed: Android debug APK, Web
 release, and iOS release compilation with `--no-codesign`. These are build
 checks, not signed distribution or physical-device verification. Gitleaks
