@@ -264,6 +264,10 @@ still pending on this latest fixture correction. A subsequent SQL run got
 past the role setup and exposed the final domain invariant: each booking must
 reference a time slot or bookable resource. The fixture now provisions two
 valid test slots and uses the matching slot in its shared booking helper.
+The next run confirmed the JWT context and then correctly enforced the
+no-overlap constraint when the test reused a venue/date/time. The helper now
+assigns a distinct disposable booking date to each test booking; the
+constraint remains unchanged. SQL validation is pending again.
 
 The marketplace platform matrix on that head passed: Android debug APK, Web
 release, and iOS release compilation with `--no-codesign`. These are build

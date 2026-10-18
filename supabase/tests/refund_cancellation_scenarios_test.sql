@@ -12,6 +12,8 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000c', 'refund-stranger@test.com')
 on conflict (id) do nothing;
 
+create temp sequence refund_booking_day_seq;
+
 insert into public.organizations (id, owner_user_id, org_type, name) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'venue_owner', 'Refund Test Organization');
 
@@ -48,7 +50,9 @@ begin
     id, booking_ref, user_id, venue_id, slot_id, book_date, status, amount, total_amount
   ) values (
     v_booking_id, 'TEST-' || replace(v_booking_id::text, '-', ''),
-    p_user_id, p_venue_id, v_slot_id, current_date, p_status, p_amount, p_amount
+    p_user_id, p_venue_id, v_slot_id,
+    current_date + nextval('pg_temp.refund_booking_day_seq')::integer,
+    p_status, p_amount, p_amount
   );
   return v_booking_id;
 end;
