@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState, AuthUser
 import '../../features/accommodations/domain/accommodation.dart';
 import '../../features/accommodations/presentation/screens/accommodation_list_screen.dart';
 import '../../features/accommodations/presentation/screens/stay_management_screens.dart';
-import '../../features/admin/presentation/admin_settings_providers.dart';
 import '../../features/admin/presentation/screens/admin_app_sections_screen.dart';
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_cms_screen.dart';
@@ -33,7 +32,6 @@ import '../../features/admin/presentation/screens/admin_developer_platform_scree
 import '../../features/admin/presentation/screens/admin_connector_registry_screen.dart';
 import '../../features/admin/presentation/screens/admin_listings_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_providers_screen.dart';
-import '../../features/admin/presentation/widgets/platform_status_banner.dart';
 import '../../features/admin/presentation/screens/admin_observability_screen.dart';
 import '../../features/admin/presentation/screens/admin_oversight_screen.dart';
 import '../../features/admin/presentation/screens/admin_promotions_screen.dart';
@@ -53,6 +51,7 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/widgets/role_gate.dart';
 import '../config/app_config.dart';
+import 'search_route.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/booking/domain/booking.dart';
@@ -79,8 +78,8 @@ import '../../features/courses/presentation/screens/owner_institute_dashboard_sc
 import '../../features/courses/domain/course.dart';
 import '../../features/customer_analytics/presentation/screens/customer_analytics_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
-import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/events/presentation/screens/events_list_screen.dart';
+import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/home/presentation/screens/customer_category_preferences_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/home_layout_switch.dart';
@@ -157,6 +156,7 @@ import '../../features/navigation/presentation/nav_tabs_providers.dart';
 import '../../features/navigation/presentation/screens/admin_nav_tabs_screen.dart';
 import '../../features/cms/presentation/screens/admin_catalog_screen.dart';
 import '../../features/navigation/presentation/screens/assistant_tab_screen.dart';
+import '../config/settings_controller.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen_v1.dart';
 import '../../features/auth/presentation/screens/login_screen_v1.dart';
 import '../../features/auth/presentation/screens/profile_screen_v1.dart';
@@ -172,15 +172,15 @@ import '../../features/payments/presentation/screens/payment_screen_v1.dart';
 import '../../features/search/presentation/screens/search_screen_v1.dart';
 import '../../features/settings/presentation/screens/settings_screen_v1.dart';
 import '../../features/venues/presentation/screens/venue_details_screen_v1.dart';
-import '../config/settings_controller.dart';
 import '../localization/app_localizations.dart';
 import '../modular/feature_id.dart';
 import '../modular/feature_providers.dart';
 import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
 import '../theme/app_theme.dart';
+import '../../features/admin/presentation/admin_settings_providers.dart';
 import '../widgets/test_id.dart';
-import 'search_route.dart';
+import '../../features/admin/presentation/widgets/platform_status_banner.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {
