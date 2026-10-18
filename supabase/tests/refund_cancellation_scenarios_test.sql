@@ -6,6 +6,12 @@
 \set ON_ERROR_STOP on
 
 -- Fixtures --------------------------------------------------------------
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-00000000000a', 'refund-admin@test.com'),
+  ('00000000-0000-0000-0000-00000000000b', 'refund-customer@test.com'),
+  ('00000000-0000-0000-0000-00000000000c', 'refund-stranger@test.com')
+on conflict (id) do nothing;
+
 insert into public.organizations (id, owner_user_id, org_type, name) values
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'venue_owner', 'Refund Test Organization');
 

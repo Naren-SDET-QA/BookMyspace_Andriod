@@ -251,6 +251,16 @@ dropping the obsolete full constraint, enabling retry only after a failed
 refund without changing refund rows. Its full-chain SQL validation is pending; no
 shared or production database was touched.
 
+The subsequent run on `996c4ac` successfully applied this migration, and the
+full cancellation-policy SQL test passed including retry after a failed
+refund. The next SQL script exposed older fixture drift in
+`refund_cancellation_scenarios_test.sql`; its organization and venue fixtures
+were brought up to the current schema, and bookings now use a shared helper
+that provides the required booking reference and date. A further rerun found
+the fixture's referenced users were not seeded in `auth.users`; those explicit
+disposable users have now been added. SQL validation is still pending on this
+latest fixture correction.
+
 The marketplace platform matrix on that head passed: Android debug APK, Web
 release, and iOS release compilation with `--no-codesign`. These are build
 checks, not signed distribution or physical-device verification. Gitleaks
