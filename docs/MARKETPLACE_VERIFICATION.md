@@ -169,9 +169,13 @@ successfully; a check confirmed the expected B4/B5 columns and functions, and
 the two unique versions inserted into a primary-key migration ledger. The
 fixture intentionally models only the dependencies for these two migrations;
 it is not the full Supabase stack. The full PostgreSQL 17 Supabase reset on the
-updated PR head remains the end-to-end migration-chain check. No hosted
-database was modified. Before applying to any shared environment, compare its
-ledger and schema and use the forward-only repair procedure in
+updated PR head exposed a second prerequisite gap: the admin content guard
+expects `course_faculty.updated_at`, while the table's earlier creation does
+not define it. The connected development schema already has the column; no
+hosted database was modified. The new prerequisite migration adds it before
+the guard in clean-chain order. A full PostgreSQL 17 Supabase reset is pending
+on the new head. Before applying to any shared environment, compare its ledger
+and schema and use the forward-only repair procedure in
 `supabase/migrations/README.md`; never reset a shared database.
 
 The analyzer baseline has not been expanded. Most excess findings are in

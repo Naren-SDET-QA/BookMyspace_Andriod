@@ -45,3 +45,14 @@ function definitions and grants. Never reset a shared database to resolve
 this collision. The connected development database has B4's effects but no
 ledger row for its version, and does not yet have B5's effects; no hosted
 database was changed by this reconciliation.
+
+The clean-chain reset also revealed that the older
+`20260929140000_admin_content_write_guards.sql` expects
+`course_faculty.updated_at`, which its table creation migration omitted. The
+additive prerequisite migration
+`20260929130000_course_faculty_updated_at_prerequisite.sql` now supplies that
+column before the guard migration on fresh databases. In an already migrated
+environment, verify the column's type, default, nullability and RLS before
+repairing the new prerequisite version in the ledger. If it is absent, apply
+only this additive statement and then repair that version; do not use
+`--include-all` to replay unrelated gaps in an out-of-sync environment.
