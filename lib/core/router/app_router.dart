@@ -179,8 +179,8 @@ import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
 import '../theme/app_theme.dart';
 import '../../features/admin/presentation/admin_settings_providers.dart';
-import '../widgets/test_id.dart';
 import '../../features/admin/presentation/widgets/platform_status_banner.dart';
+import '../widgets/test_id.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {

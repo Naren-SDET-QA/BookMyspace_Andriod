@@ -1,9 +1,8 @@
 import 'package:bookmyspace/core/localization/app_localizations.dart';
 import 'package:bookmyspace/features/owner/presentation/screens/registration_field_configuration_screen.dart';
 import 'package:bookmyspace/features/registration/domain/module_registration.dart';
-import 'package:bookmyspace/features/registration/domain/user_registration_config_models.dart';
-import 'package:bookmyspace/features/registration/presentation/providers/registration_fields_provider.dart';
 import 'package:bookmyspace/features/registration/presentation/dynamic_registration_form.dart';
+import 'package:bookmyspace/features/registration/presentation/providers/registration_fields_provider.dart';
 import 'package:bookmyspace/features/registration/presentation/unified_registration_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

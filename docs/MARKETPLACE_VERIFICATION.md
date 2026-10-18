@@ -126,6 +126,56 @@ bookings, checkout, account or admin routes public.
   the comparison still found 101 diagnostics beyond that baseline.
   Remaining diagnostics must be assessed without expanding the baseline to hide them.
 
+## Phase 1 retest — 2026-10-18
+
+At PR head `d41b956`, GitHub reported the dedicated Flutter 3.44.0 focused
+checks and PostgreSQL 17 catalog/RLS checks passing. The dedicated Android,
+web and unsigned iOS compile jobs also passed. In the required general CI,
+`Analyze & Lint` failed with 102 diagnostics beyond the reviewed baseline;
+`SQL Migration Tests` failed while applying the second file named
+`20260928071656`. The general test and platform build jobs were skipped because
+they depend on the failed analyzer job. Both full-history Gitleaks runs failed
+on the same 13 historical findings.
+
+Local verification used Flutter 3.47.2 / Dart 3.13.2, not the repository's
+pinned CI toolchain:
+
+- `flutter test --no-pub --concurrency=4 --reporter expanded`: **1,875 passed**.
+- `flutter build web --release --no-pub`: **passed**.
+- `flutter build apk --release --config-only` followed by
+  `flutter build apk --release --no-pub`: **passed** (unsigned local release
+  APK). The build requires Flutter to regenerate plugin configuration; an
+  earlier invocation with stale dev-only plugin entries failed. No Gradle
+  source change was needed.
+- The focused 62-test suite passed before the complete suite.
+
+The 13 redacted Gitleaks entries map to commits by repository owner Naren.
+Two are `gcp-api-key` findings in Android application sources. The other 11
+are `generic-api-key` findings across the Android repository, an E2E script,
+and Flutter configuration. Redacted scanner metadata cannot establish whether
+these are active credentials or intentionally public client identifiers. The
+Google Cloud/Firebase key owner should revoke and replace active exposed keys,
+then confirm application/API restrictions. Each generic match needs owner-side
+classification, with rotation for any private credential. No fingerprint has
+been allowlisted and the scanner remains enabled.
+
+Read-only inspection of the connected development project found no
+`20260928071656` entry in the remote migration ledger. The schema contains all
+B4 payment-plan columns/functions but none of B5's payment-rule
+columns/functions. A forward-only reconciliation can preserve the SQL
+contents: assign B5 a unique migration version, verify each environment's
+schema and migration ledger, mark the legacy B4 version applied only where its
+effects are verified, and apply B5 only where its effects are absent. No
+historical migration file or hosted database was changed. The plan still needs
+full-chain disposable validation before adoption; production data/schema were
+not modified.
+
+The analyzer baseline has not been expanded. Most excess findings are in
+paths unchanged by this branch; several findings in changed Home/router and
+registration-test files were corrected. Remaining existing warnings still
+need source-level review, and the pinned analyzer must be rerun at the updated
+head.
+
 ### Registration regression repaired
 
 The base commit replaced the working unified registration entry with a form
