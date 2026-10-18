@@ -66,3 +66,15 @@ the paid-seat transition. The migration replaces the function without editing
 the historical waitlist migration; the full-chain SQL regression suite covers
 trial-to-paid transition and duplicate enrollment. Apply through normal
 migration ordering; do not manually replace the function in a shared database.
+
+The cancellation SQL regression also exposed that
+`20260828110000_refunds_payment_id_unique_dev.sql` left a full unique
+constraint on `refunds.payment_id` after
+`20260914170000_refund_cancellation_domain.sql` introduced the intended
+partial unique index for non-failed refunds. Migration
+`20261018033500_reconcile_refund_retry_constraint.sql` verifies that the
+partial index is valid and has the failed-status predicate, then drops only
+the superseded full constraint. This enables a new refund attempt only after
+the previous attempt is `failed`; active/refund-in-progress attempts remain
+unique. It is forward-only and does not alter refund data. Do not edit the
+historical migrations or manually drop constraints in a shared environment.

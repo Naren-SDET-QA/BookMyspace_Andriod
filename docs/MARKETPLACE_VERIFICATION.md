@@ -236,6 +236,27 @@ confirmation, the full SQL contract loop still needs a green run, and the
 credential-owner actions are unresolved. Do not start Phase 2 inventory or
 merge/deploy PR #6 until those gates are resolved.
 
+### Phase 1 CI update — 2026-10-18
+
+On `1afbf345`, pinned CI analyzer validation passed. The dedicated marketplace
+Flutter tests, PostgreSQL catalog/RLS checks, and Android, Web, and unsigned
+iOS builds all passed. The general full Flutter suite was still running when
+the SQL failure was retrieved. The full disposable migration reset applied
+every migration successfully; the cancellation SQL tests then exposed a
+conflict between the legacy full `refunds.payment_id` unique constraint and
+the later active-only partial unique index. The affected cancellation fixtures
+were corrected to satisfy the actual required venue, slot, hold, and booking
+columns. A new forward-only migration verifies the active-only index before
+dropping the obsolete full constraint, enabling retry only after a failed
+refund without changing refund rows. Its full-chain SQL validation is pending; no
+shared or production database was touched.
+
+The marketplace platform matrix on that head passed: Android debug APK, Web
+release, and iOS release compilation with `--no-codesign`. These are build
+checks, not signed distribution or physical-device verification. Gitleaks
+continues to fail on the same 13 historical findings and remains an owner
+credential review/rotation gate. Phase 1 is still not release-ready.
+
 ### Registration regression repaired
 
 The base commit replaced the working unified registration entry with a form
