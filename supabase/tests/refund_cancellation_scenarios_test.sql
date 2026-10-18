@@ -6,16 +6,37 @@
 \set ON_ERROR_STOP on
 
 -- Fixtures --------------------------------------------------------------
-insert into public.organizations (id, owner_user_id) values
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a');
+insert into public.organizations (id, owner_user_id, org_type, name) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'venue_owner', 'Refund Test Organization');
 
-insert into public.venues (id, org_id, cancellation_policy) values
-  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1', null),
-  ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f1', '{"refund_percent": 100}'::jsonb);
+insert into public.venues (id, org_id, name, latitude, longitude, cancellation_policy) values
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1', 'No Policy Venue', 17.3850, 78.4867, null),
+  ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f1', 'Full Refund Venue', 17.3851, 78.4868, '{"refund_percent": 100}'::jsonb);
 
 insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-00000000000a', 'administrator'),
   ('00000000-0000-0000-0000-00000000000b', 'customer');
+
+create or replace function pg_temp.test_create_booking(
+  p_user_id uuid,
+  p_venue_id uuid,
+  p_status public.booking_status,
+  p_amount numeric
+) returns uuid
+language plpgsql
+as $$
+declare
+  v_booking_id uuid := gen_random_uuid();
+begin
+  insert into public.bookings (
+    id, booking_ref, user_id, venue_id, book_date, status, amount, total_amount
+  ) values (
+    v_booking_id, 'TEST-' || replace(v_booking_id::text, '-', ''),
+    p_user_id, p_venue_id, current_date, p_status, p_amount, p_amount
+  );
+  return v_booking_id;
+end;
+$$;
 
 -- Scenario 1: normal full refund (policy present, 100%) ------------------
 do $$
@@ -24,8 +45,7 @@ declare
   v_payment_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 1000, 1000);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 1000);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test1', 1000, 'captured');
 
@@ -55,8 +75,7 @@ declare
   v_result jsonb;
   v_status public.booking_status;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 500, 500);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 500);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test2', 500, 'captured');
 
@@ -82,8 +101,7 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100, 100);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100);
 
   perform set_config('test.uid', '00000000-0000-0000-0000-00000000000c', false); -- different user
   v_result := public.cancel_confirmed_booking(v_booking_id, 'attempted takeover');
@@ -103,8 +121,7 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100, 100);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100);
 
   perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false); -- a customer, not admin
   v_result := public.admin_cancel_booking(v_booking_id, 100, 'goodwill');
@@ -122,8 +139,7 @@ declare
   v_payment_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 200, 200);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 200);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test5', 200, 'captured');
 
@@ -153,8 +169,7 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 100, 100);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 100);
 
   perform set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
   v_result := public.admin_cancel_booking(v_booking_id, 0, '   ');
@@ -173,8 +188,7 @@ declare
   v_result1 jsonb;
   v_result2 jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 700, 700);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 700);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test7', 700, 'captured');
 
@@ -203,8 +217,7 @@ declare
   v_payment_id uuid := gen_random_uuid();
   v_booking_id uuid := gen_random_uuid();
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 900, 900);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 900);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test8', 900, 'captured');
 
@@ -236,8 +249,7 @@ declare
   v_refund_id uuid;
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1200, 1200);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1200);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test9', 1200, 'captured');
   insert into public.refunds (payment_id, booking_id, amount, status)
@@ -276,8 +288,7 @@ declare
   v_result jsonb;
   v_stale_count integer;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 300, 300);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 300);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test10', 300, 'captured');
   insert into public.refunds (payment_id, booking_id, amount, status, created_at)
@@ -308,8 +319,7 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_refund_id uuid;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1000, 1000);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1000);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test11', 1000, 'captured');
   insert into public.refunds (payment_id, booking_id, amount, status)
@@ -329,8 +339,7 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 0, 0);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 0);
 
   perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'free booking, nothing paid');
