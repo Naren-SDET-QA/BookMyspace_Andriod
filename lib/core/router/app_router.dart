@@ -91,6 +91,7 @@ import '../../features/invoices/presentation/screens/invoice_screens.dart'
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_of_service_screen.dart';
 import '../../features/location/presentation/screens/location_management_screen.dart';
+import '../../features/marketplace/presentation/marketplace_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_room_booking_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_room_detail_screen.dart';
 import '../../features/meeting_rooms/presentation/screens/meeting_room_owner_screen.dart';
@@ -210,6 +211,7 @@ abstract class AppRoutes {
   /// [receipt]; this one moved so both stay reachable.
   static const bookingReceipt = '/bookings/:id/payment-receipt';
   static const eventsList = '/events';
+  static const marketplace = '/marketplace';
   static const eventDetails = '/events/:id';
   static const coursesList = '/courses';
   static const courseDetails = '/courses/:id';
@@ -692,6 +694,10 @@ GoRouter createAppRouter({
       return _UnknownRouteScreen(location: state.uri.path);
     },
     routes: [
+      GoRoute(
+        path: AppRoutes.marketplace,
+        builder: (context, state) => const MarketplaceScreen(),
+      ),
       for (final entry in specRouteAliases.entries)
         GoRoute(
           path: entry.key,
@@ -1958,6 +1964,7 @@ String? resolveAppRedirect({
   if (_isPhaseOneBackendUnavailable(canonical)) return AppRoutes.home;
   if (!authReady) return null;
   final isPublic =
+      canonical == AppRoutes.marketplace ||
       canonical.startsWith('/venues/') ||
       canonical == AppRoutes.screenDirectory ||
       canonical == AppRoutes.splash ||

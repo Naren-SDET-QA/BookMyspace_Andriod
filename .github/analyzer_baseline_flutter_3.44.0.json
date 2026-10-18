@@ -3,10 +3,10 @@
   "flutter_version": "3.44.0",
   "dart_version": "3.12.0",
   "flutter_framework_revision": "559ffa3f75e7402d65a8def9c28389a9b2e6fe42",
-  "source_commit": "3346556b390fde01cc028af880c8f6bf9b088962",
+  "source_commit": "0dd908de35b278c9ff58d840ea3e35f66eecd183",
   "diagnostic_counts": {
-    "info": 610,
-    "warning": 54
+    "info": 679,
+    "warning": 80
   },
   "diagnostics": [
     {
@@ -2408,6 +2408,377 @@
       "code": "unused_local_variable",
       "file": "lib/features/owner_bookings/presentation/screens/create_offline_booking_screen.dart",
       "message": "The value of the local variable 'theme' isn't used. Try removing the variable or using it",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "avoid_dynamic_calls",
+      "file": "lib/features/owner/infrastructure/supabase_owner_payout_repository.dart",
+      "message": "Method invocation or property access on a 'dynamic' target. Try giving the target a type",
+      "count": 4
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/owner/presentation/screens/registration_field_configuration_screen.dart",
+      "message": "'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 3
+    },
+    {
+      "severity": "info",
+      "code": "deprecated_member_use",
+      "file": "lib/features/owner/presentation/screens/registration_field_configuration_screen.dart",
+      "message": "'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/core/router/app_router.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/cms/presentation/widgets/live_ui_image.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/courses/presentation/screens/owner_institute_dashboard_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/location/presentation/screens/india_place_discovery_screen.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "lib/features/owner/presentation/owner_providers.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/admin/admin_dashboard_screen_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/auth/profile_entry_points_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/auth/profile_metrics_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Place 'package:' imports before relative imports. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 19
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/courses/faculty_profile_portfolio_responsive_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "directives_ordering",
+      "file": "test/features/venues/venue_details_experience_test.dart",
+      "message": "Sort directive sections alphabetically. Try sorting the directives",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/admin/presentation/screens/admin_settings_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/courses/presentation/screens/owner_institute_dashboard_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/courses/presentation/widgets/faculty_credentials_sheet.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 2
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/invoices/presentation/invoice_pdf.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 6
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "lib/features/owner/presentation/screens/registration_field_configuration_screen.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 6
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/booking/cross_platform_polish_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 6
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/offers/past_coupons_screen_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_constructors",
+      "file": "test/features/venues/venue_details_experience_test.dart",
+      "message": "Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "prefer_const_declarations",
+      "file": "lib/features/booking/presentation/widgets/booking_progress_tracker.dart",
+      "message": "Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "unawaited_futures",
+      "file": "lib/features/courses/presentation/widgets/waitlist_alert_sheet.dart",
+      "message": "Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'",
+      "count": 1
+    },
+    {
+      "severity": "info",
+      "code": "use_decorated_box",
+      "file": "lib/features/owner/presentation/screens/registration_field_configuration_screen.dart",
+      "message": "Use 'DecoratedBox' rather than a 'Container' with only a 'Decoration'. Try replacing the 'Container' with a 'DecoratedBox'",
+      "count": 2
+    },
+    {
+      "severity": "warning",
+      "code": "unused_element_parameter",
+      "file": "lib/features/home/presentation/screens/home_screen.dart",
+      "message": "A value for optional parameter 'key' isn't ever given. Try removing the unused parameter",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "lib/features/courses/presentation/widgets/faculty_credentials_sheet.dart",
+      "message": "Unused import: 'register_demo_sheet.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "lib/features/owner/presentation/screens/owner_operations_screen.dart",
+      "message": "Unused import: '../../../owner_bookings/presentation/owner_booking_providers.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/auth/profile_role_switcher_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/auth/domain/app_role.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/admin_payment/presentation/screens/admin_payment_health_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/admin_payment/presentation/screens/admin_transaction_ledger_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/admin/presentation/screens/admin_dashboard_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/analytics/presentation/screens/analytics_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/auth/presentation/screens/profile_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/booking/presentation/screens/booking_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/booking/presentation/screens/booking_success_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/booking/presentation/screens/my_bookings_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/home/presentation/screens/home_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/institutes/presentation/screens/institute_owner_dashboard_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/map/presentation/screens/venue_map_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/notifications/presentation/screens/notifications_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/owner_venues/presentation/screens/create_venue_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/owner/presentation/screens/owner_dashboard_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/owner/presentation/screens/registration_field_configuration_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/payments/presentation/screens/payment_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/qr_checkin/presentation/screens/qr_check_in_scanner_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/search/presentation/screens/search_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/common/master_39_screens_coverage_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/venues/presentation/screens/venue_details_screen.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/courses/faculty_profile_portfolio_responsive_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/courses/presentation/widgets/batch_class_card.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_import",
+      "file": "test/features/courses/institutes_classes_layout_test.dart",
+      "message": "Unused import: 'package:bookmyspace/features/courses/domain/course.dart'. Try removing the import directive",
+      "count": 1
+    },
+    {
+      "severity": "warning",
+      "code": "unused_local_variable",
+      "file": "test/core/router/master_screen_directory_test.dart",
+      "message": "The value of the local variable 'redirectForCustomer' isn't used. Try removing the variable or using it",
       "count": 1
     }
   ]

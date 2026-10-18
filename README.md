@@ -1,9 +1,12 @@
 # BookMySpace
 
-A production-ready platform for discovering and booking venues, events and
-courses — built with Flutter, Supabase, and a fully managed backend.
+A Flutter platform for discovering and booking venues, events and courses,
+backed by Supabase. Production readiness is tracked through verified milestones
+and the release gates documented below.
 
-> **Status:** Milestone 1 (foundation) complete. See [ROADMAP.md](docs/ROADMAP.md).
+> **Status:** Existing application with a marketplace integration under verification.
+> See [the marketplace audit and remaining milestones](docs/MARKETPLACE_IMPLEMENTATION.md),
+> [verification results](docs/MARKETPLACE_VERIFICATION.md), and [ROADMAP.md](docs/ROADMAP.md).
 
 ## Stack
 
@@ -71,6 +74,19 @@ lib/
 ```
 
 ## Documentation
+
+### Marketplace section
+
+The Flutter app includes a `/marketplace` section, reachable from the customer
+Home layouts. It searches existing published venues, events and courses through
+the RLS-preserving `marketplace_search` RPC. Apply the marketplace migration
+before enabling this branch against an environment; no remote database is
+changed by cloning or building the app.
+
+See [implementation audit and milestones](docs/MARKETPLACE_IMPLEMENTATION.md)
+and [verification and deployment notes](docs/MARKETPLACE_VERIFICATION.md).
+Movies/assigned seats and paid event commerce are pending milestones, not
+completed functionality of this catalog integration.
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)

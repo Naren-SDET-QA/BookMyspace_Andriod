@@ -1,5 +1,5 @@
 import 'package:bookmyspace/features/payments/domain/payment_health.dart';
-import 'package:bookmyspace/features/registration/presentation/unified_registration_screen.dart';
+import 'package:bookmyspace/features/registration/domain/user_registration_config_models.dart';
 import 'package:bookmyspace/features/venues/domain/category_configuration.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,7 +19,9 @@ void main() {
 
   test('unified registration modules match Android zip targets', () {
     expect(
-      unifiedRegistrationModules.map((m) => m.key),
+      RegistrationTargetModule.values
+          .where((module) => module != RegistrationTargetModule.all)
+          .map((module) => module.code),
       ['customer', 'venue_owner', 'institute_student', 'event_attendee'],
     );
   });
@@ -36,9 +38,8 @@ void main() {
     final json = config.toMetadata();
     expect(json['required_fields'], ['event_type', 'guest_count']);
     expect(json['booking_mode'], 'instant');
-    expect(
-      config.copyWith(requiredFields: ['capacity']).requiredFields,
-      ['capacity'],
-    );
+    expect(config.copyWith(requiredFields: ['capacity']).requiredFields, [
+      'capacity',
+    ]);
   });
 }

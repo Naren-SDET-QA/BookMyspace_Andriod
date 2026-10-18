@@ -80,6 +80,7 @@ begin
   select id into v_user from auth.users where email = 'ec_user_a@test.com';
   select id into v_event from public.events where title = 'EC Workshop';
 
+  perform set_config('request.jwt.claim.sub', v_user::text, true);
   v_reg := public.register_for_event(v_event, v_user, 1);
   if v_reg is null then
     raise exception 'FAIL: registration returned no id';
@@ -107,11 +108,15 @@ begin
   select id into v_c from auth.users where email = 'ec_extra_c@test.com';
   select id into v_d from auth.users where email = 'ec_extra_d@test.com';
 
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
   perform public.register_for_event(v_event, v_a, 1);
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform public.register_for_event(v_event, v_b, 1);
+  perform set_config('request.jwt.claim.sub', v_c::text, true);
   perform public.register_for_event(v_event, v_c, 1);
 
   begin
+    perform set_config('request.jwt.claim.sub', v_d::text, true);
     perform public.register_for_event(v_event, v_d, 1);
     raise exception 'FAIL: capacity was not enforced';
   exception
@@ -151,9 +156,15 @@ begin
     and status = 'registered'
   order by created_at limit 1;
 
+  perform set_config(
+    'request.jwt.claim.sub',
+    (select user_id::text from public.event_registrations where id = v_reg),
+    true
+  );
   perform public.cancel_event_registration(v_reg, (select user_id from public.event_registrations where id = v_reg));
 
   -- Now the 4th user can register.
+  perform set_config('request.jwt.claim.sub', v_d::text, true);
   v_reg := public.register_for_event(v_event, v_d, 1);
   if v_reg is null then
     raise exception 'FAIL: freed seat could not be re-registered';
@@ -176,10 +187,13 @@ begin
   select id into v_batch from public.course_batches where label = 'Batch 1';
 
   -- capacity = 2
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
   perform public.enroll_in_course(v_batch, v_a);
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform public.enroll_in_course(v_batch, v_b);
 
   begin
+    perform set_config('request.jwt.claim.sub', v_c::text, true);
     perform public.enroll_in_course(v_batch, v_c);
     raise exception 'FAIL: batch capacity was not enforced';
   exception
@@ -205,13 +219,20 @@ returns void language plpgsql as $$
 declare
   v_new uuid;
   v_batch uuid;
+  v_existing_user uuid;
 begin
   insert into auth.users (id, email) values (gen_random_uuid(), 'ec_new@test.com');
   select id into v_new from auth.users where email = 'ec_new@test.com';
   select id into v_batch from public.course_batches where label = 'Batch 1';
 
-  perform public.drop_course_enrollment(v_batch, (select user_id from public.course_enrollments where batch_id = v_batch and status = 'enrolled' order by created_at limit 1));
+  select user_id into v_existing_user
+  from public.course_enrollments
+  where batch_id = v_batch and status = 'enrolled'
+  order by created_at limit 1;
+  perform set_config('request.jwt.claim.sub', v_existing_user::text, true);
+  perform public.drop_course_enrollment(v_batch, v_existing_user);
 
+  perform set_config('request.jwt.claim.sub', v_new::text, true);
   perform public.enroll_in_course(v_batch, v_new);
   if (select enrolled_count from public.course_batches where id = v_batch) <> 2 then
     raise exception 'FAIL: dropped seat not reflected in enrolled_count';
@@ -235,6 +256,7 @@ begin
   select id into v_user_a from auth.users where email = 'ec_user_a@test.com';
   select id into v_user_b from auth.users where email = 'ec_user_b@test.com';
 
+  perform set_config('request.jwt.claim.sub', v_user_a::text, true);
   perform public.register_for_event(v_event, v_user_a, 2);
 
   select registered_count, user_registered

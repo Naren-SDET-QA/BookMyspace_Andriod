@@ -55,9 +55,11 @@ begin
   select id into v_a from auth.users where email = 'user_a@test.com';
   select id into v_b from auth.users where email = 'user_b@test.com';
 
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
   v_hold_a := public.acquire_booking_hold(v_venue, v_slot, '2026-09-01', v_a, gen_random_uuid(), 5000, 10);
 
   begin
+    perform set_config('request.jwt.claim.sub', v_b::text, true);
     perform public.acquire_booking_hold(v_venue, v_slot, '2026-09-01', v_b, gen_random_uuid(), 5000, 10);
     raise exception 'FAIL: second hold was not rejected';
   exception
@@ -88,8 +90,10 @@ begin
   select id into v_b from auth.users where email = 'user_b@test.com';
 
   begin
+    perform set_config('request.jwt.claim.sub', v_a::text, true);
     v_hold_a := public.acquire_booking_hold(v_venue, v_slot, '2026-09-02', v_a, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 5000, 10);
     -- Same slot, different user, same date: must fail.
+    perform set_config('request.jwt.claim.sub', v_b::text, true);
     perform public.acquire_booking_hold(v_venue, v_slot, '2026-09-02', v_b, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 5000, 10);
     raise exception 'FAIL: concurrent double booking not prevented';
   exception
@@ -116,6 +120,7 @@ begin
   select id into v_slot from public.time_slots limit 1;
   select id into v_a from auth.users where email = 'user_a@test.com';
 
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
   v_hold1 := public.acquire_booking_hold(v_venue, v_slot, '2026-09-03', v_a, 'cccccccc-cccc-cccc-cccc-cccccccccccc', 5000, 10);
   v_hold2 := public.acquire_booking_hold(v_venue, v_slot, '2026-09-03', v_a, 'cccccccc-cccc-cccc-cccc-cccccccccccc', 5000, 10);
 
@@ -141,10 +146,12 @@ begin
   select id into v_b from auth.users where email = 'user_b@test.com';
 
   -- Hold that expires immediately.
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
   perform public.acquire_booking_hold(v_venue, v_slot, '2026-09-04', v_a, 'dddddddd-dddd-dddd-dddd-dddddddddddd', 5000, -1);
   perform public.expire_stale_holds();
 
   -- After expiry, the slot must be free for user_b.
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
   v_hold := public.acquire_booking_hold(v_venue, v_slot, '2026-09-04', v_b, 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 5000, 10);
   if v_hold is not null then
     raise notice 'PASS: expired hold released the slot';

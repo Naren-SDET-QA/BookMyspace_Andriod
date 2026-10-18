@@ -57,6 +57,7 @@ begin
   select id into v_slot from public.time_slots where label = 'Morning';
   select id into v_user from auth.users where email = 'pay_user@test.com';
 
+  perform set_config('request.jwt.claim.sub', v_user::text, true);
   v_hold := public.acquire_booking_hold(v_venue, v_slot, '2026-10-01', v_user, gen_random_uuid(), 5000, 10);
 
   insert into public.bookings (
@@ -132,6 +133,7 @@ begin
   select id into v_slot from public.time_slots where label = 'Morning';
   select id into v_user from auth.users where email = 'pay_user@test.com';
 
+  perform set_config('request.jwt.claim.sub', v_user::text, true);
   v_hold := public.acquire_booking_hold(v_venue, v_slot, '2026-10-02', v_user, gen_random_uuid(), 5000, 10);
   insert into public.bookings (
     booking_ref, user_id, venue_id, slot_id, book_date,

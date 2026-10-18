@@ -6,16 +6,57 @@
 \set ON_ERROR_STOP on
 
 -- Fixtures --------------------------------------------------------------
-insert into public.organizations (id, owner_user_id) values
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a');
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-00000000000a', 'refund-admin@test.com'),
+  ('00000000-0000-0000-0000-00000000000b', 'refund-customer@test.com'),
+  ('00000000-0000-0000-0000-00000000000c', 'refund-stranger@test.com')
+on conflict (id) do nothing;
 
-insert into public.venues (id, org_id, cancellation_policy) values
-  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1', null),
-  ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f1', '{"refund_percent": 100}'::jsonb);
+create temp sequence refund_booking_day_seq;
+
+insert into public.organizations (id, owner_user_id, org_type, name) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-00000000000a', 'venue_owner', 'Refund Test Organization');
+
+insert into public.venues (id, org_id, name, latitude, longitude, cancellation_policy) values
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1', 'No Policy Venue', 17.3850, 78.4867, null),
+  ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f1', 'Full Refund Venue', 17.3851, 78.4868, '{"refund_percent": 100}'::jsonb);
+
+insert into public.time_slots (id, venue_id, label, start_time, end_time, price_amount) values
+  ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000f2', 'Refund test slot A', '10:00', '14:00', 1000),
+  ('00000000-0000-0000-0000-0000000000f5', '00000000-0000-0000-0000-0000000000f3', 'Refund test slot B', '10:00', '14:00', 1000)
+on conflict (id) do nothing;
 
 insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-00000000000a', 'administrator'),
-  ('00000000-0000-0000-0000-00000000000b', 'customer');
+  ('00000000-0000-0000-0000-00000000000b', 'customer')
+on conflict (user_id, role) do nothing;
+
+select set_config('request.jwt.claim.role', 'authenticated', false);
+
+create or replace function pg_temp.test_create_booking(
+  p_user_id uuid,
+  p_venue_id uuid,
+  p_status public.booking_status,
+  p_amount numeric
+) returns uuid
+language plpgsql
+as $$
+declare
+  v_booking_id uuid := gen_random_uuid();
+  v_slot_id uuid;
+begin
+  select id into strict v_slot_id from public.time_slots where venue_id = p_venue_id limit 1;
+  insert into public.bookings (
+    id, booking_ref, user_id, venue_id, slot_id, book_date, status, amount, total_amount
+  ) values (
+    v_booking_id, 'TEST-' || replace(v_booking_id::text, '-', ''),
+    p_user_id, p_venue_id, v_slot_id,
+    current_date + nextval('pg_temp.refund_booking_day_seq')::integer,
+    p_status, p_amount, p_amount
+  );
+  return v_booking_id;
+end;
+$$;
 
 -- Scenario 1: normal full refund (policy present, 100%) ------------------
 do $$
@@ -24,12 +65,11 @@ declare
   v_payment_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 1000, 1000);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 1000);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test1', 1000, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'change of plans');
 
   if (v_result->>'success')::boolean is not true then
@@ -55,12 +95,11 @@ declare
   v_result jsonb;
   v_status public.booking_status;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 500, 500);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 500);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test2', 500, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'no policy case');
 
   if v_result->>'error_code' <> 'CANCELLATION_POLICY_UNDEFINED' then
@@ -82,10 +121,9 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100, 100);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000c', false); -- different user
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false); -- different user
   v_result := public.cancel_confirmed_booking(v_booking_id, 'attempted takeover');
 
   if v_result->>'error_code' <> 'NOT_AUTHORIZED' then
@@ -103,10 +141,9 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100, 100);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false); -- a customer, not admin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false); -- a customer, not admin
   v_result := public.admin_cancel_booking(v_booking_id, 100, 'goodwill');
 
   if v_result->>'error_code' <> 'NOT_AUTHORIZED' then
@@ -122,12 +159,11 @@ declare
   v_payment_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 200, 200);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 200);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test5', 200, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false); -- administrator
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false); -- administrator
   v_result := public.admin_cancel_booking(v_booking_id, 500, 'trying to overpay');
 
   if v_result->>'error_code' <> 'AMOUNT_EXCEEDS_CAPTURED' then
@@ -153,10 +189,9 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 100, 100);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 100);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
   v_result := public.admin_cancel_booking(v_booking_id, 0, '   ');
 
   if v_result->>'error_code' <> 'REASON_REQUIRED' then
@@ -173,12 +208,11 @@ declare
   v_result1 jsonb;
   v_result2 jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 700, 700);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 700);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test7', 700, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result1 := public.cancel_confirmed_booking(v_booking_id, 'first call');
   v_result2 := public.cancel_confirmed_booking(v_booking_id, 'second call, duplicate');
 
@@ -203,8 +237,7 @@ declare
   v_payment_id uuid := gen_random_uuid();
   v_booking_id uuid := gen_random_uuid();
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 900, 900);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 900);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test8', 900, 'captured');
 
@@ -236,8 +269,7 @@ declare
   v_refund_id uuid;
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1200, 1200);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1200);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test9', 1200, 'captured');
   insert into public.refunds (payment_id, booking_id, amount, status)
@@ -276,8 +308,7 @@ declare
   v_result jsonb;
   v_stale_count integer;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 300, 300);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 300);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test10', 300, 'captured');
   insert into public.refunds (payment_id, booking_id, amount, status, created_at)
@@ -308,8 +339,7 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_refund_id uuid;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1000, 1000);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'cancelled', 1000);
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test11', 1000, 'captured');
   insert into public.refunds (payment_id, booking_id, amount, status)
@@ -329,10 +359,9 @@ declare
   v_booking_id uuid := gen_random_uuid();
   v_result jsonb;
 begin
-  insert into public.bookings (id, user_id, venue_id, status, amount, total_amount)
-  values (v_booking_id, '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 0, 0);
+  v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 0);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'free booking, nothing paid');
   if (v_result->>'success')::boolean is not true then
     raise exception 'FAIL scenario12: expected success, got %', v_result;

@@ -60,7 +60,7 @@ begin
   end if;
 end $$;
 
-\echo '--- TEST R3: idempotency — a second refund insert for the SAME payment_id is rejected at the database level (refunds_payment_id_unique) ---'
+\echo '--- TEST R3: idempotency — a second active refund insert for the SAME payment_id is rejected by refunds_payment_id_active_uq ---'
 do $$
 begin
   begin
@@ -68,7 +68,7 @@ begin
     values ('00000000-0000-0000-0000-0000000000f9', '00000000-0000-0000-0000-0000000000f1', 5000, 'duplicate_attempt', 'requested');
     raise notice 'TEST R3 FAILED: a second refund row for the same payment_id was allowed — double-refund is possible';
   exception when unique_violation then
-    raise notice 'TEST R3 PASSED: refunds_payment_id_unique blocked a second refund row for the same payment (this is the real DB-level backstop behind refundRejectedBooking()''s existingRefund check)';
+    raise notice 'TEST R3 PASSED: refunds_payment_id_active_uq blocked a second active refund row for the same payment';
   end;
 end $$;
 

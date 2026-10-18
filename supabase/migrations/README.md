@@ -24,3 +24,71 @@ NOT idempotent (a plain `create table` followed later by a
 differently-shaped `create table if not exists` for the same name) —
 those are exactly the drift-then-patch pairs described above, and the
 patch file is load-bearing, not optional cleanup.
+
+## Duplicate version reconciliation
+
+The two historical files `20260928071656_b4_advance_payment.sql` and
+`20260928071656_b5_venue_payment_rules.sql` shared a version that Supabase
+cannot record twice. Preserve B4 at its original version. B5's SQL content is
+byte-for-byte preserved under the unique forward version
+`20261018100000_b5_venue_payment_rules_reconciled.sql`; do not recreate the
+duplicate version or edit either migration's SQL in place.
+
+Before applying this reconciliation to any shared environment, compare the
+remote migration ledger and schema effects of both migrations. Apply B4 if its
+effects are absent; if the effects already exist but the ledger row is absent,
+record that legacy state with the environment's approved forward-only
+`supabase migration repair --status applied 20260928071656` procedure. Apply
+B5 normally when its effects are absent. If B5's effects already exist, record
+the new version as applied only after verifying all B5 columns, constraint,
+function definitions and grants. Never reset a shared database to resolve
+this collision. The connected development database has B4's effects but no
+ledger row for its version, and does not yet have B5's effects; no hosted
+database was changed by this reconciliation.
+
+The clean-chain reset also revealed that the older
+`20260929140000_admin_content_write_guards.sql` expects
+`course_faculty.updated_at`, which its table creation migration omitted. The
+additive prerequisite migration
+`20260929130000_course_faculty_updated_at_prerequisite.sql` now supplies that
+column before the guard migration on fresh databases. In an already migrated
+environment, verify the column's type, default, nullability and RLS before
+repairing the new prerequisite version in the ledger. If it is absent, apply
+only this additive statement and then repair that version; do not use
+`--include-all` to replay unrelated gaps in an out-of-sync environment.
+
+The forward-only migration
+`20261018030126_allow_course_trial_upgrade.sql` corrects the active-enrollment
+guard in `enroll_in_course_details`: a learner may upgrade an existing `trial`
+row to `enrolled`, while duplicate trials, already-enrolled rows and pending
+approval rows remain rejected. Capacity and waitlist checks still run before
+the paid-seat transition. The migration replaces the function without editing
+the historical waitlist migration; the full-chain SQL regression suite covers
+trial-to-paid transition and duplicate enrollment. Apply through normal
+migration ordering; do not manually replace the function in a shared database.
+
+The cancellation SQL regression also exposed that
+`20260828110000_refunds_payment_id_unique_dev.sql` left a full unique
+constraint on `refunds.payment_id` after
+`20260914170000_refund_cancellation_domain.sql` introduced the intended
+partial unique index for non-failed refunds. Migration
+`20261018033500_reconcile_refund_retry_constraint.sql` verifies that the
+partial index is valid and has the failed-status predicate, then drops only
+the superseded full constraint. This enables a new refund attempt only after
+the previous attempt is `failed`; active/refund-in-progress attempts remain
+unique. It is forward-only and does not alter refund data. Do not edit the
+historical migrations or manually drop constraints in a shared environment.
+
+Migration `20261018055833_revoke_anon_mark_ticket_resolved.sql` repairs a grant
+regression in `20260912140000_gap_closure_analytics_support_storage.sql`:
+recreating this SECURITY DEFINER function and revoking from `PUBLIC` did not
+explicitly revoke the Supabase `anon` role. The forward migration revokes
+both and grants only `authenticated` and `service_role`, preserving the
+function's existing authenticated authorization checks. No function body or
+data is changed.
+
+Migration `20261018060243_revoke_anon_analytics_events.sql` applies the same
+explicit `PUBLIC` and `anon` revoke to
+`list_authorized_analytics_events(integer)`, whose later historical recreation
+also revoked only `PUBLIC`. It preserves the existing authenticated-only
+grant and does not change the analytics function body.

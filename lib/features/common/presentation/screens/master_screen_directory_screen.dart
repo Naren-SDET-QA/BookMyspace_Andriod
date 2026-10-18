@@ -45,6 +45,14 @@ class ScreenDirectoryItem {
 }
 
 const List<ScreenDirectoryItem> masterScreenCatalog = [
+  ScreenDirectoryItem(
+    domain: ScreenDomain.discovery,
+    name: 'Marketplace',
+    route: AppRoutes.marketplace,
+    audience: 'Customers',
+    description: 'Search published events, spaces, sports, dining, experiences and courses.',
+    icon: Icons.local_activity_outlined,
+  ),
   // ==================== DOMAIN 1: Discovery & Customer-Facing ====================
   ScreenDirectoryItem(
     domain: ScreenDomain.discovery,

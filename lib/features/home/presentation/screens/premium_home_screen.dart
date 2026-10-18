@@ -14,6 +14,7 @@ import '../../../ai_booking/presentation/widgets/ai_booking_sheet.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../cms/presentation/cms_providers.dart';
 import '../../../cms/presentation/widgets/live_brand.dart';
+import '../../../marketplace/presentation/marketplace_entry_card.dart';
 import '../../../courses/domain/course.dart';
 import '../../../courses/presentation/course_providers.dart';
 import '../../../modules/presentation/module_providers.dart';
@@ -29,8 +30,8 @@ import '../discovery_location.dart';
 import '../home_appearance_providers.dart';
 import '../home_category_catalog.dart';
 import '../recently_viewed.dart';
-import '../widgets/home_feed_sections.dart' show HomeGuestsPickerSheet;
 import '../widgets/home_ai_booking_card.dart';
+import '../widgets/home_feed_sections.dart' show HomeGuestsPickerSheet;
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/premium_promo_carousel.dart';
 
@@ -408,6 +409,12 @@ class _PremiumHomeScreenState extends ConsumerState<PremiumHomeScreen> {
                       onGuestsTap: _pickGuests,
                       onPopular: _openPopular,
                     ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(pad, 20, pad, 0),
+                    child: const MarketplaceEntryCard(),
                   ),
                 ),
                 // Same admin switch as the Glass Home: the AI booking block
