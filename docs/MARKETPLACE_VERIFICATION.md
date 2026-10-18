@@ -277,6 +277,13 @@ role explicitly. A forward-only grant reconciliation now revokes both and
 grants only `authenticated` and `service_role`. Its full-chain verification is
 pending; the RPC body and its authenticated authorization checks are unchanged.
 
+The same contract then reached `list_authorized_analytics_events` and found
+the corresponding `PUBLIC`-only revoke in the same historical closure
+migration. A separate forward migration now explicitly revokes `PUBLIC` and
+`anon` while preserving its authenticated-only grant. The other functions in
+the contract passed up to that assertion; the next full SQL run will verify
+both reconciliations together.
+
 The marketplace platform matrix on that head passed: Android debug APK, Web
 release, and iOS release compilation with `--no-codesign`. These are build
 checks, not signed distribution or physical-device verification. Gitleaks
@@ -307,7 +314,7 @@ kind and never execute a route supplied by the backend.
 
 Changed file groups: `features/marketplace`, marketplace localization, router,
 Home entry cards, screen directory, real registration entry, focused tests,
-SQL contract fixtures, three forward-only stabilization migrations, workflow
+SQL contract fixtures, six forward-only stabilization migrations, workflow
 and audit/verification documentation. The two catalog migrations were applied
 to development; the stabilization migrations have only been applied in
 disposable CI so far. **No Edge Functions were added or

@@ -86,3 +86,9 @@ explicitly revoke the Supabase `anon` role. The forward migration revokes
 both and grants only `authenticated` and `service_role`, preserving the
 function's existing authenticated authorization checks. No function body or
 data is changed.
+
+Migration `20261018060243_revoke_anon_analytics_events.sql` applies the same
+explicit `PUBLIC` and `anon` revoke to
+`list_authorized_analytics_events(integer)`, whose later historical recreation
+also revoked only `PUBLIC`. It preserves the existing authenticated-only
+grant and does not change the analytics function body.
