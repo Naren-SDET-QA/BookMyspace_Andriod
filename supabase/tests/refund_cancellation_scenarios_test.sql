@@ -21,7 +21,8 @@ insert into public.venues (id, org_id, name, latitude, longitude, cancellation_p
 
 insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-00000000000a', 'administrator'),
-  ('00000000-0000-0000-0000-00000000000b', 'customer');
+  ('00000000-0000-0000-0000-00000000000b', 'customer')
+on conflict (user_id, role) do nothing;
 
 create or replace function pg_temp.test_create_booking(
   p_user_id uuid,

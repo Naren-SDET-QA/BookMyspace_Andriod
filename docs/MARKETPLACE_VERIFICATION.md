@@ -258,8 +258,9 @@ refund. The next SQL script exposed older fixture drift in
 were brought up to the current schema, and bookings now use a shared helper
 that provides the required booking reference and date. A further rerun found
 the fixture's referenced users were not seeded in `auth.users`; those explicit
-disposable users have now been added. SQL validation is still pending on this
-latest fixture correction.
+disposable users have now been added, and role setup is idempotent when the
+same IDs were already created by an earlier SQL fixture. SQL validation is
+still pending on this latest fixture correction.
 
 The marketplace platform matrix on that head passed: Android debug APK, Web
 release, and iOS release compilation with `--no-codesign`. These are build
