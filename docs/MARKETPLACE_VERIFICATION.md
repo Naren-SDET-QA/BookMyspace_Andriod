@@ -231,64 +231,52 @@ skipped while the analyzer gate fails; the dedicated marketplace Flutter,
 PostgreSQL catalog/RLS, and web checks pass, with platform matrix jobs running
 separately. No signed iOS build or physical-device run is claimed.
 
-Phase 1 is not yet release-ready: the refreshed analyzer baseline needs CI
-confirmation, the full SQL contract loop still needs a green run, and the
-credential-owner actions are unresolved. Do not start Phase 2 inventory or
-merge/deploy PR #6 until those gates are resolved.
+Phase 1 is not yet release-ready: credential-owner actions are unresolved.
+Do not start Phase 2 inventory or merge/deploy PR #6 until those gates are
+resolved.
 
 ### Phase 1 CI update — 2026-10-18
 
-On `1afbf345`, pinned CI analyzer validation passed. The dedicated marketplace
-Flutter tests, PostgreSQL catalog/RLS checks, and Android, Web, and unsigned
-iOS builds all passed. The general full Flutter suite was still running when
-the SQL failure was retrieved. The full disposable migration reset applied
-every migration successfully; the cancellation SQL tests then exposed a
-conflict between the legacy full `refunds.payment_id` unique constraint and
-the later active-only partial unique index. The affected cancellation fixtures
-were corrected to satisfy the actual required venue, slot, hold, and booking
-columns. A new forward-only migration verifies the active-only index before
-dropping the obsolete full constraint, enabling retry only after a failed
-refund without changing refund rows. Its full-chain SQL validation is pending; no
-shared or production database was touched.
+On `23ba62b`, pinned analyzer validation and the full disposable SQL migration
+reset/test loop passed (CI run `39102692669`). The loop verified the duplicate
+version and forward-only migration reconciliations, cancellation policy cases,
+failed-refund retry, all 12 sequential refund scenarios, and security-definer
+RPC grants. The fixture corrections add valid organization/venue/auth users,
+time slots, required booking identifiers/dates, distinct dates under the
+production no-overlap constraint, idempotent role setup, and real Supabase JWT
+claims. No shared or production database was touched.
 
-The subsequent run on `996c4ac` successfully applied this migration, and the
-full cancellation-policy SQL test passed including retry after a failed
-refund. The next SQL script exposed older fixture drift in
-`refund_cancellation_scenarios_test.sql`; its organization and venue fixtures
-were brought up to the current schema, and bookings now use a shared helper
-that provides the required booking reference and date. A further rerun found
-the fixture's referenced users were not seeded in `auth.users`; those explicit
-disposable users have now been added, and role setup is idempotent when the
-same IDs were already created by an earlier SQL fixture. SQL validation is
-still pending on this latest fixture correction. A subsequent SQL run got
-past the role setup and exposed the final domain invariant: each booking must
-reference a time slot or bookable resource. The fixture now provisions two
-valid test slots and uses the matching slot in its shared booking helper.
-The next run confirmed the JWT context and then correctly enforced the
-no-overlap constraint when the test reused a venue/date/time. The helper now
-assigns a distinct disposable booking date to each test booking; the
-constraint remains unchanged. SQL validation is pending again.
+Pinned CI run `39102692669` on `23ba62b` completed successfully. The pinned
+toolchain is Flutter 3.44.0 / Dart 3.12.0 and Supabase CLI 2.117.0. Exact
+commands and outcomes:
 
-The next SQL run passed the cancellation policy suite and all 12 refund
-cancellation scenarios, then reached the security-definer RPC contract test.
-That test found `mark_ticket_resolved` still executable by `anon`: a historical
-function recreation revoked `PUBLIC` but did not revoke the Supabase `anon`
-role explicitly. A forward-only grant reconciliation now revokes both and
-grants only `authenticated` and `service_role`. Its full-chain verification is
-pending; the RPC body and its authenticated authorization checks are unchanged.
+```text
+flutter pub get                                      PASS
+python3 scripts/validate_analyzer_baseline.py       PASS
+flutter test --coverage                             PASS — 1,875 tests
+supabase start                                      PASS (disposable CI stack)
+supabase db reset --local --no-seed                 PASS (all migrations)
+for test in supabase/tests/*.sql; do PGPASSWORD=postgres psql -X --set ON_ERROR_STOP=1 -h 127.0.0.1 -p 54322 -U postgres -d postgres -f "$test"; done  PASS (all SQL scripts)
+supabase stop --no-backup                           PASS
+flutter build apk --release --build-number=80       PASS
+flutter build appbundle --release --build-number=80  PASS
+flutter build web --release --build-number=80       PASS
+python3 scripts/check_ios_deployment_target.py      PASS
+flutter build ios --release --no-codesign --build-number=80  PASS
+python3 scripts/check_ios_deployment_target.py --after-build  PASS
+```
 
-The same contract then reached `list_authorized_analytics_events` and found
-the corresponding `PUBLIC`-only revoke in the same historical closure
-migration. A separate forward migration now explicitly revokes `PUBLIC` and
-`anon` while preserving its authenticated-only grant. The other functions in
-the contract passed up to that assertion; the next full SQL run will verify
-both reconciliations together.
+The dedicated marketplace workflow also passed its formatting, scoped
+analysis, focused Flutter tests, PostgreSQL 17 catalog/column-grant/RLS
+contract, and Android/Web/iOS build checks on the same code. These checks do
+not constitute signed distribution or physical-device verification. No
+production or shared database was reset or modified.
 
-The marketplace platform matrix on that head passed: Android debug APK, Web
-release, and iOS release compilation with `--no-codesign`. These are build
-checks, not signed distribution or physical-device verification. Gitleaks
-continues to fail on the same 13 historical findings and remains an owner
-credential review/rotation gate. Phase 1 is still not release-ready.
+The reviewed analyzer baseline passed CI; no analyzer rule or gate was changed.
+Gitleaks on the same head still reports the same 13 historical findings (11
+generic API-key, 2 GCP-key) and remains a credential-owner review/rotation
+gate. No credential values are included here. Phase 1 is therefore not
+release-ready until that owner gate is resolved.
 
 ### Registration regression repaired
 
