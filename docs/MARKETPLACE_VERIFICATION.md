@@ -178,11 +178,63 @@ on the new head. Before applying to any shared environment, compare its ledger
 and schema and use the forward-only repair procedure in
 `supabase/migrations/README.md`; never reset a shared database.
 
-The analyzer baseline has not been expanded. Most excess findings are in
-paths unchanged by this branch; several findings in changed Home/router and
-registration-test files were corrected. Remaining existing warnings still
-need source-level review, and the pinned analyzer must be rerun at the updated
-head.
+### Phase 1 stabilization follow-up — 2026-10-18
+
+The duplicate migration version is reconciled without editing historical SQL:
+B4 remains `20260928071656`, and B5's bytes are preserved at
+`20261018100000_b5_venue_payment_rules_reconciled.sql`. The additive
+`20260929130000_course_faculty_updated_at_prerequisite.sql` supplies the
+missing prerequisite before the existing content guard. A further additive
+`20261018030126_allow_course_trial_upgrade.sql` allows only trial-to-paid
+course upgrades; duplicate active enrollment remains rejected. No connected
+or production database was changed by these fixes.
+
+Pinned CI (`Flutter 3.44.0` / `Dart 3.12.0`, Supabase CLI `2.117.0`, disposable
+PostgreSQL 17) successfully ran `supabase start` and
+`supabase db reset --local --no-seed` through the complete migration chain.
+The SQL test loop then reached `supabase/tests/phase7_cancellation_policy_test.sql`
+and failed because legacy fixtures omitted required organization and venue
+fields. The fixture now supplies `org_type = 'venue_owner'`, latitude and
+longitude; that last correction awaits a fresh full-suite CI result. Earlier
+test failures also exposed incorrect caller context in existing SQL tests and
+an unreachable trial-upgrade branch. The tests now set each fixture user's JWT
+subject, and the forward-only function migration fixes the upgrade behavior
+without weakening authorization. No full SQL-suite pass is claimed yet.
+
+Analyzer reconciliation was evidence-checked against the pinned CI output:
+the base-main run `37103543185` reported 110 diagnostics beyond the old
+baseline; branch run `39092759233` reported 95. Comparing severity, code, path
+and message found all 95 branch diagnostics already present on main, zero
+branch-only diagnostics, and 15 main findings absent from this branch. The
+baseline was refreshed to those reviewed diagnostics (679 infos, 80 warnings,
+396 records); no analyzer rules or CI checks were changed. The next CI run must
+confirm the validator passes with this reviewed baseline. Whole-repository
+analysis is not clean; the baseline preserves existing debt visibly.
+
+The latest full-history Gitleaks runs still report the same 13 historical
+findings (11 generic API-key and 2 GCP-key matches), attributed to commits by
+repository owner Naren. The implicated short commit IDs are `52b558e`,
+`aeafb7e`, `7164e96`, `c9f2d8d`, `6ea4acc`, `62783fb`, `d15e6a6` and
+`ea2f1cb`. No secret values are included here or in the report.
+The owner should revoke/replace any active GCP/Firebase credentials, apply
+strict API/application restrictions, and classify every generic match; rotate
+any private credential. Public client identifiers should be confirmed as
+intentionally public and restricted. Nothing was allowlisted or disabled.
+
+Latest local Flutter regression command remains
+`flutter test --no-pub --concurrency=4 --reporter expanded`: **1,875 passed**
+on Flutter 3.47.2 / Dart 3.13.2. Local
+`flutter build web --release --no-pub` and the config-regenerated
+`flutter build apk --release --no-pub` passed on that newer toolchain. In the
+required general CI, the full Flutter tests and Android/Web/iOS builds remain
+skipped while the analyzer gate fails; the dedicated marketplace Flutter,
+PostgreSQL catalog/RLS, and web checks pass, with platform matrix jobs running
+separately. No signed iOS build or physical-device run is claimed.
+
+Phase 1 is not yet release-ready: the refreshed analyzer baseline needs CI
+confirmation, the full SQL contract loop still needs a green run, and the
+credential-owner actions are unresolved. Do not start Phase 2 inventory or
+merge/deploy PR #6 until those gates are resolved.
 
 ### Registration regression repaired
 
@@ -208,8 +260,10 @@ kind and never execute a route supplied by the backend.
 
 Changed file groups: `features/marketplace`, marketplace localization, router,
 Home entry cards, screen directory, real registration entry, focused tests,
-workflow and audit/verification documentation. Two forward-only migrations
-were added and applied to development. **No Edge Functions were added or
+SQL contract fixtures, three forward-only stabilization migrations, workflow
+and audit/verification documentation. The two catalog migrations were applied
+to development; the stabilization migrations have only been applied in
+disposable CI so far. **No Edge Functions were added or
 modified**; this catalog uses a read-only database RPC and retains existing
 booking/payment functions. The next milestone is movie/cinema inventory and
 seat layouts, following resolution of the shared release gates.

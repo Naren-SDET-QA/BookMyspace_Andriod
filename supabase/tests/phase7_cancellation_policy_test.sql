@@ -37,8 +37,8 @@ insert into public.organizations (id, owner_user_id, org_type, name) values
   ('a0000000-0000-0000-0000-000000000001', :'owner_id'::uuid, 'venue_owner', 'Owner Org')
 on conflict do nothing;
 
-insert into public.venues (id, org_id, name) values
-  ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Test Venue')
+insert into public.venues (id, org_id, name, latitude, longitude) values
+  ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Test Venue', 17.3850, 78.4867)
 on conflict do nothing;
 
 insert into public.time_slots (id, venue_id, start_time, end_time) values
@@ -103,8 +103,12 @@ declare
     'cancellation_fee', 0, 'tax_treatment', 'proportional'
   );
 begin
-  insert into public.venues (id, org_id, name, cancellation_policy, cancellation_policy_version)
-  values (v_venue_id, 'a0000000-0000-0000-0000-000000000001', 'Isolated Test Venue ' || v_venue_id, v_policy, 1);
+  insert into public.venues (
+    id, org_id, name, latitude, longitude, cancellation_policy, cancellation_policy_version
+  ) values (
+    v_venue_id, 'a0000000-0000-0000-0000-000000000001',
+    'Isolated Test Venue ' || v_venue_id, 17.3850, 78.4867, v_policy, 1
+  );
   insert into public.venue_cancellation_policy_history (venue_id, version, policy, changed_by)
   values (v_venue_id, 1, v_policy, '11111111-1111-1111-1111-111111111111');
   insert into public.time_slots (id, venue_id, start_time, end_time)
@@ -152,8 +156,8 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 --    scenario now blocks, then restores the default so the rest of this
 --    suite runs against the real production-default stage.
 -- =====================================================================
-insert into public.venues (id, org_id, name) values
-  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'No-Policy Venue');
+insert into public.venues (id, org_id, name, latitude, longitude) values
+  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'No-Policy Venue', 17.3850, 78.4867);
 insert into public.time_slots (id, venue_id, start_time, end_time) values
   ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', '10:00', '14:00');
 
@@ -393,8 +397,8 @@ declare
 begin
   -- Simulate a historical booking confirmed before the snapshot mechanism
   -- existed: cancellation_policy is NULL and venue's own policy is NULL.
-  insert into public.venues (id, org_id, name) values
-    ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Historical Venue (no policy)');
+  insert into public.venues (id, org_id, name, latitude, longitude) values
+    ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Historical Venue (no policy)', 17.3850, 78.4867);
   insert into public.time_slots (id, venue_id, start_time, end_time) values
     ('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', '10:00', '14:00');
 

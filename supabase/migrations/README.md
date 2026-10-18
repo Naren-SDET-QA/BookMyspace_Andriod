@@ -56,3 +56,13 @@ environment, verify the column's type, default, nullability and RLS before
 repairing the new prerequisite version in the ledger. If it is absent, apply
 only this additive statement and then repair that version; do not use
 `--include-all` to replay unrelated gaps in an out-of-sync environment.
+
+The forward-only migration
+`20261018030126_allow_course_trial_upgrade.sql` corrects the active-enrollment
+guard in `enroll_in_course_details`: a learner may upgrade an existing `trial`
+row to `enrolled`, while duplicate trials, already-enrolled rows and pending
+approval rows remain rejected. Capacity and waitlist checks still run before
+the paid-seat transition. The migration replaces the function without editing
+the historical waitlist migration; the full-chain SQL regression suite covers
+trial-to-paid transition and duplicate enrollment. Apply through normal
+migration ordering; do not manually replace the function in a shared database.
