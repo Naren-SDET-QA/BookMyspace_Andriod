@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState, AuthUser
 import '../../features/accommodations/domain/accommodation.dart';
 import '../../features/accommodations/presentation/screens/accommodation_list_screen.dart';
 import '../../features/accommodations/presentation/screens/stay_management_screens.dart';
+import '../../features/admin/presentation/admin_settings_providers.dart';
 import '../../features/admin/presentation/screens/admin_app_sections_screen.dart';
 import '../../features/admin/presentation/screens/admin_audit_screen.dart';
 import '../../features/admin/presentation/screens/admin_cms_screen.dart';
@@ -178,7 +179,6 @@ import '../modular/feature_providers.dart';
 import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
 import '../theme/app_theme.dart';
-import '../../features/admin/presentation/admin_settings_providers.dart';
 import '../../features/admin/presentation/widgets/platform_status_banner.dart';
 import '../widgets/test_id.dart';
 

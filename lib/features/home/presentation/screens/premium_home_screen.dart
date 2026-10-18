@@ -30,8 +30,8 @@ import '../discovery_location.dart';
 import '../home_appearance_providers.dart';
 import '../home_category_catalog.dart';
 import '../recently_viewed.dart';
-import '../widgets/home_feed_sections.dart' show HomeGuestsPickerSheet;
 import '../widgets/home_ai_booking_card.dart';
+import '../widgets/home_feed_sections.dart' show HomeGuestsPickerSheet;
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/premium_promo_carousel.dart';
 
