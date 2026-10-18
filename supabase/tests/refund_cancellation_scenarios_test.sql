@@ -29,6 +29,8 @@ insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-00000000000b', 'customer')
 on conflict (user_id, role) do nothing;
 
+select set_config('request.jwt.claim.role', 'authenticated', false);
+
 create or replace function pg_temp.test_create_booking(
   p_user_id uuid,
   p_venue_id uuid,
@@ -63,7 +65,7 @@ begin
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test1', 1000, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'change of plans');
 
   if (v_result->>'success')::boolean is not true then
@@ -93,7 +95,7 @@ begin
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test2', 500, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'no policy case');
 
   if v_result->>'error_code' <> 'CANCELLATION_POLICY_UNDEFINED' then
@@ -117,7 +119,7 @@ declare
 begin
   v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000c', false); -- different user
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false); -- different user
   v_result := public.cancel_confirmed_booking(v_booking_id, 'attempted takeover');
 
   if v_result->>'error_code' <> 'NOT_AUTHORIZED' then
@@ -137,7 +139,7 @@ declare
 begin
   v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 100);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false); -- a customer, not admin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false); -- a customer, not admin
   v_result := public.admin_cancel_booking(v_booking_id, 100, 'goodwill');
 
   if v_result->>'error_code' <> 'NOT_AUTHORIZED' then
@@ -157,7 +159,7 @@ begin
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test5', 200, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false); -- administrator
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false); -- administrator
   v_result := public.admin_cancel_booking(v_booking_id, 500, 'trying to overpay');
 
   if v_result->>'error_code' <> 'AMOUNT_EXCEEDS_CAPTURED' then
@@ -185,7 +187,7 @@ declare
 begin
   v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f2', 'confirmed', 100);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
   v_result := public.admin_cancel_booking(v_booking_id, 0, '   ');
 
   if v_result->>'error_code' <> 'REASON_REQUIRED' then
@@ -206,7 +208,7 @@ begin
   insert into public.payments (id, booking_id, user_id, provider_payment_id, amount, status)
   values (v_payment_id, v_booking_id, '00000000-0000-0000-0000-00000000000b', 'pay_test7', 700, 'captured');
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result1 := public.cancel_confirmed_booking(v_booking_id, 'first call');
   v_result2 := public.cancel_confirmed_booking(v_booking_id, 'second call, duplicate');
 
@@ -355,7 +357,7 @@ declare
 begin
   v_booking_id := pg_temp.test_create_booking('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000f3', 'confirmed', 0);
 
-  perform set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
   v_result := public.cancel_confirmed_booking(v_booking_id, 'free booking, nothing paid');
   if (v_result->>'success')::boolean is not true then
     raise exception 'FAIL scenario12: expected success, got %', v_result;
