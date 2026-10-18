@@ -260,7 +260,10 @@ that provides the required booking reference and date. A further rerun found
 the fixture's referenced users were not seeded in `auth.users`; those explicit
 disposable users have now been added, and role setup is idempotent when the
 same IDs were already created by an earlier SQL fixture. SQL validation is
-still pending on this latest fixture correction.
+still pending on this latest fixture correction. A subsequent SQL run got
+past the role setup and exposed the final domain invariant: each booking must
+reference a time slot or bookable resource. The fixture now provisions two
+valid test slots and uses the matching slot in its shared booking helper.
 
 The marketplace platform matrix on that head passed: Android debug APK, Web
 release, and iOS release compilation with `--no-codesign`. These are build

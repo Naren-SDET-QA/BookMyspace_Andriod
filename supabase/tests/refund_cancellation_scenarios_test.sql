@@ -19,6 +19,11 @@ insert into public.venues (id, org_id, name, latitude, longitude, cancellation_p
   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1', 'No Policy Venue', 17.3850, 78.4867, null),
   ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f1', 'Full Refund Venue', 17.3851, 78.4868, '{"refund_percent": 100}'::jsonb);
 
+insert into public.time_slots (id, venue_id, label, start_time, end_time, price_amount) values
+  ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000f2', 'Refund test slot A', '10:00', '14:00', 1000),
+  ('00000000-0000-0000-0000-0000000000f5', '00000000-0000-0000-0000-0000000000f3', 'Refund test slot B', '10:00', '14:00', 1000)
+on conflict (id) do nothing;
+
 insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-00000000000a', 'administrator'),
   ('00000000-0000-0000-0000-00000000000b', 'customer')
@@ -34,12 +39,14 @@ language plpgsql
 as $$
 declare
   v_booking_id uuid := gen_random_uuid();
+  v_slot_id uuid;
 begin
+  select id into strict v_slot_id from public.time_slots where venue_id = p_venue_id limit 1;
   insert into public.bookings (
-    id, booking_ref, user_id, venue_id, book_date, status, amount, total_amount
+    id, booking_ref, user_id, venue_id, slot_id, book_date, status, amount, total_amount
   ) values (
     v_booking_id, 'TEST-' || replace(v_booking_id::text, '-', ''),
-    p_user_id, p_venue_id, current_date, p_status, p_amount, p_amount
+    p_user_id, p_venue_id, v_slot_id, current_date, p_status, p_amount, p_amount
   );
   return v_booking_id;
 end;
