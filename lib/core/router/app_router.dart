@@ -33,6 +33,7 @@ import '../../features/admin/presentation/screens/admin_developer_platform_scree
 import '../../features/admin/presentation/screens/admin_connector_registry_screen.dart';
 import '../../features/admin/presentation/screens/admin_listings_screen.dart';
 import '../../features/admin/presentation/screens/admin_observability_providers_screen.dart';
+import '../../features/admin/presentation/widgets/platform_status_banner.dart';
 import '../../features/admin/presentation/screens/admin_observability_screen.dart';
 import '../../features/admin/presentation/screens/admin_oversight_screen.dart';
 import '../../features/admin/presentation/screens/admin_promotions_screen.dart';
@@ -52,7 +53,6 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/widgets/role_gate.dart';
 import '../config/app_config.dart';
-import 'search_route.dart';
 import '../../features/auth/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/booking/domain/booking.dart';
@@ -179,8 +179,8 @@ import '../modular/feature_providers.dart';
 import '../modular/feature_registry.dart';
 import '../modular/shell_destinations.dart';
 import '../theme/app_theme.dart';
-import '../../features/admin/presentation/widgets/platform_status_banner.dart';
 import '../widgets/test_id.dart';
+import 'search_route.dart';
 
 /// Route names used for navigation.
 abstract class AppRoutes {
